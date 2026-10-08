@@ -22,7 +22,6 @@ package songscribe.layout;
 
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.ToDoubleFunction;
@@ -43,16 +42,16 @@ import songscribe.layout.HairpinEndpoints.Endpoints;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
-import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SongFactory.songOfQuavers;
 import static songscribe.dom.SpanFactory.hairpinOver;
-import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
  * Where {@link HairpinEndpoints#compute} puts the two tips of a wedge. Each tip takes the first
  * rule that applies, in this order: a text dynamic on the bound itself, a hairpin that meets this
  * one on that column, a text dynamic on the element outside the bound, and otherwise the
  * column's own edge. A wedge is at least {@link HairpinMetrics#MINIMUM_LENGTH_SS} long, except
- * that a right tip a dynamic placed is never moved.
+ * that a right tip a dynamic placed is never lengthened: it moves only when it falls left of the
+ * left tip, and then onto it.
  *
  * <p>Every column here has the same width and the same distance from the one before it, so a
  * tip's X says which rule placed it. An expectation compares the tip to the tip another
@@ -82,6 +81,12 @@ class HairpinEndpointsTest extends UnitTest {
     private static final double SHORT_PITCH_SS = HairpinMetrics.MINIMUM_LENGTH_SS / 2;
     private static final double SHORT_COLUMN_SS = SHORT_PITCH_SS / 2;
 
+    /**
+     * A column pitch narrower than the clearance a dynamic keeps from a wedge's right tip, so a
+     * dynamic on or just after the end puts that tip left of the anchor column.
+     */
+    private static final double CROWDED_PITCH_SS = HairpinMetrics.BOUND_PADDING_SS / 4;
+
     private static final double TOLERANCE_SS = 1.0e-9;
 
     /** What can sit beside the wedge and place one of its tips. */
@@ -107,11 +112,7 @@ class HairpinEndpointsTest extends UnitTest {
     }
 
     private static Fixture fixtureOf(Set<Neighbor> present, double pitchSs, double columnSs) {
-        var song = buildSong(line -> {
-            for (var i = 0; i < LINE_LENGTH; i++) {
-                line.addElement(quaver());
-            }
-        });
+        var song = songOfQuavers(LINE_LENGTH);
         var line = song.getLine(FIRST_LINE);
 
         attachDynamic(present, Neighbor.DYNAMIC_ON_ANCHOR, line.getElement(ANCHOR_INDEX));
@@ -122,16 +123,16 @@ class HairpinEndpointsTest extends UnitTest {
         var wedge = song.withoutMutationTrackingResult(() -> {
             if (present.contains(Neighbor.HAIRPIN_ENDING_ON_ANCHOR)) {
                 hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(MEETING_BEFORE_INDEX, ANCHOR_INDEX))
-                    .addTo(line);
+                    .addTo();
             }
 
             if (present.contains(Neighbor.HAIRPIN_ANCHORED_ON_END)) {
                 hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(END_INDEX, MEETING_AFTER_INDEX))
-                    .addTo(line);
+                    .addTo();
             }
 
             var built = hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(ANCHOR_INDEX, END_INDEX));
-            built.addTo(line);
+            built.addTo();
 
             return built;
         });
@@ -140,8 +141,8 @@ class HairpinEndpointsTest extends UnitTest {
 
         for (var index = 0; index < LINE_LENGTH; index++) {
             var element = line.getElement(index);
-            var column = new ElementColumn(
-                element, List.of(), COLUMN_LEFT_EXTENT_SS, columnSs, columnSs, 0.0, 0.0, null, 0.0, false);
+            var extents = new ElementColumn.Extents(COLUMN_LEFT_EXTENT_SS, columnSs, columnSs, 0.0, 0.0);
+            var column = new ElementColumn(element, extents, null, null);
 
             column.setXSs(index * pitchSs);
             columns.put(element, column);
@@ -247,17 +248,19 @@ class HairpinEndpointsTest extends UnitTest {
         assertThat(endpoints.widthSs()).isCloseTo(HairpinMetrics.MINIMUM_LENGTH_SS, within(TOLERANCE_SS));
     }
 
-    @Test
-    void testARightTipPlacedByADynamicIsNeverLeftOfTheLeftTipAndIsNotExtended() {
-        var endpoints = fixtureOf(EnumSet.of(Neighbor.DYNAMIC_ON_END), 0.0, SHORT_COLUMN_SS).endpoints();
-
-        assertThat(endpoints.x2Ss()).isCloseTo(endpoints.x1Ss(), within(TOLERANCE_SS));
+    /** The dynamics that can place the right tip: on the end element, and just after it. */
+    static Stream<Neighbor> rightTipDynamics() {
+        return Stream.of(Neighbor.DYNAMIC_ON_END, Neighbor.DYNAMIC_AFTER_END);
     }
 
-    @Test
-    void testAWedgeWhoseEndpointHasNoColumnHasNoPlacement() {
-        var fixture = fixtureOf(EnumSet.noneOf(Neighbor.class), WIDE_PITCH_SS, WIDE_COLUMN_SS);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("rightTipDynamics")
+    void testARightTipPlacedByADynamicIsNotExtendedAndCollapsesOntoTheLeftTip(Neighbor dynamic) {
+        var endpoints = fixtureOf(EnumSet.of(dynamic), CROWDED_PITCH_SS, SHORT_COLUMN_SS).endpoints();
 
-        assertThat(HairpinEndpoints.compute(fixture.wedge(), fixture.line(), Map.of())).isNull();
+        assertThat(endpoints.widthSs())
+            .as("the dynamic's clearance puts the right tip left of the left tip, and the wedge "
+                + "collapses to nothing rather than being lengthened to the minimum")
+            .isCloseTo(0.0, within(TOLERANCE_SS));
     }
 }

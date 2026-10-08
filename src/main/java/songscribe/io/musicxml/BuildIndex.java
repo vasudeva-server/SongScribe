@@ -36,7 +36,7 @@ import songscribe.dom.StaffElement;
  * through a handle recorded here must do so instead.
  *
  * <p>What {@code BuildIndex} is <em>not</em>: it collects output handles, it does not carry
- * input state forward the way {@code NoteWriteContext} did in the streaming writer. Nothing
+ * input state forward. Nothing
  * reads a value from it that an earlier element wrote in order to decide what to emit next —
  * every read here is a later pass revisiting a node an earlier pass already finished.
  *

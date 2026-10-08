@@ -373,13 +373,13 @@ class LineTest extends UnitTest {
         var afterIndex = line.getElementIndex(after);
         var endingOnIt = hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(beforeIndex, replacedIndex));
         var anchoredOnIt = hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(replacedIndex, afterIndex));
-        endingOnIt.addTo(line);
-        anchoredOnIt.addTo(line);
+        endingOnIt.addTo();
+        anchoredOnIt.addTo();
 
         var replacement = crotchet();
         line.setElement(line.getElementIndex(replaced), replacement);
 
-        assertThat(line.spanRegistry().getSpans()).containsExactly(endingOnIt, anchoredOnIt);
+        assertThat(line.spanRegistry().getSpans()).containsExactlyInAnyOrder(endingOnIt, anchoredOnIt);
         assertThat(endingOnIt.getEndElement()).isSameAs(replacement);
         assertThat(anchoredOnIt.getAnchorElement()).isSameAs(replacement);
     }

@@ -24,9 +24,18 @@ import songscribe.dom.Line;
 import songscribe.dom.Span;
 
 /**
- * Mutation recording the removal of a span from a line.
+ * Mutation recording that a span was removed from a line's span registry. The span is carried
+ * whole, and undo adds that same instance back through {@link Span#addTo()}, while redo removes
+ * it again through {@link Span#removeFrom()}, so identity survives a round trip.
+ *
+ * <p>The line is recorded rather than derived from the span because subscribers read it after
+ * the edit, through {@link #getLine()}, and the edit that removed the span may also have
+ * deleted its anchor, which then belongs to no line.
+ *
+ * @param line the line whose registry the span left, which was its anchor's line at the time
+ * @param span the span that was removed
  */
-public record SpanRemoval(Line line, Span<?> element)
+public record SpanRemoval(Line line, Span<?> span)
     implements Mutation, LineScopedMutation {
 
     @Override

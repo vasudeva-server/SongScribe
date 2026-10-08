@@ -50,93 +50,88 @@ class TupletLoadPassTest extends UnitTest {
     private static final int TRIPLET_GRADE = TupletGrade.TRIPLET.number();
 
     /** The three crotchets every case's tuplet spans. */
-    private static final String THREE_NOTES = PITCH + " " + PITCH + " " + PITCH + " " + PITCH;
+    private static final String THREE_NOTES = PITCH + " " + PITCH + " " + PITCH;
     private static final ElementRange SPAN = new ElementRange(0, 2);
 
-    private static final TupletRatio TWO_CROTCHETS = ratioOf(TRIPLET_NORMAL_NOTES, NoteValue.QUARTER);
+    private static final TupletNormalTime TWO_CROTCHETS = ratioOf(TRIPLET_NORMAL_NOTES, NoteValue.QUARTER);
 
     /** A ratio whose normal-note count equals the grade, which states no tuplet at all. */
-    private static final TupletRatio SAME_COUNT = ratioOf(TRIPLET_GRADE, NoteValue.QUARTER);
+    private static final TupletNormalTime SAME_COUNT = ratioOf(TRIPLET_GRADE, NoteValue.QUARTER);
 
     private static final double Y_OFFSET_SS = 1.5;
 
     /**
-     * One pending tuplet over {@link #SPAN}, and what the pass makes of it.
+     * One pending tuplet over {@link #SPAN} that the pass adds.
      *
-     * @param description the case, as the test's display name
-     * @param notation    the song's one line, in compact notation
-     * @param statedRatio the ratio the file states, or {@code null} when it states none
-     * @param outcome     what the pass does with it
-     * @param reason      the reason reported for a dropped tuplet, {@code null} otherwise
+     * @param description    the case, as the test's display name
+     * @param statedRatio    the ratio the file states, or {@code null} when it states none
+     * @param expectedReport what the pass records for it
      */
-    private record LoadCase(
+    private record AddedCase(
         String description,
-        String notation,
-        @Nullable TupletRatio statedRatio,
-        Outcome outcome,
-        TupletValidator.@Nullable Reason reason
+        @Nullable TupletNormalTime statedRatio,
+        List<ReportedChange> expectedReport
     ) {}
 
-    private enum Outcome {
-        /** Added with the ratio the file stated, and not reported. */
-        ADDED_AS_STATED,
-        /** Added with a derived ratio, and reported as updated. */
-        ADDED_DERIVED,
-        /** Not added, and reported as removed. */
-        DROPPED
+    /**
+     * One pending tuplet over {@link #SPAN} that the pass drops.
+     *
+     * @param description the case, as the test's display name
+     * @param statedRatio the ratio the file states
+     * @param reasonKey   the {@code Strings} key of the validator's reason, which the pass reports
+     */
+    private record DroppedCase(String description, TupletNormalTime statedRatio, String reasonKey) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("addedCases")
+    void testAPendingTupletIsAddedWithItsRatioAndOffset(AddedCase testCase) {
+        var song = compactSong(Key.NO_ACCIDENTALS, THREE_NOTES);
+        var line = song.getLine(LINE);
+
+        var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
+
+        assertThat(report.changes()).isEqualTo(testCase.expectedReport());
+        assertThat(line.spanRegistry().findSpans(Tuplet.class)).singleElement().satisfies(tuplet -> {
+            assertThat(tuplet.getRatio().normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES);
+            assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS);
+
+            if (testCase.statedRatio() != null) {
+                assertThat(tuplet.getRatio()).isEqualTo(testCase.statedRatio());
+            }
+        });
+    }
+
+    static Stream<AddedCase> addedCases() {
+        return Stream.of(
+            new AddedCase("a stated ratio the validator accepts is kept and not reported",
+                TWO_CROTCHETS, List.of()),
+            new AddedCase("an absent ratio is derived from the beat and reported as updated", null,
+                List.of(new ReportedChange(
+                    Strings.DIALOG_REPORT_TUPLETS_UPDATED,
+                    Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
+                    spanLocation())))
+        );
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("loadCases")
-    void testAPendingTupletIsAddedWithItsRatioOrDroppedWithItsReason(LoadCase testCase) {
-        var song = compactSong(Key.NO_ACCIDENTALS, testCase.notation());
+    @MethodSource("droppedCases")
+    void testAPendingTupletTheValidatorRejectsIsDroppedWithItsReason(DroppedCase testCase) {
+        var song = compactSong(Key.NO_ACCIDENTALS, THREE_NOTES);
         var line = song.getLine(LINE);
 
-        var report = new ChangeReport();
+        var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
 
-        TupletLoadPass.run(song, List.of(pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS)), report);
-
-        var tuplets = line.spanRegistry().findSpans(Tuplet.class);
-
-        switch (testCase.outcome()) {
-            case ADDED_AS_STATED -> {
-                assertThat(report.isEmpty()).isTrue();
-                assertThat(tuplets).singleElement().satisfies(tuplet -> {
-                    assertThat(tuplet.getRatio()).isEqualTo(testCase.statedRatio());
-                    assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS);
-                });
-            }
-            case ADDED_DERIVED -> {
-                assertThat(report.changes()).containsExactly(new ReportedChange(
-                    Strings.DIALOG_REPORT_TUPLETS_UPDATED,
-                    Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
-                    spanLocation()));
-                assertThat(tuplets).singleElement().satisfies(tuplet -> {
-                    assertThat(tuplet.getRatio().normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES);
-                    assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS);
-                });
-            }
-            case DROPPED -> {
-                var reason = testCase.reason();
-
-                assertThat(reason).isNotNull();
-                assertThat(report.changes()).containsExactly(new ReportedChange(
-                    Strings.DIALOG_REPORT_TUPLETS_REMOVED,
-                    Strings.get(reason.messageKey()),
-                    spanLocation()));
-                assertThat(tuplets).isEmpty();
-            }
-        }
+        assertThat(report.changes()).containsExactly(new ReportedChange(
+            Strings.DIALOG_REPORT_TUPLETS_REMOVED,
+            Strings.get(testCase.reasonKey()),
+            spanLocation()));
+        assertThat(line.spanRegistry().findSpans(Tuplet.class)).isEmpty();
     }
 
-    static Stream<LoadCase> loadCases() {
+    static Stream<DroppedCase> droppedCases() {
         return Stream.of(
-            new LoadCase("a stated ratio the validator accepts is kept",
-                THREE_NOTES, TWO_CROTCHETS, Outcome.ADDED_AS_STATED, null),
-            new LoadCase("an absent ratio is derived from the beat",
-                THREE_NOTES, null, Outcome.ADDED_DERIVED, null),
-            new LoadCase("a stated ratio the validator rejects is dropped with the validator's reason",
-                THREE_NOTES, SAME_COUNT, Outcome.DROPPED, TupletValidator.Reason.BAD_RATIO)
+            new DroppedCase("a stated ratio the validator rejects is dropped with the validator's reason",
+                SAME_COUNT, Strings.DIALOG_REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES)
         );
     }
 
@@ -146,7 +141,12 @@ class TupletLoadPassTest extends UnitTest {
             new ElementLocation(LINE, SPAN.begin()), new ElementLocation(LINE, SPAN.end()));
     }
 
-    private static PendingTuplet pendingOver(Line line, @Nullable TupletRatio statedRatio, double yOffsetSs) {
+    /** Settles {@code song} with {@code tuplet} as the only pending span the reader found. */
+    private static ChangeReport settle(Song song, PendingTuplet tuplet) {
+        return new ParsedSong(song, List.of(tuplet), List.of(), List.of(), List.of()).settle();
+    }
+
+    private static PendingTuplet pendingOver(Line line, @Nullable TupletNormalTime statedRatio, double yOffsetSs) {
         return new PendingTuplet(
             line.getElement(SPAN.begin()), line.getElement(SPAN.end()), TupletGrade.TRIPLET, statedRatio, yOffsetSs);
     }

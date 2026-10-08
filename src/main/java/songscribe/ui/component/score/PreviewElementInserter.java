@@ -26,19 +26,17 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.ElementChange;
-import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.Dottable;
 import songscribe.dom.NoteElement;
 import songscribe.dom.ProjectedEdit;
-import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
 import songscribe.engraving.StaffPosition;
 import songscribe.layout.AccidentalFitGate;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
-import songscribe.message.mutation.ElementField;
+import songscribe.ui.FitRefusals;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.undo.OpNames;
@@ -153,8 +151,8 @@ final class PreviewElementInserter {
             return;
         }
 
-        // Decided once and used both to ask and to act, so the question can never be asked about a
-        // click that then does something else.
+        // Decided once and used both to gate and to act, so the gate never judges a different
+        // edit from the one the click then makes.
         var appends = click.appends();
         var replacesExisting = !appends && overElementX;
         var opLabel = OpNames.addLabel(previewElement.getType());
@@ -200,8 +198,8 @@ final class PreviewElementInserter {
      *
      * @param lc the line the click landed on
      * @return the accepted insertion, or {@code null} when the insertion may not go ahead: the
-     *     preview owns no click on {@code lc}, the slot is refused, or the gate declined it for
-     *     want of room or at a confirmation, having told the user which
+     *     preview owns no click on {@code lc}, the slot is refused, or the gate ({@link #accept})
+     *     refused it for want of room
      */
     static @Nullable AcceptedInsertion acceptForGraceMode(LineComponent lc) {
         var click = resolveClick(lc);
@@ -214,15 +212,17 @@ final class PreviewElementInserter {
     }
 
     /**
-     * Runs the insertion gate for {@code element} at {@code index}: the chain walk, the fit check
-     * and the fit check. Mutates nothing on the line.
+     * Runs the insertion gate for {@code element} at {@code index}: the chain walk, then the
+     * check that the edited line has room for the element and that every other line whose
+     * accidentals the walk changes still fits. Mutates nothing on the line.
      *
-     * @return the accepted insertion, or {@code null} when the line has no room
+     * @return the accepted insertion, or {@code null} when the edited line or another line the
+     *     walk widens has no room
      */
     private static @Nullable AcceptedInsertion accept(
         LineComponent lc, Line line, int index, StaffElement element) {
 
-        if (walkAndCalculateInsertion(lc, line, element, index) == null) {
+        if (!walkAndCalculateInsertion(lc, line, element, index)) {
             return null;
         }
 
@@ -308,21 +308,12 @@ final class PreviewElementInserter {
         var effectiveProjection = edit.elements().subList(0, line.effectiveElementCount());
         var lyricRenderMetrics = lc.getLyricRenderMetrics();
 
-        var fits = AccidentalFitGate.fits(
+        var verdict = AccidentalFitGate.judge(
             line, restamps, List.of(replacement), lyricRenderMetrics,
             () -> effectiveProjection.isEmpty()
                 || InsertionSpacingCalculator.fitsInPlace(line, effectiveProjection, lyricRenderMetrics));
 
-        if (!fits) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL_ELEMENT,
-                replacement.getType().kind().label()
-            );
-        }
-
-        return fits;
+        return FitRefusals.accepts(verdict, null, () -> showLineFull(replacement));
     }
 
     /**
@@ -334,9 +325,9 @@ final class PreviewElementInserter {
     }
 
     /**
-     * Calculates the insertion result for adding an element to a line.
+     * Returns whether {@code line} still fits with {@code element} inserted at {@code index}.
      * <p>
-     * The line is free to compress to absorb the new element, so the error fires only when the
+     * The line is free to compress to absorb the new element, so it is full only when the
      * spring solver reports the line INFEASIBLE — it overflows the margin even with every gap
      * squeezed down to its collision floor. This runs <em>before</em> any mutation, so a rejected
      * insert leaves the line exactly as it was; there is nothing half-applied to compensate for.
@@ -346,32 +337,31 @@ final class PreviewElementInserter {
      * @param element The element to insert
      * @param index   The insertion index
      * @param layout  The line's current layout, which the projection measures from
-     * @return The insertion result, or null if the line is full
+     * @return {@code true} when the line has room for {@code element}
      */
-    private static InsertionSpacingCalculator.@Nullable InsertionResult calculateInsertionOrShowError(
+    private static boolean insertionFits(
         LineComponent lc, Line line, StaffElement element, int index, LayoutResult layout
     ) {
         var insertion = InsertionSpacingCalculator.calculateInsertion(
             line, element, index, layout, lc.getLyricRenderMetrics());
-        var song = line.getSong();
 
-        if (!insertion.fitsWithinLine(song.getLineWidthSs().value())) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL_ELEMENT,
-                element.getType().kind().label()
-            );
-            return null;
-        }
+        return insertion.fitsWithinLine(line.getSong().getLineWidthSs().value());
+    }
 
-        return insertion;
+    /** Tells the user the edited line has no room for {@code element}. */
+    private static void showLineFull(StaffElement element) {
+        OptionDialogs.showErrorMessage(
+            null,
+            Strings.ALERT_TITLE_INSERT_ERROR,
+            Strings.ERROR_LINE_FULL_ELEMENT,
+            element.getType().kind().label()
+        );
     }
 
     /**
      * Walks the chains this insertion changes, gates the insertion with the walk's accidentals in
-     * place, and returns the insertion result — or null when the insertion is refused, in which
-     * case nothing has been mutated.
+     * place, and returns whether the insertion is accepted. A refused insertion has mutated
+     * nothing.
      * <p>
      * The walk runs over a projection of the line with {@code previewElement} at {@code index}.
      * A preview note arrives {@code Chosen} or {@code Adopting} and is decided by the walk like any
@@ -385,30 +375,20 @@ final class PreviewElementInserter {
      * @param line           The line to insert into
      * @param previewElement The element being inserted
      * @param index          The insertion index
-     * @return The insertion result, or null when refused
+     * @return {@code true} when the insertion is accepted, {@code false} when it is refused
      */
-    private static InsertionSpacingCalculator.@Nullable InsertionResult walkAndCalculateInsertion(
+    private static boolean walkAndCalculateInsertion(
         LineComponent lc, Line line, StaffElement previewElement, int index) {
 
         var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement)).walk();
 
-        // The gate runs inside the fit gate, with the walk's accidentals stamped so the projection
-        // measures the right widths, so its result has to escape the lambda through a holder.
-        var insertion = new InsertionSpacingCalculator.InsertionResult[1];
+        // The insertion's own check runs inside the fit gate, with the walk's accidentals stamped
+        // so the projection measures the right widths.
+        var verdict = AccidentalFitGate.judge(
+            line, restamps, List.of(previewElement), lc.getLyricRenderMetrics(),
+            () -> insertionFits(lc, line, previewElement, index, lc.requireLayoutResult()));
 
-        var accepted = AccidentalFitGate.fits(
-            line, restamps, List.of(previewElement), lc.getLyricRenderMetrics(), () -> {
-                var result = calculateInsertionOrShowError(lc, line, previewElement, index, lc.requireLayoutResult());
-
-                if (result == null) {
-                    return false;
-                }
-
-                insertion[0] = result;
-                return true;
-            });
-
-        return accepted ? insertion[0] : null;
+        return FitRefusals.accepts(verdict, null, () -> showLineFull(previewElement));
     }
 
     /**
@@ -451,7 +431,7 @@ final class PreviewElementInserter {
         // glissando to the replaced host), and the replacement is not a pitched note, remove the
         // grace note. For pitched note replacements the glissando reattaches automatically since
         // a replacement preserves the element index.
-        if (line.isHostOfPairedGraceNote(elementIndex)
+        if (line.isPairedGraceNoteTarget(elementIndex)
                 && !previewType.isPitchedNote()) {
             // line.replace carried the old host's lyrics onto the replacement, which is not a
             // pitched note and has no business holding a melisma carrier. The grace note's

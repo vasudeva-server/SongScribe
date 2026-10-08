@@ -20,9 +20,27 @@
 
 package songscribe.midi;
 
+/**
+ * The listener's choices for one playback, applied by {@link MidiSequenceBuilder}.
+ *
+ * @param instrument          the General MIDI program number, 0 to 127
+ * @param tempoChangePercent  the song's tempi scaled by this percentage: 100 plays them as
+ *                            written, 120 plays 20% faster
+ * @param noteDurationPercent the share of its written duration a note sounds for, 1 to 100,
+ *                            unless the note carries its own override
+ * @param playWithRepeats     how repeat marks and endings play. When {@code true}, a
+ *                            {@code :|} or {@code :|:} sends playback back to the start of the
+ *                            section it closes, which may lie on an earlier line, and the
+ *                            second time through it plays on past the mark; a {@code :|} that
+ *                            closes no open section plays as an ordinary bar; and on the second
+ *                            time through, a first ending is skipped in favor of the second.
+ *                            When {@code false}, the song plays straight through once, repeat
+ *                            marks play as ordinary bars, and every first ending is skipped, so
+ *                            only the common section and the second ending sound.
+ */
 public record PlaybackSettings(
     int instrument,
-    int tempoChangePercent,   // percentage: e.g., 100 = normal, 120 = 20% faster
-    int noteDurationPercent,  // percentage: 1-100
+    int tempoChangePercent,
+    int noteDurationPercent,
     boolean playWithRepeats
 ) {}

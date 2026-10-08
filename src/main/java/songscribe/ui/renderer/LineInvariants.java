@@ -134,19 +134,7 @@ public final class LineInvariants {
             : null;
     }
 
-    /**
-     * The elements of {@code line} that the tie through the playing note passes over.
-     * <p>
-     * The tie is the one the playing note starts, or else the one it ends. Each of its notes in
-     * {@code line} bounds the range at its own index; a note in the neighboring line leaves the
-     * range open to that edge of {@code line}, so the half of a tie crossing a line break covers
-     * exactly the elements it is drawn over here.
-     *
-     * @param line    the line being painted
-     * @param playing the playing note, as an index into {@code line}
-     * @return the range, or {@code null} when the playing note is not a note of {@code line}
-     *     or is not tied
-     */
+    /** The elements of {@code line} the tie the playing note starts, or else ends, is drawn over. */
     private static @Nullable ElementRange playingTieRange(Line line, Playing playing) {
         var noteIndex = playing.noteIndex();
 
@@ -164,12 +152,9 @@ public final class LineInvariants {
             return null;
         }
 
-        var anchor = tie.anchor();
-        var end = tie.end();
-        var begin = line.contains(anchor) ? line.getElementIndex(anchor) : 0;
-        var last = line.contains(end) ? line.getElementIndex(end) : line.elementCount() - 1;
+        var placement = line.placementOf(tie);
 
-        return new ElementRange(begin, last);
+        return placement == null ? null : placement.range();
     }
 
     /**

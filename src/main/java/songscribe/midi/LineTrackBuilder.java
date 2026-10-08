@@ -53,18 +53,10 @@ public class LineTrackBuilder {
     /**
      * Returns the duration of an element adjusted for tuplet membership.
      *
-     * <p>Inside a tuplet the scaled duration is derived by differencing two
-     * <em>rounded absolute offsets</em> from the tuplet's anchor, rather than by
-     * rounding each element's scaled duration on its own. Rounding each element
-     * independently lets the errors accumulate — a 7:4 of sixteenths would run
-     * long by two ticks and shift everything after it. Differencing rounded
-     * absolute offsets makes the group close exactly, because the tuplet's total
-     * written duration times {@code M / N} is an integer by construction.
-     *
-     * <p>The ratio comes straight off the tuplet rather than being inferred from
-     * the surrounding beat. That is the payoff for storing {@code M}: what is
-     * printed is what is heard, and editing the tempo can no longer silently
-     * re-time an existing tuplet.
+     * <p>Inside a tuplet the duration is the difference of two offsets from the tuplet's
+     * anchor, each scaled and rounded by {@link songscribe.dom.Tuplet#performedTicks}, which
+     * states why an offset is rounded rather than a duration. The ratio is the one the tuplet
+     * stores, never one inferred from the surrounding beat, so what is printed is what is heard.
      *
      * @param elementIndex Index of the element
      * @return Duration in ticks, adjusted for tuplet if applicable

@@ -28,6 +28,7 @@ import songscribe.message.MessageSubscription;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.ui.action.Actions;
 import songscribe.ui.action.ModeAction;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
@@ -62,7 +63,7 @@ public class ModeCycleButton extends ToolbarToggleButton {
 
     @Handler
     public void modeDidChange(ModeDidChangeNotification message) {
-        updateButton(message.getAction());
+        updateButton(Actions.modeAction(message.getMode()));
     }
 
     @Handler

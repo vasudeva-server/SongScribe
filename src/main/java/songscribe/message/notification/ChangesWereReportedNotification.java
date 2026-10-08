@@ -26,10 +26,13 @@ import songscribe.message.Message;
  * Carries the report of the changes an edit made to the song on its own, so the UI can tell the
  * user about them; {@code songscribe.dom} makes the changes and must not depend on the UI.
  *
- * <p>Posted once for each edit, after its {@link SongDidChangeNotification}, only when the report
- * is not empty, so a subscriber that shows a window does not block with the score still painted
- * as it was before the changes. Never posted during an undo or redo replay, nor while mutation
- * tracking is suspended.
+ * <p>Posted at most once for each edit, only when the report is not empty, after the batch's
+ * {@link SongDidChangeNotification} when the batch has one. Never posted during an undo or redo
+ * replay, nor while mutation tracking is suspended.
+ *
+ * <p>Delivery is synchronous, inside the edit that made the changes: a subscriber runs before
+ * the edit's caller regains control. A subscriber that shows a modal window must therefore defer
+ * it, or the window blocks the edit part way through.
  */
 public class ChangesWereReportedNotification extends Message {
 

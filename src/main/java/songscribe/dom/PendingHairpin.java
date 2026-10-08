@@ -17,35 +17,31 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package songscribe.dom;
 
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
- * A hairpin as a reader found it in a file, before the load pass has judged it.
- * <p>
- * A reader does not build a {@link Hairpin}: every hairpin is well formed, and whether a range
- * holds a well-formed hairpin is {@link Hairpin#spanning}'s question, not the reader's. So a
- * reader records what the file said here, and {@link HairpinLoadPass#run} — once the song is
- * complete — turns each pending hairpin into a {@code Hairpin} on its anchor's line or drops it.
- * <p>
- * A pending hairpin is not a span. It sits in no registry, is never drawn or recorded for undo,
- * and nothing outside the load path sees one.
+ * A hairpin as a reader found it in a file, judged by {@link Hairpin#spanning}.
  *
  * @param kind      whether the hairpin is a crescendo or a diminuendo
  * @param anchor    the hairpin's first element, in a line of the song being read
  * @param end       the hairpin's last element, in the anchor's line at or after the anchor
- * @param x1ShiftSs the user's horizontal shift of the hairpin's start in staff spaces; it
- *                  becomes the hairpin's {@link Hairpin#getX1ShiftSs()}
- * @param x2ShiftSs the user's horizontal shift of the hairpin's end in staff spaces; it becomes
- *                  the hairpin's {@link Hairpin#getX2ShiftSs()}
- * @param yOffsetSs the user's vertical offset of the hairpin in staff spaces, positive downward;
- *                  it becomes the hairpin's {@link LineElement#getUserYOffsetSs()}
+ * @param xOffsetSs the user's horizontal offset of the hairpin in staff spaces, positive
+ *                  rightward
+ * @param yOffsetSs the user's vertical offset of the hairpin in staff spaces, positive downward
  */
 public record PendingHairpin(
     Hairpin.Kind kind,
     StaffElement anchor,
     StaffElement end,
-    double x1ShiftSs,
-    double x2ShiftSs,
+    double xOffsetSs,
     double yOffsetSs
-) {
+) implements PendingSpan<Hairpin> {
+
+    @Override
+    public Spanning<Hairpin> spanning(Line line, ElementRange range) {
+        return Hairpin.spanning(line, kind, range);
+    }
 }

@@ -76,7 +76,6 @@ import songscribe.util.GraphicsState;
 /**
  * Handles all rendering for a single staff line.
  * <p>
- * Extracted from {@link LineComponent} to separate rendering concerns.
  * Reads state from the owning LineComponent but does not mutate it
  * (except for positioning the insertion note preview before drawing).
  */
@@ -135,9 +134,6 @@ class LineRenderer {
         // displacement of subsequent elements) when this is the active grace line; the
         // per-element frames built below inherit that shift.
         var lineFrame = lc.gracePreviewLineFrame();
-
-        // Ensure accidental metrics are initialized
-        NoteGeometry.initializeAccidentalWidths();
 
         // Render in proper order (back to front)
         drawStaffLines(g2, invariants);
@@ -212,7 +208,7 @@ class LineRenderer {
 
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             // Red says this line holds more than the staff can show, so the tail of its content is
-            // clipped (refs #696). Selection still wins: it is the transient state the user is
+            // clipped. Selection still wins: it is the transient state the user is
             // acting on, and the red returns the moment the line is deselected.
             if (staffSelected) {
                 g2.setColor(ScoreView.getSelectionColor());
@@ -412,12 +408,12 @@ class LineRenderer {
         for (var beam : line.spanRegistry().findSpans(Beam.class)) {
             var anchorIdx = beam.requireAnchorElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,
-                () -> beamRenderer.renderBeams(g2, invariants, frame, beam));
+                () -> beamRenderer.renderBeams(g2, invariants, beam));
         }
     }
 
     /**
-     * Renders the ties and tie halves this line owns ({@link Line#ownedTies}).
+     * Renders the ties and tie halves this line's layout laid out ({@link Line#ownedTies}).
      *
      * @param g2    Graphics context
      * @param invariants   Line invariants
@@ -425,26 +421,26 @@ class LineRenderer {
      */
     private void renderTies(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var tieRenderer = TieRenderer.getInstance();
-        var line = invariants.requireCurrentLine();
 
-        for (var tie : line.ownedTies()) {
-            renderWithPreviewShiftIfNeeded(g2, frame, previewShiftStartOf(tie, line),
-                () -> tieRenderer.renderTie(g2, tie, invariants, frame));
+        for (var tieLayout : invariants.getLayoutResult().tieLayouts()) {
+            renderWithPreviewShiftIfNeeded(g2, frame, previewShiftStartOf(tieLayout.placement()),
+                () -> tieRenderer.renderTie(g2, tieLayout, invariants));
         }
     }
 
     /**
-     * Returns the index the preview shift must weigh {@code tie} against in {@code line}.
+     * Returns the index the preview shift must weigh a tie against in the line being painted.
      * <p>
-     * The preview shift's {@code fromIndex} is a position in the line being painted, so the
-     * tie's start has to be one too: its anchor's index when the anchor is in {@code line}, and
-     * {@code 0} when it is in the previous line, since the half entering from the left edge
-     * starts before every element here and shifts exactly when the whole line does.
+     * The preview shift's {@code fromIndex} is a position in that line, so the tie's start has
+     * to be one too. The half entering from the left edge starts before every element here and
+     * shifts exactly when the whole line does, which its range's start of {@code 0} gives.
+     *
+     * @param placement the tie's place in the line being painted
+     * @return the index of the first element the tie is drawn over: its anchor's, or {@code 0}
+     *     when the anchor is in the previous line
      */
-    static int previewShiftStartOf(Tie tie, Line line) {
-        var anchor = tie.anchor();
-
-        return line.contains(anchor) ? line.getElementIndex(anchor) : 0;
+    private static int previewShiftStartOf(Line.TiePlacement placement) {
+        return placement.range().begin();
     }
 
     /**
@@ -646,7 +642,7 @@ class LineRenderer {
 
         // The stroke is centered on the rectangle's path, so it extends halfStrokeWidthPx
         // beyond each edge. Swing clips painting at the line's own bounds, so a drag that
-        // reaches the left or right of the line (see issue #643) would otherwise have its
+        // reaches the left or right of the line would otherwise have its
         // border cut off there. Keep the drawn path inset horizontally by that half-width so
         // the full stroke always lands inside the line.
         var minX = halfStrokeWidthPx;

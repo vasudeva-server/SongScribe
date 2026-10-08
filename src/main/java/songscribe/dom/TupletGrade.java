@@ -25,8 +25,6 @@ import org.jspecify.annotations.Nullable;
  * The number a tuplet prints — <em>N</em> in "<em>N</em> notes in the time of <em>M</em>" —
  * over the whole range this editor can create or a file may state. A group of one re-times
  * nothing, so the range starts at two.
- *
- * <p>The constant names are what the tuplet menu shows, so renaming one renames a menu item.
  */
 public enum TupletGrade {
     DUPLET(2),

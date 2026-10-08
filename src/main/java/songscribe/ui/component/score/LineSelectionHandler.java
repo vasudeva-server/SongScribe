@@ -67,7 +67,7 @@ class LineSelectionHandler {
      * Whether this press may grow into a selection band. Distinct from {@link #pressHandled},
      * which answers a different question — whether the click that follows still has work to do.
      * A Shift press on an element leaves {@code pressHandled} false so the click can extend the
-     * range (issue #748), yet must never sweep.
+     * range, yet must never sweep.
      */
     private boolean bandArmed = false;
 
@@ -292,7 +292,7 @@ class LineSelectionHandler {
             && range.line() == lc.getLine();
 
         if (isExtend) {
-            // pressHandled stays false so the click that follows can extend the range (#748).
+            // pressHandled stays false so the click that follows can extend the range.
             // bandArmed was cleared at the top of this method and nothing since could have set
             // it, so returning here is what keeps this gesture from ever sweeping a band.
             return;
@@ -711,10 +711,10 @@ class LineSelectionHandler {
      * <p>
      * The anchor is the first column whichever direction the band was drawn in, and whatever the
      * press point landed on. It is the fixed point every later Shift+click and Shift+arrow
-     * extends from, and nothing but a new plain click or drag may move it (issue #748).
+     * extends from, and nothing but a new plain click or drag may move it.
      * <p>
      * Which columns those are is {@code sweepRange}'s answer, not this method's — including the
-     * exclusion of the auto-maintained terminal (issue #713), which is a consequence of the range
+     * exclusion of the auto-maintained terminal, which is a consequence of the range
      * not holding it rather than a check made here.
      * <p>
      * The whole range is resolved before anything is selected, so a drag event assigns the

@@ -76,20 +76,16 @@ import songscribe.error.RuntimeError;
  * rather than a heterogeneous list, so JAXB emits {@code <grace>}, {@code <pitch>},
  * {@code <duration>}, {@code <type>}, {@code <dot>}, {@code <accidental>},
  * {@code <time-modification>}, {@code <stem>} and the rest in schema order whatever order the
- * setters are called in. The numbered ordering comments in the streaming writer documented
- * something the type system now guarantees.
+ * setters are called in.
  *
  * <p>The one order that is <em>not</em> guaranteed is inside {@code <notations>}, whose children
- * live in a heterogeneous {@code List<Object>}. The schema permits any order there, so a
- * misordered list marshals and validates — and round-trips — while differing textually from what
- * the streaming writer produced. {@link #addNotation} keeps that list in the streaming writer's
- * order for every pass that uses it.
+ * live in a heterogeneous {@code List<Object>}. The schema permits any order there, so this
+ * class keeps that list in the rank order below for every pass that uses it.
  */
 final class NoteBuilder {
 
-    // Order of the <notations> children, as the streaming writer emitted them. The schema
-    // accepts any order (the content model is an unbounded choice), so nothing but this
-    // ranking keeps the two writers textually comparable.
+    // Order of the <notations> children. The schema accepts any order (the content model is an
+    // unbounded choice), so this ranking is what fixes the emitted order.
     private static final int ORDER_TIED = 0;
     private static final int ORDER_SLIDE = 1;
     private static final int ORDER_TUPLET = 2;
@@ -98,7 +94,7 @@ final class NoteBuilder {
     private static final int ORDER_DYNAMICS = 5;
     private static final int ORDER_FERMATA = 6;
 
-    /** Rank for a notation type the streaming writer never emitted: appended after all of them. */
+    /** Rank for a notation type with no ranked position: appended after all of them. */
     private static final int ORDER_OTHER = 7;
 
     private NoteBuilder() {}
@@ -139,7 +135,7 @@ final class NoteBuilder {
         // every member of the group carries the same time modification.
         //
         // A grace note may sit inside the span without joining the group: it keeps its written
-        // value and takes no <time-modification> (refs #592).
+        // value and takes no <time-modification>.
         var tuplet = isGrace ? null : line.spanRegistry().findTupletAt(elementIndex);
 
         // relative-x is the user's own horizontal offset, emitted only when non-zero, and
@@ -232,14 +228,12 @@ final class NoteBuilder {
 
     /**
      * Attaches {@code member} to {@code pmNote}'s {@code <notations>}, inserted at the position
-     * its element type occupies in the streaming writer's emission order.
+     * its element type's rank occupies.
      *
      * <p>Order matters here in a way it does not elsewhere in a {@code <note>}: the children of
      * {@code <notations>} are a heterogeneous {@code List<Object>} whose schema content model is
-     * an unbounded choice, so any order validates and any order round-trips. Only a textual
-     * comparison against the old writer's output can see a difference — which is exactly the
-     * comparison the cutover rests on. Inserting by rank means the adjustment passes may run in
-     * whatever order suits them.
+     * an unbounded choice, so any order validates and any order round-trips. Inserting by rank
+     * means the adjustment passes may run in whatever order suits them.
      *
      * <p>Members of equal rank keep their insertion order, so a tie chain's
      * {@code <tied type="stop">} stays before its {@code <tied type="start">}.

@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
 import songscribe.dom.ChangeReport;
+import songscribe.dom.ParsedSong;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 
@@ -40,8 +41,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
      * @param fonts    the document's fonts
      * @param warnings every non-fatal problem detected during the load, in the
      *                 order it was detected; empty when the file was clean
-     * @param report   what the load's post-parse passes changed in the document; empty when
-     *                 they changed nothing
+     * @param report   what the load changed in the document, as {@link ParsedSong#settle()}
+     *                 reports it; empty when it changed nothing
      */
     record Success(
         Song song, DocumentFonts fonts, List<LoadWarning> warnings, ChangeReport report
@@ -51,6 +52,25 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
         // build the warning list incrementally before handing it over.
         public Success {
             warnings = List.copyOf(warnings);
+        }
+
+        /**
+         * Settles what a reader read and returns the loaded song. Both readers end here, so the
+         * load passes run on every route a file is opened by — the UI's and the headless MIDI
+         * export's alike — and a song cannot play tuplets one route dropped.
+         *
+         * @param parsed   what the reader handed over, not yet settled
+         * @param fonts    the document's fonts
+         * @param warnings every non-fatal problem the reader detected, in the order it was
+         *                 detected
+         * @return the loaded {@code parsed.song()}, with the report {@link ParsedSong#settle()}
+         *     returns
+         * @effects runs {@link ParsedSong#settle()} on {@code parsed}, with the effects it states
+         */
+        public static Success settled(ParsedSong parsed, DocumentFonts fonts, List<LoadWarning> warnings) {
+            var report = parsed.settle();
+
+            return new Success(parsed.song(), fonts, warnings, report);
         }
     }
 

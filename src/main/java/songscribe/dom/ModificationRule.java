@@ -33,17 +33,20 @@ interface ModificationRule {
      * Judges the song after the edit that recorded {@code batch}, removing what the edit left
      * invalid under this rule.
      * <p>
-     * It runs once for each edit, when the outermost modification bracket closes, while that
-     * bracket is still open, so each removal it records lands in the batch that is delivered and
-     * undoes with the edit. It does not run during an undo or redo replay, whose batch already
-     * carries the removals, nor while mutation tracking is suspended.
+     * When it runs, and when it does not, is stated once, on
+     * {@link ModificationSession#endModification}.
+     * <p>
+     * Each removal it makes is reported to the user, either into {@code report} or through
+     * {@link Song#report}, which records into the same report of the open edit: the tie rule
+     * records into {@code report}, and the ending rule removes through
+     * {@link Span#removeReported}, which reports through {@link Song#report}.
      *
      * @param song   the song the edit changed
      * @param batch  the mutations the edit recorded, not including any removal a rule makes now;
-     *               every change in it has landed
-     * @param report the report of the edit, into which each removal this rule makes is recorded
-     * @effects records a mutation for each removal it makes, and records each removal into
-     *     {@code report}; it does not read what another rule removed
+     *               every change in it has landed; never empty
+     * @param report the report of the open edit, the one {@link Song#report} records into
+     * @effects records a mutation for each removal it makes, and reports each removal into the
+     *     edit's report; it does not read what another rule removed
      */
     void apply(Song song, List<Mutation> batch, ChangeReport report);
 }

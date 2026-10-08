@@ -19,6 +19,8 @@
  */
 package songscribe.io.musicxml;
 
+import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.ObjDoubleConsumer;
 import java.util.function.ToDoubleFunction;
@@ -27,24 +29,32 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NoteValue;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.beamOver;
 import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.SpanFactory.trillOver;
 import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
@@ -53,8 +63,11 @@ import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 /**
  * How a hand-placed offset survives a write and a read, through the ss &rarr; tenths &rarr; ss
- * conversion: a note's horizontal nudge in {@code <relative-x>}, and each span's offsets, exactly
- * and without rounding.
+ * conversion: a note's horizontal nudge in {@code <relative-x>}, and each span kind's horizontal and
+ * vertical offsets. The writer rounds a position to two decimals of a tenth,
+ * {@link java.math.RoundingMode#HALF_UP}, so an offset that is a whole number of those survives
+ * unchanged and any other comes back rounded to the nearest one. An axis the file carries no
+ * attribute for reads back as zero.
  */
 class MusicXmlOffsetRoundTripTest extends UnitTest {
 
@@ -96,76 +109,144 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
      */
     private static final double FRACTIONAL_OFFSET_SS = 0.25;
 
-    /** The span fixture's line: three notes, a closing repeat, and two notes after it. */
+    /** An offset the writer's precision cannot hold: 1.234 tenths, which it keeps as 1.23. */
+    private static final double UNREPRESENTABLE_OFFSET_SS = 0.1234;
+    private static final double ROUNDED_OFFSET_SS = 0.123;
+    private static final double OFFSET_TOLERANCE_SS = 1e-9;
+    private static final double NO_OFFSET_SS = 0.0;
+
+    /** The span fixture's line: three notes, a closing repeat, two notes after it, and two quavers. */
     private static final int FIRST_NOTE = 0;
     private static final int SECOND_NOTE = 1;
     private static final int THIRD_NOTE = 2;
     private static final int NOTE_AFTER_REPEAT = 5;
+    private static final int FIRST_QUAVER = 6;
+    private static final int SECOND_QUAVER = 7;
+
+    /** One of the two directions a span's hand-placed offset moves it. */
+    private enum Axis {
+        HORIZONTAL(Span::getUserXOffsetSs, Span::setUserXOffsetSs),
+        VERTICAL(Span::getUserYOffsetSs, Span::setUserYOffsetSs);
+
+        private final ToDoubleFunction<Span<?>> offset;
+        private final ObjDoubleConsumer<Span<?>> setOffset;
+
+        Axis(ToDoubleFunction<Span<?>> offset, ObjDoubleConsumer<Span<?>> setOffset) {
+            this.offset = offset;
+            this.setOffset = setOffset;
+        }
+    }
 
     /**
-     * One span on the fixture line, and one of its hand-placed offsets.
+     * One span kind's offset on one axis, and what the file carries of it.
      *
      * @param description the offset, as the test's display name
+     * @param kind        the span kind
      * @param place       builds the span over the fixture line's elements, not yet added
-     * @param offset      reads the offset
-     * @param setOffset   sets it
+     * @param axis        the axis the offset is on
+     * @param readBackSs  the offset the reader restores from {@link #FRACTIONAL_OFFSET_SS}: the
+     *                    offset itself when the file has an attribute for it, zero when it has none
      */
     private record SpanOffsetCase(
         String description,
+        Class<? extends Span<?>> kind,
         Function<Line, Span<?>> place,
-        ToDoubleFunction<Span<?>> offset,
-        ObjDoubleConsumer<Span<?>> setOffset
+        Axis axis,
+        double readBackSs
     ) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("spanOffsetCases")
     void testASpansFractionalOffsetSurvivesAWriteAndARead(SpanOffsetCase testCase) throws Exception {
-        var song = buildSong(line -> {
+        var read = readBackOffset(testCase.kind(), testCase.place(), testCase.axis(), FRACTIONAL_OFFSET_SS);
+
+        assertThat(read).isEqualTo(testCase.readBackSs());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(Axis.class)
+    void testAnOffsetFinerThanTheWritersPrecisionComesBackRoundedToIt(Axis axis) throws Exception {
+        var read = readBackOffset(Hairpin.class, MusicXmlOffsetRoundTripTest::crescendo, axis, UNREPRESENTABLE_OFFSET_SS);
+
+        assertThat(read).isCloseTo(ROUNDED_OFFSET_SS, within(OFFSET_TOLERANCE_SS));
+    }
+
+    private static Span<?> crescendo(Line line) {
+        return hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(FIRST_NOTE, THIRD_NOTE));
+    }
+
+    @Test
+    void testTheCasesCoverEverySpanKindOnBothAxes() {
+        var cases = spanOffsetCases().toList();
+        var covered = cases.stream().<Class<?>>map(SpanOffsetCase::kind).distinct().toList();
+
+        assertThat(covered).containsExactlyInAnyOrder(Span.class.getPermittedSubclasses());
+        assertThat(cases).hasSize(covered.size() * Axis.values().length);
+    }
+
+    static Stream<SpanOffsetCase> spanOffsetCases() {
+        return Stream.of(
+            rowsFor("a hairpin", Hairpin.class, MusicXmlOffsetRoundTripTest::crescendo, Axis.HORIZONTAL, Axis.VERTICAL),
+            rowsFor("a trill", Trill.class,
+                line -> trillOver(line, new ElementRange(FIRST_NOTE, SECOND_NOTE)), Axis.VERTICAL),
+            rowsFor("a tuplet", Tuplet.class,
+                line -> tripletOver(line, new ElementRange(FIRST_NOTE, THIRD_NOTE), NoteValue.QUARTER), Axis.VERTICAL),
+            rowsFor("an ending", Ending.class,
+                line -> endingOver(line, new ElementRange(SECOND_NOTE, NOTE_AFTER_REPEAT)), Axis.VERTICAL),
+            rowsFor("a beam", Beam.class,
+                line -> beamOver(line, new ElementRange(FIRST_QUAVER, SECOND_QUAVER)))
+        ).flatMap(rows -> rows);
+    }
+
+    /**
+     * A row for each axis of {@code kind}: the offset survives on the axes in {@code carried} and
+     * reads back as zero on the others.
+     */
+    private static Stream<SpanOffsetCase> rowsFor(
+        String kindName, Class<? extends Span<?>> kind, Function<Line, Span<?>> place, Axis... carried
+    ) {
+        var carriedAxes = List.of(carried);
+
+        return Stream.of(Axis.values()).map(axis -> new SpanOffsetCase(
+            kindName + "'s " + axis.name().toLowerCase(Locale.ROOT) + " offset",
+            kind, place, axis, carriedAxes.contains(axis) ? FRACTIONAL_OFFSET_SS : NO_OFFSET_SS));
+    }
+
+    /** The fixture line's elements, in the order {@link #FIRST_NOTE} and the indices after it name. */
+    private static Song fixtureSong() {
+        return buildSong(line -> {
             line.addElement(crotchet());
             line.addElement(crotchet());
             line.addElement(crotchet());
             line.addElement(repeatRight());
             line.addElement(crotchet());
             line.addElement(crotchet());
+            line.addElement(quaver());
+            line.addElement(quaver());
         });
-        var fixtureLine = song.getLine(0);
+    }
+
+    /**
+     * Sets {@code offsetSs} on {@code axis} of the span {@code place} builds over the fixture line,
+     * writes and reads the song, and returns what the one span of {@code kind} reads back.
+     */
+    private static double readBackOffset(
+        Class<? extends Span<?>> kind, Function<Line, Span<?>> place, Axis axis, double offsetSs
+    ) throws Exception {
+        var song = fixtureSong();
 
         // An ending is judged against the song's repeat sections, so the span is placed once the
         // line is in the song.
-        var placed = testCase.place().apply(fixtureLine);
+        var placed = place.apply(song.getLine(0));
 
-        testCase.setOffset().accept(placed, FRACTIONAL_OFFSET_SS);
-        song.withoutMutationTracking(() -> placed.addTo(fixtureLine));
-
-        var kind = placed.getClass();
+        axis.setOffset.accept(placed, offsetSs);
+        song.withoutMutationTracking(() -> placed.addTo());
 
         var read = roundTrip(song).getLine(0).spanRegistry().findSpans(kind);
 
-        assertThat(read).singleElement()
-            .satisfies(span -> assertThat(testCase.offset().applyAsDouble(span)).isEqualTo(FRACTIONAL_OFFSET_SS));
-    }
+        assertThat(read).hasSize(1);
 
-    static Stream<SpanOffsetCase> spanOffsetCases() {
-        Function<Line, Span<?>> crescendo =
-            line -> hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(FIRST_NOTE, THIRD_NOTE));
-
-        return Stream.of(
-            new SpanOffsetCase("a hairpin's vertical offset",
-                crescendo, Span::getUserYOffsetSs, Span::setUserYOffsetSs),
-            new SpanOffsetCase("a hairpin's start shift",
-                crescendo, span -> ((Hairpin) span).getX1ShiftSs(), (span, shift) -> ((Hairpin) span).setX1ShiftSs(shift)),
-            new SpanOffsetCase("a hairpin's end shift",
-                crescendo, span -> ((Hairpin) span).getX2ShiftSs(), (span, shift) -> ((Hairpin) span).setX2ShiftSs(shift)),
-            new SpanOffsetCase("a trill's vertical offset",
-                line -> trillOver(line, new ElementRange(FIRST_NOTE, SECOND_NOTE)),
-                Span::getUserYOffsetSs, Span::setUserYOffsetSs),
-            new SpanOffsetCase("a tuplet's vertical offset",
-                line -> tripletOver(line, new ElementRange(FIRST_NOTE, THIRD_NOTE), NoteValue.QUARTER),
-                Span::getUserYOffsetSs, Span::setUserYOffsetSs),
-            new SpanOffsetCase("an ending's vertical offset",
-                line -> endingOver(line, new ElementRange(SECOND_NOTE, NOTE_AFTER_REPEAT)),
-                Span::getUserYOffsetSs, Span::setUserYOffsetSs)
-        );
+        return axis.offset.applyAsDouble(read.getFirst());
     }
 
     /** A one-line song whose only note carries {@code xOffsetSs} as its hand-placed X nudge. */

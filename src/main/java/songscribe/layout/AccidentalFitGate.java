@@ -77,12 +77,25 @@ public final class AccidentalFitGate {
     private record Stamped(Line line, NoteElement.SavedAccidental prior, boolean drawnChanged) {
     }
 
+    /**
+     * The gate's answer. A refusal names the line that has no room, because the user is told
+     * which: the line being edited, or another line whose accidentals the edit changes.
+     */
+    public enum Verdict {
+        /** The edited line and every other line the walk widens still fit. */
+        FITS,
+        /** The edited line, as the edit will leave it, has no room. */
+        EDITED_LINE_FULL,
+        /** The edited line fits, but another line a restamp widens has no room. */
+        OTHER_LINE_FULL
+    }
+
     private AccidentalFitGate() {
         // Prevent instantiation - utility class with static methods only
     }
 
     /**
-     * Returns whether the edit whose chain walk produced {@code restamps} fits: {@code editedLine}
+     * Judges whether the edit whose chain walk produced {@code restamps} fits: {@code editedLine}
      * as the edit will leave it, and every other line a restamp widens as it stands, each with the
      * walk's decisions drawn.
      *
@@ -91,8 +104,8 @@ public final class AccidentalFitGate {
      * see the accidentals the edit will draw. {@code editedLineFits} is the edit's
      * own fit check over its projection of {@code editedLine}, evaluated with the stamps in place;
      * every other line holding a restamp that changes what its note draws is measured with
-     * {@link InsertionSpacingCalculator#fitsInPlace} over its current effective elements. The
-     * answer is {@code true} exactly when every measurement is.
+     * {@link InsertionSpacingCalculator#fitsInPlace} over its current effective elements, and
+     * only when {@code editedLineFits} answers true.
      *
      * <p>Call before the edit's modification bracket opens. The edit's own walk, run by the song
      * once the bracket records the edit, is what stamps the live notes for good and records the
@@ -107,17 +120,19 @@ public final class AccidentalFitGate {
      * @param lyricRenderMetrics Lyric metrics for measuring the other lines' syllables; null spaces
      *                           them as if they had no lyrics
      * @param editedLineFits     The edit's fit check over {@code editedLine} as the edit will leave
-     *                           it, evaluated exactly once, with every restamp in place
-     * @return {@code true} when {@code editedLineFits} answers true and every other line a restamp
-     *         widens still fits its song's line width
-     * @effects nothing is recorded. A false answer leaves every note, live and detached, in the
-     *          state it held on entry. A true answer leaves every live note as it was and leaves
+     *                           it, evaluated exactly once, with every restamp in place. It shows
+     *                           nothing; the caller tells the user from the verdict
+     * @return {@link Verdict#EDITED_LINE_FULL} when {@code editedLineFits} answers false;
+     *         otherwise {@link Verdict#OTHER_LINE_FULL} when another line a restamp widens no
+     *         longer fits its song's line width; otherwise {@link Verdict#FITS}
+     * @effects nothing is recorded. A refusal leaves every note, live and detached, in the state
+     *          it held on entry. {@link Verdict#FITS} leaves every live note as it was and leaves
      *          each note in {@code detached} stamped as the projection decided, so a replacement
      *          or a pasted clone lands with a sounding alteration
      * @invariant a live note — one not in {@code detached} — holds on return the state it held on
-     *            entry, whatever the answer
+     *            entry, whatever the verdict
      */
-    public static boolean fits(
+    public static Verdict judge(
         Line editedLine,
         List<AccidentalChain.Restamp> restamps,
         List<? extends StaffElement> detached,
@@ -125,10 +140,20 @@ public final class AccidentalFitGate {
         BooleanSupplier editedLineFits) {
 
         var stamped = stamp(restamps);
-        var accepted = editedLineFits.getAsBoolean() && otherLinesFit(editedLine, stamped, lyricRenderMetrics);
-        restore(stamped, accepted ? identities(detached) : Collections.emptySet());
 
-        return accepted;
+        Verdict verdict;
+
+        if (!editedLineFits.getAsBoolean()) {
+            verdict = Verdict.EDITED_LINE_FULL;
+        } else if (!otherLinesFit(editedLine, stamped, lyricRenderMetrics)) {
+            verdict = Verdict.OTHER_LINE_FULL;
+        } else {
+            verdict = Verdict.FITS;
+        }
+
+        restore(stamped, verdict == Verdict.FITS ? identities(detached) : Collections.emptySet());
+
+        return verdict;
     }
 
     /**

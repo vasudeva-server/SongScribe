@@ -441,7 +441,7 @@ public final class ScoreInputHandler extends KeyAdapter
 
             // Single element: the boundary is index 0 going left, and going right the last
             // selectable element — or the current index when it is already past that, which is
-            // the case sitting on the terminal (issue #713). Without folding in the current
+            // the case sitting on the terminal. Without folding in the current
             // index, Right on the terminal would compute a boundary behind the cursor and step
             // off the end of the line.
             var current = begin;

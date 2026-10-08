@@ -20,7 +20,6 @@
 
 package songscribe.ui.component.score;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -160,48 +159,32 @@ public final class PitchShifter {
     }
 
     /**
-     * Builds the pitch-shift group for {@code range} on {@code line}:
-     * every note in the range — grace notes included, since they shift exactly like pitched
-     * notes — with each note's tie chain fully expanded so tied notes move together, including
-     * a chain that crosses into an adjacent line through a cross-line tie. Each entry captures
-     * the note's own line and current staff position. Returns an empty
-     * list if the range holds no notes.
+     * Builds the pitch-shift group for {@code range} on {@code line}: every note in the range —
+     * grace notes included, since they shift exactly like pitched notes — with each note's
+     * whole tie chain ({@link NoteElement#tieChain()}), so tied notes move together, including
+     * a chain that crosses into an adjacent line through a cross-line tie.
+     *
+     * @param line  the line the range is in
+     * @param range the selected elements of {@code line}
+     * @return one entry per note of the group, each holding the note's own line, its index there
+     *     and its current staff position, with no note twice; empty when the range holds no notes
      */
     static List<PitchShiftEntry> buildPitchShiftGroup(Line line, ElementRange range) {
-        // Collect all unique notes, expanding each selected note's tie chain to its full
-        // transitive closure — chained ties (note1-2 tied, note2-3 tied separately, possibly
-        // across a line break) must move as one unit even though each link is its own two-note
-        // Tie. Traversed by note identity, not index arithmetic: a tie's two notes can sit in
-        // two different lines, so an index only ever means something once it is paired with
-        // the line it belongs to.
+        // Collected by note identity, not index arithmetic: a tie's two notes can sit in two
+        // different lines, so an index only ever means something once it is paired with the
+        // line it belongs to.
         var groupNotes = new LinkedHashSet<NoteElement>();
-        var pending = new ArrayDeque<NoteElement>();
 
         for (var element : line.getElements(range)) {
             if (element instanceof NoteElement note && note.getType().isNote()) {
-                pending.add(note);
-            }
-        }
-
-        while (!pending.isEmpty()) {
-            var note = pending.remove();
-
-            if (groupNotes.add(note)) {
-                pending.addAll(note.tiePartners());
+                groupNotes.addAll(note.tieChain());
             }
         }
 
         var group = new ArrayList<PitchShiftEntry>();
 
         for (var note : groupNotes) {
-            var noteLine = note.getParentLine();
-
-            // A note detached mid-traversal (which should not happen on a live selection) has
-            // nothing to resolve an index against.
-            if (noteLine == null) {
-                continue;
-            }
-
+            var noteLine = note.requireParentLine();
             var index = noteLine.getElementIndex(note);
             group.add(new PitchShiftEntry(noteLine, index, note.getStaffPosition()));
         }

@@ -21,8 +21,11 @@
 package songscribe.dom;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * A tie from a note to the next note, as {@link NoteElement#tie()} and
@@ -30,9 +33,16 @@ import org.jspecify.annotations.Nullable;
  * the first element after it that is not a {@link #isLegalSeparator legal separator}, which may
  * sit at the start of the next line.
  *
- * <p>A tie joins two notes whose {@link ElementType#kind()} is {@link ElementType.Kind#NOTE}.
- * No other kind — a grace note among them — can be its anchor or its end, and the constructor
- * refuses one, so no tie that breaks the rule can exist.
+ * <p>A tie joins two notes whose {@link ElementType#kind()} is {@link ElementType.Kind#NOTE}:
+ * that is the <b>pitched-note check</b>, {@link #canAnchor}. No other kind — a grace note among
+ * them — can be its anchor or its end. {@link #between} is the only way to make a tie, and it
+ * makes none for a pair that fails the pitched-note check, so no tie that fails it can exist.
+ *
+ * <p>No beam holds both notes of a tie: tied notes are never beamed together. A note that ties
+ * out of a beam to a note outside it is legal. {@link #bothNotesIn} is the one test of this
+ * rule. {@link Beam#spanning} refuses a beam that would hold both notes of a tie, and
+ * {@link TieRule} removes a beam that an edit leaves holding both, so the tie wins over the beam
+ * on every route.
  *
  * <p>A value, not a document element. Nothing stores a tie and nothing registers one; each call
  * to {@code tie()} makes a new one, so a caller never holds a tie that outlives the notes it was
@@ -40,22 +50,98 @@ import org.jspecify.annotations.Nullable;
  * compares by identity, so a caller that asks whether two ties are the same tie asks
  * {@link #equals}.
  *
- * <p>Ties are rendered as a curved arc, above or below the notes depending on the stems of the
- * two notes.
- *
- * @param anchor the note that stores the tie
- * @param end    the note the tie ends on
+ * <p>Ties are rendered as a curved arc, above or below the notes: by the stems of the two notes,
+ * or by their staff position when neither has a stem ({@link #arcSign()}).
  */
-public record Tie(NoteElement anchor, NoteElement end) {
+public final class Tie {
+
+    private final NoteElement anchor;
+    private final NoteElement end;
+
+    private Tie(NoteElement anchor, NoteElement end) {
+        this.anchor = anchor;
+        this.end = end;
+    }
 
     /**
-     * @throws IllegalArgumentException when the kind of {@code anchor} or of {@code end} is not
+     * Returns the tie from {@code anchor} to {@code end}, when the two pass the pitched-note
+     * check. Says nothing about whether a tie from {@code anchor} would end on {@code end}, which
+     * is the caller's to know, or whether the two share a pitch, which the tie rule judges
+     * ({@link #holds()}).
+     *
+     * @param anchor the note that stores the tie
+     * @param end    the element a tie from {@code anchor} reaches, or {@code null} when it reaches
+     *     none
+     * @return the tie, or {@code null} when {@code anchor} cannot carry a tie, or {@code end} is
+     *     {@code null} or cannot carry one ({@link #canAnchor})
+     */
+    public static @Nullable Tie between(NoteElement anchor, @Nullable StaffElement end) {
+        return canAnchor(anchor) && end instanceof NoteElement endNote && canAnchor(endNote)
+            ? new Tie(anchor, endNote)
+            : null;
+    }
+
+    /**
+     * The pitched-note check: whether {@code element} can carry a tie, as its anchor or as its
+     * end. The same check governs both, so a reader asks it of a note before it ties the note.
+     *
+     * @param element the element to ask about
+     * @return {@code true} when {@code element} is a note whose {@link ElementType#kind()} is
      *     {@link ElementType.Kind#NOTE}
      */
-    public Tie {
-        if (!anchor.getType().isPitchedNote() || !end.getType().isPitchedNote()) {
-            throw new IllegalArgumentException("A tie joins two notes of kind NOTE: " + anchor + ", " + end);
+    public static boolean canAnchor(StaffElement element) {
+        return element instanceof NoteElement && element.getType().isPitchedNote();
+    }
+
+    /**
+     * Whether {@code range} of {@code line} holds both notes of a tie from the element at
+     * {@code anchorIndex}: the anchor, and the element the tie's walk reaches ({@link #endAfter}).
+     * The anchor need not be tied yet, so a caller can ask about a tie it is about to make.
+     *
+     * @param line        a line of its song
+     * @param anchorIndex the anchor's position in {@code line}
+     * @param range       a range of {@code line}'s indices
+     * @return {@code true} when {@code range} holds {@code anchorIndex} and the walk reaches an
+     *     element of {@code line} whose index {@code range} holds; {@code false} when the walk
+     *     reaches no element or crosses into another line
+     */
+    static boolean bothNotesIn(Line line, int anchorIndex, ElementRange range) {
+        if (!range.contains(anchorIndex)) {
+            return false;
         }
+
+        var reached = endAfter(line, anchorIndex);
+
+        //noinspection ObjectEquality
+        return reached != null && reached.line() == line && range.contains(reached.index());
+    }
+
+    /**
+     * The beam that holds both notes of a tie from the element at {@code anchorIndex} of
+     * {@code line}, as {@link #bothNotesIn} judges it.
+     *
+     * @param line        a line of its song
+     * @param anchorIndex the anchor's position in {@code line}; the anchor need not be tied yet
+     * @return that beam, or {@code null} when no beam holds both notes
+     */
+    public static @Nullable Beam beamHoldingBoth(Line line, int anchorIndex) {
+        var beam = line.spanRegistry().findBeamAt(anchorIndex);
+
+        return beam != null && bothNotesIn(line, anchorIndex, beam.range()) ? beam : null;
+    }
+
+    /**
+     * @return the note that stores the tie
+     */
+    public NoteElement anchor() {
+        return anchor;
+    }
+
+    /**
+     * @return the note the tie ends on
+     */
+    public NoteElement end() {
+        return end;
     }
 
     /**
@@ -66,7 +152,7 @@ public record Tie(NoteElement anchor, NoteElement end) {
      *
      * <ul>
      *   <li>a final double barline ends the piece, so nothing may sound across it
-     *       (refs #527);</li>
+     *;</li>
      *   <li>a key change can alter the pitch class the two notes sit at, so the note
      *       after it may no longer sound what the note before it did — and a tie joins two
      *       notes of the same pitch. The rule excludes every key change rather than only
@@ -84,6 +170,9 @@ public record Tie(NoteElement anchor, NoteElement end) {
      * limited to two notes with at most one element between them, because that is all a
      * selection can hold; the walk has no such limit and lets separators accumulate, since each
      * one still takes no time and the notes stay adjacent in the music.
+     *
+     * @param type the type of the element between the two notes
+     * @return {@code true} when an element of {@code type} may sit between two tied notes
      */
     public static boolean isLegalSeparator(ElementType type) {
         return type.isNonDuration()
@@ -92,69 +181,84 @@ public record Tie(NoteElement anchor, NoteElement end) {
     }
 
     /**
-     * The tie rule's test: whether a tie on {@code anchor} holds when its walk reaches
-     * {@code end}. It holds only when both are {@link ElementType.Kind#NOTE} notes at the same
-     * staff position that sound the same alteration. The written duration plays no part.
+     * The tie rule's test: whether this tie holds. It holds only when its two notes sit at the
+     * same staff position and sound the same alteration. The written duration plays no part.
      *
      * <p>The rule runs when the outermost modification bracket closes, after every change and
      * every chain-walk restamp in it has landed, so both notes are stamped and each has a
-     * sounding alteration to compare. {@link Line#applyTieRule} is its only caller.
+     * sounding alteration to compare. {@link TieRule} is its only caller.
      *
-     * @param anchor a tied note
-     * @param end    the element the walk from {@code anchor} reaches, or {@code null} when it
-     *     reaches none
      * @return {@code true} when the tie holds
      */
-    static boolean holds(NoteElement anchor, @Nullable StaffElement end) {
-        return anchor.getType().isPitchedNote()
-            && end instanceof NoteElement endNote
-            && endNote.getType().isPitchedNote()
-            && anchor.getStaffPosition().equals(endNote.getStaffPosition())
-            && anchor.soundingAccidental() == endNote.soundingAccidental();
+    boolean holds() {
+        return anchor.getStaffPosition().equals(end.getStaffPosition())
+            && anchor.soundingAccidental() == end.soundingAccidental();
     }
 
     /**
-     * The element a tie from {@code elements[anchorIndex]} ends on: the first element after it
-     * that is not a legal separator, and when {@code elements} runs out first, the first such
-     * element of {@code following}. The walk crosses into {@code following} and no further.
+     * Where the walk from a tie's anchor stopped: the element at {@code index} in {@code line}.
      *
-     * @param elements    a line's elements, or a projection of them
-     * @param anchorIndex the anchor's position in {@code elements}
-     * @param following   the line after the one {@code elements} describes, or {@code null} when
-     *                    there is none
-     * @return the end the walk reaches, or {@code null} when it reaches none
+     * @param line  the line the walk stopped in: the anchor's own line, or the line after it
+     * @param index the position of the element the walk stopped at, in {@code line}
      */
-    static @Nullable StaffElement endAfter(
-        List<? extends StaffElement> elements, int anchorIndex, @Nullable Line following
-    ) {
-        var end = firstNonSeparatorFrom(elements, anchorIndex + 1);
+    record Reached(Line line, int index) {
 
-        if (end == null && following != null) {
-            end = firstNonSeparatorFrom(following.getElements(), 0);
+        /**
+         * @return the element the walk stopped at
+         */
+        StaffElement element() {
+            return line.getElement(index);
+        }
+    }
+
+    /**
+     * Where a tie from the element at {@code anchorIndex} in {@code line} ends: the first element
+     * after it that is not a legal separator, and when {@code line} runs out first, the first
+     * such element of the line after it. The walk crosses into that line and no further.
+     *
+     * @param line        a line of its song
+     * @param anchorIndex the anchor's position in {@code line}
+     * @return where the walk stopped, or {@code null} when it reaches no element: {@code line}
+     *     runs out and it is its song's last line, or the line after it runs out too
+     */
+    static @Nullable Reached endAfter(Line line, int anchorIndex) {
+        var index = firstNonSeparatorIndexFrom(line.getElements(), anchorIndex + 1);
+
+        if (index != null) {
+            return new Reached(line, index);
         }
 
-        return end;
+        var following = line.nextLine();
+
+        if (following == null) {
+            return null;
+        }
+
+        var followingIndex = firstNonSeparatorIndexFrom(following.getElements(), 0);
+
+        return followingIndex == null ? null : new Reached(following, followingIndex);
     }
 
     /**
-     * The only note whose tie can end on {@code elements[endIndex]}: the last element before it
-     * that is not a legal separator, and when there is none, the last such element of
-     * {@code preceding}. The mirror of {@link #endAfter}, crossing one line break and no more.
+     * The only note whose tie can end on the element at {@code endIndex} in {@code line}: the
+     * last element before it that is not a legal separator, and when there is none, the last
+     * such element of the line before it. The mirror of {@link #endAfter}, crossing one line
+     * break and no more.
      *
-     * @param elements  a line's elements
-     * @param endIndex  the candidate end's position in {@code elements}
-     * @param preceding the line before the one {@code elements} describes, or {@code null} when
-     *                  there is none
-     * @return the candidate anchor, or {@code null} when the walk reaches none
+     * @param line     a line of its song
+     * @param endIndex the candidate end's position in {@code line}
+     * @return the candidate anchor, or {@code null} when the walk reaches none: {@code line}
+     *     runs out and it is its song's first line, or the line before it runs out too
      */
-    static @Nullable StaffElement anchorBefore(
-        List<? extends StaffElement> elements, int endIndex, @Nullable Line preceding
-    ) {
+    static @Nullable StaffElement anchorBefore(Line line, int endIndex) {
+        var elements = line.getElements();
         var anchorIndex = lastNonSeparatorIndexBefore(elements, endIndex);
 
         if (anchorIndex != null) {
             return elements.get(anchorIndex);
         }
+
+        var preceding = line.previousLine();
 
         if (preceding == null) {
             return null;
@@ -167,52 +271,34 @@ public record Tie(NoteElement anchor, NoteElement end) {
     }
 
     /**
-     * The first element at or after {@code from} that is not a legal separator.
-     *
-     * @return the element, or {@code null} when every element from {@code from} on is a legal
-     *     separator, or {@code from} is past the last element
-     */
-    static @Nullable StaffElement firstNonSeparatorFrom(List<? extends StaffElement> elements, int from) {
-        var index = firstNonSeparatorIndexFrom(elements, from);
-
-        return index == null ? null : elements.get(index);
-    }
-
-    /**
      * The position of the first element at or after {@code from} that is not a legal separator.
      *
+     * @param elements the elements to scan, in order
+     * @param from     the first position examined, at or above 0
      * @return the position, or {@code null} when every element from {@code from} on is a legal
      *     separator, or {@code from} is past the last element
      */
     public static @Nullable Integer firstNonSeparatorIndexFrom(List<? extends StaffElement> elements, int from) {
-        for (var i = from; i < elements.size(); i++) {
-            if (!isLegalSeparator(elements.get(i).getType())) {
-                return i;
-            }
-        }
-
-        return null;
+        return StaffElementRun.firstIndexFrom(elements, from, type -> !isLegalSeparator(type));
     }
 
     /**
      * The position of the last element before {@code before} that is not a legal separator.
      *
-     * @param before a position in {@code 0..elements.size()}; the element there is not examined
+     * @param elements the elements to scan, in order
+     * @param before   a position in {@code 0..elements.size()}; the element there is not examined
      * @return the position, or {@code null} when every element before {@code before} is a legal
      *     separator
      */
     public static @Nullable Integer lastNonSeparatorIndexBefore(List<? extends StaffElement> elements, int before) {
-        for (var i = before - 1; i >= 0; i--) {
-            if (!isLegalSeparator(elements.get(i).getType())) {
-                return i;
-            }
-        }
-
-        return null;
+        return StaffElementRun.lastIndexBefore(elements, before, type -> !isLegalSeparator(type));
     }
 
     /**
-     * Returns whether this tie arcs above its notes rather than below them.
+     * Returns whether this tie arcs above its notes rather than below them, by the rule
+     * {@link #arcSign()} states.
+     *
+     * @return {@code true} when the tie is above its notes, {@code false} when it is below
      */
     public boolean isAbove() {
         // isAbove and arcSign share one convention: arcSign < 0 == arc bulges up == tie above.
@@ -229,20 +315,19 @@ public record Tie(NoteElement anchor, NoteElement end) {
      * ({@link #isAbove()} → {@code <tied orientation>}). All three must agree, so a
      * conflicting-stem tie renders, seeds, and exports on the same side.
      *
-     * <p>The <em>visual</em> arc direction ({@code tieDir}, a {@link Direction}
-     * where UP = arc bulges up = tie above) follows LilyPond's {@code get_default_dir}
-     * fallthrough tree, keying off <em>both</em> noteheads' stems. Each rule below is tried in
-     * order; a rule that does not apply falls through to the next.
+     * <p>The side keys off both notes' stems. Every note except a whole note has a stem, grace
+     * notes included. The stem's direction is {@link NoteElement#direction()}: a grace note's
+     * stem is always up; a forced stem gives the notator's choice; an auto stem in a beam gives
+     * the beam's direction; any other auto stem is up below the middle line, and down on or
+     * above it. The tie then sits:
      *
-     * <ol>
-     *   <li>Both noteheads have stems, and both point UP: DOWN.
-     *   <li>Both have stems but disagree: fall through to the final default.
-     *   <li>Only the left notehead has a stem: the opposite of that stem's direction.
-     *   <li>Only the right notehead has a stem: the opposite of that stem's direction.
-     *   <li>Neither has a stem: decide by staff position relative to the middle line — above the
-     *       middle gives UP, below gives DOWN, and exactly on the middle line falls through.
-     *   <li>Default (NEUTRAL): UP.
-     * </ol>
+     * <ul>
+     *   <li>when both notes have stems: below when both stems are up, and above when both are
+     *       down or one is up and one is down;</li>
+     *   <li>when only one note has a stem: opposite to that stem;</li>
+     *   <li>when neither has a stem: by the left note's staff position only — above when it is
+     *       above the middle line, below when it is below it, and above when it is on it.</li>
+     * </ul>
      *
      * <p>The single inversion from musical "above" to Y-down "arc sign" lives in the
      * {@code .opposite()} call below — and nowhere else. {@code tieDir = UP} (tie above)
@@ -258,7 +343,7 @@ public record Tie(NoteElement anchor, NoteElement end) {
 
     /**
      * Computes the tie's <em>visual</em> arc direction (UP = arc bulges up = tie above)
-     * via the fallthrough tree documented on {@link #arcSign()}. Reads both notes'
+     * by the rule documented on {@link #arcSign()}. Reads both notes'
      * {@link ElementType#isNoteWithStem()}, {@link NoteElement#direction()}, and
      * {@link NoteElement#getStaffPosition()}.
      */
@@ -269,8 +354,7 @@ public record Tie(NoteElement anchor, NoteElement end) {
         var rightHasStem = right.getType().isNoteWithStem();
 
         if (leftHasStem && rightHasStem) {
-            // Both stems up → tie below; any other pairing (both down, or conflicting) falls
-            // through to the neutral default.
+            // Both stems up → tie below; both down, or one each way → tie above.
             if (left.direction().isUp() && right.direction().isUp()) {
                 return Direction.DOWN;
             }
@@ -299,7 +383,27 @@ public record Tie(NoteElement anchor, NoteElement end) {
             return Direction.DOWN;
         }
 
-        // Exactly on the middle line → neutral default.
+        // Exactly on the middle line → tie above.
         return Direction.UP;
+    }
+
+    /**
+     * Two ties are equal when they join the same two notes.
+     *
+     * @return {@code true} when {@code other} is a tie with this tie's anchor and end
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+        return other instanceof Tie tie && anchor.equals(tie.anchor) && end.equals(tie.end);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(anchor, end);
+    }
+
+    @Override
+    public String toString() {
+        return "Tie{anchor=" + anchor + ", end=" + end + '}';
     }
 }

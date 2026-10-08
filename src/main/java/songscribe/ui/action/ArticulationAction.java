@@ -110,14 +110,14 @@ public final class ArticulationAction extends NoteOnlyAction {
     }
 
     @Override
-    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
+    public void applyToElement(Line line, int index, NoteElement element, Toggle toggle) {
         var existing = element.findArticulation(articulationType);
 
         if (existing != null) {
             element.removeArticulation(existing);
         }
 
-        if (selected) {
+        if (toggle == Toggle.APPLY) {
             element.addArticulation(new Articulation(articulationType));
         }
     }

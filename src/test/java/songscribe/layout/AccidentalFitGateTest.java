@@ -32,19 +32,28 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.ProjectedEdit;
+import songscribe.dom.Song;
 import songscribe.dom.SongFactory;
 import songscribe.dom.StaffElementFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.setLineWidth;
 
 /**
- * {@link AccidentalFitGate#fits}'s promise: a refusal leaves every note — live and detached —
+ * {@link AccidentalFitGate#judge}'s promise: a refusal leaves every note — live and detached —
  * exactly as it was, and an acceptance leaves live notes exactly as they were too, stamping only
  * the notes not yet on any line, which nothing else will stamp before the caller inserts them.
  */
 class AccidentalFitGateTest extends UnitTest {
 
     private static final int F = 3;
+    private static final int D = 1;
+
+    private static final double NARROWEST_LINE_WIDTH_SS = 1.0;
+    private static final double WIDEST_LINE_WIDTH_SS = 100.0;
+
+    /** Far narrower than any accidental, so the narrowest fitting width leaves no room for one. */
+    private static final double LINE_WIDTH_STEP_SS = 0.1;
 
     /**
      * A line of two decided notes, a detached note projected between them carrying a sharp that
@@ -71,9 +80,9 @@ class AccidentalFitGateTest extends UnitTest {
     void testARefusalLeavesEveryLiveAndDetachedNoteAsItWas() {
         var fixture = buildFixture();
 
-        var accepted = AccidentalFitGate.fits(fixture.line(), fixture.restamps(), List.of(fixture.detached()), null, () -> false);
+        var verdict = AccidentalFitGate.judge(fixture.line(), fixture.restamps(), List.of(fixture.detached()), null, () -> false);
 
-        assertThat(accepted).isFalse();
+        assertThat(verdict).isEqualTo(AccidentalFitGate.Verdict.EDITED_LINE_FULL);
         assertThat(fixture.live().accidentalState()).isEqualTo(fixture.liveStateBefore());
         assertThat(fixture.detached().accidentalState())
             .as("a refusal never stamps a note the caller will not insert")
@@ -84,9 +93,9 @@ class AccidentalFitGateTest extends UnitTest {
     void testAnAcceptanceLeavesLiveNotesAsTheyWereAndStampsOnlyTheDetachedNote() {
         var fixture = buildFixture();
 
-        var accepted = AccidentalFitGate.fits(fixture.line(), fixture.restamps(), List.of(fixture.detached()), null, () -> true);
+        var verdict = AccidentalFitGate.judge(fixture.line(), fixture.restamps(), List.of(fixture.detached()), null, () -> true);
 
-        assertThat(accepted).isTrue();
+        assertThat(verdict).isEqualTo(AccidentalFitGate.Verdict.FITS);
         assertThat(fixture.live().accidentalState())
             .as("the song's own walk stamps live notes for good once the edit is recorded; the gate must not")
             .isEqualTo(fixture.liveStateBefore());
@@ -95,5 +104,50 @@ class AccidentalFitGateTest extends UnitTest {
             .isEqualTo(fixture.restamps().stream()
                 .filter(restamp -> restamp.note() == fixture.detached())
                 .findFirst().orElseThrow().state());
+    }
+
+    @Test
+    void testARestampThatWidensAnotherFullLineIsRefusedAndLeavesEveryNoteAsItWas() {
+        // A line's first accidental hangs into the header gap and widens nothing, so the restamped
+        // note on the other line follows another note.
+        var song = SongFactory.compactSong(Key.NO_ACCIDENTALS, String.valueOf(F), D + " " + F);
+        var editedLine = song.getLine(0);
+        var otherLine = song.getLine(1);
+        var other = (NoteElement) otherLine.getElement(1);
+        var detached = StaffElementFactory.note(F, Accidental.FLAT);
+        narrowToFit(song, otherLine);
+
+        var restamps = ProjectedEdit.inserting(editedLine, editedLine.elementCount(), List.of(detached)).walk();
+        var otherStateBefore = other.accidentalState();
+        var detachedStateBefore = detached.accidentalState();
+
+        assertThat(restamps)
+            .as("the flat must reach the other line's note, which then has to draw a cancel")
+            .anyMatch(restamp -> restamp.note() == other);
+
+        var verdict = AccidentalFitGate.judge(editedLine, restamps, List.of(detached), null, () -> true);
+
+        assertThat(verdict).isEqualTo(AccidentalFitGate.Verdict.OTHER_LINE_FULL);
+        assertThat(other.accidentalState()).isEqualTo(otherStateBefore);
+        assertThat(detached.accidentalState())
+            .as("a refusal never stamps a note the caller will not insert")
+            .isEqualTo(detachedStateBefore);
+    }
+
+    /**
+     * Narrows {@code song}'s line width to the narrowest width in the sweep at which {@code line},
+     * as it stands, still fits, so that any column it widens no longer fits.
+     */
+    private static void narrowToFit(Song song, Line line) {
+        for (var lineWidthSs = NARROWEST_LINE_WIDTH_SS; lineWidthSs <= WIDEST_LINE_WIDTH_SS;
+             lineWidthSs += LINE_WIDTH_STEP_SS) {
+            setLineWidth(song, lineWidthSs);
+
+            if (InsertionSpacingCalculator.fitsInPlace(line, line.effectiveElements(), null)) {
+                return;
+            }
+        }
+
+        throw new AssertionError("the line fits at no width in the sweep");
     }
 }

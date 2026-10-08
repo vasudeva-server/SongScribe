@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -34,6 +35,7 @@ import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.keyChange;
 import static songscribe.dom.StaffElementFactory.minimRest;
+import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
@@ -110,6 +112,17 @@ public final class SongFactory {
         return song;
     }
 
+    /**
+     * Sets {@code song}'s line width without recording it, so a fit measurement sees the new width
+     * and the song's undo history does not.
+     *
+     * @param song        the song to resize
+     * @param lineWidthSs the line width, in staff spaces
+     */
+    public static void setLineWidth(Song song, double lineWidthSs) {
+        song.withoutMutationTracking(() -> song.setLineWidthSs(new Ss(lineWidthSs)));
+    }
+
     /** A note token: an optional grace marker, a staff position, and an optional accidental code. */
     private static final Pattern NOTE_TOKEN = Pattern.compile("(g)?(-?\\d+)(f|s|n|bf|ds)?");
 
@@ -118,6 +131,9 @@ public final class SongFactory {
 
     /** The compact notation of a line that holds no elements. */
     private static final String EMPTY_LINE = "";
+
+    /** The compact notation of one quaver. */
+    private static final String QUAVER_TOKEN = "Q";
 
     /**
      * A song of one line per element of {@code notations}, each parsed by
@@ -184,6 +200,54 @@ public final class SongFactory {
     }
 
     /**
+     * A song of one line of {@code length} quavers, each a note that can carry any span, built with
+     * {@link #compactSong} and left with mutation tracking as the build leaves it. A test that adds
+     * spans inside a modification bracket uses this song.
+     *
+     * @param length how many quavers the line holds
+     * @return the song, every note holding a {@link ChainedAccidental}
+     */
+    public static Song songOfQuavers(int length) {
+        return compactSong(Key.NO_ACCIDENTALS, quaverNotation(length));
+    }
+
+    /**
+     * The first line of a song of {@code length} quavers, with mutation tracking suspended for the
+     * rest of the test, as {@link #editableLine} leaves it. A test that adds spans to the line
+     * directly, outside any bracket, uses this line.
+     *
+     * <p>An empty line follows the returned one, so the returned line is never the song's last.
+     *
+     * @param length how many quavers the line holds
+     * @return the first line of the song, holding {@code length} quavers
+     */
+    public static Line lineOfQuavers(int length) {
+        var song = compactSong(Key.NO_ACCIDENTALS, quaverNotation(length), EMPTY_LINE);
+
+        song.beginSuspendMutationTracking();
+
+        return song.getLine(0);
+    }
+
+    /**
+     * {@code count} new quavers, as loose elements in the order they are made, for a test that
+     * hands them to a builder or a validator rather than to a line.
+     *
+     * @param count how many quavers to make
+     * @return the quavers, belonging to no line
+     */
+    public static List<StaffElement> quavers(int count) {
+        return Stream.generate(StaffElementFactory::quaver)
+            .limit(count)
+            .map(StaffElement.class::cast)
+            .toList();
+    }
+
+    private static String quaverNotation(int length) {
+        return (QUAVER_TOKEN + " ").repeat(length);
+    }
+
+    /**
      * Parses {@code notation}'s whitespace-separated tokens onto {@code line}. Package-visible so
      * a test that needs a line builder {@link #compactSong} cannot express — one that sets the
      * line's own key, say — can still reach the same grammar.
@@ -195,9 +259,11 @@ public final class SongFactory {
      *       accidental {@code code} names: {@code f} flat, {@code s} sharp, {@code n} natural,
      *       {@code bf} double flat, {@code ds} double sharp</li>
      *   <li>{@code g} prefixed on either of the above — the same note, as a grace note</li>
-     *   <li>{@code ~} — ties the note just added to the next note token added</li>
+     *   <li>{@code ~} — ties the last note added to whatever note follows it, on this line or the
+     *       next; a {@code ~} after the song's last note ties it with nothing following</li>
      *   <li>{@code |}, {@code |:}, {@code :|} — a plain barline, a left repeat, a right repeat</li>
-     *   <li>{@code R} — a crotchet rest; {@code R2} — a minim rest; {@code B} — a breath mark</li>
+     *   <li>{@code R} — a crotchet rest; {@code R2} — a minim rest; {@code B} — a breath mark;
+     *       {@code Q} — a quaver</li>
      *   <li>{@code K:<name>} — a key change establishing {@link Key#valueOf(String) Key.valueOf(name)}</li>
      * </ul>
      *
@@ -206,7 +272,6 @@ public final class SongFactory {
      */
     static void addCompactElements(Line line, String notation) {
         NoteElement previousNote = null;
-        var tieNext = false;
 
         for (var token : notation.trim().split("\\s+")) {
             if (token.isEmpty()) {
@@ -220,22 +285,20 @@ public final class SongFactory {
                 case "R" -> line.addElement(crotchetRest());
                 case "R2" -> line.addElement(minimRest());
                 case "B" -> line.addElement(breathMark());
-                case "~" -> tieNext = true;
+                case QUAVER_TOKEN -> line.addElement(quaver());
+                case "~" -> {
+                    if (previousNote != null) {
+                        line.addTie(previousNote);
+                    }
+                }
                 default -> {
                     if (token.startsWith(KEY_CHANGE_PREFIX)) {
                         line.addElement(keyChange(Key.valueOf(token.substring(KEY_CHANGE_PREFIX.length()))));
                         continue;
                     }
 
-                    var note = parseNote(token);
-                    line.addElement(note);
-
-                    if (tieNext && previousNote != null) {
-                        line.addTie(previousNote);
-                        tieNext = false;
-                    }
-
-                    previousNote = note;
+                    previousNote = parseNote(token);
+                    line.addElement(previousNote);
                 }
             }
         }

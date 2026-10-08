@@ -33,13 +33,13 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.BeatUnit;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.TempoMarking;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * That every attachment controller answers {@link DialogController#dataWasModified} by <em>value</em>.
@@ -144,7 +144,7 @@ class AttachmentDialogControllerTest extends UnitTest {
      * @return a target naming that note, as an opened dialog would be bound to it
      */
     private static AttachmentTarget targetCarrying(Consumer<StaffElement> attachExisting) {
-        var line = lineWith(ElementType.CROTCHET);
+        var line = lineOf(crotchet());
         var element = line.getElement(0);
 
         attachExisting.accept(element);

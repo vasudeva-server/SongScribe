@@ -69,7 +69,7 @@ public final class ToggleNotationAction extends UIAction {
      * {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a tie across a line break is offered on a
      * <b>single</b> selected note \u2014 a line's last note, or its first, past any barline or
      * repeat closing or opening the line \u2014 and pairs it with the matching note at the adjacent
-     * line's own edge (#493). A size requirement is checked before
+     * line's own edge. A size requirement is checked before
      * {@code canToggle} runs, so {@code REQUIRES_MULTIPLE_SELECTION} would reject that
      * selection before the boundary lookup was ever consulted. Sizes this admits but a tie
      * cannot use are rejected by {@code RangeQueries.canToggleTie}, which is the real gate:

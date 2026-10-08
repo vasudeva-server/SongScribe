@@ -75,7 +75,7 @@ public record Lyric(int verse, String text, Extend extend,
      */
     public static final String COMPOUND_WORD_MARKER = "\u2011";
 
-    /** Pre-#420 compound marker (zero-width space, U+200B); still recognized on load. */
+    /** Legacy compound marker (zero-width space, U+200B); still recognized on load. */
     private static final String LEGACY_COMPOUND_WORD_MARKER = "\u200B";
 
     /** Compound markers recognized on load, in preference order (current first). */

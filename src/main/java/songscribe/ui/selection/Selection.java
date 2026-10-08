@@ -46,9 +46,11 @@ import songscribe.message.mutation.Mutation;
  * range" stop being rules anyone enforces and become what one field means.
  * <p>
  * <b>Why {@code HitTarget} is wrapped rather than extended.</b> {@link HitTarget}'s contract is
- * "a thing a click resolves to", and {@link HitTarget.Selectable#owner()} answers for every kind
- * a press can select. A {@code Range} is neither: {@code HitRegistry.hitTest} can never produce
- * one, and it owns no single element. Adding it there would put an unreachable arm in every
+ * "a thing a click resolves to", and {@link HitTarget.Selectable#isLiveOn} answers, for every
+ * kind a press can select, whether one thing on the line still exists. A {@code Range} is
+ * neither: {@code HitRegistry.hitTest} can never produce one, and it names no single thing
+ * whose presence could answer for it — it is kept current by {@link Range#splicedFor} instead.
+ * Adding it there would put an unreachable arm in every
  * switch on the registry and renderer path, so it is composed in here instead. A target this
  * record can hold is narrowed to {@code Selectable} for the same reason from the other side:
  * a kind a press never selects cannot be stored, so nothing downstream has to rule it out.
@@ -66,7 +68,7 @@ public sealed interface Selection {
      * <p>
      * The anchor is the element a plain click or a drag selected from — {@code begin} in both
      * cases — and it stays on that element until the next plain click or drag, however many
-     * times Shift+click or Shift+arrow extends the range around it (issue #748). It is
+     * times Shift+click or Shift+arrow extends the range around it. It is
      * therefore {@code begin} of the range it anchors until an extension crosses it, after
      * which it is {@code end}: extend leftward past the anchor and the range grows to its
      * left while the anchor stays where the user put it.

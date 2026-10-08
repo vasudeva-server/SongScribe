@@ -45,14 +45,12 @@ import org.xml.sax.SAXException;
 
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.ElementType;
-import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
-import songscribe.dom.SpanFactory;
 import songscribe.dom.Ss;
+import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.error.RuntimeErrorTestHelper;
 import songscribe.font.DocumentFonts;
@@ -73,7 +71,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
-import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
  * Base class for unit tests. Suppresses modal error dialogs
@@ -335,33 +332,6 @@ public abstract class UnitTest {
     }
 
     /**
-     * Creates a {@link #detachedLine()} holding {@code length} quavers: a line where every
-     * element is a note that can carry any span.
-     *
-     * @param length how many quavers the line holds
-     */
-    protected static Line lineOfQuavers(int length) {
-        var line = detachedLine();
-
-        for (var i = 0; i < length; i++) {
-            line.addElement(quaver());
-        }
-
-        return line;
-    }
-
-    /**
-     * Creates a crescendo over {@code range} of {@code line}, not yet added to it.
-     *
-     * @param line  the line whose elements anchor and end the crescendo
-     * @param range the elements the crescendo spans
-     * @throws AssertionError if {@link Hairpin#spanning} refuses the range
-     */
-    protected static Hairpin crescendoOver(Line line, ElementRange range) {
-        return SpanFactory.hairpinOver(line, Hairpin.Kind.CRESCENDO, range);
-    }
-
-    /**
      * The same for a fixture that has to supply its own {@link Song} — a mock it has stubbed
      * further, or a real song with mutation tracking suspended. A line the song's line list does
      * not hold still has nothing before it, so it establishes its own key just as line 0 does.
@@ -375,15 +345,23 @@ public abstract class UnitTest {
         return line;
     }
 
-    /** Creates a line containing elements of the given types (in order), unattached to a song. */
-    protected static Line lineWith(ElementType... types) {
-        var line = detachedLine();
+    /** Creates a {@link #detachedLine()} holding {@code elements}, in order. */
+    protected static Line lineOf(StaffElement... elements) {
+        return lineOf(detachedLine(), elements);
+    }
 
-        for (var type : types) {
-            line.addElement(type.newInstance());
+    /** Adds {@code elements} to the end of {@code line}, in order, and returns {@code line}. */
+    protected static Line lineOf(Line line, StaffElement... elements) {
+        for (var element : elements) {
+            line.addElement(element);
         }
 
         return line;
+    }
+
+    /** The range of every element of {@code line}. */
+    protected static ElementRange wholeRangeOf(Line line) {
+        return new ElementRange(0, line.elementCount() - 1);
     }
 
     /** Creates a line containing a single crotchet with the given annotation text. */
@@ -395,11 +373,16 @@ public abstract class UnitTest {
         return line;
     }
 
-    /** Parses a composition XML string into a Song via the SAX document reader. */
+    /** Parses a composition XML string into a Song via the SAX document reader, settled as a load settles it. */
     public static Song parseXml(String xml) throws Exception {
         var parser = SAXParserFactory.newInstance().newSAXParser();
         var reader = new SongIO.DocumentReader();
         parser.parse(new InputSource(new StringReader(xml)), reader);
-        return reader.getSong();
+
+        var parsed = reader.getSong();
+
+        parsed.settle();
+
+        return parsed.song();
     }
 }

@@ -64,7 +64,7 @@ public final class CycleModeAction extends UIAction {
     public void modeDidChange(ModeDidChangeNotification message) {
         super.modeDidChange(message);
 
-        currentAction = message.getAction();
+        currentAction = Actions.modeAction(message.getMode());
     }
 
     /**

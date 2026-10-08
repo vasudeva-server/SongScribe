@@ -23,6 +23,18 @@ design question — it never gets past the gate. The reader owes correctness onl
 to what the writer produces, including what older versions of the writer
 produced.
 
+**The one exception: a damaged span mark is dropped and reported, not
+rejected.** The writer pairs every span mark it emits, so in a file of ours a mark
+that does not pair with its partner on one line is damage: a start with no stop,
+a stop with no start, a pair split across a line break, or a wedge bound to no
+note. A paired tuplet whose ratio cannot be read is damaged too — a tuplet number
+outside two to seven, or a stated normal note value without a positive count of
+normal notes. So is a tie, or a beam or slide mark, on an element that cannot
+carry it. Refusing the whole file over one such mark would cost the user the
+song, so the reader drops the mark, keeps its notes, reads on, and reports each
+drop in the load's change report. Nothing is repaired into something the file
+did not say, and no mapping or fallback is added for it.
+
 The write side is the mirror, and the reason the asymmetry exists: what this
 program emits must be MusicXML that a *foreign* consumer reads correctly. That is
 why the writer's output is schema-validated where the reader's input is not.
@@ -56,10 +68,8 @@ order to decide what to emit next; every read is a later pass revisiting a node
 an earlier one finished. A pass that can reach its target through a handle does
 so rather than searching a parent's child list.
 
-Most adjustment passes walk one kind of span and attach to what it touches. They
-share one skeleton, because walking a line's spans of one type, reading both
-endpoint indices and dropping the span when either falls outside the line is the
-same decision every time. Two stand apart, and for reasons worth knowing. A tie
+Most adjustment passes walk one kind of span and attach to what it touches: each
+loops over every line's spans of its own type and reads the span's endpoints. Two stand apart, and for reasons worth knowing. A tie
 is not a span but state on its anchor note, and it may cross a line break, so its
 pass walks notes instead: each note writes the stop of the tie that ends on it
 and the start of the tie it anchors, and a crossing tie is written by the two
@@ -94,31 +104,25 @@ Both gates run before any mapping, and both read what unmarshalling already
 produced. A document this program did not write is not a supported input, so
 nothing is gained by building a song out of one first. A file too damaged to
 unmarshal fails before either gate; one of ours whose content is corrupt passes
-both and reports the corruption where it is found.
+both, and the load fails where the corruption is found — except a damaged span
+mark, which is dropped and reported while the rest of the file loads.
 
 Mapping runs with mutation tracking suspended, so a load records nothing, posts
 nothing and leaves the document unmodified. That suspension is also what makes it
 safe for the fix-up passes to add spans to lines already committed to the song —
 the invariant maintenance that would otherwise interfere is not running — and the
-reader restores it afterwards. The tie rule does not run under it either, so a
-tie the file carries is trusted as written.
+reader restores it afterwards. A tie the file carries is trusted as written; see
+[span-invalidation.md](span-invalidation.md#ties-are-note-state-judged-when-the-edit-is-over).
 
 Load-time fix-ups run here rather than in the UI because the headless export
 route goes through this reader too, and a song whose tuplets were resolved on only
 one of the two routes would export differently from how it displays.
 
-**A reader never builds a tuplet.** A tuplet's ratio must be known, and a file
-that states none leaves it to be derived from the beat at the tuplet's start —
-which a tempo change later in the file can still redefine while the reader is
-mid-parse. So the mapper records each tuplet as a pending one, carrying only what
-the file said, and the load-time tuplet pass, once the song is complete, is the
-one place a pending tuplet becomes a tuplet on its line: it judges a stated ratio,
-derives a missing one, and drops what fails, leaving the notes. The legacy reader
-hands its pending tuplets to the same pass.
-
-A reader builds no ending and no hairpin either. Each is recorded as pending, and
-stays pending until its load pass judges it by the same rule the editor uses; what
-fails is dropped, leaving the notes.
+**A reader never builds a tuplet, an ending or a hairpin.** It records each as
+pending, carrying only what the file said, and a load pass turns the pending
+spans into spans once the song is complete, by the rule the editor uses: the
+tuplet pass (`TupletLoadPass`) for tuplets, the span load pass (`SpanLoadPass`)
+for endings and hairpins. Each pass states what it judges and what it drops.
 
 **Mapping is one structural walk, then one resolution pass per kind of pairing
 mark.** The walk builds only what a single child settles on its own, and records
@@ -126,12 +130,19 @@ where each child landed. The passes then run over those recorded positions, whic
 is what lets a pass ask where an element sits without re-deriving it from the
 finished line. Each pass that pairs a start with a stop keeps its own cursor as a
 local and ends with its own "still open at the end" check, so there is never a
-question of which flush point a new mark belongs to.
+question of which flush point a new mark belongs to. Each pass drops and reports
+the damaged marks of its own kind, and the reader hands those report entries over
+with the song and its pending spans.
 
 Ties pair nothing. A tie's end is derived from where the notes stand, not stored,
 so the reader marks each note whose tie marker carries a start as tied and ignores
 the stop: the writer writes a stop only on the note the start's tie reaches, so it
-says nothing the derivation does not.
+says nothing the derivation does not. A start on a note that cannot carry a tie —
+a rest or a grace note — is a damaged mark.
+
+Ties are resolved before beams. A beam never holds both notes of a tie, and the
+beam's own rule refuses one that would, so a file that beams a tied pair loses
+the beam, reported, and never the tie.
 
 Order *within* a pass matters even where order between passes does not. A
 hairpin's stop resolves before its start on the same note, so a note shared by

@@ -157,6 +157,6 @@ public final class TrillAction extends SelectableUIAction {
             return;
         }
 
-        new Trill(pitchedNotes.getFirst(), pitchedNotes.getLast()).addTo(line);
+        new Trill(pitchedNotes.getFirst(), pitchedNotes.getLast()).addTo();
     }
 }

@@ -223,11 +223,8 @@ public final class MusicXmlTags {
     static final String LINE_SOLID    = "solid";
 
     // Attribute values — beam type (text content of <beam>).
-    static final String BEAM_BEGIN        = "begin";
-    static final String BEAM_CONTINUE     = "continue";
-    static final String BEAM_END          = "end";
-    static final String BEAM_FORWARD_HOOK = "forward hook";
-    static final String BEAM_BACKWARD_HOOK = "backward hook";
+    static final String BEAM_BEGIN = "begin";
+    static final String BEAM_END   = "end";
 
     // Attribute values — generic span type (used by tie, tied, wavy-line, ending @type).
     static final String TYPE_START = "start";

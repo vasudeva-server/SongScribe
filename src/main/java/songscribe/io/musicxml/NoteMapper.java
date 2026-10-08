@@ -45,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-import songscribe.dom.AccidentalState;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Direction;
@@ -110,22 +109,16 @@ final class NoteMapper {
     ) {}
 
     /**
-     * One note's {@code <tied>} markers. An interior note of a tie chain carries
-     * both: it closes the pair before it and opens the pair after it.
-     */
-    record TieMarker(boolean start, boolean stop) {}
-
-    /**
      * One note's {@code <tuplet>} bracket marker, together with the
      * {@code <time-modification>} the bracket's anchor states.
      *
-     * <p>{@code verticalPositionSs} is already converted to staff spaces; an absent
+     * <p>{@code yOffsetSs} is already converted to staff spaces; an absent
      * {@code relative-y} reads as 0, the value the model treats as "unset".
      */
     record TupletMarker(
         boolean start,
         boolean stop,
-        double verticalPositionSs,
+        double yOffsetSs,
         int actualNotes,
         int normalNotes,
         @Nullable String normalTypeToken,
@@ -134,9 +127,9 @@ final class NoteMapper {
 
     /**
      * One note's {@code <wavy-line>} markers. A note carrying both bounds a
-     * single-note trill. {@code yPositionSs} is already in staff spaces.
+     * single-note trill. {@code yOffsetSs} is already in staff spaces.
      */
-    record TrillMarker(boolean start, boolean stop, double yPositionSs) {}
+    record TrillMarker(boolean start, boolean stop, double yOffsetSs) {}
 
     /**
      * Maps {@code pmNote} to a {@link StaffElement}, appends it to {@code line},
@@ -441,20 +434,20 @@ final class NoteMapper {
         return beamType;
     }
 
-    /** This note's {@code <tied>} markers. */
-    static TieMarker tieMarker(Note pmNote) {
-        var start = false;
-        var stop = false;
-
+    /**
+     * Answers whether this note opens a tie. Only the start is read: the note a tie ends on is
+     * derived from the anchor, so a {@code <tied type="stop">} carries nothing the reader needs.
+     *
+     * @return {@code true} when one of the note's {@code <tied>} markers is a start
+     */
+    static boolean startsTie(Note pmNote) {
         for (var child : notationChildren(pmNote)) {
-            if (child instanceof Tied tied) {
-                var type = tied.getType();
-                start = start || type == TiedType.START;
-                stop = stop || type == TiedType.STOP;
+            if (child instanceof Tied tied && tied.getType() == TiedType.START) {
+                return true;
             }
         }
 
-        return new TieMarker(start, stop);
+        return false;
     }
 
     /**
@@ -468,7 +461,7 @@ final class NoteMapper {
     static TupletMarker tupletMarker(Note pmNote) throws SAXException {
         var start = false;
         var stop = false;
-        var verticalPositionSs = 0.0;
+        var yOffsetSs = 0.0;
 
         for (var child : notationChildren(pmNote)) {
             if (child instanceof Tuplet tuplet) {
@@ -476,7 +469,7 @@ final class NoteMapper {
 
                 if (type == StartStop.START) {
                     start = true;
-                    verticalPositionSs = MusicXmlUnits.tenthsToExactSs(tuplet.getRelativeY());
+                    yOffsetSs = MusicXmlUnits.tenthsToExactSs(tuplet.getRelativeY());
                 } else if (type == StartStop.STOP) {
                     stop = true;
                 }
@@ -486,13 +479,13 @@ final class NoteMapper {
         var timeModification = pmNote.getTimeModification();
 
         if (timeModification == null) {
-            return new TupletMarker(start, stop, verticalPositionSs, 0, 0, null, Dots.NONE);
+            return new TupletMarker(start, stop, yOffsetSs, 0, 0, null, Dots.NONE);
         }
 
         return new TupletMarker(
             start,
             stop,
-            verticalPositionSs,
+            yOffsetSs,
             ProxyMusicAccess.integer(timeModification.getActualNotes(), 0),
             ProxyMusicAccess.integer(timeModification.getNormalNotes(), 0),
             timeModification.getNormalType(),
@@ -525,7 +518,7 @@ final class NoteMapper {
     static TrillMarker trillMarker(Note pmNote) {
         var start = false;
         var stop = false;
-        var yPositionSs = 0.0;
+        var yOffsetSs = 0.0;
 
         for (var child : notationChildren(pmNote)) {
             if (!(child instanceof Ornaments ornaments)) {
@@ -537,14 +530,14 @@ final class NoteMapper {
 
                 if (type == StartStopContinue.START) {
                     start = true;
-                    yPositionSs = MusicXmlUnits.tenthsToExactSs(wavyLine.getRelativeY());
+                    yOffsetSs = MusicXmlUnits.tenthsToExactSs(wavyLine.getRelativeY());
                 } else if (type == StartStopContinue.STOP) {
                     stop = true;
                 }
             }
         }
 
-        return new TrillMarker(start, stop, yPositionSs);
+        return new TrillMarker(start, stop, yOffsetSs);
     }
 
     // -------------------------------------------------------------------------

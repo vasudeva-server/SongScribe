@@ -24,9 +24,17 @@ import songscribe.dom.Line;
 import songscribe.dom.Span;
 
 /**
- * Mutation recording the addition of a span to a line.
+ * Mutation recording that a span was added to a line's span registry. The span is carried
+ * whole, and undo removes that same instance through {@link Span#removeFrom()}, while redo adds
+ * it back through {@link Span#addTo()}, so identity survives a round trip.
+ *
+ * <p>The line is recorded rather than derived from the span because subscribers read it after
+ * the edit, through {@link #getLine()}, and by then the span's anchor may no longer be in a line.
+ *
+ * @param line the line whose registry the span joined, which was its anchor's line at the time
+ * @param span the span that was added
  */
-public record SpanAddition(Line line, Span<?> element)
+public record SpanAddition(Line line, Span<?> span)
     implements Mutation, LineScopedMutation {
 
     @Override

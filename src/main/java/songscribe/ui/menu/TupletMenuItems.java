@@ -83,14 +83,12 @@ public final class TupletMenuItems {
      */
     @Nullable
     private static TupletGrade existingGrade() {
-        var scoreView = MainFrame.getInstance().getScoreView();
-        var ctrl = (scoreView != null) ? scoreView.getController() : null;
+        var ctrl = MainFrame.getInstance().getScoreViewController();
 
         if (ctrl == null) {
             return null;
         }
 
-        var existing = ctrl.canToggleTuplet().existing();
-        return (existing != null) ? existing.getGrade() : null;
+        return ctrl.canToggleTuplet().existingGrade();
     }
 }

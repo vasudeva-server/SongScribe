@@ -35,12 +35,17 @@ import songscribe.engraving.StemMetrics;
 /**
  * A beam group connecting a contiguous run of notes.
  *
- * <p>Carries only the anchor/end pair inherited from {@link Span}; everything else it answers —
+ * <p>Carries the anchor/end pair inherited from {@link Span}; everything else it answers —
  * the group's stem direction, how many beam levels it stacks, which of its members a level
  * reaches, which way a partial-beam stub points, how far French beaming pulls a stem back — is
  * derived from its members' types and staff positions. None of it needs geometry, which is
  * what lets a note ask its beam for a direction before any column exists. The computed beam
  * geometry lives in {@code LayoutResult.BeamLayout}.
+ *
+ * <p>The one piece of state a beam keeps beyond its endpoints is a held direction: a layout
+ * asks every member for its stem direction many times over, and each answer is the beam's, so
+ * the layout holds the direction for its duration ({@link #holdDirections}) rather than have
+ * every member recompute it from the whole group.
  *
  * <p>A beam's endpoints are notes, which the type argument states: the constructor, the
  * endpoint getters and {@link Span#copy} are typed to {@link NoteElement}, so every reader of a
@@ -52,10 +57,15 @@ import songscribe.engraving.StemMetrics;
  * has no {@link Member}, so none of those questions can be put about it.
  *
  * <p>Invariant: every element inside a beam's span is a note, both endpoints are beamable, and
- * every non-grace element strictly inside it is beamable. {@link #outcomeFor} keeps it through
- * an element replacement by removing the beam whenever the replacement would break it, which is
+ * every non-grace element strictly inside it is beamable. {@link #spanning} judges every new beam
+ * against it, and {@link #createCopy} copies only a beam that meets it. {@link #outcomeFor} keeps it through
+ * an element replacement or insertion by removing the beam whenever the change would break it, which is
  * why {@link #members} and the query for the grace notes it passes over may narrow without testing. A broken beam is
  * always removed, never shortened to the members that survive.
+ *
+ * <p>Invariant: a beam never holds both notes of a tie ({@link Tie}). {@link #spanning} refuses
+ * such a range, and the tie rule ({@link TieRule}) removes a beam that an edit leaves holding a
+ * tied pair.
  *
  * <p>A grace note inside the span is not a member: it sits between two beamed notes without
  * joining their beam, keeping its own short upward stem and its own flag, and neither its pitch
@@ -79,17 +89,118 @@ public final class Beam extends Span<NoteElement> {
      */
     private static final double GRACE_STEM_BEAM_CLEARANCE_SS = 0.5;
 
-    public Beam(NoteElement anchorElement, NoteElement endElement) {
+    /** The fewest notes a beam joins: one note has nothing to be joined to. */
+    private static final int MIN_MEMBERS = 2;
+
+    /** The heading a removed or refused beam is reported under. */
+    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_BEAMS_REMOVED;
+
+    /** This beam's direction while a {@link DirectionHold} is open on it; null otherwise. */
+    private @Nullable Direction heldDirection = null;
+
+    /**
+     * Creates a beam over two notes. Its two callers are the two ways to make a beam:
+     * {@link #spanning} calls it over a range it has judged, and {@link #createCopy} over the
+     * endpoints of a beam that already met the class invariant.
+     *
+     * @param anchorElement the first note the beam joins
+     * @param endElement    the last note the beam joins
+     */
+    private Beam(NoteElement anchorElement, NoteElement endElement) {
         super(NoteElement.class, anchorElement, endElement);
+    }
+
+    /**
+     * Returns a beam over {@code range} of {@code line} when the class invariant allows one
+     * there, or the reason it does not. With {@link #createCopy}, this is the one way to make a
+     * beam: the editor, the paste and both file readers ask it, so a range holds a beam by the
+     * same rule whichever route it arrives by. It is the counterpart of {@link Hairpin#spanning}
+     * and {@link Ending#spanning}.
+     * <p>
+     * A grace note at either end of {@code range} is left outside the beam: the beam is judged
+     * over the range from the first non-grace element to the last
+     * ({@link StaffElementRun#nonGraceRange}), since a grace note never joins a beam. Every
+     * element of that range must be beamable or a grace note.
+     * <p>
+     * Adding a beam absorbs every beam it overlaps ({@link Displacement#ABSORB_OVERLAPPING}),
+     * so the beam is built over the range it will hold once added: the judged range widened
+     * over every beam on {@code line} that overlaps it, again and again until nothing more
+     * overlaps. A beam already on the line meets the class invariant, so the widened range does
+     * too, and is not judged again. A beam back to back with the range is not absorbed.
+     * <p>
+     * The beam is built, not added: {@code line}'s span registry is unchanged. Added before any
+     * other beam joins the line, {@link Span#addTo} removes the absorbed beams and moves neither
+     * endpoint.
+     *
+     * @param line  the line the beam would be on
+     * @param range the range the beam would cover; both of its indices are indices of
+     *              {@code line}
+     * @return {@link Spanning.Spanned} with a new beam over the widened range, anchored on its
+     *     first element and ending on its last, and with every beam the widened range absorbs,
+     *     empty when it absorbs none; or {@link Spanning.Refused} with
+     *     {@link Spanning.Cause#RANGE}, under {@link Strings#DIALOG_REPORT_BEAMS_REMOVED}, and
+     *     <ul>
+     *       <li>{@link Strings#DIALOG_REPORT_REASON_BEAM_TOO_FEW_NOTES} when {@code range} holds
+     *           fewer than {@value #MIN_MEMBERS} elements that are not grace notes;</li>
+     *       <li>{@link Strings#DIALOG_REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT} when an element
+     *           from its first non-grace element to its last is neither beamable nor a grace
+     *           note;</li>
+     *       <li>{@link Strings#DIALOG_REPORT_REASON_BEAM_TIED_NOTES} when the widened range holds
+     *           both notes of a tie ({@link Tie#bothNotesIn}).</li>
+     *     </ul>
+     *     The reasons are judged in that order.
+     */
+    public static Spanning<Beam> spanning(Line line, ElementRange range) {
+        var joined = line.nonGraceRange(range);
+
+        if (joined == null || joined.size() < MIN_MEMBERS) {
+            return refused(Strings.DIALOG_REPORT_REASON_BEAM_TOO_FEW_NOTES);
+        }
+
+        for (var index = joined.begin(); index <= joined.end(); index++) {
+            var type = line.getElement(index).getType();
+
+            if (!type.isBeamable() && !type.isGraceNote()) {
+                return refused(Strings.DIALOG_REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT);
+            }
+        }
+
+        // The reach and the same-kind test are the ones the displacement applies, so the range
+        // answered here is the one adding the beam produces.
+        var absorption = line.spanRegistry().absorption(joined, Beam.class::isInstance, 0);
+        var widened = absorption.range();
+
+        if (holdsTiedPair(line, widened)) {
+            return refused(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES);
+        }
+
+        var absorbed = absorption.absorbedAs(Beam.class);
+        var beam = new Beam(line.noteAt(widened.begin()), line.noteAt(widened.end()));
+
+        return new Spanning.Spanned<>(beam, absorbed);
+    }
+
+    /** Whether {@code range} of {@code line} holds both notes of a tie from a note in it. */
+    private static boolean holdsTiedPair(Line line, ElementRange range) {
+        for (var index = range.begin(); index <= range.end(); index++) {
+            if (line.getElement(index) instanceof NoteElement note
+                && note.isTiedToNext()
+                && Tie.bothNotesIn(line, index, range)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** A refusal of a beam over a range that cannot hold one, under the beam's report heading. */
+    private static Spanning<Beam> refused(String reasonKey) {
+        return new Spanning.Refused<>(reasonKey, Spanning.Cause.RANGE, REPORT_HEADING_KEY);
     }
 
     @Override
     protected Beam createCopy(NoteElement newAnchor, NoteElement newEnd) {
         return new Beam(newAnchor, newEnd);
-    }
-
-    @Override
-    protected void copyOwnStateFrom(Span<NoteElement> source) {
     }
 
     /**
@@ -106,7 +217,7 @@ public final class Beam extends Span<NoteElement> {
      * @invariant no member's note is a grace note
      */
     public List<Member> members() {
-        var notes = notesInSpan().filter(note -> !note.getType().isGraceNote()).toList();
+        var notes = notesInSpan().filter(Beam::joinsWithinSpan).toList();
 
         return IntStream.range(0, notes.size())
             .mapToObj(position -> new Member(notes, position))
@@ -121,7 +232,22 @@ public final class Beam extends Span<NoteElement> {
      * @throws IllegalStateException if this beam's anchor or its end is in no line
      */
     private List<NoteElement> graceNotes() {
-        return notesInSpan().filter(note -> note.getType().isGraceNote()).toList();
+        return notesInSpan().filter(note -> !joinsWithinSpan(note)).toList();
+    }
+
+    /**
+     * Whether an element lying inside a beam's span is one of that beam's {@link #members()}:
+     * every element there is, except a grace note, which the beam passes over.
+     * <p>
+     * The one membership rule: {@link #members()} filters by it and
+     * {@link LineSpans#findBeamJoining} answers by it, so a walk over the members and a lookup
+     * of one element's beam can never disagree.
+     *
+     * @param element an element inside some beam's span
+     * @return {@code true} unless {@code element} is a grace note
+     */
+    static boolean joinsWithinSpan(StaffElement element) {
+        return !element.getType().isGraceNote();
     }
 
     /**
@@ -135,29 +261,57 @@ public final class Beam extends Span<NoteElement> {
     /**
      * Decides what happens to this beam when {@code change} lands: a deletion that takes an
      * endpoint removes it ({@link #isEndpointDeletedBy}), a replacement that would break the
-     * class invariant removes it ({@link #replacementBreaksInvariant}), and an insertion or an
-     * in-place modification keeps it.
+     * class invariant removes it ({@link #replacementBreaksInvariant}), an insertion that would
+     * break it removes it ({@link #insertionBreaksInvariant}), and an in-place modification
+     * keeps it.
+     * <p>
+     * An insertion lands inside the beam when its index is after the anchor's and no later than
+     * the end's: the inserted element then sits between two notes the beam joins. It breaks the
+     * invariant unless it is beamable or a grace note, which the beam passes over without
+     * joining. An insertion at the anchor's own index or just past the end lands outside the
+     * beam and keeps it.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
      * @return a {@link SpanOutcome.Remove} whose reason is
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} or
-     *     {@link Strings#DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE} when {@code change} invalidates
-     *     the beam, otherwise {@link SpanOutcome.Keep#INSTANCE}
+     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} for a deletion,
+     *     {@link Strings#DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE} for a replacement, or
+     *     {@link Strings#DIALOG_REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE} for an insertion,
+     *     when {@code change} invalidates the beam; otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
     public SpanOutcome outcomeFor(ElementChange change) {
         return switch (change) {
-            case ElementChange.Deletion deletion -> removeWhen(
+            case ElementChange.Deletion deletion -> outcomeWhen(
                 isEndpointDeletedBy(deletion), Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
-            case ElementChange.Replacement replacement -> removeWhen(
+            case ElementChange.Replacement replacement -> outcomeWhen(
                 replacementBreaksInvariant(replacement), Strings.DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE);
-            case ElementChange.Insertion _, ElementChange.Modification _ -> SpanOutcome.Keep.INSTANCE;
+            case ElementChange.Insertion insertion -> outcomeWhen(
+                insertionBreaksInvariant(insertion), Strings.DIALOG_REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE);
+            case ElementChange.Modification _ -> SpanOutcome.Keep.INSTANCE;
         };
+    }
+
+    /**
+     * Whether {@code insertion} would break the class invariant — see {@link #outcomeFor}.
+     *
+     * @param insertion the pending insertion, judged on the pre-insertion line
+     * @return {@code true} when the inserted element lands strictly after the anchor and no later
+     *     than the end, and is neither beamable nor a grace note
+     */
+    private boolean insertionBreaksInvariant(ElementChange.Insertion insertion) {
+        var beamRange = range();
+        var index = insertion.index();
+        var insertedType = insertion.inserted().getType();
+
+        return beamRange.begin() < index
+            && index <= beamRange.end()
+            && !insertedType.isBeamable()
+            && !insertedType.isGraceNote();
     }
 
     @Override
     protected String reportHeadingKey() {
-        return Strings.DIALOG_REPORT_BEAMS_REMOVED;
+        return REPORT_HEADING_KEY;
     }
 
     /**
@@ -215,9 +369,41 @@ public final class Beam extends Span<NoteElement> {
      * group agrees by construction rather than by a write-back.
      *
      * @return the group direction, never null
-     * @throws IllegalStateException if this beam's anchor or its end is in no line
+     * @throws IllegalStateException if this beam's anchor or its end is in no line and no
+     *     {@link DirectionHold} is open on it
+     * @invariant while a {@link DirectionHold} is open on this beam, every call answers the
+     *     direction computed when the hold opened
      */
     public Direction direction() {
+        var held = heldDirection;
+
+        return held != null ? held : computeDirection();
+    }
+
+    /**
+     * Computes and holds the direction of every beam in {@code beams} until the returned hold
+     * closes, so that every {@link #direction()} asked meanwhile — once for each member, by
+     * every pass that places or draws a stem — is answered without walking the group again.
+     *
+     * <p>The caller must not change a held beam's line while the hold is open: no element
+     * inserted, removed or replaced inside it, and no member's stem, type or staff position
+     * written. A held direction does not follow such a change. Holds do not nest: closing one
+     * releases every beam it holds, whatever hold was open on it before.
+     *
+     * @param beams the beams to hold, each in a line
+     * @return the open hold, to be closed when the caller has finished reading the beams
+     * @throws IllegalStateException if a beam's anchor or its end is in no line
+     */
+    public static DirectionHold holdDirections(List<Beam> beams) {
+        for (var beam : beams) {
+            beam.heldDirection = beam.computeDirection();
+        }
+
+        return new DirectionHold(beams);
+    }
+
+    /** The rule {@link #direction()} answers by when no hold is open. */
+    private Direction computeDirection() {
         var minStaffPos = Integer.MAX_VALUE;
         var maxStaffPos = Integer.MIN_VALUE;
 
@@ -334,8 +520,17 @@ public final class Beam extends Span<NoteElement> {
         }
 
         /**
-         * Returns whether this member carries a beam at {@code level}. A sub-beam at a level
-         * joins each run of consecutive members that all carry it.
+         * Returns this member's position among its beam's members: 0 for the first, one more
+         * for each member after it.
+         *
+         * @return the index of this member in the {@link Beam#members} list that holds it
+         */
+        public int position() {
+            return position;
+        }
+
+        /**
+         * Returns whether this member carries a beam at {@code level}.
          *
          * @param level the beam level to test
          * @return {@code true} if this member's note carries a beam at {@code level}
@@ -346,46 +541,81 @@ public final class Beam extends Span<NoteElement> {
         }
 
         /**
-         * Returns {@code true} if the partial-beam stub on this member should be drawn to the
-         * right; {@code false} if it should be drawn to the left or if no stub is needed on it.
+         * Returns the run of consecutive members carrying {@code level} that this member belongs
+         * to. A beam at a level is drawn over each such run; a run of one member is a
+         * partial-beam stub on that member, which {@link #stub()} places.
          *
-         * <p>A stub is needed at a level past the primary one when this member carries it and
-         * neither neighbouring member does. The direction rule is:
-         * <ul>
-         *   <li>first member in group → right</li>
-         *   <li>last member → left</li>
-         *   <li>any other member → toward the neighbour with more beams, and right when both
-         *       have the same number</li>
-         * </ul>
-         *
-         * @return {@code true} for a stub drawn to the right; {@code false} for a stub drawn to
-         *     the left, or for no stub at all
+         * @param level the beam level
+         * @return the longest run of consecutive members that includes this one and all carry
+         *     {@code level}, or {@code null} when this member does not carry it
+         * @invariant the run at {@link BeamLevel#EIGHTH} is every member of the beam, so it is
+         *     never a single member
+         * @invariant a run at a level further in lies within this member's run at the level
+         *     outside it
          */
-        public boolean stubRight() {
-            var hasStub = false;
-
-            for (@Nullable BeamLevel level = BeamLevel.SIXTEENTH;
-                 level != null;
-                 level = level.next()) {
-                if (carries(level) && !neighborCarries(-1, level) && !neighborCarries(1, level)) {
-                    hasStub = true;
-                    break;
-                }
+        public @Nullable MemberRun runAt(BeamLevel level) {
+            if (!carries(level)) {
+                return null;
             }
 
-            if (!hasStub) {
-                return false;
+            var first = position;
+
+            while (memberCarries(first - 1, level)) {
+                first--;
+            }
+
+            var last = position;
+
+            while (memberCarries(last + 1, level)) {
+                last++;
+            }
+
+            return new MemberRun(first, last);
+        }
+
+        /**
+         * Returns the side this member's partial-beam stub is drawn on.
+         *
+         * <p>A member has a stub when its run at some level ({@link #runAt}) is this member
+         * alone. The side is:
+         * <ul>
+         *   <li>the first member of the group → right;</li>
+         *   <li>the last member → left;</li>
+         *   <li>any other member → toward the neighbour with more beams, and right when both
+         *       have the same number.</li>
+         * </ul>
+         * Every stub on one member points the same way, whatever level it is at.
+         *
+         * @return {@link Stub#NONE} when no run of this member's is a single member; otherwise
+         *     the side its stubs are drawn on
+         */
+        public Stub stub() {
+            if (!hasStub()) {
+                return Stub.NONE;
             }
 
             if (position == 0) {
-                return true;
+                return Stub.RIGHT;
             }
 
             if (position == notes.size() - 1) {
-                return false;
+                return Stub.LEFT;
             }
 
-            return beamCountAt(position + 1) >= beamCountAt(position - 1);
+            return beamCountAt(position + 1) >= beamCountAt(position - 1) ? Stub.RIGHT : Stub.LEFT;
+        }
+
+        /** Whether this member's run at any level is this member alone. */
+        private boolean hasStub() {
+            for (@Nullable BeamLevel level = BeamLevel.EIGHTH; level != null; level = level.next()) {
+                var run = runAt(level);
+
+                if (run != null && run.isSingle()) {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /**
@@ -432,26 +662,76 @@ public final class Beam extends Span<NoteElement> {
          * when {@code memberPosition} is past either end of the group.
          */
         private int beamCountAt(int memberPosition) {
-            if (memberPosition < 0 || memberPosition >= notes.size()) {
-                return 0;
-            }
-
-            return notes.get(memberPosition).getType().beamCount();
+            return isMemberPosition(memberPosition) ? notes.get(memberPosition).getType().beamCount() : 0;
         }
 
         /**
-         * Returns whether the member at {@code position + offset} carries a beam at
-         * {@code level} ({@link BeamLevel#isCarriedBy}), or {@code false} when that position is
-         * past either end of the group.
+         * Returns whether the member at {@code memberPosition} carries a beam at {@code level},
+         * or {@code false} when {@code memberPosition} is past either end of the group.
          */
-        private boolean neighborCarries(int offset, BeamLevel level) {
-            var neighborPosition = position + offset;
+        private boolean memberCarries(int memberPosition, BeamLevel level) {
+            return isMemberPosition(memberPosition) && level.isCarriedBy(notes.get(memberPosition).getType());
+        }
 
-            if (neighborPosition < 0 || neighborPosition >= notes.size()) {
-                return false;
+        /**
+         * Whether {@code memberPosition} names a member of the group rather than a position past
+         * either end of it, where a neighbour counts as carrying no beams.
+         */
+        private boolean isMemberPosition(int memberPosition) {
+            return memberPosition >= 0 && memberPosition < notes.size();
+        }
+    }
+
+    /**
+     * A run of consecutive members of one beam, by their {@link Member#position()}s: from
+     * {@code first} to {@code last}, both inclusive. {@link Member#runAt} hands out the runs a
+     * beam level is drawn over.
+     *
+     * @param first the position of the run's first member
+     * @param last  the position of the run's last member, no less than {@code first}
+     */
+    public record MemberRun(int first, int last) {
+
+        /**
+         * Returns whether this run is a single member, which carries a partial-beam stub at the
+         * run's level.
+         *
+         * @return {@code true} when {@code first == last}
+         */
+        public boolean isSingle() {
+            return first == last;
+        }
+    }
+
+    /** The side of its stem a member's partial-beam stub is drawn on ({@link Member#stub()}). */
+    public enum Stub {
+        /** The member has no stub: every run it belongs to joins it to a neighbour. */
+        NONE,
+
+        /** The stub points back toward the previous member. */
+        LEFT,
+
+        /** The stub points on toward the next member. */
+        RIGHT
+    }
+
+    /**
+     * An open hold on the directions of a set of beams ({@link #holdDirections}). Closing it
+     * releases them: each beam's {@link #direction()} is computed afresh on every call again.
+     */
+    public static final class DirectionHold implements AutoCloseable {
+
+        private final List<Beam> beams;
+
+        private DirectionHold(List<Beam> beams) {
+            this.beams = List.copyOf(beams);
+        }
+
+        @Override
+        public void close() {
+            for (var beam : beams) {
+                beam.heldDirection = null;
             }
-
-            return level.isCarriedBy(notes.get(neighborPosition).getType());
         }
     }
 }

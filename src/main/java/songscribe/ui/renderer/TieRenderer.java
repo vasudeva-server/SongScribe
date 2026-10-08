@@ -47,9 +47,9 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  * <p>
  * A tie whose notes sit in different lines is laid out as one half per line, and each half is
  * drawn by the same path as a whole tie: an open half is a complete arc over its own width that
- * returns to the baseline at the staff edge, so nothing here branches on
- * {@link LayoutResult.TieLayout#openSide()}. That distinction is decided in the layout phase,
- * which is the only phase that knows where the edges are.
+ * returns to the baseline at the staff edge, so drawing never branches on which edge is open.
+ * That distinction is decided in the layout phase, which is the only phase that knows where the
+ * edges are; here it decides only which of the tie's notes can color it.
  */
 public final class TieRenderer {
 
@@ -57,7 +57,7 @@ public final class TieRenderer {
     private static final TieRenderer INSTANCE = new TieRenderer();
 
     /**
-     * Round pen used to outline the filled lens, blunting the sharp cusps where the outer and
+     * Round pen that outlines the filled lens, blunting the sharp cusps where the outer and
      * inner curves meet. Immutable, so a single shared instance suffices across all repaints.
      */
     private static final BasicStroke TIE_OUTLINE_STROKE = new BasicStroke(
@@ -84,31 +84,17 @@ public final class TieRenderer {
     // ==========================================================================
 
     /**
-     * Renders the given tie, or the half of it the line being painted owns.
-     * <p>
-     * Reads pre-computed geometry from {@link LayoutResult.TieLayout}. If no
-     * layout was computed for this tie, the method returns without rendering.
+     * Renders a tie, or the half of it the line being painted owns, from its pre-computed
+     * geometry.
      *
      * @param g2         Graphics context (staff-space coordinate system)
-     * @param tie        The tie
+     * @param layout     the tie's geometry, from the layout of the line being painted
      * @param invariants the line being painted and its render state
-     * @param frame      Element frame
      */
-    public void renderTie(
-        Graphics2D g2,
-        Tie tie,
-        LineInvariants invariants,
-        ElementFrame frame
-    ) {
-        var layout = invariants.getLayoutResult().getTieLayout(tie);
-
-        if (layout == null) {
-            return;
-        }
-
+    public void renderTie(Graphics2D g2, LayoutResult.TieLayout layout, LineInvariants invariants) {
         try (var _ = GraphicsState.save(g2, TRANSFORM, COLOR, STROKE)) {
             g2.translate(0, invariants.getMiddleLineYSs());
-            g2.setColor(determineTieColor(tie, invariants));
+            g2.setColor(determineTieColor(layout.placement(), invariants));
 
             var tiePath = BezierBow.lens(
                 layout.startXSs(), layout.startYSs(),
@@ -139,21 +125,26 @@ public final class TieRenderer {
      * other is not an element here and so contributes no color; the line that holds it colors
      * its own half from the same two checks.
      */
-    Color determineTieColor(Tie tie, LineInvariants invariants) {
-        var line = invariants.requireCurrentLine();
-        var anchorColor = endpointColor(tie.anchor(), line, invariants);
+    private static Color determineTieColor(Line.TiePlacement placement, LineInvariants invariants) {
+        var range = placement.range();
 
-        if (anchorColor != null) {
-            return anchorColor;
+        if (placement.holdsAnchor()) {
+            var anchorColor = endpointColor(range.begin(), invariants);
+
+            if (anchorColor != null) {
+                return anchorColor;
+            }
         }
 
-        var endColor = endpointColor(tie.end(), line, invariants);
+        if (placement.holdsEnd()) {
+            var endColor = endpointColor(range.end(), invariants);
 
-        if (endColor != null) {
-            return endColor;
+            if (endColor != null) {
+                return endColor;
+            }
         }
 
-        var tieColor = invariants.colorFor(new HitTarget.Tie(tie));
+        var tieColor = invariants.colorFor(new HitTarget.Tie(placement.tie()));
 
         if (!LineInvariants.isDefaultColor(tieColor)) {
             return tieColor;
@@ -163,20 +154,11 @@ public final class TieRenderer {
     }
 
     /**
-     * Returns the color {@code endpoint} imposes on the tie, or null when it imposes none —
-     * either because the endpoint is not in {@code line}, the line being painted, or because it
-     * is drawn in the default color and so has nothing to impose.
-     * <p>
-     * {@link LineInvariants#getElementColor} indexes the line being painted, so an endpoint in
-     * another line has no index to ask it about.
+     * Returns the color the tie's note at {@code index} in the line being painted imposes on the
+     * tie, or null when it is drawn in the default color and so has nothing to impose.
      */
-    private static @Nullable Color endpointColor(
-        NoteElement endpoint, Line line, LineInvariants invariants) {
-        if (!line.contains(endpoint)) {
-            return null;
-        }
-
-        var color = invariants.getElementColor(line.getElementIndex(endpoint));
+    private static @Nullable Color endpointColor(int index, LineInvariants invariants) {
+        var color = invariants.getElementColor(index);
 
         if (LineInvariants.isDefaultColor(color)) {
             return null;

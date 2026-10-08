@@ -35,17 +35,17 @@ import songscribe.undo.UndoController;
 
 /**
  * The mutation-recording state machine of a {@link Song} — the depth counters that decide
- * whether a change is recorded, replayed, suspended or guard-bypassed, and the accumulated
- * batch that becomes one {@link SongDidChangeNotification}, and the report of the changes the
- * edit made on its own, which becomes one {@link ChangesWereReportedNotification}.
+ * whether a change is recorded, replayed, suspended or guard-bypassed, and what the edit in
+ * flight accumulates: its batch and the report of the changes it made on its own, both
+ * delivered when the outermost bracket closes ({@link #deliver}).
  *
  * <p>Four independent modes, each depth-counted so nesting is safe:
  * <ul>
- *   <li><b>Modification bracket</b> ({@link #beginModification}/{@link #endModification}) —
- *       mutations accumulate while open; the notification fires once when the outermost
- *       bracket closes.</li>
+ *   <li><b>Modification bracket</b> ({@link #withModification(Runnable)}) — mutations
+ *       accumulate while open; the notification fires once when the outermost bracket
+ *       closes.</li>
  *   <li><b>Suspension</b> ({@link #withoutMutationTracking}) — records nothing at all.</li>
- *   <li><b>Replay</b> ({@link #withReplay}) — mutations are still recorded, but companion
+ *   <li><b>Replay</b> ({@link #replay}) — mutations are still recorded, but companion
  *       side-work is suppressed because the batch already carries it.</li>
  *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the terminal policy is
  *       bypassed for internally-driven mutations.</li>
@@ -63,9 +63,10 @@ public final class ModificationSession {
     // flushed as a single SongDidChangeNotification when depth returns to 0.
     private int modificationDepth = 0;
 
-    // Suspension depth counter. While > 0, Line.applyChange bypasses the strict
-    // bracket check and runs the mutator directly. Used by test setup that
-    // populates lines without emitting notifications or recording undo history.
+    // Suspension depth counter. While > 0, mutations apply but nothing is recorded:
+    // applyChange runs the mutator without requiring an open bracket, and report records
+    // nothing. The file readers (SongMapper.map and SongIO) hold it for the whole of a
+    // load, and test setup holds it to populate lines without recording undo history.
     private int suspensionDepth = 0;
 
     // Replay depth counter. While > 0, undo/redo is mechanically re-applying a
@@ -82,21 +83,32 @@ public final class ModificationSession {
     // inner call must not disarm the guards the outer one is still relying on.
     private int autoMaintenanceDepth = 0;
 
-    @Nullable
-    private ArrayList<Mutation> accumulatedMutations = null;
-
-    // The op-name resolved when the outermost bracket opened (depth 0→1), held for
-    // the lifetime of that bracket and shipped on the SongDidChangeNotification at
-    // depth 1→0. Resolves an explicit bracket label, or the Tier-A pending op-name
-    // held by UndoController. EDT-only, no synchronization.
-    @Nullable
-    private String capturedOpName = null;
-
-    // The report of the edit in flight: created when the outermost bracket opens (depth 0→1)
-    // and dropped when it closes, so it is non-null exactly while a bracket is open.
-    private @Nullable ChangeReport report = null;
+    // The edit in flight: created when the outermost bracket opens (depth 0→1) and dropped
+    // when it closes, so it is non-null exactly while a bracket is open. EDT-only, no
+    // synchronization.
+    private @Nullable OpenEdit openEdit = null;
 
     private final ModificationRules rules = new ModificationRules();
+
+    /**
+     * What one edit accumulates between the open and the close of its outermost bracket: the
+     * op-name it captured, the mutations it recorded, and the changes it made on its own.
+     */
+    private static final class OpenEdit {
+
+        // The explicit bracket label, or the Tier-A pending op-name held by UndoController,
+        // resolved when the outermost bracket opened; null selects the type-based label.
+        private final @Nullable String opName;
+
+        // Mutable: each removal a modification rule records is appended while the rules run.
+        private final List<Mutation> batch = new ArrayList<>();
+
+        private final ChangeReport report = new ChangeReport();
+
+        OpenEdit(@Nullable String opName) {
+            this.opName = opName;
+        }
+    }
 
     ModificationSession(Song song) {
         this.song = song;
@@ -171,8 +183,8 @@ public final class ModificationSession {
     /**
      * Suspends mutation tracking until the matching {@link #endSuspendMutationTracking()}.
      * Use {@link #withoutMutationTracking(Runnable)} when the suspended scope fits in a
-     * single block; this pair exists for callers (e.g. SAX parsing) whose suspension
-     * scope crosses multiple methods.
+     * single block; this pair exists for callers whose suspension scope crosses multiple
+     * methods — the two file readers, {@code SongMapper.map} and {@code SongIO}.
      */
     public void beginSuspendMutationTracking() {
         suspensionDepth++;
@@ -192,20 +204,28 @@ public final class ModificationSession {
     }
 
     /**
-     * Runs {@code body} in replay mode. Used by the undo engine while it
-     * mechanically re-applies a recorded mutation batch inside a modification
-     * bracket that {@code body} opens: the batch already contains every change, so the
-     * helpers' companion side-work (terminal maintenance, line defaults, span
-     * invalidation, tuplet auto-removal, span merging) must not re-run — it
-     * would double-apply changes the batch carries — and the {@link Line}
-     * terminal guards must accept the legitimate intermediate states that
-     * arise mid-replay. Mutations are still recorded into the bracket, unlike
-     * {@link #withoutMutationTracking(Runnable)}. Nestable.
+     * Replays a recorded batch: replay mode outside, a modification bracket inside, with
+     * {@code body} applying the batch's records. The contract, and why the order is what it
+     * is, are on {@link Song#replay}.
      *
-     * <p>The bracket opens and closes inside replay mode, so the modification rules do not run
-     * when it closes (see {@link #endModification}), and nothing is reported.
+     * @param body applies the records of one recorded batch
      */
-    public void withReplay(Runnable body) {
+    public void replay(Runnable body) {
+        withReplay(() -> withModification(body));
+    }
+
+    /**
+     * Runs {@code body} in replay mode: the batch being replayed already contains every
+     * change, so the helpers' companion side-work (terminal maintenance, line defaults, span
+     * invalidation, tuplet auto-removal, span merging) must not re-run — it would
+     * double-apply changes the batch carries — and the {@link Line} terminal guards must
+     * accept the legitimate intermediate states that arise mid-replay. Mutations are still
+     * recorded, unlike {@link #withoutMutationTracking(Runnable)}. Nestable.
+     *
+     * @param body the work to run in replay mode; {@link #replay} passes the bracket that
+     *     applies the batch
+     */
+    private void withReplay(Runnable body) {
         replayDepth++;
 
         try {
@@ -218,15 +238,6 @@ public final class ModificationSession {
     // ========== Modification brackets ==========
 
     /**
-     * Opens a modification bracket with no explicit label. Mutations accumulate while
-     * the bracket is open. Brackets may be nested; the notification fires only when the
-     * outermost bracket closes.
-     */
-    public void beginModification() {
-        beginModification(null);
-    }
-
-    /**
      * Opens a modification bracket, declaring {@code explicitLabel} as the op-name
      * (Tier B) if this is the outermost bracket. Mutations accumulate while the bracket
      * is open; the notification fires only when the outermost bracket closes.
@@ -235,45 +246,45 @@ public final class ModificationSession {
      * {@code explicitLabel != null ? explicitLabel : pendingOpName}. A nested labeled
      * bracket inside an already-open bracket never re-captures.
      */
-    public void beginModification(@Nullable String explicitLabel) {
+    private void beginModification(@Nullable String explicitLabel) {
         if (modificationDepth == 0) {
             // UndoController holds the Tier-A pending op-name, set by the UIAction
             // template around synchronous action dispatch (see UIAction.actionPerformed);
             // explicitLabel is the Tier-B name from the labeled withModification overload.
-            capturedOpName = explicitLabel != null ? explicitLabel : UndoController.getPendingOpName();
-            report = new ChangeReport();
+            openEdit = new OpenEdit(explicitLabel != null ? explicitLabel : UndoController.getPendingOpName());
         }
 
         modificationDepth++;
     }
 
     /**
-     * Closes a modification bracket. When the outermost bracket closes and at least one
-     * mutation was accumulated, marks the song modified and posts a single
-     * {@link SongDidChangeNotification} carrying all accumulated mutations.
+     * Closes a modification bracket whose body returned, delivering the edit
+     * ({@link #deliver}) when it is the outermost one.
      *
-     * <p>Just before the outermost bracket closes, while it is still open, the modification
-     * rules ({@link ModificationRules}) run over the accumulated batch, so the removals they
-     * record land in the batch that is delivered, and each removal is recorded into the edit's
-     * report. They run once per edit, when every change and every restamp in the bracket has
-     * landed. They do not run on an empty batch, nor on a bracket that closes inside an undo or
-     * redo replay, whose batch already carries the removals the edit recorded, nor while
-     * mutation tracking is suspended, where nothing is recorded and loaded content is judged by
-     * the load. A bracket whose body threw closes through {@link #closeBracket} instead, without
-     * the rules: its edit stopped part way, so its notes may not be restamped.
-     *
-     * <p>When the edit's report is not empty, a {@link ChangesWereReportedNotification} follows
-     * the song notification — this is the only point that knows the whole edit is over, and a
-     * report shown any earlier would sit in front of a score not yet relaid out.
+     * <p>This is the one statement of when the modification rules ({@link ModificationRules})
+     * run. Just before the outermost bracket closes, while it is still open, they run over the
+     * accumulated batch, so the removals they record land in the batch that is delivered and
+     * undo with the edit. They run once per edit, when every change and every restamp in the
+     * bracket has landed, and only when all of these hold:
+     * <ul>
+     *   <li>the batch is not empty: an edit that recorded nothing broke nothing. A bracket
+     *       closes in the tracking state it opened in, and a bracket opened while mutation
+     *       tracking is suspended records nothing, so no rule runs while tracking is suspended,
+     *       as it is for a file load;</li>
+     *   <li>the bracket is not closing inside an undo or redo replay, whose batch already
+     *       carries the removals the edit recorded;</li>
+     *   <li>the body returned: a bracket whose body threw closes through {@link #closeBracket}
+     *       instead, without the rules, because its edit stopped part way and its notes may not
+     *       be restamped.</li>
+     * </ul>
      */
-    public void endModification() {
-        var batch = accumulatedMutations;
-        var openReport = report;
+    private void endModification() {
+        var edit = requireOpenEdit("endModification");
 
         try {
-            if (modificationDepth == 1 && batch != null && openReport != null && owesRules()) {
+            if (modificationDepth == 1 && !edit.batch.isEmpty() && owesRules()) {
                 // A copy: each removal a rule records is appended to the live batch.
-                rules.apply(song, List.copyOf(batch), openReport);
+                rules.apply(song, List.copyOf(edit.batch), edit.report);
             }
         } finally {
             closeBracket();
@@ -281,56 +292,73 @@ public final class ModificationSession {
     }
 
     /**
-     * Closes a modification bracket without the modification rules, delivering the batch when it
-     * is the outermost one.
+     * Closes a modification bracket without the modification rules, delivering the edit when
+     * it is the outermost one.
      */
     private void closeBracket() {
+        var edit = requireOpenEdit("closeBracket");
         modificationDepth--;
 
         if (modificationDepth == 0) {
-            deliverBatch();
+            openEdit = null;
+            deliver(edit);
         }
     }
 
     /**
-     * The close of the outermost bracket: delivers the accumulated batch, then the edit's report
-     * when it is not empty. Runs even when the body or a rule
-     * throws, so no batch or report outlives its bracket.
+     * The close of the outermost bracket, and the one place an edit is delivered: when
+     * {@code edit}'s batch is not empty, marks the song modified and posts one
+     * {@link SongDidChangeNotification} carrying it; then, when its report is not empty, posts
+     * one {@link ChangesWereReportedNotification} carrying that. The report follows the batch
+     * because this is the only point that knows the whole edit is over, and the score is laid
+     * out again by then. Runs even when the body or a rule throws, so no batch or report
+     * outlives its bracket.
      */
-    private void deliverBatch() {
-        var editReport = report;
-        report = null;
-
-        if (accumulatedMutations != null) {
+    private void deliver(OpenEdit edit) {
+        if (!edit.batch.isEmpty()) {
             song.setModified(true);
-            // Wrap-and-transfer ownership: the notification constructor stores the
-            // list directly, so we wrap once here instead of letting it defensively
-            // copy a list whose only reference is about to be dropped.
-            var mutations = Collections.unmodifiableList(accumulatedMutations);
-            accumulatedMutations = null;
-            var opName = capturedOpName;
-            capturedOpName = null;
-            MessageCenter.post(new SongDidChangeNotification(mutations, song, opName));
+            // Wrap-and-transfer ownership: the notification constructor stores the list
+            // directly, and the edit holding the only other reference has been dropped, so
+            // wrapping once here spares the notification a defensive copy.
+            var mutations = Collections.unmodifiableList(edit.batch);
+            MessageCenter.post(new SongDidChangeNotification(mutations, song, edit.opName));
         }
 
-        if (editReport != null && !editReport.isEmpty()) {
-            MessageCenter.post(new ChangesWereReportedNotification(editReport));
+        if (!edit.report.isEmpty()) {
+            MessageCenter.post(new ChangesWereReportedNotification(edit.report));
         }
     }
 
     /**
-     * Whether the outermost bracket, about to close with a batch, owes the modification rules a
-     * run: it is not closing inside an undo or redo replay, nor under suspended tracking.
+     * Whether the outermost bracket, about to close with a non-empty batch, owes the
+     * modification rules a run: it is not closing inside an undo or redo replay.
      */
     private boolean owesRules() {
-        return !isReplaying() && !isMutationTrackingSuspended();
+        return !isReplaying();
+    }
+
+    /**
+     * The edit in flight.
+     *
+     * @param operation the name of the operation that needs it, for the exception message
+     * @return the edit the outermost open bracket created
+     * @throws IllegalStateException if no modification bracket is open
+     */
+    private OpenEdit requireOpenEdit(String operation) {
+        var edit = openEdit;
+
+        if (edit == null) {
+            throw new IllegalStateException(operation + " called outside a modification bracket");
+        }
+
+        return edit;
     }
 
     /**
      * Executes {@code body} inside a modification bracket, then posts a single
-     * {@link SongDidChangeNotification} with all accumulated mutations.
-     * Prefer this over {@link #beginModification()} / {@link #endModification()} to ensure
-     * the depth counter is always balanced even if {@code body} throws.
+     * {@link SongDidChangeNotification} with all accumulated mutations. The bracket is
+     * closed even if {@code body} throws, without running the modification rules over the
+     * half-applied edit.
      */
     public void withModification(Runnable body) {
         inBracket(null, asSupplier(body));
@@ -339,8 +367,8 @@ public final class ModificationSession {
     /**
      * Executes {@code body} inside a modification bracket that declares {@code label}
      * as its op-name (Tier B), then posts a single {@link SongDidChangeNotification}.
-     * The label is captured only if this is the outermost bracket (see
-     * {@link #beginModification(String)}).
+     * The label is captured only if this is the outermost bracket: a labeled bracket nested
+     * inside an open one never replaces the op-name the outermost bracket captured.
      */
     public void withModification(String label, Runnable body) {
         inBracket(label, asSupplier(body));
@@ -429,30 +457,19 @@ public final class ModificationSession {
             return;
         }
 
-        if (modificationDepth == 0) {
-            throw new IllegalStateException("applyChange called outside a modification bracket");
-        }
-
+        var edit = requireOpenEdit("applyChange");
         mutator.run();
-
-        if (accumulatedMutations == null) {
-            accumulatedMutations = new ArrayList<>();
-        }
-
-        accumulatedMutations.add(mutation);
+        edit.batch.add(mutation);
     }
 
     /**
-     * Records {@code change} into the report of the edit in flight, which is posted in a
-     * {@link ChangesWereReportedNotification} when the outermost modification bracket closes.
+     * Records {@code change} into the report of the edit in flight, which {@link #deliver}
+     * posts.
      * <p>
-     * Records nothing while mutation tracking is suspended, where no bracket is required, nor
-     * during an undo or redo replay: replay re-applies the removals the edit already reported,
-     * and does not report them again.
+     * Records nothing while mutation tracking is suspended, where no bracket is required.
      *
      * @param change the change the song made on its own, as the user is told about it
-     * @effects appends {@code change} to the open report, unless tracking is suspended or a
-     *     replay is in progress
+     * @effects appends {@code change} to the open report, unless tracking is suspended
      * @throws IllegalStateException if tracking is on and no modification bracket is open
      */
     public void report(ReportedChange change) {
@@ -460,16 +477,6 @@ public final class ModificationSession {
             return;
         }
 
-        var openReport = report;
-
-        if (openReport == null) {
-            throw new IllegalStateException("report called outside a modification bracket");
-        }
-
-        if (isReplaying()) {
-            return;
-        }
-
-        openReport.record(change);
+        requireOpenEdit("report").report.record(change);
     }
 }

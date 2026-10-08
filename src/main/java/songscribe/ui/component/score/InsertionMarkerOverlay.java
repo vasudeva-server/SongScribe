@@ -115,7 +115,7 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         // position, so mouseXSs is ignored.
         var previewElement = ElementType.CROTCHET.newInstance();
         // Center the marker on the head the insertion X was computed for, measured per type rather
-        // than with the black-notehead constant (refs #694).
+        // than with the black-notehead constant.
         var xSs = layoutResult.calculateInsertionXSs(targetIndex, 0, previewElement, domLine, true)
             + previewElement.getGlyphWidthSs() / 2;
 

@@ -55,11 +55,24 @@ import songscribe.Strings;
  * the song is still being assembled, before it holds the tempo changes that determine the
  * beat.
  */
-public final class TupletLoadPass {
+final class TupletLoadPass {
 
     private static final Logger LOG = LoggerFactory.getLogger(TupletLoadPass.class);
 
     private TupletLoadPass() {
+    }
+
+    /**
+     * How many pending tuplets the pass dropped, and how many it added with a ratio it derived.
+     *
+     * @param dropped the pending tuplets dropped
+     * @param updated the pending tuplets added with a derived ratio
+     */
+    private record Counts(int dropped, int updated) {
+
+        boolean isEmpty() {
+            return dropped == 0 && updated == 0;
+        }
     }
 
     /**
@@ -68,17 +81,10 @@ public final class TupletLoadPass {
      * <p>Each pending tuplet is judged leniently, under
      * {@link TupletValidator.Strictness#LENIENT}: the beat barrier and the structural boundary
      * constrain creation, not a document that already exists. A stated ratio is judged by
-     * {@link TupletValidator#validateStated}, and an absent one takes the ratio the validator
-     * derives. A tuplet that passes becomes a {@link Tuplet} with that ratio, the pending
-     * tuplet's grade and its offset as {@link LineElement#getUserYOffsetSs()}, and is added to
-     * its anchor's line. One whose span holds too few notes to carry a bracket, or which the
-     * validator rejects, is dropped.
-     *
-     * <p>The whole pass runs with mutation tracking suspended, so it emits no mutations:
-     * outside suspension the additions would land in the undo history and a freshly opened
-     * song could be undone back to a song without its tuplets. The song's modified flag is
-     * deliberately left alone — {@code ScoreView.setSong} clears it when the song is
-     * installed, so the caller re-marks it afterwards from the report.
+     * {@link Tuplet#spanningStated}, and an absent one is derived by {@link Tuplet#spanning}, each
+     * at the beat in effect at the tuplet's anchor. A tuplet that passes takes the pending
+     * tuplet's offset as its {@link LineElement#getUserYOffsetSs()} and is added to its anchor's
+     * line. One that is refused is dropped.
      *
      * @param song           the song to add the tuplets to, immediately after parsing and before
      *                       it is installed
@@ -88,38 +94,28 @@ public final class TupletLoadPass {
      * @param report         the report the pass records into
      * @effects adds a {@link Tuplet} to its anchor's line for every pending tuplet not dropped;
      *     records to {@code report}, in document order, every pending tuplet the pass dropped
-     *     and every one it added with a derived ratio; a pending tuplet added with its stated
-     *     ratio is not recorded
-     * @log INFO the dropped and derived counts, when either is not zero
+     *     and every one it updated, that is, added with a derived ratio; a pending tuplet added
+     *     with its stated ratio is not recorded
+     * @log INFO the dropped and updated counts, when either is not zero
      */
-    public static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
-        var firstNewEntry = report.changes().size();
+    static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
+        var counts = placeTuplets(song, pendingTuplets, report);
 
-        song.withoutMutationTracking(() -> placeTuplets(song, pendingTuplets, report));
-
-        var recorded = report.changes().subList(firstNewEntry, report.changes().size());
-        var dropped = countUnder(recorded, Strings.DIALOG_REPORT_TUPLETS_REMOVED);
-        var derived = countUnder(recorded, Strings.DIALOG_REPORT_TUPLETS_UPDATED);
-
-        if (!recorded.isEmpty()) {
-            LOG.info("Tuplet load pass: {} dropped, {} migrated", dropped, derived);
+        if (!counts.isEmpty()) {
+            LOG.info("Tuplet load pass: {} dropped, {} updated", counts.dropped(), counts.updated());
         }
     }
 
-    private static long countUnder(List<ReportedChange> changes, String headingKey) {
-        return changes.stream().filter(change -> change.headingKey().equals(headingKey)).count();
-    }
-
     /**
-     * One forward walk over the whole song, judging each pending tuplet against the beat the
-     * walk carries. Adding a tuplet leaves the elements — and so every other pending tuplet's
-     * indices — untouched, which is why the verdicts stay valid as they are applied.
+     * One forward walk over the whole song, judging each pending tuplet at the beat the walk
+     * carries. Adding a tuplet leaves the elements — and so every other pending tuplet's
+     * indices — untouched, which is why the sites stay valid as the tuplets are added.
      */
-    private static void placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
+    private static Counts placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
         var startLineIndex = song.firstNonEmptyLineIndex();
 
         if (startLineIndex == null) {
-            return;
+            return new Counts(0, 0);
         }
 
         var byAnchor = new IdentityHashMap<StaffElement, PendingTuplet>();
@@ -128,50 +124,71 @@ public final class TupletLoadPass {
             byAnchor.put(pending.anchor(), pending);
         }
 
-        for (var verdict : TupletValidator.validateFrom(
-            song, new ElementLocation(startLineIndex, 0), TupletValidator.Strictness.LENIENT,
-            (line, index) -> pendingAnchoredAt(byAnchor, line, index))
+        var dropped = 0;
+        var updated = 0;
+
+        for (var sited : TupletValidator.sitesFrom(
+            song, new ElementLocation(startLineIndex, 0), (line, index) -> pendingAnchoredAt(byAnchor, line, index))
         ) {
-            place(song, verdict, report);
-        }
-    }
-
-    /**
-     * Adds one judged pending tuplet to its line, or drops it. Records a dropped tuplet, and a
-     * tuplet added with a derived ratio.
-     */
-    private static void place(
-        Song song, TupletValidator.Verdict<PendingTuplet> verdict, ChangeReport report
-    ) {
-        var pending = verdict.tuplet();
-        var lineIndex = verdict.lineIndex();
-        var line = song.getLine(lineIndex);
-        var where = ElementLocationRange.onLine(lineIndex, verdict.span());
-        var grade = pending.grade();
-        var statedRatio = pending.statedRatio();
-        var result = statedRatio == null
-            ? verdict.result()
-            : TupletValidator.validateStated(
-                verdict.context(), grade, statedRatio, TupletValidator.Strictness.LENIENT);
-
-        switch (result) {
-            case TupletValidator.Result.Invalid(var reason) -> report.record(new ReportedChange(
-                Strings.DIALOG_REPORT_TUPLETS_REMOVED, Strings.get(reason.messageKey()), where));
-
-            case TupletValidator.Result.Valid(var ratio) -> {
-                var tuplet = new Tuplet(pending.anchor(), pending.end(), grade, ratio);
-                tuplet.setUserYOffsetSs(pending.yOffsetSs());
-                tuplet.addTo(line);
-
-                if (statedRatio == null) {
-                    report.record(new ReportedChange(
-                        Strings.DIALOG_REPORT_TUPLETS_UPDATED,
-                        Strings.get(
-                            Strings.DIALOG_REPORT_UPDATED_DETAIL, grade.number(), ratio.normalNotes()),
-                        where));
+            switch (place(sited, report)) {
+                case DROPPED -> dropped++;
+                case UPDATED -> updated++;
+                case STATED -> {
                 }
             }
         }
+
+        return new Counts(dropped, updated);
+    }
+
+    /** What {@link #place} did with one pending tuplet. */
+    private enum Placement {
+
+        /** Refused, and recorded. */
+        DROPPED,
+
+        /** Added with a derived ratio, and recorded. */
+        UPDATED,
+
+        /** Added with the ratio the file stated, and not recorded. */
+        STATED
+    }
+
+    /**
+     * Adds one pending tuplet to its line, or drops it. Records a dropped tuplet, and a tuplet
+     * added with a derived ratio.
+     */
+    private static Placement place(TupletValidator.Sited<PendingTuplet> sited, ChangeReport report) {
+        var pending = sited.tuplet();
+        var site = sited.site();
+        var where = ElementLocationRange.onLine(sited.lineIndex(), site.range());
+        var grade = pending.grade();
+        var statedRatio = pending.statedRatio();
+        var spanning = statedRatio == null
+            ? Tuplet.spanning(site, grade, TupletValidator.Strictness.LENIENT)
+            : Tuplet.spanningStated(site, grade, statedRatio, TupletValidator.Strictness.LENIENT);
+
+        return switch (spanning) {
+            case Spanning.Refused<Tuplet> refused -> {
+                report.record(refused.reportedAt(where));
+                yield Placement.DROPPED;
+            }
+
+            case Spanning.Spanned(var tuplet, _) -> {
+                tuplet.setUserYOffsetSs(pending.yOffsetSs());
+                tuplet.addTo();
+
+                if (statedRatio != null) {
+                    yield Placement.STATED;
+                }
+
+                report.record(new ReportedChange(
+                    Strings.DIALOG_REPORT_TUPLETS_UPDATED,
+                    Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, grade.number(), tuplet.getRatio().normalNotes()),
+                    where));
+                yield Placement.UPDATED;
+            }
+        };
     }
 
     /** The pending tuplet anchored at the element at {@code index} in {@code line}, if any. */
@@ -182,7 +199,6 @@ public final class TupletLoadPass {
 
         return pending == null
             ? null
-            : new TupletValidator.Anchored<>(pending, line.getElementIndex(pending.end()), pending.grade());
+            : new TupletValidator.Anchored<>(pending, line.getElementIndex(pending.end()));
     }
-
 }

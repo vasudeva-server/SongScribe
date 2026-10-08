@@ -22,11 +22,13 @@ package songscribe.io.musicxml;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import songscribe.font.DocumentFonts;
 import songscribe.io.SongLoadResult;
 
 /**
@@ -51,10 +53,10 @@ public final class MusicXmlReader {
 
     /**
      * Parses a MusicXML document from the given {@link InputSource} and returns
-     * the resulting {@link SongLoadResult.Success} (the parsed song plus its
+     * the resulting {@link SongLoadResult.Success} (the settled song plus its
      * document fonts). A malformed document surfaces as a thrown exception; the
-     * warning list carries only the non-fatal conditions, of which the tuplet
-     * load pass is currently the sole producer on this path.
+     * warning list is empty on this path, and what the load changed is in the
+     * result's report.
      * <p>
      * When the document carries no {@code <defaults>} font block, the result's
      * fonts default to {@link songscribe.font.DocumentFonts#defaultFonts()}.
@@ -65,7 +67,10 @@ public final class MusicXmlReader {
      * @throws SAXException on parse errors
      */
     public static SongLoadResult.Success read(InputSource source) throws IOException, SAXException {
-        return SongMapper.map(MusicXmlSerializer.unmarshal(source));
+        var documentFonts = DocumentFonts.defaultFonts();
+        var parsed = SongMapper.map(MusicXmlSerializer.unmarshal(source), documentFonts);
+
+        return SongLoadResult.Success.settled(parsed, documentFonts, List.of());
     }
 
     /**

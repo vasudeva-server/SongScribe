@@ -27,7 +27,7 @@ hairpin found, then rescans at the wider span, repeating until a pass finds
 nothing new.
 
 That has to converge **before** the endpoint, boundary, opposite-type and
-column-count checks run, because all four judge the span the model is actually
+note-count checks run, because all four judge the span the model is actually
 about to build. A menu label promising a narrower hairpin than the commit would
 produce would be a lie. Each pass either strictly widens the span or ends the
 loop, so it takes at most one pass per same-type hairpin on the line.
@@ -90,40 +90,23 @@ pitched note, or a grace note whose host is one; the end is a pitched note.
 This is a rule about where a hairpin *stops* and *starts*, not about what it may
 *cross*. Rests inside a hairpin, however many, are unaffected.
 
-A rest is not a column. Two columns are the minimum a hairpin needs to slope
-across, and a rest, like a grace note beside its host, never counts toward them.
+Two pitched notes are the minimum a hairpin needs to slope across, and a rest,
+like a grace note beside its host, never counts toward them.
 
-## The model can never hold a shape the menu would refuse
+## Why an edit removes one hairpin and reshapes another
 
-The menu, the paste and the load all ask the hairpin's own rule, and the rule has
-five parts. A hairpin is re-checked after **every** change to the line's elements —
-insertion, replacement and deletion alike — so whatever a fresh hairpin could not
-be given, a surviving hairpin cannot be left with.
+The rules a hairpin keeps are the invariants on `Hairpin`, and how each element
+change answers them is on `Hairpin.outcomeFor`. What the contracts do not say is
+why the answer differs by the kind of edit.
 
-1. It starts on a pitched note, or on a grace note whose host is a pitched note.
-2. It ends on a pitched note, never on a rest.
-3. It holds at least two columns; a grace note and its host are one column, and a
-   rest is not a column.
-4. Its range holds no repeat and no bar other than a single barline.
-5. It shares at most one element with a hairpin of the opposite kind, where one
-   ends and the other starts.
+An **insertion or a replacement** deletes no element for the hairpin to pull back
+to, so there is no reliable "move the end there instead" to reach for: a hairpin
+it leaves breaking a rule is removed and reported, and undo restores it. Left
+unchecked, re-pointing would quietly produce shapes the menu would never allow —
+a hairpin ending on a grace note, or anchored on silence.
 
-The response differs by what the edit made possible:
-
-- An **insertion or a replacement** that leaves an endpoint invalid, or that puts
-  a repeat or a non-single barline inside the hairpin, **removes** the hairpin and
-  reports it; undo restores it. Neither deletes an element for the hairpin to pull
-  back to, so there is no reliable "move the end there instead" to reach for. Left
-  unchecked, re-pointing would quietly produce shapes the menu would never allow —
-  a hairpin ending on a grace note, or anchored on silence. An insertion can only
-  widen a span, so it never costs a hairpin its columns.
-- A **deletion** **reshapes** the hairpin to its nearest valid endpoints instead,
-  because a deletion always leaves a shorter run of surviving elements to pull back
-  onto. A deletion cannot bring a bar inside a range. When it leaves two same-kind
-  hairpins touching, they join, except when the joined hairpin would cover more
-  than one element of an opposite-kind hairpin; then both stay.
-- A **file** that holds a hairpin that breaks a rule loses that hairpin on load,
-  and the load report lists it.
+A **deletion** always leaves a shorter run of surviving elements to pull back
+onto, so it reshapes the hairpin to its nearest valid endpoints instead.
 
 **Two legal endpoints do not imply a legal hairpin.** A grace note shares its
 host's column, so a hairpin anchored on a grace note and ending on its host has

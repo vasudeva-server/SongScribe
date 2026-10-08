@@ -10,14 +10,11 @@ A single tie joining two notes of the same pitch, head to head. Not modelled:
 chords with several simultaneous ties, or collisions with other ties, accidentals
 or stems.
 
-A tie broken across a system break is drawn as two halves, one on each system.
-Each half is a complete arc of its own width, with both ends on the baseline. It
-is not a piece cut from the arc the unbroken tie would have. The half on the
-earlier system runs from its notehead to the right staff edge. The half on the
-later system starts where the music starts, past the clef and key signature, so
-it does not cross the header. Both halves take the same direction, because the
-direction comes from the two notes, not from the system a half is drawn on.
-This follows LilyPond, which formats each half as a separate problem.
+A tie broken across a system break is drawn as two halves, one on each system,
+each a complete arc rather than a piece cut from the unbroken one. This follows
+LilyPond, which formats each half as a separate problem. What a half is, and
+where its open end stops, is stated on `LayoutEngine.tieLayout`; which line draws
+which half is stated on `Line.ownedTies`.
 
 ## Deterministic, where LilyPond searches
 

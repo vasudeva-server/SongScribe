@@ -63,8 +63,8 @@ public final class FermataAction extends NoteOnlyAction {
     }
 
     @Override
-    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
-        if (selected) {
+    public void applyToElement(Line line, int index, NoteElement element, Toggle toggle) {
+        if (toggle == Toggle.APPLY) {
             FermataAttachment.addFermata(element);
         } else {
             FermataAttachment.removeFermata(element);

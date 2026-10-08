@@ -108,8 +108,8 @@ public final class NoteTypeMapping {
     // 3360 (= 480 × 7) is NOT enough: u = 420, so a double-dotted 32nd is
     // 735, which is odd, and 735 × 3/2 = 1102.5 inside a duplet. The
     // required factor depends on the dot count as well as the ratio, which
-    // is why inspecting only the ratios present cannot find it — the old
-    // DIVISIONS = 480 already had this defect independently of septuplets.
+    // is why inspecting only the ratios present cannot find it. DIVISIONS = 480
+    // has this defect independently of septuplets.
     //
     // A whole note at DIVISIONS = 13440 is 53760 ticks, far inside int range.
     // -------------------------------------------------------------------------
@@ -139,7 +139,8 @@ public final class NoteTypeMapping {
     public static final String TYPE_32ND    = "32nd";
 
     // -------------------------------------------------------------------------
-    // Reverse map for reading: token → NoteValue. forTypeToken() turns the value
+    // Reverse map for reading: token → NoteValue, which noteValueForTypeToken() answers
+    // from. forTypeToken() turns the value
     // into the note or rest ElementType from the <rest/> flag, and recovers
     // GRACE_QUAVER from the <grace> flag. The forward direction is an exhaustive
     // switch in typeToken(), so it needs no map and no null branch.
@@ -212,13 +213,24 @@ public final class NoteTypeMapping {
             return ElementType.GRACE_QUAVER;
         }
 
-        var value = REVERSE_MAP.get(typeToken);
+        var value = noteValueForTypeToken(typeToken);
 
         if (value == null) {
             return null;
         }
 
         return isRest ? value.rest() : value.note();
+    }
+
+    /**
+     * Returns the {@link NoteValue} a MusicXML {@code <type>}-valued token names, such as the text
+     * of a {@code <type>} or a {@code <normal-type>}.
+     *
+     * @param typeToken the token's text content (e.g. {@code "quarter"}), already trimmed
+     * @return the value the token names, or {@code null} if it names none
+     */
+    public static @Nullable NoteValue noteValueForTypeToken(String typeToken) {
+        return REVERSE_MAP.get(typeToken);
     }
 
     /**

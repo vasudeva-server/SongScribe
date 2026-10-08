@@ -33,8 +33,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 /**
  * Reads and writes the beat change on one element, for {@link BeatChangeDialog}.
  *
- * <p>A beat change redefines the beat from its element onwards; the tuplet beat rule revalidates
- * the tuplets after it when the modification bracket closes.
+ * <p>A beat change redefines the beat from its element onwards.
  *
  * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: both of a
  * {@link BeatChange}'s durations come from {@link BeatUnit}, and there is no pair

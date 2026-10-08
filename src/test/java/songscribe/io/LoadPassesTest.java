@@ -23,6 +23,7 @@ package songscribe.io;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
@@ -34,6 +35,7 @@ import songscribe.dom.ElementLocationRange;
 import songscribe.dom.Hairpin;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
+import songscribe.dom.ParsedSong;
 import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
@@ -41,7 +43,7 @@ import songscribe.dom.ReportedChange;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.TupletGrade;
-import songscribe.dom.TupletRatio;
+import songscribe.dom.TupletNormalTime;
 import songscribe.dom.TupletValidator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +56,7 @@ import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
- * {@link LoadPasses#run}'s promises for the load passes. The accidental stamp: a note the file
+ * {@link ParsedSong#settle}'s promises for the load passes. The accidental stamp: a note the file
  * writes an accidental on sounds that accidental, a bare note adopts what is in force at its
  * position — barlines included — and parentheses are ignored, on {@code accidental-load.musicxml},
  * a fixture this program itself wrote under the barline-reset policy this test pins the repair
@@ -62,7 +64,15 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  */
 class LoadPassesTest extends UnitTest {
 
+    private static final String ACCIDENTAL_FIXTURE = "accidental-load";
+
     private static final int LINE_INDEX = 0;
+
+    /** The notes of the accidental fixture's line, in line order. */
+    private static final int LEADING_FLAT_INDEX = 0;
+    private static final int AFTER_BARLINE_INDEX = 1;
+    private static final int PLAIN_FLAT_INDEX = 2;
+    private static final int PARENTHESIZED_FLAT_INDEX = 3;
 
     private static final double NO_OFFSET_SS = 0.0;
 
@@ -99,13 +109,14 @@ class LoadPassesTest extends UnitTest {
         var derivedTuplet = pendingTuplet(line.getElements(), DERIVED_TUPLET, grade, null);
         var droppedTuplet = pendingTuplet(line.getElements(), DROPPED_TUPLET, grade, sameCount);
         var droppedEnding = new PendingEnding(
-            line.getElement(DROPPED_ENDING.begin()), line.getElement(DROPPED_ENDING.end()), NO_OFFSET_SS);
+            line.getElement(DROPPED_ENDING.begin()), line.getElement(DROPPED_ENDING.end()), NO_OFFSET_SS,
+            NO_OFFSET_SS);
         var droppedHairpin = new PendingHairpin(
             Hairpin.Kind.CRESCENDO, line.getElement(DROPPED_HAIRPIN.begin()), line.getElement(DROPPED_HAIRPIN.end()),
-            NO_OFFSET_SS, NO_OFFSET_SS, NO_OFFSET_SS);
+            NO_OFFSET_SS, NO_OFFSET_SS);
 
-        var report = LoadPasses.run(song, new LoadPasses.Input(
-            List.of(derivedTuplet, droppedTuplet), List.of(droppedEnding), List.of(droppedHairpin), true));
+        var report = new ParsedSong(song, List.of(derivedTuplet, droppedTuplet), List.of(droppedEnding),
+            List.of(droppedHairpin), List.of(ParsedSong.accidentalsConvertedEntry())).settle();
 
         assertThat(report.changes()).containsExactly(
             new ReportedChange(
@@ -114,7 +125,7 @@ class LoadPassesTest extends UnitTest {
                 locationOf(DERIVED_TUPLET)),
             new ReportedChange(
                 Strings.DIALOG_REPORT_TUPLETS_REMOVED,
-                Strings.get(TupletValidator.Reason.BAD_RATIO.messageKey()),
+                Strings.get(Strings.DIALOG_REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES),
                 locationOf(DROPPED_TUPLET)),
             new ReportedChange(
                 Strings.DIALOG_REPORT_ENDINGS_REMOVED,
@@ -134,8 +145,21 @@ class LoadPassesTest extends UnitTest {
                 null));
     }
 
+    @Test
+    void testACleanLoadGivesAnEmptyReport() {
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            line.addElement(singleBarline());
+            line.addElement(crotchet());
+        });
+
+        var report = new ParsedSong(song, List.of(), List.of(), List.of(), List.of()).settle();
+
+        assertThat(report.isEmpty()).isTrue();
+    }
+
     private static PendingTuplet pendingTuplet(
-        List<StaffElement> elements, ElementRange span, TupletGrade grade, @Nullable TupletRatio statedRatio
+        List<StaffElement> elements, ElementRange span, TupletGrade grade, @Nullable TupletNormalTime statedRatio
     ) {
         return new PendingTuplet(
             elements.get(span.begin()), elements.get(span.end()), grade, statedRatio, NO_OFFSET_SS);
@@ -146,16 +170,21 @@ class LoadPassesTest extends UnitTest {
             new ElementLocation(LINE_INDEX, span.begin()), new ElementLocation(LINE_INDEX, span.end()));
     }
 
-    @Test
-    void testABareNoteAfterABarlineSoundsWhatIsInForceAndIsARepetition() throws Exception {
-        var song = loadFixture("accidental-load");
-        var notes = song.getLine(0).getElements().stream()
+    /** The notes of the accidental fixture's first line, loaded once for the class. */
+    private List<NoteElement> accidentalNotes;
+
+    @BeforeAll
+    void loadAccidentalNotes() throws Exception {
+        accidentalNotes = loadFixture(ACCIDENTAL_FIXTURE).getLine(LINE_INDEX).getElements().stream()
             .filter(NoteElement.class::isInstance)
             .map(NoteElement.class::cast)
             .toList();
+    }
 
-        var leadingFlat = notes.get(0);
-        var afterBarline = notes.get(1);
+    @Test
+    void testABareNoteAfterABarlineSoundsWhatIsInForceAndIsARepetition() {
+        var leadingFlat = accidentalNotes.get(LEADING_FLAT_INDEX);
+        var afterBarline = accidentalNotes.get(AFTER_BARLINE_INDEX);
 
         assertThat(leadingFlat.chainedAccidental().type()).isEqualTo(ChainType.ANCHOR);
         assertThat(afterBarline.chainedAccidental().accidental())
@@ -165,15 +194,9 @@ class LoadPassesTest extends UnitTest {
     }
 
     @Test
-    void testAParenthesizedAccidentalReadsAsAPlainOne() throws Exception {
-        var song = loadFixture("accidental-load");
-        var notes = song.getLine(0).getElements().stream()
-            .filter(NoteElement.class::isInstance)
-            .map(NoteElement.class::cast)
-            .toList();
-
-        var plainFlat = notes.get(2);
-        var parenthesizedFlat = notes.get(3);
+    void testAParenthesizedAccidentalReadsAsAPlainOne() {
+        var plainFlat = accidentalNotes.get(PLAIN_FLAT_INDEX);
+        var parenthesizedFlat = accidentalNotes.get(PARENTHESIZED_FLAT_INDEX);
 
         assertThat(parenthesizedFlat.chainedAccidental().accidental()).isEqualTo(Accidental.FLAT);
         assertThat(parenthesizedFlat.chainedAccidental().type())

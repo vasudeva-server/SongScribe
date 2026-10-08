@@ -23,13 +23,37 @@ package songscribe.midi;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
 
-/** Reads a built MIDI {@link Sequence} for a test. */
+import songscribe.dom.Song;
+
+/** Builds and reads a MIDI {@link Sequence} for a test. */
 final class MidiSequences {
 
+    private static final int PIANO = 0;
+    private static final int FULL_PERCENT = 100;
+
+    /** Every written note sounds for its full length, at the written tempo, without repeats. */
+    static final PlaybackSettings PLAIN_PLAYBACK = new PlaybackSettings(PIANO, FULL_PERCENT, FULL_PERCENT, false);
+
+    /** Every written note sounds for its full length, at the written tempo, with repeats taken. */
+    static final PlaybackSettings REPEATED_PLAYBACK = new PlaybackSettings(PIANO, FULL_PERCENT, FULL_PERCENT, true);
+
     private MidiSequences() {}
+
+    /**
+     * The sequence {@code song} plays under {@code settings}, from its first note to its last.
+     *
+     * @param song     the song to play
+     * @param settings how the playback sounds the notes
+     * @return the whole sequence
+     * @throws InvalidMidiDataException if the builder produces data a sequence cannot hold
+     */
+    static Sequence playbackOf(Song song, PlaybackSettings settings) throws InvalidMidiDataException {
+        return new MidiSequenceBuilder(song, settings).buildFullSequence();
+    }
 
     /**
      * The pitch of every note that sounds in {@code sequence}, track by track and in each track's

@@ -238,7 +238,7 @@ public enum ElementType {
      *
      * <p>This is the one answer to how wide an element's own glyph is. Reading the black
      * notehead's box from {@link SMuFLMetadata#bboxSs} instead leaves a whole note about half a
-     * staff space short (refs #694).
+     * staff space short.
      *
      * @return the X of the glyph's right edge, grace-scaled for a grace note
      */
@@ -656,6 +656,31 @@ public enum ElementType {
      */
     public boolean closesRepeat() {
         return this == REPEAT_RIGHT || this == REPEAT_LEFT_RIGHT;
+    }
+
+    /**
+     * Whether a bar of this type opens a repeat section: the section a later {@code :|} plays
+     * back to starts just after it.
+     *
+     * @return {@code true} for a left repeat and a left-right repeat
+     * @see Song#repeatSectionStart
+     */
+    public boolean opensRepeatSection() {
+        return this == REPEAT_LEFT || this == REPEAT_LEFT_RIGHT;
+    }
+
+    /**
+     * Whether a bar of this type ends any repeat section open before it, so that a {@code :|}
+     * after it finds no section to play back to unless another bar opens one. This is wider
+     * than {@link #closesRepeat()}: a {@code ||} and a final barline end a section without
+     * sending playback back.
+     *
+     * @return {@code true} for every type {@link #closesRepeat()} accepts, a double barline and
+     *     a final double barline
+     * @see Song#repeatSectionStart
+     */
+    public boolean closesRepeatSection() {
+        return closesRepeat() || this == DOUBLE_BARLINE || this == FINAL_DOUBLE_BARLINE;
     }
 
     /**

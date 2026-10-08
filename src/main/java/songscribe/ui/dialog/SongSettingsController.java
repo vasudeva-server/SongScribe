@@ -42,9 +42,8 @@ import songscribe.ui.component.MainFrame;
  * than bound once — a controller that cached either would answer for a document that has since been
  * closed.
  *
- * <p><strong>The line width is read but never written.</strong> The Music tab used to carry a
- * line-width field, and with it the only free text in this dialog and the only thing about it that
- * could fail to parse. The width belongs to page setup now; what {@link #read} still hands over is
+ * <p><strong>The line width is read but never written.</strong> The width belongs to page setup;
+ * what {@link #read} still hands over is
  * the stored width for the Title tab's previews to wrap at, and no path here writes one back. What
  * is left to judge is a tempo built from bounded controls, metadata that is free text but cannot be
  * wrong, and a set of fonts — which is why the one rule below is about fonts alone.
@@ -149,7 +148,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
      *
      * <p>A wider lyrics font widens every syllable, which widens the minimum spacing between
      * columns and can push a line past the staff margin. Committing that anyway leaves the line laid
-     * out on its collision floors with its tail clipped in red (refs #696). Refusing the change up
+     * out on its collision floors with its tail clipped in red. Refusing the change up
      * front keeps a fitting line fitting.
      *
      * <p>Both fonts are measured against the song's stored line width, which this dialog cannot

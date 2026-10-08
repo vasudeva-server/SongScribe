@@ -20,6 +20,8 @@
 
 package songscribe.undo;
 
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
@@ -49,21 +51,20 @@ import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
-import songscribe.ui.component.ScoreView;
 
 /**
- * Applies a single recorded {@link Mutation} in the inverse ({@code applyUndo}) or
- * forward ({@code applyRedo}) direction while replaying a recorded batch.
+ * Replays a recorded batch of {@link Mutation}s, undoing it ({@link #undoBatch}) or redoing
+ * it ({@link #redoBatch}).
  * <p>
- * Callers (the undo engine) must already have opened a modification bracket and
- * entered replay mode ({@code song.withReplay}); these methods open neither. Inside
- * replay mode the {@link Line}/{@link Song} helpers apply raw state without companion
- * side-work or guard checks, so the recorded batch is reproduced mechanically.
+ * Each method runs the whole batch inside {@link Song#replay}, which enters replay mode and
+ * opens an edit inside it. Inside replay mode the {@link Line}/{@link Song} helpers apply raw
+ * state without companion side-work or guard checks, so the recorded batch is reproduced
+ * mechanically.
  * <p>
- * {@code applyUndo} restores the <em>before</em> state; {@code applyRedo} re-applies
- * the <em>forward</em> change. Both dispatch through an exhaustive pattern switch over
- * the sealed {@link Mutation} hierarchy — the compiler enforces coverage, so there is
- * no {@code default} branch.
+ * Undo restores each record's <em>before</em> state; redo re-applies its <em>forward</em>
+ * change. Both dispatch through an exhaustive pattern switch over the sealed
+ * {@link Mutation} hierarchy — the compiler enforces coverage, so there is no
+ * {@code default} branch.
  * <p>
  * {@link ElementModification} restores in place via
  * {@link songscribe.dom.StaffElement#copyStateFrom} (identity-preserving — never
@@ -74,18 +75,18 @@ import songscribe.ui.component.ScoreView;
  * A single mutation is only meaningful in the context of the batch it was recorded in.
  * Undo applies a batch <em>in reverse order</em> and redo <em>in forward order</em>;
  * either direction requires the whole batch, against the same document, with no edit
- * interleaved. Both rules follow from how the batch was recorded — a companion span
+ * interleaved. The order follows from how the batch was recorded — a companion span
  * removal emitted before its primary element deletion can only be reversed after that
- * element is back — and are the caller's obligation, not something these methods check.
+ * element is back — and these methods own it. That the batch is whole, and was recorded
+ * against this document, is the caller's obligation, not something they check.
  * See {@code docs/undo.md} and {@code docs/mutations.md}.
  *
- * <p>Every change made here is itself recorded into the open bracket, so the closing
- * {@code endModification} posts a {@link songscribe.message.notification.SongDidChangeNotification}
- * describing the replay and the view repaints from it like any other edit.
+ * <p>Every change made here is itself recorded into the replay's edit, so its close posts
+ * a {@link songscribe.message.notification.SongDidChangeNotification} describing the
+ * replay and the view repaints from it like any other edit.
  *
  * <p>{@link FontChange} is the one mutation whose state does not live on the
- * {@link Song}: fonts belong to the {@link ScoreView}, which is why these methods take
- * the view rather than the document.
+ * {@link Song}, which is why these methods take a {@link FontTarget} beside the song.
  */
 public final class MutationReplayer {
 
@@ -93,26 +94,64 @@ public final class MutationReplayer {
     }
 
     /**
+     * Undoes the edit that recorded {@code mutations}, restoring {@code song} and its fonts
+     * to the state they held immediately before it: the records are inverted in reverse
+     * order, inside one {@link Song#replay}.
+     *
+     * <p>Exactly inverts {@link #redoBatch}: applying one and then the other to the same
+     * batch, in either order, leaves the document as it was.
+     *
+     * @param song      the song the batch was recorded against
+     * @param fonts     the holder of that song's document fonts
+     * @param mutations the whole batch of one edit, whose effect is the song's most recent
+     *                  unreplayed change
+     * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
+     *     that {@link Song#replay} posts, carrying the inverse changes
+     * @throws RuntimeException if a record cannot be applied — an index it names no longer
+     *                          exists, or an element it names is gone. This means the batch
+     *                          was replayed out of turn, incompletely, or against the wrong
+     *                          document; the song is then part way through the batch, and the
+     *                          caller is expected to treat it as an engine bug rather than a
+     *                          recoverable error.
+     */
+    public static void undoBatch(Song song, FontTarget fonts, List<Mutation> mutations) {
+        song.replay(() -> {
+            for (var i = mutations.size() - 1; i >= 0; i--) {
+                applyUndo(song, fonts, mutations.get(i));
+            }
+        });
+    }
+
+    /**
+     * Redoes the edit that recorded {@code mutations}, restoring {@code song} and its fonts
+     * to the state they held immediately after it: the records are re-applied in forward
+     * order, inside one {@link Song#replay}.
+     *
+     * <p>Exactly inverts {@link #undoBatch}, and takes the same preconditions, except that
+     * the song must be in the state that immediately <em>precedes</em> the edit.
+     *
+     * @param song      the song the batch was recorded against
+     * @param fonts     the holder of that song's document fonts
+     * @param mutations the whole batch of one edit, whose effect is the song's next
+     *                  unreplayed change
+     * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
+     *     that {@link Song#replay} posts, carrying the re-applied changes
+     * @throws RuntimeException under the conditions given for {@link #undoBatch}
+     */
+    public static void redoBatch(Song song, FontTarget fonts, List<Mutation> mutations) {
+        song.replay(() -> {
+            for (var mutation : mutations) {
+                applyRedo(song, fonts, mutation);
+            }
+        });
+    }
+
+    /**
      * Restores the before-state of {@code mutation}, undoing its forward effect: whatever
      * the mutation added is removed, whatever it removed is put back at the same index,
      * and whatever it changed is returned to the old value it recorded.
-     *
-     * <p>Exactly inverts {@link #applyRedo}: applying one and then the other, in either
-     * order, leaves the document as it was.
-     *
-     * @param scoreView the view holding the document the mutation was recorded against,
-     *                  with a modification bracket open and replay mode entered
-     * @param mutation  a mutation recorded against that document, whose forward effect is
-     *                  the document's most recent unreplayed change
-     * @throws RuntimeException if the mutation cannot be applied — an index it names no
-     *                          longer exists, or an element it names is gone. This means
-     *                          the batch was replayed out of order, incompletely, or
-     *                          against the wrong document, and the caller is expected to
-     *                          treat it as an engine bug rather than a recoverable error.
      */
-    public static void applyUndo(ScoreView scoreView, Mutation mutation) {
-        var song = scoreView.getSong();
-
+    private static void applyUndo(Song song, FontTarget fonts, Mutation mutation) {
         switch (mutation) {
             case ElementInsertion(var line, var index, var _) -> line.removeElement(index);
             case ElementDeletion(var line, var range, var deletedElements) -> {
@@ -123,9 +162,9 @@ public final class MutationReplayer {
             case ElementReplacement(var line, var index, var oldElement, var _) -> line.setElement(index, oldElement);
             case ElementModification modification -> {
                 var line = modification.line();
-                // Record into the replay bracket (via applyChange) so the closing
-                // endModification posts a SongDidChangeNotification and the view
-                // repaints; copyStateFrom keeps element identity (never setElement).
+                // Record into the replay's edit (via applyChange) so its close posts a
+                // SongDidChangeNotification and the view repaints; copyStateFrom keeps
+                // element identity (never setElement).
                 line.applyChange(modification, () ->
                     line.getElement(modification.index()).copyStateFrom(modification.beforeElement()));
             }
@@ -134,14 +173,14 @@ public final class MutationReplayer {
             case LineKeyChange(var line, var oldKey, var _) -> line.setKey(oldKey);
             case LineLayoutChange(var line, var field, var oldValue, var _) ->
                 applyLineLayoutField(line, field, oldValue);
-            case SpanAddition(var line, var element) -> element.removeFrom(line);
-            case SpanRemoval(var line, var element) -> element.addTo(line);
+            case SpanAddition(var line, var span) -> span.removeFrom();
+            case SpanRemoval(var line, var span) -> span.addTo();
             case TieAddition(var line, var anchor) -> line.removeTie(anchor);
             case TieRemoval(var line, var anchor) -> line.addTie(anchor);
             case MetadataChange(var field, var oldValue, var _) -> applyMetadataField(song, field, oldValue);
             case LayoutChange(var field, var oldValue, var _) -> applyLayoutField(song, field, oldValue);
             case LyricsChange(var field, var oldText, var _) -> applyLyricsField(song, field, oldText);
-            case FontChange(var oldFonts, var _) -> scoreView.setFonts(oldFonts);
+            case FontChange(var oldFonts, var _) -> fonts.setFonts(oldFonts);
         }
     }
 
@@ -149,19 +188,8 @@ public final class MutationReplayer {
      * Re-applies the forward effect of {@code mutation}, reproducing the change the
      * original edit made: what it added is added again at the same index, what it removed
      * is removed, and what it changed takes the new value it recorded.
-     *
-     * <p>Exactly inverts {@link #applyUndo}, and takes the same preconditions — an open
-     * bracket in replay mode, the same document, the batch replayed whole — except that
-     * the document must be in the state that immediately <em>precedes</em> the mutation.
-     *
-     * @param scoreView the view holding the document the mutation was recorded against
-     * @param mutation  a mutation recorded against that document, whose forward effect is
-     *                  the document's next unreplayed change
-     * @throws RuntimeException under the conditions given for {@link #applyUndo}
      */
-    public static void applyRedo(ScoreView scoreView, Mutation mutation) {
-        var song = scoreView.getSong();
-
+    private static void applyRedo(Song song, FontTarget fonts, Mutation mutation) {
         switch (mutation) {
             case ElementInsertion(var line, var index, var element) -> line.addElement(index, element);
             case ElementDeletion(var line, var range, var _) -> line.removeRange(range);
@@ -177,14 +205,14 @@ public final class MutationReplayer {
             case LineKeyChange(var line, var _, var newKey) -> line.setKey(newKey);
             case LineLayoutChange(var line, var field, var _, var newValue) ->
                 applyLineLayoutField(line, field, newValue);
-            case SpanAddition(var line, var element) -> element.addTo(line);
-            case SpanRemoval(var line, var element) -> element.removeFrom(line);
+            case SpanAddition(var line, var span) -> span.addTo();
+            case SpanRemoval(var line, var span) -> span.removeFrom();
             case TieAddition(var line, var anchor) -> line.addTie(anchor);
             case TieRemoval(var line, var anchor) -> line.removeTie(anchor);
             case MetadataChange(var field, var _, var newValue) -> applyMetadataField(song, field, newValue);
             case LayoutChange(var field, var _, var newValue) -> applyLayoutField(song, field, newValue);
             case LyricsChange(var field, var _, var newText) -> applyLyricsField(song, field, newText);
-            case FontChange(var _, var newFonts) -> scoreView.setFonts(newFonts);
+            case FontChange(var _, var newFonts) -> fonts.setFonts(newFonts);
         }
     }
 

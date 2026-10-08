@@ -21,17 +21,17 @@
 package songscribe.message.notification;
 
 import songscribe.message.Message;
-import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.playback.PlaybackState;
 
 public class PlaybackStateDidChangeNotification extends Message {
 
-    private final PlaybackController.PlaybackState state;
+    private final PlaybackState state;
 
-    public PlaybackStateDidChangeNotification(PlaybackController.PlaybackState state) {
+    public PlaybackStateDidChangeNotification(PlaybackState state) {
         this.state = state;
     }
 
-    public PlaybackController.PlaybackState getState() {
+    public PlaybackState getState() {
         return state;
     }
 }

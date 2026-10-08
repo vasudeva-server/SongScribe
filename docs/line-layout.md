@@ -60,11 +60,10 @@ measures the brackets, and the layout result carries them beside the ending's
 placement, so the renderer draws the brackets stacking measured rather than
 measuring its own. The ending itself holds none of it.
 
-A line lays out the ties it owns: the tie that starts on each of its notes, and
-the incoming half of a tie whose anchor is in the line before. A tie that
-crosses a line break is therefore two halves, each a complete arc placed by its
-own line: the first runs to the staff's right edge, and the second starts where
-the music of the next line does, past its clef and key signature.
+A line lays out the ties it owns, so a tie that crosses a line break is laid out
+as two halves, one by each line. Which ties a line owns is stated once, on
+`Line.ownedTies`; the shape of each half is in
+[tie-rendering-placement.md](tie-rendering-placement.md).
 
 ## Where the first note sits
 
@@ -156,9 +155,8 @@ these shapes.
 **Where a hairpin's tips stop** is a first-match cascade, from the notehead
 outward: a dynamic on the bound element pulls the tip back to that glyph's edge; a
 back-to-back hairpin meeting at the shared element stops both tips short of the
-notehead centre; a dynamic just outside the span pulls the tip similarly; a
-hairpin ending on a rest stops at the rest's left edge; otherwise the tip takes
-the note head's own edge.
+notehead centre; a dynamic just outside the span pulls the tip similarly;
+otherwise the tip takes the note head's own edge.
 
 Minimum length is applied by moving the **right** tip only, and never where a
 dynamic placed that tip — widening there would drive the wedge back under the
@@ -179,10 +177,10 @@ an invisible wedge. The pull-back is stated once, as an offset from the column
 origin, so spacing can ask for it before any column has a resolved position, and
 a test pins that the two readings agree.
 
-Three of the tip rules are deliberately **not** reserved for: a dynamic on the
-element *outside* the span pulls by an amount that depends on a neighbouring
-pair's spring, which the per-pair model cannot see, and the back-to-back and rest
-rules only ever shorten the wedge.
+Two of the tip rules are **not** reserved for: a dynamic on the element
+*outside* the span pulls by an amount that depends on a neighbouring pair's
+spring, which the per-pair model cannot see, and the back-to-back rule only ever
+shortens the wedge.
 
 Manual offsets still exist and are applied after layout with no collision re-run.
 They are an override on top of automatic coordination, not the only mechanism.

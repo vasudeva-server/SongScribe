@@ -65,12 +65,11 @@ public final class AttributionRenderer {
      * Draws the song's attribution block, if the line being rendered carries one.
      */
     public void render(LineInvariants invariants, Graphics2D g2) {
-        var layout = invariants.getLayoutResult().decorationLayouts()
-            .getDecorationLayout(invariants.getSong().getAttributionElement());
+        var typeset = invariants.getLayoutResult().decorationLayouts()
+            .getTypeset(invariants.getSong().getAttributionElement());
 
-        // Anything but a typeset layout means the block was never stacked — any line but the
-        // first, since the block is stacked with the content that gives it its size.
-        if (!(layout instanceof LayoutResult.DecorationLayout.Typeset typeset)) {
+        // No layout means the block was never stacked: any line but the first.
+        if (typeset == null) {
             return;
         }
 

@@ -76,6 +76,14 @@ class PackageDependencyTest extends UnitTest {
     }
 
     @Test
+    void shapeMustNotImportLayout() throws IOException {
+        var violations = findForbiddenImports("songscribe/shape", "songscribe.layout");
+        assertThat(violations)
+            .as("songscribe.shape must not import songscribe.layout")
+            .isEmpty();
+    }
+
+    @Test
     void layoutMustNotImportUi() throws IOException {
         var violations = findForbiddenImports("songscribe/layout", "songscribe.ui");
         assertThat(violations)

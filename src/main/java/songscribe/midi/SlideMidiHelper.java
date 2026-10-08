@@ -30,8 +30,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Calculation and MIDI message generation methods for slide playback.
  * <p>
- * Phase 1 methods (pure calculations) are static with no MIDI dependencies.
- * Phase 2 methods generate MIDI events on a {@link Track}.
+ * Pure calculations are static with no MIDI dependencies. Methods that generate MIDI events
+ * act on a {@link Track}.
  */
 public final class SlideMidiHelper {
 

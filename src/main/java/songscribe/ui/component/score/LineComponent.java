@@ -152,7 +152,7 @@ public class LineComponent extends ScoreComponent
      * True once the overflow alert has been shown for the current document, so it is shown once
      * and not once per overflowing line, per paint, or per episode. The red staff lines are the
      * standing indication from then on, and they clear themselves when the line fits again — so
-     * there is nothing a second alert would tell the user (refs #696). Reset by
+     * there is nothing a second alert would tell the user. Reset by
      * {@link #resetOverflowWarning} when a document is installed. EDT-only, so a plain static
      * boolean is safe.
      * <p>
@@ -442,7 +442,7 @@ public class LineComponent extends ScoreComponent
      * Deferred to a later EDT cycle because layout runs during paint; showing a modal dialog
      * synchronously would re-enter painting. The guard is set before the dialog rather than after
      * it, so the several lines that typically overflow together produce one alert instead of one
-     * each (refs #696).
+     * each.
      */
     private static void warnLineOverflows() {
         if (overflowWarningShown) {
@@ -487,7 +487,7 @@ public class LineComponent extends ScoreComponent
         var scale = getViewPixelsPerStaffSpace();
 
         // Layout always produces a result — an over-full line is placed on its collision floors
-        // and drawn clipped, not abandoned (refs #696) — so a null here is a broken invariant,
+        // and drawn clipped, not abandoned — so a null here is a broken invariant,
         // not a line that would not fit.
         var result = layoutResult;
 
@@ -527,7 +527,7 @@ public class LineComponent extends ScoreComponent
         // A line always spans the full document width, never just the extent of its last
         // element: LineRenderer draws the staff lines out to song.getLineWidthSs(), and
         // sizing the component any narrower clipped them there — an element-less line
-        // collapsed to zero width and vanished entirely (issue #578).
+        // collapsed to zero width and vanished entirely.
         //
         // The width is the staff width even for a line whose content overflows it: the overflow
         // is meant to be clipped at the end of the staff, and these bounds are what clip it.
@@ -561,7 +561,7 @@ public class LineComponent extends ScoreComponent
 
     /**
      * Builds the error for the unexpected case where the layout pass produced no result. Layout
-     * itself cannot fail — an over-full line is placed and drawn clipped (refs #696) — so this
+     * itself cannot fail — an over-full line is placed and drawn clipped — so this
      * means the pass never ran, which it skips only without a score view.
      */
     private RuntimeException unexpectedNullLayout() {
@@ -933,7 +933,7 @@ public class LineComponent extends ScoreComponent
         // left for the click that follows to resolve as a placement or a cancel. Without
         // this guard, a press on the staff lines in the header flips EDIT to SELECT and
         // selects the whole line, leaving the placement stuck pending with nothing placed.
-        // Replacing a line means selecting it before Cmd+V (see #612's Replace).
+        // Replacing a line means selecting it before Cmd+V.
         if (getInsertionPointMode().isInProgress()) {
             return;
         }

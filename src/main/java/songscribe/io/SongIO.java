@@ -36,10 +36,9 @@ import songscribe.Strings;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.ParsedSong;
 import songscribe.dom.PartialDate;
-import songscribe.dom.PendingEnding;
-import songscribe.dom.PendingHairpin;
-import songscribe.dom.PendingTuplet;
+import songscribe.dom.ReportedChange;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.StaffElement;
@@ -190,25 +189,12 @@ public final class SongIO {
         private final List<Line> parsedLines = new ArrayList<>();
         private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
 
-        // Populated by getSong(), from the reader's own pending tuplets migrated to
-        // staff-space units. Empty before getSong() has run.
-        private List<PendingTuplet> resolvedPendingTuplets = List.of();
-
-        // Populated by getSong(), from the reader's own line reader. Empty before getSong()
-        // has run.
-        private List<PendingEnding> resolvedPendingEndings = List.of();
-
-        // Populated by getSong(), from the reader's own pending hairpins migrated to
-        // staff-space units. Empty before getSong() has run.
-        private List<PendingHairpin> resolvedPendingHairpins = List.of();
-
         /**
          * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
          *
          * <p>{@link LegacyKeyType#keyFor} judges the pair, for this reader and the per-line one
          * alike — including which unrepresentable combinations mean C major and which are corrupt.
-         * Before it existed the two readers disagreed, this one normalizing a pair that
-         * {@code LineIO} refused to load.
+         * This reader normalizes a pair that {@code LineIO} refuses to load.
          *
          * @return the document-level key
          * @throws SAXException if the pair is not a key at all
@@ -638,38 +624,23 @@ public final class SongIO {
          * readers exists for a given file — {@code noteReader} for v1.0, {@code lineReader}
          * for later versions — so both are consulted.
          */
-        public boolean accidentalsConverted() {
+        private boolean accidentalsConverted() {
             return (noteReader != null && noteReader.sawLegacyAccidental())
                 || (lineReader != null && lineReader.sawLegacyAccidental());
         }
 
         /**
-         * Returns every tuplet this document's reader found, in staff-space units and with no
-         * stated ratio when the file states none, as {@link LoadPasses#run} requires them.
-         * Empty before {@link #getSong()} has run, and for a v1.0 document, which predates
-         * tuplets.
+         * Assembles and migrates the song this document holds. Call it once, after parsing
+         * completes.
+         *
+         * @return the assembled song, in staff-space units and migrated to the current format,
+         *     with the tuplets, endings and hairpins the reader found pending — none for a v1.0
+         *     document, which predates them — and, when the document named a retired accidental,
+         *     the accidentals-converted entry as its one reader entry; the load passes have not
+         *     run
+         * @throws SAXException if the document's song-level key tags name no key
          */
-        public List<PendingTuplet> pendingTuplets() {
-            return resolvedPendingTuplets;
-        }
-
-        /**
-         * Returns every ending this document's reader found. Empty before {@link #getSong()}
-         * has run, and for a v1.0 document, which predates endings.
-         */
-        public List<PendingEnding> pendingEndings() {
-            return resolvedPendingEndings;
-        }
-
-        /**
-         * Returns every hairpin this document's reader found, as {@link LoadPasses#run}
-         * requires them. Empty before {@link #getSong()} has run.
-         */
-        public List<PendingHairpin> pendingHairpins() {
-            return resolvedPendingHairpins;
-        }
-
-        public Song getSong() throws SAXException {
+        public ParsedSong getSong() throws SAXException {
             // For legacy files that predate the discrete attribution tags, derive
             // composer/lyricist (and, for v1.0 only, date/place) from the blob.
             if (isLegacyAttributionFile()) {
@@ -691,9 +662,6 @@ public final class SongIO {
             ctx.pendingHairpins = lineReader != null ? lineReader.pendingHairpins() : List.of();
 
             MigrationPipeline.runPreAssembly(ctx);
-            resolvedPendingTuplets = ctx.pendingTuplets;
-            resolvedPendingHairpins = ctx.pendingHairpins;
-            resolvedPendingEndings = lineReader != null ? lineReader.pendingEndings() : List.of();
 
             // Line 0 has nothing to inherit from, so it takes the document-level key when the
             // file gave it none of its own. Done before the lines reach the Song, because that
@@ -751,11 +719,20 @@ public final class SongIO {
             }
 
             // Run the post-assembly migrations against the assembled song
-            // (legacy lyric import + syllabic backfill).
+            // (legacy lyric import, grace-host melisma repair, syllabic backfill).
             ctx.song = song;
             MigrationPipeline.runPostAssembly(ctx);
 
-            return song;
+            var readerEntries = accidentalsConverted()
+                ? List.of(ParsedSong.accidentalsConvertedEntry())
+                : List.<ReportedChange>of();
+
+            return new ParsedSong(
+                song,
+                ctx.pendingTuplets,
+                lineReader != null ? lineReader.pendingEndings() : List.of(),
+                ctx.pendingHairpins,
+                readerEntries);
         }
 
         /**
@@ -777,7 +754,7 @@ public final class SongIO {
         /**
          * Returns the raw {@code lyricsDate} string from the file when it was
          * present but could not be parsed, or {@code null} when the tag was
-         * absent or valid.  Phase 3 uses this to show a warning to the user.
+         * absent or valid.  The load path uses this to show a warning to the user.
          */
         @Nullable
         public String getInvalidLyricsDate() {

@@ -23,84 +23,99 @@ package songscribe.ui;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.ui.MusicEditOperations.HairpinActionState;
-import songscribe.ui.MusicEditOperations.HairpinResolution;
-import songscribe.ui.selection.Selection;
-import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.RangeQueries.HairpinResolution;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
+import static songscribe.dom.SongFactory.lineOfQuavers;
+import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
- * What the hairpin menu resolves to for a selection. A selection at the start of a line, where
- * nothing comes before it for a hairpin to reach back into, resolves like any other. A selection
- * the hairpin rule refuses for its own range is ineligible; one it refuses because another
- * hairpin is in the way, or that a same-kind hairpin already covers, is blocked.
+ * What the hairpin menu resolves to for a selection. A crescendo flush with the selection is
+ * extended by the crescendo item, while the diminuendo item adds its own hairpin beside it, and a
+ * selection resolves so wherever it stands on the line. A selection the hairpin rule refuses for
+ * its own range is ineligible; one it refuses because another hairpin is in the way, or that a
+ * same-kind hairpin already covers, is blocked.
  */
 class MusicEditOperationsTest extends UnitTest {
 
-    /** A selection of two notes from the line's first element: the columns a new hairpin needs. */
-    private static final ElementRange FROM_FIRST = new ElementRange(0, 1);
+    /** The width of every hairpin and selection in this class's fixtures: two notes. */
+    private static final int NOTES_PER_HAIRPIN = 2;
 
-    /** A crescendo within reach of {@link #FROM_FIRST}'s end. */
-    private static final ElementRange FLUSH_AFTER =
-        new ElementRange(FROM_FIRST.end() + SPAN_ADJACENCY_REACH, FROM_FIRST.end() + SPAN_ADJACENCY_REACH + 1);
+    /** A selection that begins the line, where nothing comes before it for a hairpin to reach into. */
+    private static final ElementRange AT_LINE_START = new ElementRange(0, NOTES_PER_HAIRPIN - 1);
 
-    private static final int LINE_LENGTH = FLUSH_AFTER.end() + 1;
+    /** A selection with room for a hairpin on either side, clear of both ends of the line. */
+    private static final ElementRange MID_LINE = new ElementRange(
+        NOTES_PER_HAIRPIN + SPAN_ADJACENCY_REACH, 2 * NOTES_PER_HAIRPIN + SPAN_ADJACENCY_REACH - 1);
+
+    private static final int LINE_LENGTH = MID_LINE.end() + SPAN_ADJACENCY_REACH + NOTES_PER_HAIRPIN;
 
     /**
-     * One selection starting on the line's first element.
+     * One selection with a crescendo already on the line, within reach of it.
      *
      * @param description the case, as the test's display name
-     * @param existing    the crescendo already on the line, or null for none
-     * @param expected    what the crescendo item resolves to
+     * @param selection   the selected elements
+     * @param crescendo   the crescendo already on the line
      */
-    private record FirstElementCase(
-        String description,
-        @Nullable ElementRange existing,
-        HairpinResolution expected
-    ) {}
+    private record NeighborCase(String description, ElementRange selection, ElementRange crescendo) {}
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("firstElementCases")
-    void testASelectionFromTheFirstElementResolvesLikeAnyOther(FirstElementCase testCase) {
-        var line = lineOfQuavers(LINE_LENGTH);
-        var existing = testCase.existing();
+    /** The crescendo that begins within reach of {@code selection}'s end. */
+    private static ElementRange flushAfter(ElementRange selection) {
+        var begin = selection.end() + SPAN_ADJACENCY_REACH;
 
-        if (existing != null) {
-            crescendoOver(line, existing).addTo(line);
-        }
-
-        assertThat(resolve(line, FROM_FIRST, Hairpin.Kind.CRESCENDO)).isEqualTo(testCase.expected());
+        return new ElementRange(begin, begin + NOTES_PER_HAIRPIN - 1);
     }
 
-    static Stream<FirstElementCase> firstElementCases() {
+    /** The crescendo that ends within reach of {@code selection}'s start. */
+    private static ElementRange flushBefore(ElementRange selection) {
+        var end = selection.begin() - SPAN_ADJACENCY_REACH;
+
+        return new ElementRange(end - NOTES_PER_HAIRPIN + 1, end);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("neighborCases")
+    void testACrescendoFlushWithTheSelectionExtendsWhileADiminuendoAddsOnTheSameLine(NeighborCase testCase) {
+        var line = lineOfQuavers(LINE_LENGTH);
+        hairpinOver(line, Hairpin.Kind.CRESCENDO, testCase.crescendo()).addTo();
+
+        assertThat(resolve(line, testCase.selection(), Hairpin.Kind.CRESCENDO))
+            .isInstanceOf(HairpinResolution.Extend.class);
+        assertThat(resolve(line, testCase.selection(), Hairpin.Kind.DIMINUENDO))
+            .isInstanceOf(HairpinResolution.Add.class);
+    }
+
+    static Stream<NeighborCase> neighborCases() {
         return Stream.of(
-            new FirstElementCase("with no hairpin nearby, the item adds over the selection",
-                null,
-                new HairpinResolution(HairpinActionState.CAN_ADD, FROM_FIRST)),
-            new FirstElementCase("with a crescendo flush after it, the item extends over both",
-                FLUSH_AFTER,
-                new HairpinResolution(
-                    HairpinActionState.EXTEND, new ElementRange(FROM_FIRST.begin(), FLUSH_AFTER.end())))
+            new NeighborCase("a crescendo flush after a selection at the line start",
+                AT_LINE_START, flushAfter(AT_LINE_START)),
+            new NeighborCase("a crescendo flush after a selection mid-line",
+                MID_LINE, flushAfter(MID_LINE)),
+            new NeighborCase("a crescendo flush before a selection mid-line",
+                MID_LINE, flushBefore(MID_LINE))
         );
     }
 
-    private static final HairpinResolution INELIGIBLE = new HairpinResolution(HairpinActionState.INELIGIBLE, null);
-    private static final HairpinResolution BLOCKED = new HairpinResolution(HairpinActionState.BLOCKED, null);
+    @ParameterizedTest
+    @EnumSource(Hairpin.Kind.class)
+    void testWithNoHairpinNearbyEveryItemAddsOverTheSelection(Hairpin.Kind kind) {
+        var line = lineOfQuavers(LINE_LENGTH);
+
+        assertThat(resolve(line, AT_LINE_START, kind)).isInstanceOf(HairpinResolution.Add.class);
+    }
 
     /** A crescendo that a diminuendo over {@link #OVERLAPPING} shares two elements with. */
     private static final ElementRange OVERLAPPED = new ElementRange(0, 2);
@@ -113,20 +128,20 @@ class MusicEditOperationsTest extends UnitTest {
     private static final ElementRange INSIDE = new ElementRange(1, 2);
 
     /**
-     * One selection, and what an item resolves to for it.
+     * One selection, and the kind of resolution an item gets for it.
      *
      * @param description the case, as the test's display name
      * @param line        builds the line, with any crescendo already on it
      * @param selection   the selected elements
      * @param kind        the kind of the item asked
-     * @param expected    what the item resolves to
+     * @param expected    the kind of resolution the item gets
      */
     private record SelectionCase(
         String description,
         Supplier<Line> line,
         ElementRange selection,
         Hairpin.Kind kind,
-        HairpinResolution expected
+        Class<? extends HairpinResolution> expected
     ) {}
 
     @ParameterizedTest(name = "{0}")
@@ -134,42 +149,31 @@ class MusicEditOperationsTest extends UnitTest {
     void testARefusalOfTheRangeIsIneligibleAndAnotherHairpinInTheWayIsBlocked(SelectionCase testCase) {
         var line = testCase.line().get();
 
-        assertThat(resolve(line, testCase.selection(), testCase.kind())).isEqualTo(testCase.expected());
+        assertThat(resolve(line, testCase.selection(), testCase.kind())).isInstanceOf(testCase.expected());
     }
 
     static Stream<SelectionCase> selectionCases() {
         return Stream.of(
             new SelectionCase("one note and the rest after it is ineligible",
-                () -> lineOf(quaver(), crotchetRest()), new ElementRange(0, 1), Hairpin.Kind.CRESCENDO, INELIGIBLE),
+                () -> lineOf(quaver(), crotchetRest()), new ElementRange(0, 1), Hairpin.Kind.CRESCENDO,
+                HairpinResolution.Ineligible.class),
             new SelectionCase("a diminuendo sharing two elements with a crescendo is blocked",
-                () -> lineWithCrescendo(OVERLAPPED, OVERLAPPING), OVERLAPPING, Hairpin.Kind.DIMINUENDO, BLOCKED),
+                () -> lineWithCrescendo(OVERLAPPED, OVERLAPPING), OVERLAPPING, Hairpin.Kind.DIMINUENDO,
+                HairpinResolution.Blocked.class),
             new SelectionCase("a selection a crescendo already covers leaves nothing to extend",
-                () -> lineWithCrescendo(COVERING, COVERING), INSIDE, Hairpin.Kind.CRESCENDO, BLOCKED)
+                () -> lineWithCrescendo(COVERING, COVERING), INSIDE, Hairpin.Kind.CRESCENDO,
+                HairpinResolution.Blocked.class)
         );
     }
 
     private static HairpinResolution resolve(Line line, ElementRange selection, Hairpin.Kind kind) {
-        var coordinator = mock(SelectionCoordinator.class);
-        when(coordinator.getRange()).thenReturn(new Selection.Range(line, selection, selection.begin()));
-        var operations = new MusicEditOperations(line.getSong(), coordinator);
-
-        return operations.resolveHairpinAction(kind);
+        return RangeQueries.resolveHairpin(new ElementSelection(line, selection), kind);
     }
 
     /** A line of quavers long enough for {@code extent}, holding a crescendo over {@code crescendo}. */
     private static Line lineWithCrescendo(ElementRange crescendo, ElementRange extent) {
         var line = lineOfQuavers(extent.end() + 1);
-        crescendoOver(line, crescendo).addTo(line);
-        return line;
-    }
-
-    private static Line lineOf(StaffElement... elements) {
-        var line = detachedLine();
-
-        for (var element : elements) {
-            line.addElement(element);
-        }
-
+        hairpinOver(line, Hairpin.Kind.CRESCENDO, crescendo).addTo();
         return line;
     }
 }

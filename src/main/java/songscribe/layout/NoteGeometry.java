@@ -25,9 +25,6 @@ import songscribe.smufl.StemmedNotehead;
  * Geometry constants and stateless calculations for notes, noteheads, stems,
  * ledger lines, and accidentals. This class centralises layout-time geometry
  * so that layout algorithms do not need to import renderer classes.
- *
- * <p>{@link #initializeAccidentalWidths()} must be called before any accidental
- * query method.
  */
 public final class NoteGeometry {
 
@@ -115,12 +112,17 @@ public final class NoteGeometry {
      * following LilyPond's pad-by-one-dot-width convention: the dot sits one augmentation-dot width
      * to the right of the note's right-most obstruction. That obstruction is the notehead, unless an
      * unbeamed up-stem flag extends further right.
+     *
+     * @param note      the dotted note
+     * @param beaming   whether the note is beamed, which decides whether it draws a flag
+     * @param direction the note's drawn stem direction
+     * @return the first dot's X, relative to the note's glyph origin
      */
-    public static double firstDotXSs(NoteElement note, boolean beamed, Direction direction) {
+    public static double firstDotXSs(NoteElement note, Beaming beaming, Direction direction) {
         var obstructionRightSs = SMuFLMetadata.bboxSs(note.notehead().glyph()).rightSs();
 
         if (direction.isUp()) {
-            var flagBBox = flagBBoxLocalSs(note, Direction.UP, beamed);
+            var flagBBox = flagBBoxLocalSs(note, Direction.UP, beaming);
 
             if (flagBBox != null) {
                 obstructionRightSs = Math.max(obstructionRightSs, flagBBox.getMaxX());
@@ -134,9 +136,14 @@ public final class NoteGeometry {
      * Computes the position of each augmentation dot for a note and passes
      * (dotX, yOffset) to the consumer. Both values are in staff spaces,
      * relative to the note's glyph origin.
+     *
+     * @param note      the note, which may have no dots
+     * @param beaming   whether the note is beamed, which decides whether it draws a flag
+     * @param direction the note's drawn stem direction
+     * @param consumer  receives each dot's X and Y offset, left to right
      */
     public static void forEachDotPosition(
-        NoteElement note, boolean beamed, Direction direction,
+        NoteElement note, Beaming beaming, Direction direction,
         BiConsumer<? super Double, ? super Double> consumer
     ) {
         if (note.dots() == Dots.NONE) {
@@ -146,7 +153,7 @@ public final class NoteGeometry {
         // Dots shift up when note is on a line (even staff position)
         var yOffset = note.getStaffPosition().isOnLine() ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
-        var dotX = firstDotXSs(note, beamed, direction);
+        var dotX = firstDotXSs(note, beaming, direction);
 
         for (var i = 0; i < note.dots().count(); i++) {
             consumer.accept(dotX, yOffset);
@@ -159,9 +166,15 @@ public final class NoteGeometry {
      * dots, or {@code baseRightSs} when the note has no dots. Derived from the same dot positions
      * {@link #forEachDotPosition} feeds the renderer, so the space layout reserves matches the ink
      * actually painted.
+     *
+     * @param note        the note, which may have no dots
+     * @param beaming     whether the note is beamed, which decides whether it draws a flag
+     * @param direction   the note's drawn stem direction
+     * @param baseRightSs the right extent without dots, relative to the note's glyph origin
+     * @return the larger of {@code baseRightSs} and the last dot's right edge
      */
     public static double dotsRightExtentSs(
-        NoteElement note, boolean beamed, Direction direction, double baseRightSs
+        NoteElement note, Beaming beaming, Direction direction, double baseRightSs
     ) {
         if (note.dots() == Dots.NONE) {
             return baseRightSs;
@@ -170,7 +183,7 @@ public final class NoteGeometry {
         var dotRightSs = SMuFLMetadata.bboxSs(SMuFLGlyph.AUGMENTATION_DOT).rightSs();
         var maxRightSs = new double[]{baseRightSs};
 
-        forEachDotPosition(note, beamed, direction, (dotX, yOffset) ->
+        forEachDotPosition(note, beaming, direction, (dotX, yOffset) ->
             maxRightSs[0] = Math.max(maxRightSs[0], dotX + dotRightSs));
 
         return maxRightSs[0];
@@ -304,42 +317,38 @@ public final class NoteGeometry {
     public static final float GRACE_ACCIDENTAL_PADDING_SS =
         ElementType.GRACE_NOTE_SCALE * ACCIDENTAL_PADDING_SS;
 
-    // Cached accidental widths (computed on first use via initializeAccidentalWidths())
-    private static float @Nullable [] baseAccidentalWidthsSs = null;
-
-    // Cached accidental bounding boxes, indexed by Accidental.ordinal().
-    private static @Nullable BBox @Nullable [] baseAccidentalBoundsSs = null;
-
-    private NoteGeometry() {}
-
-    // ==========================================================================
-    // Initialization
-    // ==========================================================================
-
     /**
-     * Initialises the cached accidental widths and bounding boxes from SMuFL metadata.
-     * Must be called once before any accidental query method.
+     * The regular-size accidental widths and bounding boxes, indexed by {@link Accidental#ordinal()}.
+     * The class loads on the first accidental query, so no caller has to prepare them.
      */
-    public static void initializeAccidentalWidths() {
-        if (baseAccidentalWidthsSs != null) {
-            return;
+    private static final class AccidentalTables {
+        static final float[] WIDTHS_SS = widthsSs();
+        static final BBox[] BOUNDS_SS = boundsSs();
+
+        private static float[] widthsSs() {
+            var accidentals = Accidental.values();
+            var widthsSs = new float[accidentals.length];
+
+            for (var i = 0; i < accidentals.length; i++) {
+                widthsSs[i] = (float) SMuFLMetadata.advanceWidthSs(accidentals[i].glyph());
+            }
+
+            return widthsSs;
         }
 
-        var accidentals = Accidental.values();
-        var count = accidentals.length;
+        private static BBox[] boundsSs() {
+            var accidentals = Accidental.values();
+            var boundsSs = new BBox[accidentals.length];
 
-        baseAccidentalWidthsSs = new float[count];
+            for (var i = 0; i < accidentals.length; i++) {
+                boundsSs[i] = computeAccidentalBounds(accidentals[i].glyph(), WIDTHS_SS[i]);
+            }
 
-        for (var i = 0; i < count; i++) {
-            baseAccidentalWidthsSs[i] = (float) SMuFLMetadata.advanceWidthSs(accidentals[i].glyph());
-        }
-
-        baseAccidentalBoundsSs = new BBox[count];
-
-        for (var i = 0; i < count; i++) {
-            baseAccidentalBoundsSs[i] = computeAccidentalBounds(accidentals[i].glyph(), baseAccidentalWidthsSs[i]);
+            return boundsSs;
         }
     }
+
+    private NoteGeometry() {}
 
     // ==========================================================================
     // Accidental Geometry
@@ -357,13 +366,7 @@ public final class NoteGeometry {
             return 0;
         }
 
-        var baseWidths = baseAccidentalWidthsSs;
-
-        if (baseWidths == null) {
-            throw RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
-        }
-
-        var widthSs = baseWidths[accidental.ordinal()];
+        var widthSs = AccidentalTables.WIDTHS_SS[accidental.ordinal()];
 
         return note.getType().isGraceNote() ? ElementType.GRACE_NOTE_SCALE * widthSs : widthSs;
     }
@@ -400,13 +403,6 @@ public final class NoteGeometry {
      * @return the accidental's bounds relative to the notehead glyph's origin, or {@code null}
      */
     public static @Nullable BBox getAccidentalBoundsSs(NoteElement note) {
-        return accidentalBoundsFromTables(note, baseAccidentalBoundsSs);
-    }
-
-    private static @Nullable BBox accidentalBoundsFromTables(
-        NoteElement note,
-        @Nullable BBox @Nullable [] table
-    ) {
         var accidental = note.drawnAccidental();
 
         if (accidental == null) {
@@ -418,11 +414,7 @@ public final class NoteGeometry {
             return null;
         }
 
-        if (table == null) {
-            throw RuntimeError.exit("accidentalBoundsFromTables() called before initializeAccidentalWidths()");
-        }
-
-        return table[accidental.ordinal()];
+        return AccidentalTables.BOUNDS_SS[accidental.ordinal()];
     }
 
     // ==========================================================================
@@ -563,8 +555,7 @@ public final class NoteGeometry {
     /**
      * Returns the X offset of the notehead origin relative to the note's column X, in staff spaces.
      * Always zero: noteheads are drawn at the column X regardless of stem direction, so up-stem and
-     * down-stem noteheads align horizontally. (Down-stem heads were formerly shifted left by half a
-     * stem width; that shift only pushed the whole note off its reference and has been removed.)
+     * down-stem noteheads align horizontally.
      */
     @SuppressWarnings("SameReturnValue")
     public static float getNoteheadXOffsetSs(ElementType noteType, Direction direction) {
@@ -583,19 +574,20 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the absolute X of the left edge of a {@code widthSs}-wide glyph centered over
-     * {@code note}'s notehead — an articulation, a text dynamic, anything drawn over the head.
+     * Returns the footprint of a {@code widthSs}-wide glyph centered over the notehead of
+     * {@code host}'s element — an articulation, a text dynamic, anything drawn over the head.
      * <p>
      * This is the one place the centering is expressed, so a dynamic and an articulation over the
      * same note can never drift apart: change the rule here and both move together.
      *
-     * @param note      the note the glyph sits over
-     * @param columnXSs the absolute X of the note's column
-     * @param widthSs   the glyph's width in staff spaces
-     * @return the glyph's absolute left edge in staff spaces
+     * @param host    the element the glyph sits over, with its column's absolute X
+     * @param widthSs the glyph's width in staff spaces
+     * @return the glyph's footprint, {@code widthSs} wide, in absolute staff spaces
      */
-    public static double centeredOverNoteheadXSs(StaffElement note, double columnXSs, double widthSs) {
-        return columnXSs + getNoteheadCenterXSs(note) - widthSs / 2.0;
+    public static Footprint centeredOverNotehead(ElementAtColumn<?> host, double widthSs) {
+        var xSs = host.columnXSs() + getNoteheadCenterXSs(host.element()) - widthSs / 2.0;
+
+        return new Footprint(xSs, widthSs);
     }
 
     /**
@@ -621,12 +613,18 @@ public final class NoteGeometry {
      * returned origin matches the renderer's paint origin: non-grace flags anchor at the stem's
      * left edge, while grace flags use {@link #getGraceFlagOriginXSs} and are scaled by
      * {@link ElementType#GRACE_NOTE_SCALE}.
+     *
+     * @param note      the note
+     * @param direction the stem direction the flag hangs from
+     * @param beaming   whether the note is beamed; a beamed note draws no flag
+     * @return the flag's bounds in note-local staff spaces, or {@code null} when the note is
+     *     beamed, stemless, or its type has no flag glyph
      */
     @Nullable
-    public static Rectangle2D flagBBoxLocalSs(NoteElement note, Direction direction, boolean beamed) {
+    public static Rectangle2D flagBBoxLocalSs(NoteElement note, Direction direction, Beaming beaming) {
         var noteType = note.getType();
 
-        if (beamed || !noteType.isNoteWithStem()) {
+        if (beaming == Beaming.BEAMED || !noteType.isNoteWithStem()) {
             return null;
         }
 

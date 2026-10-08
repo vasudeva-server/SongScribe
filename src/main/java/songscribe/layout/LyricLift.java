@@ -110,7 +110,7 @@ public final class LyricLift {
             // ElementColumn#getFlagExtentSs): the requirement is a lyric-clearance need, measured
             // from the notehead, and the flag has no bearing on it. Leaving the flag in would let an
             // unrelated stem flip change which gap "wins" the largest-shortfall vote and so silently
-            // change the lift applied to the whole line (refs #629).
+            // change the lift applied to the whole line.
             var restExcludingFlagSs = spring.restSs() - columns.get(i).getFlagExtentSs();
             var shortfallSs = requirementSs - restExcludingFlagSs;
 

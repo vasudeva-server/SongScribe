@@ -36,6 +36,9 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
     public static final double TRILL_GLYPH_WIDTH_SS;
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
+    /** The heading a removed trill is reported under. */
+    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_TRILLS_REMOVED;
+
     static {
         var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.ORNAMENT_TRILL);
         TRILL_GLYPH_WIDTH_SS = bbox.widthSs();
@@ -72,7 +75,7 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
 
     @Override
     protected String reportHeadingKey() {
-        return Strings.DIALOG_REPORT_TRILLS_REMOVED;
+        return REPORT_HEADING_KEY;
     }
 
     @Override
@@ -80,16 +83,9 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
         return new Trill(newAnchor, newEnd);
     }
 
-    @Override
-    protected void copyOwnStateFrom(Span<StaffElement> source) {
-    }
-
     /**
      * Returns the width of the trill "tr" glyph in staff-space units — the glyph's own width,
-     * not the span the wavy line covers, which {@code TrillGeometry.getSpanWidthSs} computes.
-     * <p>
-     * For vertical stacking, only the glyph width matters since the wavy
-     * extension is drawn at the same Y level.
+     * not the extent the wavy line covers, which {@code TrillGeometry.inkExtentSs} computes.
      *
      * @return the glyph's width in staff spaces
      */

@@ -20,6 +20,8 @@
 
 package songscribe.dom;
 
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
@@ -42,8 +44,8 @@ import songscribe.message.mutation.SpanRemoval;
  * <p><b>Endpoint typing.</b> A kind states its endpoint type as the type argument {@code E} and
  * passes that type's class to the constructor. The constructor, the two getters and
  * {@link #copy} are typed by {@code E}, so the compiler keeps every other endpoint out. Three
- * places turn a bare {@link StaffElement} into an endpoint — {@code LineSpans.repoint},
- * {@code LineSpans.mergeOverlapping} and {@code Fragment.cloneSpans} — and each narrows it
+ * places turn a bare {@link StaffElement} into an endpoint — {@code LineSpans.repointEndpoints},
+ * {@code LineSpans.mergeOverlapping} and {@code Fragment.cloneOnto} — and each narrows it
  * through {@link #narrowEndpoint}, which checks it against the class the kind passed.
  * {@link Beam} ({@code Span<NoteElement>}) is the one kind whose endpoint type is narrower than
  * {@link StaffElement}.
@@ -52,6 +54,9 @@ import songscribe.message.mutation.SpanRemoval;
  */
 public abstract sealed class Span<E extends StaffElement> extends LineElement implements LineContent
     permits Beam, Hairpin, Tuplet, Trill, Ending {
+
+    /** The fewest pitched notes {@link #holdsEnoughPitchedNotes} accepts. */
+    static final int MIN_PITCHED_NOTES = 2;
 
     /** The class of {@code E}, which {@link #narrowEndpoint} checks an element against. */
     private final Class<E> endpointType;
@@ -86,6 +91,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Sets the first element in this range.
+     *
+     * @param anchorElement the new anchor, an element of this span's line
      */
     void setAnchorElement(E anchorElement) {
         this.anchorElement = anchorElement;
@@ -102,6 +109,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Sets the last element in this range.
+     *
+     * @param endElement the new end, an element of this span's line
      */
     void setEndElement(E endElement) {
         this.endElement = endElement;
@@ -155,21 +164,29 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     // ========================================================================
 
     /**
-     * Adds this span to {@code line}'s span registry, first displacing whatever same-kind spans
+     * Adds this span to its line's span registry, first displacing whatever same-kind spans
      * this kind's {@link #displacement()} says it may not coexist with.
      * <p>
      * Each displacement is its own recorded mutation, emitted before this span's addition so
      * undo restores the displaced spans after removing this one. Displacement is skipped while
      * {@link Song#isReplaying()}: the recorded batch already carries the companion mutations,
-     * and re-deriving them would apply them twice. An absorbing displacement may widen this
-     * span's endpoints before it is added, which is what a merge is.
+     * and re-deriving them would apply them twice.
+     * <p>
+     * An absorbing displacement widens this span's endpoints over the same-kind spans it absorbs
+     * before it is added, which is what a merge is. A hairpin from {@link Hairpin#spanning},
+     * added before any other span joins its line, already covers the range its absorption
+     * reaches, so the displacement moves neither of its endpoints and only removes the hairpins
+     * it absorbs.
      *
-     * @param line the line this span is being added to; both of this span's endpoints sit in it
      * @effects posts one {@link SpanRemoval} per displaced span, then a {@link SpanAddition} for
-     *     this span, through the line's song, and appends this span to the registry; what is
+     *     this span, through the line's song, and appends this span to the registry; under
+     *     {@link Displacement#REPLACE_OVERLAPPING}, each displaced span is also reported, through
+     *     {@link #removeReported} with {@link Strings#DIALOG_REPORT_REASON_REPLACED}; what is
      *     recorded, and what is thrown outside a bracket, is {@link Song#applyChange}'s promise
+     * @throws IllegalStateException under the conditions {@link #line} throws
      */
-    public final void addTo(Line line) {
+    public final void addTo() {
+        var line = line();
         var spans = line.spanRegistry();
 
         if (!line.getSong().isReplaying()) {
@@ -200,6 +217,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * override it to narrow the test further, and an override must still require the same
      * concrete class.
      *
+     * @param other the span to compare with, of any kind
      * @return {@code true} when adding this span may displace {@code other}
      */
     boolean isSameKindAs(Span<?> other) {
@@ -207,8 +225,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     }
 
     /**
-     * Removes this span from {@code line}'s span registry if it is there, recording its
-     * removal, and is a no-op otherwise.
+     * Removes this span from its line's span registry if it is there, recording its
+     * removal, and is a no-op otherwise. Requires that the span's anchor is in a line.
      * <p>
      * The no-op is a promise, not an accident: a second call finds nothing left to remove and
      * records nothing. A caller that cannot cheaply tell whether an earlier step
@@ -220,13 +238,12 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * This is for a removal the user asked for. A removal the user did not directly request
      * goes through {@link #removeReported}, which reports it and then calls this.
      *
-     * @param line the line this span is being removed from
      * @effects when this span is in the registry, posts a {@link SpanRemoval} through the line's
      *     song and removes the span; otherwise nothing. What is recorded, and what is thrown
      *     outside a bracket, is {@link Song#applyChange}'s promise
      */
-    public final void removeFrom(Line line) {
-        line.spanRegistry().remove(this);
+    public final void removeFrom() {
+        line().spanRegistry().remove(this);
     }
 
     /**
@@ -235,39 +252,29 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * change to; a kind with a rule of its own overrides it, and states that rule as one switch
      * over the change.
      * <p>
-     * <b>The decision is made before the change lands.</b> {@code change.line()} is the line
-     * being changed, still in its pre-change state; every judgement must be made against the
-     * change's own terms or against {@link ElementChange#projectedElements}, which is what the
-     * line will look like afterwards, and never by reading the line as though the change had
-     * landed. Undo replays a step's mutations in reverse, so the companion span
-     * mutation this answer produces has to be recorded <em>before</em> the primary element
-     * mutation — deciding after the fact would record a span already re-pointed at the new
-     * element, and undo would restore it broken.
-     * <p>
-     * <b>A replacement re-points, it does not delete.</b> {@link Line#replace} points any
-     * span whose anchor or end was a replaced element at that element's replacement. So under
-     * {@link ElementChange.Replacement}, a span whose endpoint is a replaced element must be
-     * read as having that endpoint become its replacement
-     * ({@link ElementChange.Replacement#replacementOf}) — <em>not</em> as having lost an
-     * endpoint. {@link ElementChange#projectedEndpointIndexOf} reads an endpoint this way.
-     * Reading the replaced element as deleted would silently remove every span whose endpoint
-     * is edited.
+     * {@code change.line()} is still in its pre-change state; judge against the change's own
+     * terms or {@link ElementChange#projectedElements}, never against the line as though the
+     * change had landed. {@link LineSpans#sweep} states why. Read an endpoint through
+     * {@link ElementChange#projectedEndpointIndexOf}, which states how a replacement re-points
+     * it.
      * <p>
      * The default is the rule every kind shares and the whole of {@link Trill}'s:
      * a deletion that takes an endpoint ({@link #isEndpointDeletedBy}) removes the span, for the
      * reason {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED}, and every other change keeps
      * it.
      * <p>
-     * A span either survives a change or it does not, which is all {@link SpanOutcome} can say.
-     * A hairpin is the one kind that can survive in a different shape, and the sweep asks it
-     * that wider question through {@link Hairpin#hairpinOutcomeFor(ElementChange)} instead.
+     * This is the one question the sweep asks every span kind, and {@link SpanOutcome} holds its
+     * three answers: {@link SpanOutcome.Keep}, {@link SpanOutcome.Remove} and
+     * {@link SpanOutcome.Reshape}. Only {@link Hairpin} answers {@code Reshape}, since a hairpin
+     * is the only kind an edit reshapes; every other kind keeps or removes.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
      * @return a {@link SpanOutcome.Remove} carrying the key of the reason this span's rule gives
-     *     when this span cannot survive {@code change}, otherwise {@link SpanOutcome.Keep#INSTANCE}
+     *     when this span cannot survive {@code change}; for a hairpin that survives over a range
+     *     of its own, a {@link SpanOutcome.Reshape}; otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     public SpanOutcome outcomeFor(ElementChange change) {
-        return removeWhen(
+        return outcomeWhen(
             change instanceof ElementChange.Deletion deletion && isEndpointDeletedBy(deletion),
             Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
     }
@@ -276,6 +283,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * Whether {@code deletion} takes this span's anchor or its end — the rule every kind
      * shares, since a span cannot be drawn without both endpoints.
      *
+     * @param deletion the pending deletion, on this span's line
      * @return {@code true} when the deleted elements include the anchor or the end
      */
     protected final boolean isEndpointDeletedBy(ElementChange.Deletion deletion) {
@@ -293,7 +301,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * @return a {@link SpanOutcome.Remove} carrying {@code reasonKey} when {@code invalidated},
      *     otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
-    protected static SpanOutcome removeWhen(boolean invalidated, String reasonKey) {
+    protected static SpanOutcome outcomeWhen(boolean invalidated, String reasonKey) {
         return invalidated ? new SpanOutcome.Remove(reasonKey) : SpanOutcome.Keep.INSTANCE;
     }
 
@@ -339,11 +347,26 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * @throws IllegalStateException under the conditions {@link #location} throws
      */
     public ReportedChange reportedAs(String reasonKey) {
-        return new ReportedChange(reportHeadingKey(), Strings.get(reasonKey), location());
+        return reportedAt(reasonKey, location());
     }
 
     /**
-     * Removes this span from {@code line}'s span registry and tells the user why.
+     * The report entry for removing this span for the reason {@code reasonKey} names, at
+     * {@code where}. A caller uses this in place of {@link #reportedAs} when the span's endpoints
+     * are not in its line, so {@link #location} cannot locate it.
+     *
+     * @param reasonKey the {@code Strings} key of the reason, whose value is plain text
+     * @param where the elements to locate the entry at, or {@code null} for an entry with no
+     *     location
+     * @return an entry under {@link #reportHeadingKey}, whose description is the reason's text
+     *     and whose location is {@code where}
+     */
+    public ReportedChange reportedAt(String reasonKey, @Nullable ElementLocationRange where) {
+        return new ReportedChange(reportHeadingKey(), Strings.get(reasonKey), where);
+    }
+
+    /**
+     * Removes this span from its line's span registry and tells the user why.
      * <p>
      * Every removal the user did not directly request — one a rule, a sweep, a replacing
      * displacement, a paste or a load makes on its own — goes through this method, so none is silent.
@@ -351,19 +374,18 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * which the merged span covers; neither needs a report.
      * <p>
      * Unlike {@link #removeFrom}, a second call is not a no-op: it reports again. The caller
-     * holds a span that is in {@code line}'s registry.
+     * holds a span that is in its line's registry.
      *
-     * @param line      the line this span is being removed from; this span is in its registry
      * @param reasonKey the {@code Strings} key of the reason the removal is reported with
      * @effects records {@link #reportedAs reportedAs(reasonKey)} through {@link Song#report},
-     *     which records nothing during replay or while tracking is suspended, then does what
+     *     which records nothing while tracking is suspended, then does what
      *     {@link #removeFrom} does
      * @throws IllegalStateException under the conditions {@link #location} throws, or when
      *     tracking is on and no modification bracket is open
      */
-    public final void removeReported(Line line, String reasonKey) {
-        line.getSong().report(reportedAs(reasonKey));
-        removeFrom(line);
+    public final void removeReported(String reasonKey) {
+        line().getSong().report(reportedAs(reasonKey));
+        removeFrom();
     }
 
     /**
@@ -426,19 +448,54 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     }
 
     /**
+     * Whether {@code range} of {@code elements} holds at least {@value #MIN_PITCHED_NOTES}
+     * pitched notes, the fewest a {@link Hairpin} or a {@link Tuplet} may hold. Each draws a
+     * wedge or a bracket from its first pitched note to its last, which has no slope across
+     * fewer, and a tuplet whose span holds fewer has nothing for its number to count.
+     *
+     * <p>Only a note whose {@link ElementType#isPitchedNote()} holds counts. A grace note does
+     * not: it sounds against the note it precedes, so a grace note and its host count once. A
+     * rest does not, nor does any element that is not a note.
+     *
+     * @param elements a line's elements, as they are or as a pending change projects them
+     * @param range    the span's range in {@code elements}
+     * @return {@code true} when at least {@value #MIN_PITCHED_NOTES} elements of {@code range}
+     *     are pitched notes
+     */
+    static boolean holdsEnoughPitchedNotes(List<? extends StaffElement> elements, ElementRange range) {
+        var count = 0;
+
+        for (var index = range.begin(); index <= range.end(); index++) {
+            if (elements.get(index).getType().isPitchedNote()) {
+                count++;
+            }
+        }
+
+        return count >= MIN_PITCHED_NOTES;
+    }
+
+    /**
      * A test on a span's inclusive range, from its anchor's index to its end's.
      */
     @FunctionalInterface
-    public interface IndexPredicate {
+    public interface RangePredicate {
+
+        /**
+         * Whether a span over {@code spanRange} matches.
+         *
+         * @param spanRange the span's range, from its anchor's index to its end's, in its line
+         * @return {@code true} when the span matches
+         */
         boolean test(ElementRange spanRange);
     }
 
     /**
      * A predicate matching a span whose anchor-to-end range includes {@code elementIndex}.
      *
+     * @param elementIndex an index in the span's line
      * @return a predicate that is {@code true} for a range containing {@code elementIndex}
      */
-    public static IndexPredicate containing(int elementIndex) {
+    public static RangePredicate containing(int elementIndex) {
         return spanRange -> spanRange.contains(elementIndex);
     }
 
@@ -446,9 +503,10 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * A predicate matching a span sharing at least one element with {@code range}: its anchor at
      * or before {@code range}'s last element and its end at or after {@code range}'s first.
      *
+     * @param range the elements to test against, as indices in the span's line
      * @return a predicate that is {@code true} for a range sharing an element with {@code range}
      */
-    public static IndexPredicate overlapping(ElementRange range) {
+    public static RangePredicate overlapping(ElementRange range) {
         return spanRange -> spanRange.overlaps(range);
     }
 
@@ -461,10 +519,11 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * wedges back away from that shared column (LilyPond's back-to-back rule). More
      * than that one element in common is a genuine collision.
      *
+     * @param range the elements to test against, as indices in the span's line
      * @return a predicate that is {@code true} for a range overlapping {@code range} by more than
      *     one shared endpoint
      */
-    public static IndexPredicate overlappingBeyondEndpoint(ElementRange range) {
+    public static RangePredicate overlappingBeyondEndpoint(ElementRange range) {
         return spanRange ->
             spanRange.overlaps(range)
                 && spanRange.end() != range.begin()
@@ -479,10 +538,11 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * never under the wedge, so the editor asks about the strict interior rather than the
      * inclusive range.
      *
+     * @param elementIndex an index in the span's line
      * @return a predicate that is {@code true} for a range with {@code elementIndex} strictly
      *     between its bounds
      */
-    public static IndexPredicate strictlyContaining(int elementIndex) {
+    public static RangePredicate strictlyContaining(int elementIndex) {
         return spanRange -> spanRange.containsExcludingBounds(elementIndex);
     }
 
@@ -490,27 +550,30 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * A predicate matching a span whose anchor is exactly {@code range}'s first element and
      * whose end is exactly its last.
      *
+     * @param range the range to match, as indices in the span's line
      * @return a predicate that is {@code true} for a range equal to {@code range}
      */
-    public static IndexPredicate exactly(ElementRange range) {
+    public static RangePredicate exactly(ElementRange range) {
         return spanRange -> spanRange.equals(range);
     }
 
     /**
      * A predicate matching a span whose anchor is the element at {@code elementIndex}.
      *
+     * @param elementIndex an index in the span's line
      * @return a predicate that is {@code true} for a range beginning at {@code elementIndex}
      */
-    public static IndexPredicate anchoredAt(int elementIndex) {
+    public static RangePredicate anchoredAt(int elementIndex) {
         return spanRange -> spanRange.begin() == elementIndex;
     }
 
     /**
      * A predicate matching a span whose end is the element at {@code elementIndex}.
      *
+     * @param elementIndex an index in the span's line
      * @return a predicate that is {@code true} for a range ending at {@code elementIndex}
      */
-    public static IndexPredicate endingAt(int elementIndex) {
+    public static RangePredicate endingAt(int elementIndex) {
         return spanRange -> spanRange.end() == elementIndex;
     }
 
@@ -528,7 +591,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      *     {@code target}'s deleted range, or at or after {@code target.insertIndex()} when it
      *     deletes nothing
      */
-    public static IndexPredicate straddling(StaffElementRun.InsertionTarget target) {
+    public static RangePredicate straddling(StaffElementRun.InsertionTarget target) {
         var insertIndex = target.insertIndex();
         var deleteRange = target.deleteRange();
         var firstIndexAfter = deleteRange == null ? insertIndex : deleteRange.range().end() + 1;
@@ -538,7 +601,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Creates a copy of this span anchored to the given elements, carrying all of this span's
-     * user state through {@link #copyUserStateFrom}. Does not copy derived caches.
+     * user state through {@link LineElement#copyBaseStateFrom}. Does not copy derived caches.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
@@ -546,47 +609,14 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      */
     public final Span<E> copy(E newAnchor, E newEnd) {
         var copy = createCopy(newAnchor, newEnd);
-        copy.copyUserStateFrom(this);
+        copy.copyBaseStateFrom(this);
         return copy;
     }
 
     /**
-     * Copies all of {@code source}'s user state onto this span: the base state
-     * {@link LineElement#copyBaseStateFrom} copies, then the span kind's own through
-     * {@link #copyOwnStateFrom}.
-     * <p>
-     * This is the one route by which a span takes another's user state, so a field added to
-     * either level is carried by every caller at once.
-     *
-     * @param source the span whose user state to take
-     * @throws IllegalArgumentException if {@code source} is not of this span's concrete class
-     * @effects replaces this span's user state; leaves its endpoints, its kind-defining state
-     *          and its place in the document alone
-     */
-    public final void copyUserStateFrom(Span<E> source) {
-        if (source.getClass() != getClass()) {
-            throw new IllegalArgumentException(
-                getClass().getSimpleName() + " cannot take the user state of " + source);
-        }
-
-        copyBaseStateFrom(source);
-        copyOwnStateFrom(source);
-    }
-
-    /**
-     * Copies the user state this span kind adds to the base state from {@code source} onto this
-     * span. Called only by {@link #copyUserStateFrom}, which guarantees {@code source} is of this
-     * span's concrete class. A kind with no user state of its own copies nothing.
-     *
-     * @param source the span whose own user state to take, of this span's concrete class
-     * @effects replaces this span kind's own user state
-     */
-    protected abstract void copyOwnStateFrom(Span<E> source);
-
-    /**
      * Creates a new instance of this span's concrete subclass over the given elements, with the
      * state that defines its kind and no user state. Called only by {@link #copy}, which then
-     * copies the user state through {@link #copyUserStateFrom}.
+     * copies the user state through {@link LineElement#copyBaseStateFrom}.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy

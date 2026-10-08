@@ -31,6 +31,7 @@ import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
 import songscribe.engraving.EngravingConstants;
 import songscribe.hit.HitTarget;
+import songscribe.layout.Beaming;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.SlideGeometry;
@@ -277,7 +278,8 @@ public final class SlideRenderer {
         var src = noteContextSs(source, sourceIndex, line, invariants.getLayoutResult(), NO_SHIFT_SS);
 
         // A preview element is not on the line, so no beam can span it.
-        var tgt = SlideGeometry.noteContextAt(previewElement, previewElementXSs, false, LAYOUT_MIDLINE_Y_SS);
+        var tgt = SlideGeometry.noteContextAt(
+            previewElement, previewElementXSs, Beaming.UNBEAMED, LAYOUT_MIDLINE_Y_SS);
 
         drawGlissandoIfDrawable(g2, src, tgt, invariants.getMiddleLineYSs());
     }
@@ -358,7 +360,7 @@ public final class SlideRenderer {
         return SlideGeometry.noteContextAt(
             element,
             layoutResult.getElementXSs(element) + shiftSs,
-            line.spanRegistry().findBeamAt(elementIndex) != null,
+            Beaming.of(line.spanRegistry().findBeamJoining(elementIndex)),
             LAYOUT_MIDLINE_Y_SS
         );
     }

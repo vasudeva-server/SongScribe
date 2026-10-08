@@ -23,6 +23,7 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 
@@ -157,7 +158,7 @@ public interface StaffElementRun {
      *
      * @return {@code true} when {@link #isPairedGraceNote} is true of {@code index - 1}
      */
-    default boolean isHostOfPairedGraceNote(int index) {
+    default boolean isPairedGraceNoteTarget(int index) {
         return isPairedGraceNote(index - 1);
     }
 
@@ -219,7 +220,7 @@ public interface StaffElementRun {
      *     change along
      */
     default int effectiveBegin(int begin) {
-        if (isHostOfPairedGraceNote(begin)) {
+        if (isPairedGraceNoteTarget(begin)) {
             return begin - 1;
         }
 
@@ -456,7 +457,7 @@ public interface StaffElementRun {
      * @return {@code true} when an element may be inserted at {@code index}
      */
     default boolean canInsertElementAt(int index) {
-        return !isKeyChangeAt(index) && !isHostOfPairedGraceNote(index);
+        return !isKeyChangeAt(index) && !isPairedGraceNoteTarget(index);
     }
 
     /**
@@ -590,13 +591,7 @@ public interface StaffElementRun {
      * terminal is a barline or a repeat, so a scan for a note stops before it either way.
      */
     private @Nullable Integer lastNoteIndex() {
-        for (var scanIndex = elementCount() - 1; scanIndex >= 0; scanIndex--) {
-            if (getElement(scanIndex).getType().isNote()) {
-                return scanIndex;
-            }
-        }
-
-        return null;
+        return lastIndexBefore(this::getElement, elementCount(), ElementType::isNote);
     }
 
     /**
@@ -652,8 +647,26 @@ public interface StaffElementRun {
      *     element before it is a grace note or nothing stands before it
      */
     default @Nullable Integer previousNonGraceIndex(int fromIndex) {
-        for (var i = fromIndex - 1; hasIndex(i); i--) {
-            if (!getElement(i).getType().isGraceNote()) {
+        return lastIndexBefore(this::getElement, fromIndex, type -> !type.isGraceNote());
+    }
+
+    /**
+     * The position of the first element at or after {@code from} in {@code elements} whose type
+     * {@code matches} accepts. It takes a list rather than a run so that it answers for a
+     * projection of a pending change as well as for a line.
+     *
+     * @param elements the elements to scan, in order
+     * @param from     the first position examined, at or above 0
+     * @param matches  the test an element's type must pass
+     * @return the position, or {@code null} when no element from {@code from} on passes, or
+     *     {@code from} is past the last element
+     * @see #lastIndexBefore
+     */
+    static @Nullable Integer firstIndexFrom(
+        List<? extends StaffElement> elements, int from, Predicate<ElementType> matches
+    ) {
+        for (var i = from; i < elements.size(); i++) {
+            if (matches.test(elements.get(i).getType())) {
                 return i;
             }
         }
@@ -662,42 +675,34 @@ public interface StaffElementRun {
     }
 
     /**
-     * Whether {@code range} crosses a structural boundary: a repeat, or a barline other than
-     * {@link ElementType#SINGLE_BARLINE}.
+     * The position of the last element before {@code before} in {@code elements} whose type
+     * {@code matches} accepts — the mirror of {@link #firstIndexFrom}.
      *
-     * @param range the elements to examine; every index in it satisfies {@link #hasIndex}
-     * @return {@code true} when any element in {@code range} is such a repeat or barline
+     * @param elements the elements to scan, in order
+     * @param before   a position in {@code 0..elements.size()}; the element there is not examined
+     * @param matches  the test an element's type must pass
+     * @return the position, or {@code null} when no element before {@code before} passes
      */
-    default boolean spansStructuralBoundary(ElementRange range) {
-        return anyStructuralBoundary(this::getElement, range);
+    static @Nullable Integer lastIndexBefore(
+        List<? extends StaffElement> elements, int before, Predicate<ElementType> matches
+    ) {
+        return lastIndexBefore(elements::get, before, matches);
     }
 
     /**
-     * Whether {@code range} of {@code elements} crosses a structural boundary, by the rule
-     * {@link #spansStructuralBoundary(ElementRange)} states for a run. This form serves a caller
-     * holding a list rather than a run, such as a pending change's projected elements.
-     *
-     * @param elements the elements to examine, in document order
-     * @param range    the part of {@code elements} to examine; both of its indices are indices of
-     *                 {@code elements}
-     * @return {@code true} when any element in {@code range} is a repeat or a barline other than
-     *     {@link ElementType#SINGLE_BARLINE}
+     * The backward scan behind {@link #lastIndexBefore(List, int, Predicate)}, over any indexed
+     * source of elements, so a run scans itself without copying its elements into a list.
      */
-    static boolean spansStructuralBoundary(List<? extends StaffElement> elements, ElementRange range) {
-        return anyStructuralBoundary(elements::get, range);
-    }
-
-    /** The one statement of the structural-boundary rule, over any indexed source of elements. */
-    private static boolean anyStructuralBoundary(IntFunction<? extends StaffElement> elementAt, ElementRange range) {
-        for (var i = range.begin(); i <= range.end(); i++) {
-            var type = elementAt.apply(i).getType();
-
-            if (type.isBar() && type != ElementType.SINGLE_BARLINE) {
-                return true;
+    private static @Nullable Integer lastIndexBefore(
+        IntFunction<? extends StaffElement> elementAt, int before, Predicate<ElementType> matches
+    ) {
+        for (var i = before - 1; i >= 0; i--) {
+            if (matches.test(elementAt.apply(i).getType())) {
+                return i;
             }
         }
 
-        return false;
+        return null;
     }
 
     // -------------------------------------------------------------------------
@@ -890,8 +895,7 @@ public interface StaffElementRun {
 
         /**
          * Returns whether the element at {@code index} lies inside the range and is neither of
-         * its bounds. This is a question about an element already in the run; for where an
-         * element about to be inserted would land, see {@link #insertionLandsInside}.
+         * its bounds. This is a question about an element already in the run.
          *
          * @param index the index of the element to test
          * @return {@code true} when {@code begin < index < end}; always {@code false} for a range
@@ -899,22 +903,6 @@ public interface StaffElementRun {
          */
         public boolean containsExcludingBounds(int index) {
             return index > begin && index < end;
-        }
-
-        /**
-         * Returns whether an element inserted at {@code index} lands inside the range. This is a
-         * question about an insertion point, not about an element already in the run: the
-         * insertion goes in front of the element now at {@code index} (see
-         * {@link ElementChange.Insertion#projectedIndexOf}). An insertion at {@code begin}
-         * therefore lands in front of the range, and one at {@code end} lands in front of the
-         * range's last element, inside it, whenever that element is not also the first.
-         *
-         * @param index an insertion point, read in the run as it stands before the insertion
-         * @return {@code true} when {@code begin < index <= end}; always {@code false} for a range
-         *     of one element
-         */
-        public boolean insertionLandsInside(int index) {
-            return index > begin && index <= end;
         }
 
         /**

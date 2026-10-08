@@ -41,6 +41,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.ui.Mode;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.undo.UndoController;
@@ -365,6 +366,19 @@ public final class Actions {
 
         // Invalidate the cached reflection list so it is rebuilt with the new instances.
         appMenuActions = null;
+    }
+
+    /**
+     * Returns the action that selects {@code mode}.
+     *
+     * @param mode the editing mode
+     * @return {@link #SELECT_MODE_ACTION} or {@link #EDIT_MODE_ACTION}
+     */
+    public static ModeAction modeAction(Mode mode) {
+        return switch (mode) {
+            case SELECT -> SELECT_MODE_ACTION;
+            case EDIT -> EDIT_MODE_ACTION;
+        };
     }
 
     private static void resetToDefaults() {

@@ -254,8 +254,7 @@ public abstract sealed class AttachmentDialogController<T extends Copyable<T>>
      *
      * <p>Doing nothing when the selection resolves to nothing is deliberate and unreachable in
      * practice: every action that calls this carries {@code REQUIRES_SINGLE_SELECTION} and is
-     * disabled without one. It replaces a dialog that used to open against a null element and then
-     * fail at OK, which is the worse of the two silences.
+     * disabled without one, so the dialog never opens against a null element to fail at OK.
      */
     private static void openOnSelection(
         MainFrame mainFrame,

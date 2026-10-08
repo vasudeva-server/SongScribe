@@ -17,25 +17,32 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package songscribe.dom;
+
+package songscribe.layout;
+
+import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.Beam;
 
 /**
- * The editor's verdict on whether a first-second ending can be made from the current
- * selection. A valid verdict carries the ending itself, so the one who acts on it adds what
- * validation built rather than rebuilding it from indices.
+ * Whether a note belongs to a beam group, which decides whether it draws a flag — and so where its
+ * augmentation dots sit.
  */
-public sealed interface EndingValidationResult
-    permits EndingValidationResult.Invalid, EndingValidationResult.Valid {
+public enum Beaming {
 
-    /** No ending can be made from the selection. */
-    enum Invalid implements EndingValidationResult { INSTANCE }
+    /** The note is a member of a beam group: its flag is suppressed. */
+    BEAMED,
+
+    /** The note stands alone: a flagged type draws its flag. */
+    UNBEAMED;
 
     /**
-     * An ending can be made from the selection.
+     * Returns the beaming of a note given the beam it belongs to.
      *
-     * @param line   the line the selection is on
-     * @param ending an ending built over {@code line}'s elements and not yet added to its span
-     *     registry
+     * @param beam the beam the note belongs to, or {@code null} when it belongs to none
+     * @return {@link #BEAMED} when {@code beam} is non-null, otherwise {@link #UNBEAMED}
      */
-    record Valid(Line line, Ending ending) implements EndingValidationResult {}
+    public static Beaming of(@Nullable Beam beam) {
+        return beam != null ? BEAMED : UNBEAMED;
+    }
 }

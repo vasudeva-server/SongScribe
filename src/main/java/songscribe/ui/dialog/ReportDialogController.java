@@ -50,9 +50,14 @@ public final class ReportDialogController extends DialogController<ChangeReport,
      * Shows the dialog for {@code report} and returns when the user dismisses it, unless dialogs
      * are suppressed.
      *
+     * <p>Precondition: called on the event dispatch thread, since it builds and shows a modal
+     * Swing dialog.
+     *
      * @param occasion what the report follows
-     * @param report   the changes to list; the caller shows the dialog only for a report with at
-     *                 least one entry
+     * @param report   the changes to list; must hold at least one entry
+     * @effects shows a modal dialog over the main frame and blocks until it is dismissed; shows
+     *     nothing while {@link OptionDialogs#isSuppressed()} holds
+     * @log info, with the number of changes, when dialogs are suppressed and nothing is shown
      */
     public static void show(ReportDialog.Occasion occasion, ChangeReport report) {
         if (OptionDialogs.isSuppressed()) {

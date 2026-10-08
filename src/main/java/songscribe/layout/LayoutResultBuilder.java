@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,7 @@ public class LayoutResultBuilder {
     private final Map<StaffElement, ElementColumn> elementColumns;
     private final Map<Beam, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
-    private final Map<Tie, TieLayout> tieLayouts;
+    private final List<TieLayout> tieLayouts;
     private final DecorationLayouts.Builder decorationLayouts;
     private final Map<StaffElement, SlideLayout> slideLayouts;
     private final StaffHeader staffHeader;
@@ -71,7 +72,7 @@ public class LayoutResultBuilder {
         elementColumns = new HashMap<>();
         beamLayouts = new HashMap<>();
         stemLayouts = new HashMap<>();
-        tieLayouts = new HashMap<>();
+        tieLayouts = new ArrayList<>();
         decorationLayouts = new DecorationLayouts.Builder();
         slideLayouts = new HashMap<>();
         lyricBoxes = new HashMap<>();
@@ -191,14 +192,14 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Adds computed tie geometry for a tie.
+     * Adds computed tie geometry for a tie. The layout carries its tie's placement, so it is not
+     * keyed by the tie.
      *
-     * @param tie       The tie
-     * @param tieLayout The computed tie geometry
+     * @param tieLayout The computed tie geometry; a line adds at most one per tie it draws
      * @return This builder for chaining
      */
-    public LayoutResultBuilder putTieLayout(Tie tie, TieLayout tieLayout) {
-        tieLayouts.put(tie, tieLayout);
+    public LayoutResultBuilder addTieLayout(TieLayout tieLayout) {
+        tieLayouts.add(tieLayout);
         return this;
     }
 
@@ -226,13 +227,12 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Returns the tie layout for a tie from the builder's accumulated data.
+     * Returns the tie layouts added so far, in the order they were added.
      *
-     * @param tie The tie to look up
-     * @return The tie layout, or null if not yet computed
+     * @return an unmodifiable view of the tie layouts; empty before the tie pass runs
      */
-    public @Nullable TieLayout getTieLayout(Tie tie) {
-        return tieLayouts.get(tie);
+    public List<TieLayout> tieLayouts() {
+        return Collections.unmodifiableList(tieLayouts);
     }
 
     /**

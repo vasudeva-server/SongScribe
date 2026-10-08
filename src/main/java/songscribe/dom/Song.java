@@ -54,6 +54,8 @@ import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.notification.DocumentWasSavedNotification;
@@ -136,7 +138,7 @@ public final class Song implements Disposable {
     /**
      * Default line-wide rest length (delta-X Ss between adjacent column origins) from which every
      * gap's ideal spacing is derived. Matches the legacy default column gap; a song may override it
-     * to loosen or tighten the whole score proportionally (#330).
+     * to loosen or tighten the whole score proportionally.
      */
     public static final double DEFAULT_REST_LENGTH_SS = 2.0;
     /**
@@ -211,7 +213,7 @@ public final class Song implements Disposable {
 
     private double rowHeightAdjustmentSs = 0;
 
-    // Line-wide rest length driving derived column spacing (#330); persisted in the MusicXML
+    // Line-wide rest length driving derived column spacing; persisted in the MusicXML
     // header. Clamped to at least MIN_DEFAULT_REST_LENGTH_SS on every set.
     private double defaultRestLengthSs = DEFAULT_REST_LENGTH_SS;
 
@@ -602,8 +604,8 @@ public final class Song implements Disposable {
      * Returns the key this song starts in, which is line 0's own key — a song holds no key of its
      * own. Line 0 always establishes one, because it has nothing to inherit from.
      *
-     * <p>This is the query every caller that used to ask the song for its key asks instead, so
-     * that reaching for line 0 is written once rather than at each of them.
+     * <p>Callers ask this rather than reaching for line 0 themselves, so that reaching for line 0
+     * is written once.
      *
      * @return the key in effect at the start of the song; {@link Key#DEFAULT} while the song holds
      *         no lines, which only a reader part-way through a load ever sees
@@ -715,8 +717,7 @@ public final class Song implements Disposable {
      * Sets the song's tempo. No-ops when {@code tempo} says what the current one says.
      *
      * <p>Stays public because the undo replayer and the MusicXML header reader both
-     * legitimately drive it from outside the editing UI. A change of beat can invalidate
-     * tuplets; the tuplet beat rule finds them when the modification bracket closes.
+     * legitimately drive it from outside the editing UI.
      *
      * @param tempo the tempo the song is to have
      * @effects replaces the song's tempo and records one undo step
@@ -764,24 +765,30 @@ public final class Song implements Disposable {
      * element a {@code :|} at {@code location} plays back from, and the passage an edit there
      * repeats.
      *
-     * <p>A section opens at a {@code |:} ({@link ElementType#REPEAT_LEFT}), at a {@code :|:}
-     * ({@link ElementType#REPEAT_LEFT_RIGHT}), or at the song start. It is closed by a
-     * {@code :|} ({@link ElementType#REPEAT_RIGHT}), a {@code ||}
-     * ({@link ElementType#DOUBLE_BARLINE}) or a final barline
-     * ({@link ElementType#FINAL_DOUBLE_BARLINE}). Line breaks neither open nor close one: a
-     * section may start any number of lines before {@code location}.
+     * <p>A section opens at a bar that {@link ElementType#opensRepeatSection() opens one} — a
+     * {@code |:} or a {@code :|:} — or at the song start. It is closed by a bar that
+     * {@link ElementType#closesRepeatSection() closes one}. A {@code :|:} both closes the section
+     * before it and opens the one after it. Line breaks neither open nor close one: a section
+     * may start any number of lines before {@code location}.
      *
-     * <p>Playback loops a {@code :|} back to this answer, and treats a {@code :|} with no open
-     * section as an ordinary bar that plays on. The editor lets a user write such a
-     * {@code :|}, as in {@code A :| B :|} or {@code A || B :|}, and a load keeps it, so
-     * {@code null} is an answer about legal music, not about a broken song.
+     * <p>Two musical judgments shape the answer:
+     * <ul>
+     *   <li>A {@code ||} closes a repeated section, as a final barline does. In
+     *       {@code A || B :|} the {@code :|} has no open section, rather than one that starts
+     *       at {@code A}.</li>
+     *   <li>A {@code :|} with no open section plays on as an ordinary bar. The editor lets a
+     *       user write one, as in {@code A :| B :|} or {@code A || B :|}, and a load keeps it,
+     *       so {@code null} is an answer about legal music, not about a broken song.</li>
+     * </ul>
+     *
+     * <p>Playback loops a {@code :|} that has an open section back to this answer.
      *
      * @param location an element of this song, named by its line index and element index
      *     ({@link ElementLocation}); it must exist
      * @return the element just after the opening {@code |:} or {@code :|:}, or the song's
-     *     first element when the song start opens the section; {@code null} when a
-     *     {@code :|}, {@code ||} or final barline stands between the opener and
-     *     {@code location}, so that no section is open
+     *     first element when the song start opens the section; {@code null} when a bar that
+     *     closes a section stands between the opener and {@code location}, so that no section
+     *     is open
      * @invariant the search looks only at elements strictly before {@code location}: the
      *     element at {@code location} never opens or closes the section it asks about
      * @invariant when the opener is the last element of its line, the answer is the first
@@ -802,13 +809,12 @@ public final class Song implements Disposable {
             while (searchElementIndex >= FIRST_ELEMENT_INDEX) {
                 var type = searchLine.getElement(searchElementIndex).getType();
 
-                if (type == ElementType.REPEAT_LEFT || type == ElementType.REPEAT_LEFT_RIGHT) {
+                // A :|: both closes and opens; walking backward, it is the opener that counts.
+                if (type.opensRepeatSection()) {
                     return firstElementAtOrAfter(searchLineIndex, searchElementIndex + 1);
                 }
 
-                if (type == ElementType.REPEAT_RIGHT
-                        || type == ElementType.DOUBLE_BARLINE
-                        || type == ElementType.FINAL_DOUBLE_BARLINE) {
+                if (type.closesRepeatSection()) {
                     return null;
                 }
 
@@ -914,8 +920,8 @@ public final class Song implements Disposable {
 
     /**
      * Sets the line-wide rest length, clamped to at least {@link #MIN_DEFAULT_REST_LENGTH_SS}.
-     * There is no mutation record: nothing edits this interactively yet (song-settings UI is #569),
-     * so it is written only by document load.
+     * There is no mutation record: nothing edits this interactively, so it is written only by
+     * document load.
      */
     public void setDefaultRestLengthSs(double defaultRestLength) {
         defaultRestLengthSs = Math.max(MIN_DEFAULT_REST_LENGTH_SS, defaultRestLength);
@@ -925,7 +931,7 @@ public final class Song implements Disposable {
      * Do not call this directly unless you know what you are doing. Instead, use
      * {@link songscribe.ui.component.ScoreView#updatePageLayout}, which stores the width
      * and re-lays out the page for it; writing the width here alone leaves the page laid
-     * out for the old one.
+     * out for a different width.
      */
     public void setLineWidthSs(Ss lineWidth) {
         var lineWidthValueSs = lineWidth.value();
@@ -991,8 +997,7 @@ public final class Song implements Disposable {
      *
      * <p>A tie on the last note of a line ends at the start of the next line, so the insertion
      * can move the end of the tie crossing out of the line before {@code line} and of the tie
-     * crossing out of {@code line}. Both lines are ones the tie rule judges when the outermost
-     * modification bracket closes (see {@link TieRule}).
+     * crossing out of {@code line}. Both lines are ones the tie rule ({@link TieRule}) judges.
      *
      * <pre>
      *  withModification {
@@ -1046,13 +1051,16 @@ public final class Song implements Disposable {
      *
      * <p>The removed line keeps its elements, and they keep pointing at it — the
      * {@link LineDeletion} record holds the line intact so undo can put it back unchanged.
-     * A tie on the last note of the line before the removed one ended at the start of the
-     * removed line, and now ends in the line that follows instead, or nowhere; the tie rule
-     * judges it when the outermost modification bracket closes (see {@link TieRule}).
+     * A tie that ends on the removed line's first note leaves with that note: its anchor, on
+     * the line before, is untied first ({@link Line#untieEndingIn}), recorded and not
+     * reported. A tied last note of the line before whose walk found no note in the removed
+     * line now ends in the line that follows instead, or nowhere; the tie rule
+     * ({@link TieRule}) judges it.
      *
      * <pre>
      *  withModification {
      *    withAutoMaintenance {
+     *      untie the tie ending on the removed line's first note
      *      applyChange(LineDeletion(index, removed), …)
      *
      *      if (removed line was the last line) {
@@ -1078,6 +1086,12 @@ public final class Song implements Disposable {
         var wasLast = index == lines.size() - 1;
 
         withModification(() -> modifications.withAutoMaintenance(() -> {
+            // Recorded before the deletion, so reverse-order undo puts the line back before it
+            // re-ties the anchor.
+            if (deletedLine.elementCount() > 0) {
+                deletedLine.untieEndingIn(new StaffElementRun.ElementRange(0, deletedLine.elementCount() - 1));
+            }
+
             applyChange(
                 new LineDeletion(index, deletedLine),
                 () -> lines.remove(index)
@@ -1091,30 +1105,6 @@ public final class Song implements Disposable {
                 }
             }
         }));
-    }
-
-    /**
-     * The line {@code mutation} touches, as {@link TieRule} defines it: the line a
-     * {@link LineScopedMutation} names, the line of a {@link LineInsertion}, or the line that now
-     * sits at a {@link LineDeletion}'s index.
-     *
-     * @return the line, or {@code null} for a song-wide mutation, or for a {@link LineDeletion}
-     *     whose index no line now sits at
-     */
-    @Nullable Line touchedLine(Mutation mutation) {
-        if (mutation instanceof LineScopedMutation scoped) {
-            return scoped.getLine();
-        }
-
-        if (mutation instanceof LineInsertion insertion) {
-            return insertion.line();
-        }
-
-        if (mutation instanceof LineDeletion deletion && deletion.lineIndex() < lines.size()) {
-            return lines.get(deletion.lineIndex());
-        }
-
-        return null;
     }
 
     /**
@@ -1132,6 +1122,22 @@ public final class Song implements Disposable {
      */
     public void installTerminalAfterParsing() {
         terminal.installAfterParsing();
+    }
+
+    /**
+     * Brings every grace-host pair of a freshly read song onto the automatic melisma
+     * ({@link Line#repairGraceHostMelismas}). A file written before the melisma was automatic may
+     * put the syllable on the host, or leave the grace's syllable with no melisma across it.
+     *
+     * <p>A reader calls this once its grace-host pairs are settled. It runs silently whether or not
+     * the caller has tracking suspended, because the legacy reader calls it after the song is
+     * assembled, when tracking has resumed.
+     *
+     * @effects every line's grace-host syllables are repaired with mutation tracking suspended —
+     *     no notification, no undo entry and no {@code modified} flag
+     */
+    public void repairGraceHostMelismasAfterParsing() {
+        withoutMutationTracking(() -> lines.forEach(Line::repairGraceHostMelismas));
     }
 
     /**
@@ -1295,21 +1301,36 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Runs {@code body} in replay mode: mutations are still recorded, but the helpers'
-     * companion side-work is suppressed and the terminal policy is bypassed,
-     * because the batch being replayed already carries every change. Nestable.
+     * Replays a recorded batch: enters replay mode, opens an edit inside it, runs {@code body}
+     * to apply the batch's records, then closes the edit and leaves replay mode.
      *
-     * @see ModificationSession#withReplay
+     * <p>Inside, every change {@code body} makes is recorded into the edit's batch, so the
+     * edit's close posts a {@link SongDidChangeNotification} and the score repaints as after
+     * any edit. The helpers' companion side-work is suppressed and the terminal policy is
+     * bypassed, because the batch being replayed already carries every change.
+     *
+     * <p>The order — replay mode outside, the edit inside — is what keeps undo and redo from
+     * judging the song a second time. The modification rules run when an edit closes, unless
+     * the song is replaying then; because the edit closes while replay mode is still in force,
+     * no rule runs over the replayed batch, which already carries every removal the rules made
+     * when it was first recorded. For the same reason nothing is reported: the removals the
+     * batch re-applies were reported when they were made.
+     *
+     * @param body applies the records of one recorded batch, in the order the replay requires
+     * @effects posts one {@link SongDidChangeNotification} carrying the changes {@code body}
+     *     made, when it made any, and never a
+     *     {@link songscribe.message.notification.ChangesWereReportedNotification}; the edit
+     *     closes and replay mode ends whether {@code body} returns or throws
      */
-    public void withReplay(Runnable body) {
-        modifications.withReplay(body);
+    public void replay(Runnable body) {
+        modifications.replay(body);
     }
 
     /**
      * Suspends mutation tracking until the matching {@link #endSuspendMutationTracking()}.
      * Use {@link #withoutMutationTracking(Runnable)} when the suspended scope fits in a
-     * single block; this pair exists for callers (e.g. SAX parsing) whose suspension
-     * scope crosses multiple methods.
+     * single block; this pair exists for callers whose suspension scope crosses multiple
+     * methods — the two file readers, {@code SongMapper.map} and {@code SongIO}.
      */
     public void beginSuspendMutationTracking() {
         modifications.beginSuspendMutationTracking();
@@ -1325,41 +1346,11 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Opens a modification bracket with no explicit label. Mutations accumulate while
-     * the bracket is open. Brackets may be nested; the notification fires only when the
-     * outermost bracket closes.
-     */
-    public void beginModification() {
-        modifications.beginModification();
-    }
-
-    /**
-     * Opens a modification bracket, declaring {@code explicitLabel} as the op-name
-     * (Tier B) if this is the outermost bracket. The op-name is captured only at the
-     * depth 0→1 transition, so a nested labeled bracket never re-captures.
-     *
-     * @see ModificationSession#beginModification(String)
-     */
-    public void beginModification(@Nullable String explicitLabel) {
-        modifications.beginModification(explicitLabel);
-    }
-
-    /**
-     * Closes a modification bracket. When the outermost bracket closes and at least one
-     * mutation was accumulated, marks the song modified and posts a single
-     * {@link SongDidChangeNotification} carrying all accumulated mutations.
-     *
-     * @see ModificationSession#endModification
-     */
-    public void endModification() {
-        modifications.endModification();
-    }
-
-    /**
      * Executes {@code body} inside a modification bracket, then posts a single
-     * {@link SongDidChangeNotification} with all accumulated mutations.
-     * Prefer this over {@link #beginModification()} / {@link #endModification()} to ensure
-     * the depth counter is always balanced even if {@code body} throws.
+     * {@link SongDidChangeNotification} with all accumulated mutations. The bracket is
+     * closed even if {@code body} throws, without running the modification rules over the
+     * half-applied edit. Brackets nest; the notification fires only when the outermost one
+     * closes.
      *
      * <p>Every state change {@code body} makes must be recorded as a {@link Mutation} in this
      * bracket's batch, through {@link #applyChange} or a {@code Line} helper wrapping it. Undo
@@ -1390,9 +1381,10 @@ public final class Song implements Disposable {
     /**
      * Executes {@code body} inside a modification bracket that declares {@code label}
      * as its op-name (Tier B), then posts a single {@link SongDidChangeNotification}.
-     * The label is captured only if this is the outermost bracket (see
-     * {@link #beginModification(String)}). {@code body} carries the same recording
-     * obligation stated on {@link #withModification(Runnable)}.
+     * The label is captured only if this is the outermost bracket: a labeled bracket nested
+     * inside an open one never replaces the op-name the outermost bracket captured.
+     * {@code body} carries the same recording obligation stated on
+     * {@link #withModification(Runnable)}.
      */
     public void withModification(String label, Runnable body) {
         modifications.withModification(label, body);
@@ -1699,21 +1691,27 @@ public final class Song implements Disposable {
      * after an anchor, and flipping the stem of a note a crossing tie ends on are each felt this
      * way.
      *
-     * <p>The position a mutation names in its line L is an insertion's, a replacement's or a
-     * modification's index, a deletion's first index, or a {@link TieAddition}'s or
-     * {@link TieRemoval}'s anchor index. It reaches:
+     * <p>A mutation names an origin in its line L: a run of positions from {@code first} to
+     * {@code last}. An insertion's, a replacement's or a modification's index, or a deletion's
+     * first index, is the origin when no beam of L contains it; when one does, the origin is
+     * that beam's whole range, because a beamed note's stem follows its beam, so a change to
+     * one member can turn the stem of the member at L's edge. A {@link TieAddition}'s or
+     * {@link TieRemoval}'s anchor index is the origin of a tie record, and a {@link Beam}'s range
+     * is the origin of a {@link SpanAddition} or {@link SpanRemoval} of that beam. It reaches:
      * <ul>
-     *   <li>L's next line, when there is one and the position is at or after L's last element
+     *   <li>L's next line, when there is one and {@code last} is at or after L's last element
      *       that is not a legal separator ({@link Tie#isLegalSeparator}), or L has no such
      *       element;</li>
-     *   <li>L's previous line, when there is one and the position is at or before L's first
+     *   <li>L's previous line, when there is one and {@code first} is at or before L's first
      *       such element, or L has none.</li>
      * </ul>
      *
      * @param mutation the mutation to ask about
-     * @return the lines, in no promised order, or empty when {@code mutation} names no such
-     *     position — any other kind of mutation, or a tie record whose anchor is no longer in the
-     *     line it names — or names one too far from either edge to reach a neighboring line
+     * @return the lines, in no promised order, or empty when {@code mutation} names no origin —
+     *     any other kind of mutation, a span record of a span that is not a beam, a beam record
+     *     whose endpoints are no longer both in the line it names, or a tie record whose anchor
+     *     is no longer in that line — or names one too far from either edge to reach a
+     *     neighboring line
      */
     public List<Line> tieReach(Mutation mutation) {
         var origin = tieReachOrigin(mutation);
@@ -1723,17 +1721,16 @@ public final class Song implements Disposable {
         }
 
         var line = origin.line();
-        var position = origin.position();
         var elements = line.getElements();
         var firstNonSeparator = Tie.firstNonSeparatorIndexFrom(elements, 0);
         var lastNonSeparator = Tie.lastNonSeparatorIndexBefore(elements, elements.size());
         var reach = new ArrayList<Line>();
 
-        if (!line.isLast() && (lastNonSeparator == null || position >= lastNonSeparator)) {
+        if (!line.isLast() && (lastNonSeparator == null || origin.last() >= lastNonSeparator)) {
             reach.add(line.nextLine());
         }
 
-        if (!line.isFirst() && (firstNonSeparator == null || position <= firstNonSeparator)) {
+        if (!line.isFirst() && (firstNonSeparator == null || origin.first() <= firstNonSeparator)) {
             reach.add(line.previousLine());
         }
 
@@ -1741,175 +1738,86 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The line and element position {@link #tieReach} asks about for {@code mutation}.
+     * The origin {@link #tieReach} asks about for {@code mutation}.
      *
-     * @return the origin, or {@code null} for a mutation that names no such position —
-     *     including a {@link TieAddition} or {@link TieRemoval} whose anchor is no longer on
-     *     the line it names
+     * @return the origin, or {@code null} for a mutation that names none — including a
+     *     {@link TieAddition} or {@link TieRemoval} whose anchor is no longer on the line it
+     *     names, and a {@link SpanAddition} or {@link SpanRemoval} of a span that is not a beam,
+     *     or of a beam whose endpoints are not both on that line
      */
     private static @Nullable TieReachOrigin tieReachOrigin(Mutation mutation) {
         return switch (mutation) {
-            case ElementInsertion insertion -> new TieReachOrigin(insertion.line(), insertion.index());
-            case ElementReplacement replacement -> new TieReachOrigin(replacement.line(), replacement.index());
-            case ElementDeletion deletion -> new TieReachOrigin(deletion.line(), deletion.range().begin());
-            case ElementModification modification -> new TieReachOrigin(modification.line(), modification.index());
+            case ElementInsertion insertion -> elementOrigin(insertion.line(), insertion.index());
+            case ElementReplacement replacement -> elementOrigin(replacement.line(), replacement.index());
+            case ElementDeletion deletion -> elementOrigin(deletion.line(), deletion.range().begin());
+            case ElementModification modification -> elementOrigin(modification.line(), modification.index());
             case TieAddition(var line, var anchor) -> tieAnchorOrigin(line, anchor);
             case TieRemoval(var line, var anchor) -> tieAnchorOrigin(line, anchor);
+            case SpanAddition(var line, var span) -> beamOrigin(line, span);
+            case SpanRemoval(var line, var span) -> beamOrigin(line, span);
             default -> null;
         };
     }
 
+    /**
+     * The origin of an element mutation at {@code position}: the range of the beam that contains
+     * it, when one does, and {@code position} alone otherwise.
+     */
+    private static TieReachOrigin elementOrigin(Line line, int position) {
+        var beam = line.spanRegistry().findBeamAt(position);
+
+        if (beam == null) {
+            return new TieReachOrigin(line, position, position);
+        }
+
+        var range = beam.range();
+
+        return new TieReachOrigin(line, range.begin(), range.end());
+    }
+
     private static @Nullable TieReachOrigin tieAnchorOrigin(Line line, NoteElement anchor) {
-        return line.contains(anchor) ? new TieReachOrigin(line, line.getElementIndex(anchor)) : null;
+        if (!line.contains(anchor)) {
+            return null;
+        }
+
+        var index = line.getElementIndex(anchor);
+
+        return new TieReachOrigin(line, index, index);
     }
 
     /**
-     * A position {@link #tieReach} asks about: {@code position} in {@code line}'s elements.
-     *
-     * @param line     the line the mutation names
-     * @param position the element position within it
+     * The origin of a span record: the range of {@code span} when it is a beam whose endpoints
+     * are both in {@code line}. A removed beam is in no registry, so its range is read from its
+     * endpoints' positions.
      */
-    private record TieReachOrigin(Line line, int position) {
+    private static @Nullable TieReachOrigin beamOrigin(Line line, Span<?> span) {
+        if (!(span instanceof Beam beam)) {
+            return null;
+        }
+
+        var anchor = beam.getAnchorElement();
+        var end = beam.getEndElement();
+
+        if (!line.contains(anchor) || !line.contains(end)) {
+            return null;
+        }
+
+        return new TieReachOrigin(line, line.getElementIndex(anchor), line.getElementIndex(end));
+    }
+
+    /**
+     * The positions {@link #tieReach} asks about: {@code first} to {@code last} in
+     * {@code line}'s elements, both included.
+     *
+     * @param line  the line the mutation names
+     * @param first the first position of the origin
+     * @param last  the last position of the origin
+     */
+    private record TieReachOrigin(Line line, int first, int last) {
     }
 
     private static boolean changesKey(StaffElement element) {
         return element.getType().isKeyChange();
-    }
-
-    /**
-     * Returns where in the current song {@code mutation} redefines the beat from, or
-     * {@code null} when it redefines no beat.
-     *
-     * <p>This is the one enumeration of the mutations that can redefine the beat, as
-     * {@link #keyMoveOf} is for keys. A mutation redefines the beat when it:
-     * <ul>
-     *   <li>changes the song's {@link MetadataField#TEMPO} to one that does not have the same
-     *       beat ({@link Tempo#haveSameBeat}): from element 0 of the
-     *       {@link #firstNonEmptyLineIndex() first non-empty line};</li>
-     *   <li>modifies an element's {@link ElementField#TEMPO_CHANGE} or
-     *       {@link ElementField#BEAT_CHANGE}: from that element;</li>
-     *   <li>inserts an element that defines a beat: from that element;</li>
-     *   <li>replaces an element when the old or the new one defines a beat: from the new
-     *       element;</li>
-     *   <li>deletes elements when one of them defines a beat: from the line's element at the
-     *       deletion's first index, or its last element when the deletion took the line's
-     *       tail;</li>
-     *   <li>inserts a line holding an element that defines a beat: from that line's element
-     *       0;</li>
-     *   <li>deletes a line that held an element that defines a beat: from element 0 of the line
-     *       now at its index.</li>
-     * </ul>
-     * An element defines a beat when it carries a tempo-change or a beat-change attachment.
-     *
-     * @param mutation a mutation of an edit whose changes have all landed
-     * @return the location, as the song stands now, from which the beat is redefined; or
-     *     {@code null} when {@code mutation} redefines no beat — every mutation not listed, and
-     *     every listed one that carried no beat change — or when the place it names is no longer
-     *     in the song: the element or line has since left it, the line is empty, or no line
-     *     stands where a deleted one was
-     */
-    @Nullable ElementLocation beatMoveOf(Mutation mutation) {
-        return switch (mutation) {
-            case MetadataChange change -> change.field() == MetadataField.TEMPO
-                    && !Tempo.haveSameBeat(tempoOf(change.oldValue()), tempoOf(change.newValue()))
-                ? songStartLocation()
-                : null;
-            case ElementModification modification -> modification.fields().contains(ElementField.TEMPO_CHANGE)
-                    || modification.fields().contains(ElementField.BEAT_CHANGE)
-                ? recordedLocation(modification.line(), modification.index())
-                : null;
-            case ElementInsertion insertion -> definesBeat(insertion.element())
-                ? currentLocationOf(insertion.element())
-                : null;
-            case ElementReplacement replacement ->
-                definesBeat(replacement.oldElement()) || definesBeat(replacement.newElement())
-                    ? currentLocationOf(replacement.newElement())
-                    : null;
-            case ElementDeletion deletion -> deletion.deletedElements().stream().anyMatch(Song::definesBeat)
-                ? deletionLocation(deletion)
-                : null;
-            case LineInsertion insertion -> holdsBeatDefinition(insertion.line())
-                ? lineStartLocation(indexOfLine(insertion.line()))
-                : null;
-            case LineDeletion deletion -> holdsBeatDefinition(deletion.deletedLine())
-                ? lineStartLocation(deletion.lineIndex())
-                : null;
-            default -> null;
-        };
-    }
-
-    /** Whether {@code element} defines a beat: it carries a tempo change or a beat change. */
-    private static boolean definesBeat(StaffElement element) {
-        return TempoResolver.beatDefinedAt(element) != null;
-    }
-
-    private static boolean holdsBeatDefinition(Line line) {
-        return line.getElements().stream().anyMatch(Song::definesBeat);
-    }
-
-    private static @Nullable Tempo tempoOf(@Nullable Object value) {
-        return value instanceof Tempo tempo ? tempo : null;
-    }
-
-    /** Element 0 of the first non-empty line, or {@code null} when every line is empty. */
-    private @Nullable ElementLocation songStartLocation() {
-        var lineIndex = firstNonEmptyLineIndex();
-
-        return lineIndex == null ? null : new ElementLocation(lineIndex, FIRST_ELEMENT_INDEX);
-    }
-
-    /**
-     * Element 0 of the line at {@code lineIndex}, or {@code null} when {@code lineIndex} is
-     * {@code null}, no line stands there, or that line is empty.
-     */
-    private @Nullable ElementLocation lineStartLocation(@Nullable Integer lineIndex) {
-        if (lineIndex == null || lineIndex >= lines.size() || lines.get(lineIndex).isEmpty()) {
-            return null;
-        }
-
-        return new ElementLocation(lineIndex, FIRST_ELEMENT_INDEX);
-    }
-
-    /**
-     * The location of {@code element} in this song now, or {@code null} when it is in no line
-     * of this song.
-     */
-    private @Nullable ElementLocation currentLocationOf(StaffElement element) {
-        var line = element.getParentLine();
-        var lineIndex = line == null ? null : indexOfLine(line);
-
-        if (line == null || lineIndex == null) {
-            return null;
-        }
-
-        return new ElementLocation(lineIndex, line.getElementIndex(element));
-    }
-
-    /**
-     * The location {@code deletion} redefines the beat from: its line's element at the
-     * deletion's first index, or the line's last element when the deletion took the line's
-     * tail; {@code null} when the line is no longer in this song or is now empty.
-     */
-    private @Nullable ElementLocation deletionLocation(ElementDeletion deletion) {
-        return recordedLocation(deletion.line(), deletion.range().begin());
-    }
-
-    /**
-     * The location in this song of the element a mutation recorded at {@code index} of
-     * {@code line}: that index, or the line's last element when the line is now shorter;
-     * {@code null} when the line is no longer in this song or is now empty.
-     * <p>
-     * A mutation that holds only copies of its element, such as an {@link ElementModification},
-     * names it by this index, since a copy is in no line.
-     */
-    private @Nullable ElementLocation recordedLocation(Line line, int index) {
-        var lineIndex = indexOfLine(line);
-
-        if (lineIndex == null || line.isEmpty()) {
-            return null;
-        }
-
-        return new ElementLocation(lineIndex, Math.min(index, line.elementCount() - 1));
     }
 
     /**
@@ -2185,9 +2093,12 @@ public final class Song implements Disposable {
 
     /**
      * Records {@code change} into the report of the edit in flight, for the user to be told
-     * about once the edit is over.
+     * about once the edit is over. Does nothing while mutation tracking is suspended, where no
+     * edit need be open.
      *
      * @param change the change the song made on its own, as the user is told about it
+     * @effects appends {@code change} to the report of the open edit, unless tracking is
+     *     suspended
      * @throws IllegalStateException if tracking is on and no modification bracket is open
      * @see ModificationSession#report
      */

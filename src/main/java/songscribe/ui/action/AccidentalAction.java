@@ -234,14 +234,14 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
     }
 
     /**
-     * Pitches {@code element} with this action's accidental when {@code selected}, and with its
-     * key's alteration when not, leaving it {@link AccidentalState.Chosen} for the song's chain
-     * walk to stamp. Deselecting reaches here only on an {@code ANCHOR}, the one state
-     * {@link #canToggle} allows it on.
+     * Pitches {@code element} with this action's accidental on {@link Toggle#APPLY}, and with its
+     * key's alteration on {@link Toggle#REMOVE}, leaving it {@link AccidentalState.Chosen} for
+     * the song's chain walk to stamp. Removal reaches here only on an {@code ANCHOR}, the one
+     * state {@link #canToggle} allows it on.
      */
     @Override
-    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
-        element.choose(selected ? accidental : keyAlterationAt(line, index, element));
+    public void applyToElement(Line line, int index, NoteElement element, Toggle toggle) {
+        element.choose(toggle == Toggle.APPLY ? accidental : keyAlterationAt(line, index, element));
     }
 
     /**

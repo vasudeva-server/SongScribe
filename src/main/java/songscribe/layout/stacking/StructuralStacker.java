@@ -43,18 +43,20 @@ import songscribe.dom.Direction;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.StemMetrics;
 import songscribe.engraving.TupletMetrics;
+import songscribe.layout.Beaming;
+import songscribe.layout.BracketRange;
+import songscribe.layout.Chord;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.ElementSeat;
 import songscribe.layout.EndingBracketGeometry;
+import songscribe.layout.Footprint;
 import songscribe.layout.HairpinEndpoints;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.SpanEnd;
 import songscribe.layout.StaffExtents;
 import songscribe.layout.TupletGeometry;
-
-import static songscribe.layout.stacking.StackingUtils.stackAbove;
-import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
 
 /**
  * Stacks structural-tier decorations (tier 3): tuplets, hairpins, text dynamics,
@@ -68,43 +70,17 @@ public class StructuralStacker {
     /**
      * Vertical margin between hairpins and elements below during stacking.
      */
-    public static final double HAIRPIN_MARGIN_SS = 1.0;  // 8px
+    public static final double HAIRPIN_MARGIN_SS = 1.0;
     /**
      * Margin from reference point to ending bracket
      */
-    public static final double ENDING_MARGIN_SS = 1.0;  // 8px
-    /**
-     * Tuplet-bracket padding: the gap from the worst note tip to the bracket <em>line</em>, matching
-     * LilyPond's {@code TupletBracket.padding} (measured tip → line in {@code calc_position_and_height},
-     * {@code *offset += padding * dir}). The vertical arms hang {@link TupletMetrics#BRACKET_ARM_HEIGHT_SS}
-     * down from the line into this gap; they do not push the line up.
-     */
-    public static final double TUPLET_BRACKET_PADDING_SS = 1.1;
+    public static final double ENDING_MARGIN_SS = 1.0;
 
     /**
      * LilyPond {@code TupletBracket.staff-padding}: the outer endpoints floor to the staff-line
      * centerline widened by this before the slope rise is taken (tuplet-bracket.cc, {@code staff.widen}).
      */
     public static final double TUPLET_STAFF_PADDING_SS = 0.25;
-
-    /**
-     * The margin the tuplet placement needs: it places the reserved box's <em>bottom</em> (the arm
-     * bottom) this far above the tip, whereas LilyPond's padding is to the line. The line sits
-     * {@link TupletMetrics#BRACKET_ARM_HEIGHT_SS} above the arm bottom, so subtracting the arm height
-     * lands the line exactly {@link #TUPLET_BRACKET_PADDING_SS} above the tip.
-     */
-    public static final double TUPLET_ARM_MARGIN_SS =
-        TUPLET_BRACKET_PADDING_SS - TupletMetrics.BRACKET_ARM_HEIGHT_SS;
-
-    /**
-     * The margin a number-only tuplet needs. LilyPond draws no bracket but still positions the number
-     * from the bracket line: with no knee, {@code Tuplet_number::calc_y_offset} returns the bracket's
-     * {@code positions} midpoint, so the number's ink <em>center</em> — not its bottom — lands
-     * {@link #TUPLET_BRACKET_PADDING_SS} above the tip. Placement reserves the box bottom, which for a
-     * number-only tuplet is the ink bottom, half an ink height below that center (issue #653).
-     */
-    public static final double TUPLET_NUMBER_MARGIN_SS =
-        TUPLET_BRACKET_PADDING_SS - TupletGeometry.bracketLineOffsetSs();
 
     /**
      * How far below a dynamics group's shared reference line a text dynamic's glyph baseline sits,
@@ -118,12 +94,25 @@ public class StructuralStacker {
      */
     public static final double DYNAMIC_TEXT_BASELINE_OFFSET_SS = 0.6;
 
-    private final StackingContext context;
-    private final StaffExtents structuralExtents;
+    // A text dynamic sits above the staff with DynamicLineSpanner's padding and staff-padding, and
+    // looks for supports as far as the structural horizontal margin.
+    private static final AlignedSide DYNAMIC_SIDE = new AlignedSide(Direction.UP,
+        NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
+        StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS);
 
+    private final StackingContext context;
+    private final StackingLayer structuralLayer;
+
+    /**
+     * Makes the stacker for the line in {@code context}, reserving in {@code structuralExtents}.
+     *
+     * @param context           the line being stacked and the builder layouts are recorded in
+     * @param structuralExtents the structural extents layer this stacker owns
+     */
     public StructuralStacker(StackingContext context, StaffExtents structuralExtents) {
         this.context = context;
-        this.structuralExtents = structuralExtents;
+        structuralLayer =
+            new StackingLayer(structuralExtents, context.getBuilder().decorationLayouts());
     }
 
     /**
@@ -152,7 +141,7 @@ public class StructuralStacker {
 
         // Tier 3b/3c: hairpins and text dynamics, in left-to-right group order
         for (var group : DynamicGrouper.group(line)) {
-            stackDynamicsGroup(group, line, columnsByElement, builder);
+            stackDynamicsGroup(group, line, columnsByElement);
         }
 
         // Tier 3d: Volta brackets (endings)
@@ -174,48 +163,46 @@ public class StructuralStacker {
                 continue;
             }
 
-            var anchor = spanColumns.anchor();
-            var endNote = spanColumns.end();
             var anchorColumn = spanColumns.anchorColumn();
             var endColumn = spanColumns.endColumn();
 
-            var numberOnly = tuplet.isNumberOnly();
-            var heightSs = numberOnly ? TupletGeometry.numberOnlyHeightSs() : TupletGeometry.bracketedHeightSs();
-            var marginSs = numberOnly ? TUPLET_NUMBER_MARGIN_SS : TUPLET_ARM_MARGIN_SS;
+            var style = TupletGeometry.Style.of(tuplet);
+            var heightSs = style.heightSs();
+            var marginSs = style.marginSs();
             var anchorXSs = anchorColumn.getXSs();
             var widthSs = TupletGeometry.getSpanWidthSs(anchorXSs, endColumn.getXSs());
 
             var nonRestColumns = collectNonRestSpannedColumns(line, tuplet, columnsByElement);
-            var dySs = computeTupletSlopeDySs(nonRestColumns, anchorXSs, widthSs,
-                this::rawObstacleTopSs);
+            var dySs = computeTupletSlopeDySs(nonRestColumns, widthSs, this::rawObstacleTopSs);
 
             // The visual bracket arms extend past the outer note columns; the clearance folds each
             // outer obstacle in again at its arm's X so the extended, sloped arm — not just the line
             // over the note — stays clear. Compute the arm X positions the same way the renderer does
-            // (shared Tuplet helpers) so reserved and drawn geometry match.
+            // (shared TupletGeometry helpers) so reserved and drawn geometry match.
             var endXSs = anchorXSs + widthSs;
-            var leftArmXSs = TupletGeometry.bracketLeftEdgeXSs(
-                tuplet, anchorXSs, anchorColumn.getNoteheadWidthSs());
-            var rightArmXSs = TupletGeometry.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
+            var leftArmXSs = TupletGeometry.bracketLeftEdgeXSs(tuplet, anchorXSs, anchorColumn);
+            var rightArmXSs = TupletGeometry.bracketRightEdgeXSs(endXSs, endColumn);
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
             // every non-rest tip. The clearance has already folded in every spanned tip along the
             // slope, so the box is placed against that ceiling verbatim — re-combining with the flat
-            // note skyline (yGetExpanded) would re-flatten an ascending bracket up to its peak,
-            // defeating the slope (issue #509). placeAndReserve's geometry inlined: the box bottom
+            // note skyline (the expanded extents query) would re-flatten an ascending bracket up to
+            // its peak, defeating the slope. The box geometry is inlined: the box bottom
             // (bracketed: the arm bottom; number-only: the number's ink bottom) sits marginSs above
             // the tip, so the box top is a further heightSs out. Either way the box top lands at
-            // TUPLET_BRACKET_PADDING_SS plus half an ink height above the tip — the number's ink top.
+            // TupletMetrics.BRACKET_PADDING_SS plus half an ink height above the tip — the number's
+            // ink top.
+            var bracketLine = new BracketLine(anchorXSs, widthSs, dySs, leftArmXSs, rightArmXSs);
             var leftYSs = computeTupletClearanceLeftYSs(
-                nonRestColumns, this::scriptObstacles, dySs, anchorXSs, widthSs,
-                leftArmXSs, rightArmXSs, this::rawObstacleTopSs);
+                nonRestColumns, bracketLine, this::rawObstacleTopSs, this::scriptObstacles);
             var finalLeftYSs = leftYSs - marginSs - heightSs;
 
             // Reserve the bracket's true sloped outer edge so later structural elements and line
             // sizing see the tilted silhouette rather than a flat approximation of it.
-            structuralExtents.ySetSloped(true, anchorXSs, endXSs, finalLeftYSs, finalLeftYSs + dySs);
+            structuralLayer.extents().ySetSloped(
+                Direction.UP, new Chord(anchorXSs, endXSs, finalLeftYSs, finalLeftYSs + dySs));
 
-            builder.decorationLayouts().putDecorationLayout(tuplet,
+            builder.decorationLayouts().putTuplet(tuplet,
                 new LayoutResult.DecorationLayout.Sloped(
                     anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs));
         }
@@ -249,7 +236,7 @@ public class StructuralStacker {
      * arms are drawn at {@code leftArmXSs}/{@code rightArmXSs}, which extend a notehead-plus-extension
      * beyond the anchor/end columns. On a sloped bracket the arm on the downhill side keeps
      * descending past its column, so a line that merely clears the note over its own X can still let
-     * the extended arm dip into that same note (issue #509). LilyPond avoids this by fitting the
+     * the extended arm dip into that same note. LilyPond avoids this by fitting the
      * whole bracket to its visual X-bounds — the arm edges — rather than the note span
      * (tuplet-bracket.cc, {@code calc_position_and_height}). We mirror that by folding the anchor and
      * end <b>notehead tips</b> in a second time, projected from the arm X positions, so the extended
@@ -264,27 +251,21 @@ public class StructuralStacker {
      * notehead's left edge, so on a descending bracket projecting a script from there instead of its
      * center under-clears it — and drops the downhill arm — by {@code slope · (centerX − refX)}.
      *
-     * @param nonRestColumns ordered spanned columns with rests already excluded
-     * @param scriptObstacles the above-staff scripts (accent/staccato) each column presents, each with
-     *                        its top edge and center X (empty when none)
-     * @param dySs           bracket-line rise over {@code widthSs} (0 when flat/vetoed)
-     * @param anchorXSs      X of the anchor (left) element column — the slope origin
-     * @param widthSs        anchor→end element run the slope is expressed over
-     * @param leftArmXSs     X of the left arm (visual bracket left edge)
-     * @param rightArmXSs    X of the right arm (visual bracket right edge)
+     * @param nonRestColumns  ordered spanned columns with rests already excluded
+     * @param bracketLine     the bracket's slope origin, run and rise, and the X of each arm
+     * @param obstacleTopSs   the raw obstacle top each column presents to the bracket
+     * @param scriptObstacles the above-staff scripts (accent/staccato) each column presents, each
+     *                        with its top edge and center X (empty when none)
      * @return the left-endpoint ceiling {@code leftYSs} in layout-Y staff-space units
      */
     static double computeTupletClearanceLeftYSs(
         List<ElementColumn> nonRestColumns,
-        Function<? super ElementColumn, ? extends List<ScriptObstacle>> scriptObstacles,
-        double dySs,
-        double anchorXSs,
-        double widthSs,
-        double leftArmXSs,
-        double rightArmXSs,
-        ToDoubleFunction<? super ElementColumn> obstacleTopSs) {
+        BracketLine bracketLine,
+        ToDoubleFunction<? super ElementColumn> obstacleTopSs,
+        Function<? super ElementColumn, ? extends List<ScriptObstacle>> scriptObstacles) {
 
-        var slope = dySs / widthSs;
+        var anchorXSs = bracketLine.anchorXSs();
+        var slope = bracketLine.dySs() / bracketLine.widthSs();
         var leftYSs = Double.POSITIVE_INFINITY;
         var anchorTipTopYSs = 0.0;
         var endTipTopYSs = 0.0;
@@ -311,11 +292,27 @@ public class StructuralStacker {
         }
 
         if (!nonRestColumns.isEmpty()) {
-            leftYSs = Math.min(leftYSs, anchorTipTopYSs - slope * (leftArmXSs - anchorXSs));
-            leftYSs = Math.min(leftYSs, endTipTopYSs - slope * (rightArmXSs - anchorXSs));
+            leftYSs = Math.min(
+                leftYSs, anchorTipTopYSs - slope * (bracketLine.leftArmXSs() - anchorXSs));
+            leftYSs = Math.min(
+                leftYSs, endTipTopYSs - slope * (bracketLine.rightArmXSs() - anchorXSs));
         }
 
         return leftYSs;
+    }
+
+    /**
+     * A tuplet bracket's line before its height is placed: where its slope starts, the run and
+     * rise the slope is expressed over, and the X of each drawn arm.
+     *
+     * @param anchorXSs   X of the anchor (left) element column — the slope origin
+     * @param widthSs     anchor→end element run the slope is expressed over
+     * @param dySs        bracket-line rise over {@code widthSs} (0 when flat/vetoed)
+     * @param leftArmXSs  X of the left arm (visual bracket left edge)
+     * @param rightArmXSs X of the right arm (visual bracket right edge)
+     */
+    record BracketLine(
+        double anchorXSs, double widthSs, double dySs, double leftArmXSs, double rightArmXSs) {
     }
 
     /**
@@ -323,7 +320,7 @@ public class StructuralStacker {
      * articulation. Used both by the interior tip fold and the arm-reach fold so a script is never
      * projected from the arm edge — LilyPond folds scripts only at their own center X
      * (tuplet-bracket.cc, avoid-scripts). The raw top comes from {@code obstacleTopSs} so a beamed
-     * up-stem column can report its beam edge rather than its tucked-in stem tip (issue #556).
+     * up-stem column can report its beam edge rather than its tucked-in stem tip.
      * <p>
      * Staff-top clamp: a tip below the top staff line raises to the staff-padding-widened staff top
      * (never lower), so the bracket stays at least the margin above the staff. The ceiling is the
@@ -344,7 +341,7 @@ public class StructuralStacker {
      * A beamed up-stem's rendered stem is shortened so it tucks inside the beam and never protrudes
      * past the beam's outer edge, so the column's {@link ElementColumn#getAbsoluteTopYSs()} — the
      * natural stem tip — sits <em>below</em> the beam the tuplet must actually clear. Measuring to it
-     * lets the number/bracket drop onto the beam (issue #556); the beam's outer edge is the real
+     * lets the number/bracket drop onto the beam; the beam's outer edge is the real
      * ceiling. The beam layout's {@link LayoutResult.StemLayout#topYSs()} is that outer edge for an
      * up-stem beam, in the same staff-Y space as {@code getAbsoluteTopYSs()}. Every other column
      * (unbeamed, or a down-stem beam whose beam sits below the noteheads) keeps its natural tip.
@@ -353,7 +350,9 @@ public class StructuralStacker {
         var element = column.getElement();
         var naturalTopYSs = column.getAbsoluteTopYSs();
 
-        if (column.isBeamed() && element instanceof NoteElement note && note.direction().isUp()) {
+        if (column.beaming() == Beaming.BEAMED
+            && element instanceof NoteElement note
+            && note.direction().isUp()) {
             return StackingUtils.resolvedStemTopYSs(context.getBuilder(), note, naturalTopYSs);
         }
 
@@ -454,19 +453,17 @@ public class StructuralStacker {
      * residual gap vs LilyPond is the different horizontal spacing engine, not a bug.
      *
      * @param nonRestColumns ordered spanned columns with rests already excluded
-     * @param anchorXSs      X of the anchor (left) element column — the run origin shared with the
-     *                       clearance and render stages
      * @param widthSs        anchor→end element run the returned rise is expressed over
+     * @param obstacleTopSs  the raw obstacle top each column presents to the bracket
      * @return the slope rise {@code dySs} = slope × {@code widthSs}; 0.0 when flat or vetoed
      */
     static double computeTupletSlopeDySs(
         List<ElementColumn> nonRestColumns,
-        double anchorXSs,
         double widthSs,
         ToDoubleFunction<? super ElementColumn> obstacleTopSs) {
 
         // Defensive early-out: an all-rest span or a single non-rest column has no contour and a
-        // zero tip run (which would divide to NaN). Such tuplets are also rejected on load (#518).
+        // zero tip run (which would divide to NaN). Such tuplets are also rejected on load.
         if (nonRestColumns.size() < 2) {
             return 0.0;
         }
@@ -485,7 +482,8 @@ public class StructuralStacker {
         var leftTopYSs = columnTipTopSs(leftEnd, obstacleTopSs);
         var rightTopYSs = columnTipTopSs(rightEnd, obstacleTopSs);
         var tipRise = rightTopYSs - leftTopYSs;
-        var edgeRunSs = boundEdgeXSs(rightEnd, true) - boundEdgeXSs(leftEnd, false);
+        var edgeRunSs =
+            boundEdgeXSs(rightEnd, SpanEnd.RIGHT) - boundEdgeXSs(leftEnd, SpanEnd.LEFT);
         var slope = tipRise / edgeRunSs;
 
         // Step 2: contour veto (chord-free). A valid ascending/descending contour has tipRise and
@@ -513,18 +511,19 @@ public class StructuralStacker {
      * ({@code note-column.cc}). This is {@code TupletRenderer}'s arm-edge geometry without the
      * visual {@code ARM_EXTENSION_SS} overhang, which is not a bound edge.
      *
-     * @param column       the outer non-rest column
-     * @param rightEndpoint true for the right endpoint (contributes {@code x1}, its RIGHT edge);
-     *                      false for the left endpoint (contributes {@code x0}, its LEFT edge)
+     * @param column the outer non-rest column
+     * @param end    which end of the bracket {@code column} bounds: {@link SpanEnd#RIGHT}
+     *               contributes {@code x1}, its right edge; {@link SpanEnd#LEFT} contributes
+     *               {@code x0}, its left edge
      * @return the bound edge X in ss
      */
-    private static double boundEdgeXSs(ElementColumn column, boolean rightEndpoint) {
+    private static double boundEdgeXSs(ElementColumn column, SpanEnd end) {
         var headLeftXSs = column.getXSs();
         var headRightXSs = headLeftXSs + column.getNoteheadWidthSs();
 
         // Right endpoint contributes its RIGHT edge. An up-stem's right edge coincides with the
         // head's right edge, so the stem-bound and head-bound cases both resolve to headRight.
-        if (rightEndpoint) {
+        if (end == SpanEnd.RIGHT) {
             return headRightXSs;
         }
 
@@ -550,13 +549,12 @@ public class StructuralStacker {
     private void stackDynamicsGroup(
         DynamicGrouper.Group group,
         Line line,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResultBuilder builder) {
+        Map<StaffElement, ElementColumn> columnsByElement) {
 
         var members = group.members();
 
         if (members.size() == 1) {
-            stackSoloMember(members.getFirst(), line, columnsByElement, builder);
+            stackSoloMember(members.getFirst(), line, columnsByElement);
             return;
         }
 
@@ -578,14 +576,13 @@ public class StructuralStacker {
         }
 
         // Pass 2: place and reserve left to right, each member's inner edge derived from the
-        // shared line by inverting the relation pass 1 used to compute its demand.
+        // shared line by inverting the relation that pass 1 computes for its demand.
         for (var placement : placements) {
-            var widthSs = placement.widthSs();
+            var edge = new InnerEdge(Direction.UP,
+                groupReferenceYSs + placement.innerEdgeOffsetSs(), placement.marginSs());
 
-            StackingUtils.placeAtInnerEdge(Direction.UP, structuralExtents, placement.element(),
-                placement.xSs(), widthSs, placement.heightSs(),
-                groupReferenceYSs + placement.innerEdgeOffsetSs(),
-                StaffExtents.Profile.flat(widthSs), placement.marginSs(), builder.decorationLayouts());
+            structuralLayer.placeAtInnerEdge(
+                placement.element(), Outline.flat(placement.footprint()), edge);
         }
     }
 
@@ -597,24 +594,23 @@ public class StructuralStacker {
     private void stackSoloMember(
         DynamicGrouper.Member member,
         Line line,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResultBuilder builder) {
+        Map<StaffElement, ElementColumn> columnsByElement) {
 
         if (member instanceof DynamicGrouper.Member.OfHairpin hairpinMember) {
-            stackHairpin(hairpinMember.hairpin(), line, columnsByElement, builder);
+            stackHairpin(hairpinMember.hairpin(), line, columnsByElement);
         } else if (member instanceof DynamicGrouper.Member.OfDynamic dynamicMember) {
             var column = columnsByElement.get(line.getElement(dynamicMember.elementIndex()));
 
             if (column != null) {
-                stackTextDynamics(column, builder);
+                stackTextDynamics(column);
             }
         }
     }
 
     /**
      * Resolves a group member's footprint and the reference line it demands on its own, or
-     * {@code null} when the member has no geometry in this line (an endpoint that resolves to no
-     * column). Reserves nothing.
+     * {@code null} when the member is a text dynamic whose element has no column. Reserves
+     * nothing.
      */
     private @Nullable DynamicPlacement<?> resolvePlacement(
         DynamicGrouper.Member member,
@@ -643,26 +639,42 @@ public class StructuralStacker {
      * ({@code Hairpin.self-alignment-Y} is {@code CENTER}), so its inner edge — the bottom, above
      * the staff — sits half its height below the line.
      */
-    private @Nullable DynamicPlacement<Hairpin> resolveHairpinPlacement(
+    private DynamicPlacement<Hairpin> resolveHairpinPlacement(
         Hairpin hairpin,
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement) {
 
         var endpoints = HairpinEndpoints.compute(hairpin, line, columnsByElement);
-
-        if (endpoints == null) {
-            return null;
-        }
-
-        var xSs = endpoints.x1Ss();
-        var widthSs = endpoints.widthSs();
+        var footprint = hairpinFootprint(endpoints);
         var innerEdgeOffsetSs = hairpin.intrinsicHeightSs() / 2;
-        var innerEdgeYSs = StackingUtils.anchoredInnerEdgeYSs(Direction.UP, structuralExtents,
-            xSs, widthSs, HAIRPIN_MARGIN_SS,
-            ElementSeat.seatSp(endpoints.spanColumns().anchor()).value());
+        var innerEdgeYSs =
+            structuralLayer.anchoredInnerEdgeYSs(footprint, hairpinAnchor(endpoints));
 
-        return new DynamicPlacement<>(hairpin, xSs, widthSs, HAIRPIN_MARGIN_SS,
+        return new DynamicPlacement<>(hairpin, footprint, HAIRPIN_MARGIN_SS,
             innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
+    }
+
+    /**
+     * The footprint a hairpin occupies: from its left tip to its right tip.
+     *
+     * @param endpoints the hairpin's resolved endpoints
+     * @return the hairpin's horizontal footprint
+     */
+    private static Footprint hairpinFootprint(HairpinEndpoints.Endpoints endpoints) {
+        return new Footprint(endpoints.x1Ss(), endpoints.widthSs());
+    }
+
+    /**
+     * The anchor a hairpin stacks against: above the staff, at its anchor element's seat, with
+     * {@link #HAIRPIN_MARGIN_SS}.
+     *
+     * @param endpoints the hairpin's resolved endpoints
+     * @return the hairpin's staff anchor
+     */
+    private static StaffAnchor hairpinAnchor(HairpinEndpoints.Endpoints endpoints) {
+        var staffPosition = ElementSeat.seatSp(endpoints.spanColumns().anchor()).value();
+
+        return new StaffAnchor(Direction.UP, staffPosition, HAIRPIN_MARGIN_SS);
     }
 
     /**
@@ -674,17 +686,26 @@ public class StructuralStacker {
     private DynamicPlacement<DynamicAttachment> resolveDynamicPlacement(
         DynamicAttachment dynamic, ElementColumn column) {
 
-        var xSs = HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic);
-        var widthSs = HairpinEndpoints.dynamicWidthSs(dynamic);
+        var footprint = dynamicFootprint(column, dynamic);
         var innerEdgeOffsetSs = DYNAMIC_TEXT_BASELINE_OFFSET_SS + dynamic.getContentBottomSs();
-        var innerEdgeYSs = StackingUtils.clampedInnerEdgeYSs(Direction.UP, structuralExtents,
-            xSs, StaffExtents.Profile.flat(widthSs),
-            NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
-            StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS);
+        var innerEdgeYSs =
+            structuralLayer.clampedInnerEdgeYSs(Outline.flat(footprint), DYNAMIC_SIDE);
 
-        return new DynamicPlacement<>(dynamic, xSs, widthSs,
-            NoteAttachedStacker.DYNAMIC_PADDING_SS, innerEdgeOffsetSs,
-            innerEdgeYSs - innerEdgeOffsetSs);
+        return new DynamicPlacement<>(dynamic, footprint, DYNAMIC_SIDE.paddingSs(),
+            innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
+    }
+
+    /**
+     * The footprint a text dynamic occupies over its column: its advance box, placed where
+     * {@link HairpinEndpoints} places it.
+     *
+     * @param column  the column of the element the dynamic is attached to
+     * @param dynamic the text dynamic
+     * @return the dynamic's horizontal footprint
+     */
+    private static Footprint dynamicFootprint(ElementColumn column, DynamicAttachment dynamic) {
+        return new Footprint(HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic),
+            HairpinEndpoints.dynamicWidthSs(dynamic));
     }
 
     /**
@@ -694,25 +715,23 @@ public class StructuralStacker {
      * it is how far the member's inner edge sits below the group's reference line, so pass 1 reads
      * {@code referenceYSs = innerEdgeYSs - innerEdgeOffsetSs} and pass 2 inverts it. Half the
      * height for a centered hairpin, the baseline drop plus the glyph's descent for a text dynamic.
+     * <p>
+     * The member's height is not a component: it is always the element's own, read where it is
+     * placed, so a placement cannot carry a height its element disagrees with.
      *
-     * @param <E>          the member's element type, which must own its height so the placement
-     *                     cannot be built with one the element disagrees with
-     * @param referenceYSs the reference line this member would demand on its own
+     * @param <E>               the member's element type, which must own its height
+     * @param element           the hairpin or text dynamic
+     * @param footprint         the member's horizontal footprint
+     * @param marginSs          the margin recorded with the member's layout
+     * @param innerEdgeOffsetSs how far the member's inner edge sits below the group's reference line
+     * @param referenceYSs      the reference line this member would demand on its own
      */
     private record DynamicPlacement<E extends LineElement & IntrinsicHeight>(
         E element,
-        double xSs, double widthSs, double marginSs,
-        double innerEdgeOffsetSs, double referenceYSs) {
-
-        /**
-         * The height this member reserves, which is always its own. Derived rather than
-         * stored so a placement cannot carry a height its element disagrees with.
-         *
-         * @return the member's intrinsic height, in staff spaces
-         */
-        double heightSs() {
-            return element.intrinsicHeightSs();
-        }
+        Footprint footprint,
+        double marginSs,
+        double innerEdgeOffsetSs,
+        double referenceYSs) {
     }
 
     /**
@@ -724,18 +743,12 @@ public class StructuralStacker {
     private void stackHairpin(
         Hairpin hairpin,
         Line line,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResultBuilder builder) {
+        Map<StaffElement, ElementColumn> columnsByElement) {
 
         var endpoints = HairpinEndpoints.compute(hairpin, line, columnsByElement);
 
-        if (endpoints == null) {
-            return;
-        }
-
-        stackAbove(structuralExtents, hairpin,
-            endpoints.x1Ss(), endpoints.widthSs(), HAIRPIN_MARGIN_SS,
-            ElementSeat.seatSp(endpoints.spanColumns().anchor()).value(), builder.decorationLayouts());
+        structuralLayer.stackAtAnchor(
+            hairpin, hairpinFootprint(endpoints), hairpinAnchor(endpoints));
     }
 
 
@@ -745,10 +758,7 @@ public class StructuralStacker {
      * Positions text dynamics (pp, p, mp, mf, f, ff) in the structural tier
      * using collision detection against previously placed elements.
      */
-    private void stackTextDynamics(
-        ElementColumn column,
-        LayoutResultBuilder builder) {
-
+    private void stackTextDynamics(ElementColumn column) {
         var note = column.getElement();
         var dynamic = note.findAttachment(DynamicAttachment.class);
 
@@ -756,78 +766,56 @@ public class StructuralStacker {
             return;
         }
 
-        var contentWidthSs = HairpinEndpoints.dynamicWidthSs(dynamic);
-        var centeredXSs = HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic);
-        StackingUtils.placeAndReserveClamped(Direction.UP, structuralExtents, dynamic,
-            centeredXSs, contentWidthSs,
-            StaffExtents.Profiles.flat(contentWidthSs),
-            NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
-            StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS, builder.decorationLayouts());
+        structuralLayer.placeAndReserveClamped(
+            dynamic, Outline.flat(dynamicFootprint(column, dynamic)), DYNAMIC_SIDE);
     }
 
     /**
      * Stacks all endings (volta brackets) for the line.
      * <p>
-     * Each ending computes its bracket ranges (first and second brackets split
-     * at the REPEAT_RIGHT barline), then collision regions are created for each
-     * bracket and stacked together as one element. The ending's layout is recorded as a
-     * {@link LayoutResult.DecorationLayout.Volta} carrying those ranges, which is where the
-     * renderer reads them.
+     * Each ending computes its two brackets (split at the REPEAT_RIGHT barline), then collision
+     * regions are created for each bracket and stacked together as one element. The ending's
+     * layout is recorded as a {@link LayoutResult.DecorationLayout.Volta} carrying those
+     * brackets, which is where the renderer reads them.
      */
     private void stackEndings(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResultBuilder builder) {
 
-        var decorationLayouts = builder.decorationLayouts();
-
         for (var ending : line.spanRegistry().findSpans(Ending.class)) {
-            var anchor = ending.getAnchorElement();
-
             var brackets = EndingBracketGeometry.computeBracketRanges(
                 ending,
                 line,
-                e -> {
-                    var col = columnsByElement.get(e);
+                element -> {
+                    var column = columnsByElement.get(element);
 
-                    if (col == null) {
-                        throw new IllegalStateException(
-                            "No column for element");
+                    if (column == null) {
+                        throw new IllegalStateException("no column for " + element);
                     }
 
-                    return col;
+                    return column;
                 });
 
-            if (brackets.isEmpty()) {
-                continue;
+            // The ending's anchor X is the first bracket's left edge, and every region is placed
+            // from it.
+            var anchorXSs = brackets.first().x1Ss();
+            var regions = new ArrayList<CollisionRegion>();
+
+            for (var slot : BracketRange.Bracket.values()) {
+                var bracket = brackets.get(slot);
+                regions.addAll(EndingBracketGeometry.computeCollisionRegions(
+                    bracket, slot, bracket.x1Ss() - anchorXSs));
             }
 
-            // Element anchor X = first bracket's left edge
-            var anchorXSs = brackets.getFirst().x1Ss();
+            var widthSs = brackets.second().x2Ss() - anchorXSs;
+            var staffPosition = ElementSeat.seatSp(ending.getAnchorElement()).value();
 
-            // Combine collision regions from all brackets
-            var allRegions = new ArrayList<CollisionRegion>();
+            var placed = structuralLayer.stackAboveWithRegions(
+                regions, new Footprint(anchorXSs, widthSs), ENDING_MARGIN_SS, staffPosition);
 
-            for (var bracket : brackets) {
-                var xBaseSs = bracket.x1Ss() - anchorXSs;
-                allRegions.addAll(
-                    EndingBracketGeometry.computeCollisionRegions(bracket, xBaseSs));
-            }
-
-            // Overall width = from first bracket start to last bracket end
-            var widthSs = brackets.getLast().x2Ss() - anchorXSs;
-
-            var staffPosition = ElementSeat.seatSp(anchor).value();
-
-            stackAboveWithRegions(structuralExtents, ending, allRegions,
-                anchorXSs, widthSs,
-                ENDING_MARGIN_SS,
-                staffPosition, decorationLayouts, null);
-
-            // The shared placement records bounds only; the ending's layout also carries the
-            // brackets it was placed from.
-            decorationLayouts.putDecorationLayout(ending, LayoutResult.DecorationLayout.Volta.of(
-                decorationLayouts.requireDecorationLayout(ending), brackets));
+            builder.decorationLayouts().putEnding(
+                ending, LayoutResult.DecorationLayout.Volta.of(placed, brackets));
         }
     }
 

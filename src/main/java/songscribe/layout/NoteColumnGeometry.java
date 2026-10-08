@@ -49,8 +49,7 @@ import songscribe.smufl.SMuFLMetadata;
  * are pinned at notehead-center Y, so the flag (which lives near the stem tip, far
  * above/below) has no ink in the line's path. The results are intentionally uncached —
  * each computation is a handful of O(1) bbox lookups, far cheaper than maintaining a
- * cache (the cache it replaces was needed only because the old Area build was expensive;
- * refs #465).
+ * cache.
  */
 public final class NoteColumnGeometry {
 
@@ -70,10 +69,10 @@ public final class NoteColumnGeometry {
      * driven only by the notehead, augmentation dots (right), and accidental (left).
      *
      * @param note   the note whose attach extent to compute
-     * @param beamed whether the note belongs to a beam group (affects dot placement)
+     * @param beaming whether the note belongs to a beam group (affects dot placement)
      * @return the stem-free column extent
      */
-    public static ColumnExtent glissandoAttachExtentSs(NoteElement note, boolean beamed) {
+    public static ColumnExtent glissandoAttachExtentSs(NoteElement note, Beaming beaming) {
         var noteType = note.getType();
         var direction = NoteGeometry.effectiveDirection(note);
 
@@ -85,7 +84,7 @@ public final class NoteColumnGeometry {
 
         // ---- augmentation dots (extend right) ----
         var rightSs = NoteGeometry.dotsRightExtentSs(
-            note, beamed, direction, noteType.getElementWidthSs());
+            note, beaming, direction, noteType.getElementWidthSs());
 
         // ---- accidental (extend left only) ----
         if (note.drawnAccidental() != null) {
@@ -97,18 +96,6 @@ public final class NoteColumnGeometry {
         }
 
         return new ColumnExtent(leftSs, rightSs);
-    }
-
-    /**
-     * Computes the full column extent for {@code note} in note-local staff-space
-     * coordinates, including the stem. Used to anchor a trailing fall glyph.
-     *
-     * @param note   the note whose column extent to compute
-     * @param beamed whether the note belongs to a beam group (affects dot placement)
-     * @return the full column extent
-     */
-    public static ColumnExtent extentSs(NoteElement note, boolean beamed) {
-        return extentSs(note, glissandoAttachExtentSs(note, beamed));
     }
 
     /**

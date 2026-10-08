@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -35,7 +36,7 @@ public final class PasteAction extends PasteboardAction {
     private PasteAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Operation.PASTE,
+            PasteboardOpCommand.Operation.PASTE,
             Strings.get(Strings.ACTION_EDIT_PASTE),
             "edit-paste",
             KeyEvent.VK_V,

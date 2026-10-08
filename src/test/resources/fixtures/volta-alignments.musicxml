@@ -174,7 +174,7 @@
         <type>quarter</type>
         <lyric number="1">
           <syllabic>single</syllabic>
-          <text>open=SINGLE</text>
+          <text>open=SINGLE close=SINGLE</text>
         </lyric>
       </note>
       <note>
@@ -471,7 +471,7 @@
         <type>quarter</type>
         <lyric number="1">
           <syllabic>single</syllabic>
-          <text>close=SINGLE</text>
+          <text>close=DOUBLE</text>
         </lyric>
       </note>
       <note>
@@ -512,8 +512,8 @@
         <type>quarter</type>
       </note>
       <barline location="right">
-        <bar-style>regular</bar-style>
-        <ending number="2" type="discontinue"/>
+        <bar-style>light-light</bar-style>
+        <ending number="2" type="stop"/>
       </barline>
     </measure>
     <measure number="21">
@@ -546,7 +546,7 @@
         <type>quarter</type>
         <lyric number="1">
           <syllabic>single</syllabic>
-          <text>close=DOUBLE</text>
+          <text>close=REPEAT_LEFT</text>
         </lyric>
       </note>
       <note>
@@ -587,17 +587,26 @@
         <type>quarter</type>
       </note>
       <barline location="right">
-        <bar-style>light-light</bar-style>
-        <ending number="2" type="stop"/>
+        <bar-style>none</bar-style>
       </barline>
     </measure>
     <measure number="25">
-      <print new-system="yes"/>
+      <barline location="left">
+        <bar-style>heavy-light</bar-style>
+        <ending number="2" type="stop"/>
+        <repeat direction="forward"/>
+      </barline>
       <barline location="right">
         <bar-style>none</bar-style>
       </barline>
     </measure>
     <measure number="26">
+      <print new-system="yes"/>
+      <barline location="right">
+        <bar-style>none</bar-style>
+      </barline>
+    </measure>
+    <measure number="27">
       <barline location="left">
         <bar-style>heavy-light</bar-style>
         <repeat direction="forward"/>
@@ -606,7 +615,7 @@
         <bar-style>regular</bar-style>
       </barline>
     </measure>
-    <measure number="27">
+    <measure number="28">
       <barline location="left">
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
@@ -620,7 +629,7 @@
         <type>quarter</type>
         <lyric number="1">
           <syllabic>single</syllabic>
-          <text>close=REPEAT_LEFT</text>
+          <text>close=NOTE</text>
         </lyric>
       </note>
       <note>
@@ -638,7 +647,7 @@
         <repeat direction="backward"/>
       </barline>
     </measure>
-    <measure number="28">
+    <measure number="29">
       <barline location="left">
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
@@ -662,16 +671,19 @@
       </note>
       <barline location="right">
         <bar-style>none</bar-style>
+        <ending number="2" type="discontinue"/>
       </barline>
-    </measure>
-    <measure number="29">
-      <barline location="left">
-        <bar-style>heavy-light</bar-style>
-        <ending number="2" type="stop"/>
-        <repeat direction="forward"/>
-      </barline>
+      <note>
+        <pitch>
+          <step>E</step>
+          <alter>-1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>13440</duration>
+        <type>quarter</type>
+      </note>
       <barline location="right">
-        <bar-style>none</bar-style>
+        <bar-style>regular</bar-style>
       </barline>
     </measure>
     <measure number="30">
@@ -696,20 +708,20 @@
       </barline>
       <note>
         <pitch>
-          <step>E</step>
-          <alter>-1</alter>
+          <step>F</step>
           <octave>4</octave>
         </pitch>
         <duration>13440</duration>
         <type>quarter</type>
         <lyric number="1">
           <syllabic>single</syllabic>
-          <text>close=NOTE</text>
+          <text>close=NOTE_THEN_BAR</text>
         </lyric>
       </note>
       <note>
         <pitch>
-          <step>F</step>
+          <step>G</step>
+          <alter>-1</alter>
           <octave>4</octave>
         </pitch>
         <duration>13440</duration>
@@ -728,25 +740,12 @@
       </barline>
       <note>
         <pitch>
-          <step>G</step>
-          <alter>-1</alter>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-      </note>
-      <note>
-        <pitch>
           <step>C</step>
           <octave>4</octave>
         </pitch>
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <barline location="right">
-        <bar-style>none</bar-style>
-        <ending number="2" type="discontinue"/>
-      </barline>
       <note>
         <pitch>
           <step>D</step>
@@ -756,6 +755,10 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
+      <barline location="right">
+        <bar-style>none</bar-style>
+        <ending number="2" type="discontinue"/>
+      </barline>
       <barline location="right">
         <bar-style>regular</bar-style>
       </barline>
@@ -771,15 +774,6 @@
         <bar-style>heavy-light</bar-style>
         <repeat direction="forward"/>
       </barline>
-      <barline location="right">
-        <bar-style>regular</bar-style>
-      </barline>
-    </measure>
-    <measure number="36">
-      <barline location="left">
-        <bar-style>none</bar-style>
-        <ending number="1" type="start"/>
-      </barline>
       <note>
         <pitch>
           <step>E</step>
@@ -790,12 +784,35 @@
         <type>quarter</type>
         <lyric number="1">
           <syllabic>single</syllabic>
-          <text>close=NOTE_THEN_BAR</text>
+          <text>anchor=SINGLE</text>
         </lyric>
       </note>
       <note>
         <pitch>
           <step>F</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>13440</duration>
+        <type>quarter</type>
+      </note>
+      <barline location="right">
+        <bar-style>regular</bar-style>
+        <ending number="1" type="start"/>
+      </barline>
+    </measure>
+    <measure number="36">
+      <note>
+        <pitch>
+          <step>G</step>
+          <alter>-1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>13440</duration>
+        <type>quarter</type>
+      </note>
+      <note>
+        <pitch>
+          <step>C</step>
           <octave>4</octave>
         </pitch>
         <duration>13440</duration>
@@ -814,7 +831,7 @@
       </barline>
       <note>
         <pitch>
-          <step>G</step>
+          <step>D</step>
           <alter>-1</alter>
           <octave>4</octave>
         </pitch>
@@ -823,18 +840,16 @@
       </note>
       <note>
         <pitch>
-          <step>C</step>
+          <step>E</step>
+          <alter>-1</alter>
           <octave>4</octave>
         </pitch>
         <duration>13440</duration>
         <type>quarter</type>
       </note>
       <barline location="right">
-        <bar-style>none</bar-style>
-        <ending number="2" type="discontinue"/>
-      </barline>
-      <barline location="right">
         <bar-style>regular</bar-style>
+        <ending number="2" type="discontinue"/>
       </barline>
     </measure>
     <measure number="38">
@@ -848,34 +863,15 @@
         <bar-style>heavy-light</bar-style>
         <repeat direction="forward"/>
       </barline>
-      <note>
-        <pitch>
-          <step>D</step>
-          <alter>-1</alter>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-        <lyric number="1">
-          <syllabic>single</syllabic>
-          <text>anchor=SINGLE</text>
-        </lyric>
-      </note>
-      <note>
-        <pitch>
-          <step>E</step>
-          <alter>-1</alter>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-      </note>
       <barline location="right">
         <bar-style>regular</bar-style>
-        <ending number="1" type="start"/>
       </barline>
     </measure>
     <measure number="40">
+      <barline location="left">
+        <bar-style>none</bar-style>
+        <ending number="1" type="start"/>
+      </barline>
       <note>
         <pitch>
           <step>F</step>
@@ -883,6 +879,10 @@
         </pitch>
         <duration>13440</duration>
         <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>close=FINAL_DOUBLE</text>
+        </lyric>
       </note>
       <note>
         <pitch>
@@ -916,80 +916,6 @@
         <pitch>
           <step>D</step>
           <alter>-1</alter>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-      </note>
-      <barline location="right">
-        <bar-style>regular</bar-style>
-        <ending number="2" type="discontinue"/>
-      </barline>
-    </measure>
-    <measure number="42">
-      <print new-system="yes"/>
-      <barline location="right">
-        <bar-style>none</bar-style>
-      </barline>
-    </measure>
-    <measure number="43">
-      <barline location="left">
-        <bar-style>heavy-light</bar-style>
-        <repeat direction="forward"/>
-      </barline>
-      <barline location="right">
-        <bar-style>regular</bar-style>
-      </barline>
-    </measure>
-    <measure number="44">
-      <barline location="left">
-        <bar-style>none</bar-style>
-        <ending number="1" type="start"/>
-      </barline>
-      <note>
-        <pitch>
-          <step>E</step>
-          <alter>-1</alter>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-        <lyric number="1">
-          <syllabic>single</syllabic>
-          <text>close=FINAL_DOUBLE</text>
-        </lyric>
-      </note>
-      <note>
-        <pitch>
-          <step>F</step>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-      </note>
-      <barline location="right">
-        <bar-style>light-heavy</bar-style>
-        <ending number="1" type="stop"/>
-        <repeat direction="backward"/>
-      </barline>
-    </measure>
-    <measure number="45">
-      <barline location="left">
-        <bar-style>none</bar-style>
-        <ending number="2" type="start"/>
-      </barline>
-      <note>
-        <pitch>
-          <step>G</step>
-          <alter>-1</alter>
-          <octave>4</octave>
-        </pitch>
-        <duration>13440</duration>
-        <type>quarter</type>
-      </note>
-      <note>
-        <pitch>
-          <step>C</step>
           <octave>4</octave>
         </pitch>
         <duration>13440</duration>

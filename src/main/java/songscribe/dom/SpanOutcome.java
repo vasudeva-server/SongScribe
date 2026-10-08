@@ -22,22 +22,21 @@ package songscribe.dom;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
- * What should happen to a {@link Span} when it is asked to judge itself against a
- * pending {@link ElementChange} via {@link Span#outcomeFor(ElementChange)}.
+ * What should happen to a {@link Span} when a pending {@link ElementChange} lands on its line:
+ * the answer {@link Span#outcomeFor(ElementChange)} gives, and the one answer the sweep acts on.
  * <p>
- * Every span can answer {@link Keep} or {@link Remove}, and that is the whole of this type.
- * Keep carries no data. Remove carries the reason the span's rule gives, which is what the
- * user is told when the removal is reported. A hairpin alone can also survive an edit in a
- * different shape, so it answers the wider {@link HairpinOutcome} through
- * {@link Hairpin#hairpinOutcomeFor(ElementChange)}; the split is what makes a
- * {@link Reshape} from any other span kind unwriteable rather than merely unexpected.
+ * The span survives untouched ({@link Keep}), is removed ({@link Remove}), or survives over a
+ * different range ({@link Reshape}). Keep carries no data. Remove carries the reason the span's
+ * rule gives, which is what the user is told when the removal is reported. Reshape names the
+ * hairpin it reshapes, because a hairpin is the only span kind an edit reshapes, so no other kind
+ * can write one.
  */
-public sealed interface SpanOutcome permits SpanOutcome.Keep, SpanOutcome.Remove {
+public sealed interface SpanOutcome permits SpanOutcome.Keep, SpanOutcome.Remove, SpanOutcome.Reshape {
 
     /**
      * The span is unaffected.
      */
-    enum Keep implements SpanOutcome, HairpinOutcome {
+    enum Keep implements SpanOutcome {
         INSTANCE
     }
 
@@ -47,17 +46,15 @@ public sealed interface SpanOutcome permits SpanOutcome.Keep, SpanOutcome.Remove
      * @param reasonKey the {@code Strings} key of the reason the span's rule gives, whose value
      *                  is the plain text the report shows for the removal
      */
-    record Remove(String reasonKey) implements SpanOutcome, HairpinOutcome { }
+    record Remove(String reasonKey) implements SpanOutcome { }
 
     /**
-     * What should happen to a {@link Hairpin}: {@link Keep}, {@link Remove}, or a
-     * {@link Reshape}.
+     * The hairpin survives the change over {@code range}. A hairpin is the only span kind an
+     * edit reshapes, and only {@link Hairpin#outcomeFor} answers this.
+     *
+     * @param hairpin the hairpin that survives, the one that was asked
+     * @param range   the range it survives over, a range over the change's
+     *                {@link ElementChange#projectedElements}, not over the pre-change line
      */
-    sealed interface HairpinOutcome permits Keep, Remove, Reshape { }
-
-    /**
-     * The hairpin survives over {@code range}, a range over the change's
-     * {@link ElementChange#projectedElements}, not over the pre-change line.
-     */
-    record Reshape(ElementRange range) implements HairpinOutcome { }
+    record Reshape(Hairpin hairpin, ElementRange range) implements SpanOutcome { }
 }

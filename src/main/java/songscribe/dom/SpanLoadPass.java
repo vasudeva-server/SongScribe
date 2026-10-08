@@ -17,22 +17,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package songscribe.dom;
 
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
- * Places one span a reader found on its anchor's line, or drops it and reports the drop. This is
- * the shape every load pass whose span kind answers with a {@link Spanning} shares:
- * {@link EndingLoadPass} and {@link HairpinLoadPass} each describe a pending span as a
- * {@link Placement} and hand it here.
+ * Turns the endings and hairpins a reader found into the song's spans, or drops them.
+ *
+ * <p>This pass runs once the song is complete and is the one place a {@link PendingSpan} becomes a
+ * span: it asks the kind's factory, the same rule the editor and the paste ask, so a span read
+ * from a file is well formed by exactly the rule a span made in the editor is. A file an older
+ * build saved can hold a span that rule refuses — a hairpin that ends on a rest, say. That span is
+ * dropped — the bracket or the wedge goes, the elements stay — and nothing is repaired into
+ * something the file did not say.
  */
 final class SpanLoadPass {
 
@@ -42,71 +45,68 @@ final class SpanLoadPass {
     }
 
     /**
-     * One pending span, as {@link #place} places it.
+     * Adds to {@code song} every pending span that is well formed, and records every one it
+     * dropped.
      *
-     * @param anchor            the span's first element, in a line of the song being loaded
-     * @param end               the span's last element, in the anchor's line at or after the anchor
-     * @param spanning          the kind's factory: the span over a range of a line, or the reason
-     *                          there is none
-     * @param restore           applies to a spanned span what the file said beyond its range —
-     *                          its offsets — before the span is added
-     * @param droppedHeadingKey the {@code Strings} key of the report heading a dropped span is
-     *                          recorded under
-     * @param noun              what the span is, as the log names it
-     * @param <S>               the kind of span
+     * <p>Each pending span is judged in order by its kind's factory ({@link PendingSpan#spanning})
+     * over the range from its anchor's index to its end's index in the anchor's line. A span the
+     * factory returns takes the pending span's two offsets as its
+     * {@link LineElement#getUserXOffsetSs()} and {@link LineElement#getUserYOffsetSs()}, and is
+     * added to that line with {@link Span#addTo}, which merges a hairpin with each hairpin of its
+     * kind already there that it overlaps or touches. One the factory refuses is dropped. Adding a
+     * span changes no element, so every later pending span's indices are the ones the reader
+     * built. Because the spans are judged in order and the factory sees the spans already added, of
+     * two pending endings that overlap or sit back to back, and of two pending hairpins of opposite
+     * kinds that share more than one element, the pass drops the later.
+     *
+     * <p>No reader records a span whose anchor and end are on different lines: the MusicXML reader
+     * drops a span still open when its line ends, and the legacy format stores each span as a pair
+     * of indices into one line, which the legacy reader rejects unless the first is at or before
+     * the second. So an anchor and an end on different lines is a reader's bug, not file input, and
+     * the pass rejects it rather than reporting it.
+     *
+     * @param song         the song being loaded, whose lines hold every anchor and end
+     * @param pendingSpans the endings or hairpins the reader found in {@code song}. Each one's
+     *                     anchor sits in a line of {@code song}, and its end sits in the same line
+     *                     at or after the anchor
+     * @param report       the report a drop is recorded into
+     * @throws IllegalArgumentException if a pending span's anchor sits in no line of
+     *     {@code song}, or its end does not sit in the anchor's line at or after the anchor
+     * @effects adds a span to its anchor's line for every pending span not dropped; records to
+     *     {@code report}, in the order of {@code pendingSpans}, every pending span the pass
+     *     dropped, as {@link Spanning.Refused#reportedAt} states it over the span's range
+     * @log WARN one line for each pending span dropped, naming its kind's heading, its line, its
+     *     range and the reason
      */
-    record Placement<S extends Span<?>>(
-        StaffElement anchor,
-        StaffElement end,
-        BiFunction<Line, ElementRange, Spanning<S>> spanning,
-        Consumer<? super S> restore,
-        String droppedHeadingKey,
-        String noun
-    ) {
+    static void run(Song song, List<? extends PendingSpan<?>> pendingSpans, ChangeReport report) {
+        for (var pending : pendingSpans) {
+            place(song, pending, report);
+        }
     }
 
-    /**
-     * Adds {@code placement}'s span to its anchor's line when its factory spans the range from the
-     * anchor's index to the end's index there, or drops it and records the drop.
-     *
-     * @param song      the song being loaded, whose lines hold the anchor and the end
-     * @param placement the pending span
-     * @param report    the report a drop is recorded into
-     * @param <S>       the kind of span
-     * @throws IllegalArgumentException if the anchor sits in no line of {@code song}, or the end
-     *     does not sit in the anchor's line at or after the anchor
-     * @effects adds the spanned span to the anchor's line, after {@code placement.restore()};
-     *     or records to {@code report} a {@link ReportedChange} under
-     *     {@code placement.droppedHeadingKey()}, with the refusal's reason as its detail and the
-     *     range as its location
-     * @log WARN one line when the span is dropped, naming its line, its range and the reason
-     */
-    static <S extends Span<?>> void place(Song song, Placement<S> placement, ChangeReport report) {
-        var anchor = placement.anchor();
+    private static <S extends Span<?>> void place(Song song, PendingSpan<S> pending, ChangeReport report) {
+        var anchor = pending.anchor();
         var line = anchor.getParentLine();
         var lineIndex = line == null ? null : song.indexOfLine(line);
 
         if (line == null || lineIndex == null) {
-            throw new IllegalArgumentException(
-                "pending " + placement.noun() + "'s anchor is in no line of the song");
+            throw new IllegalArgumentException("pending span's anchor is in no line of the song");
         }
 
-        var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(placement.end()));
+        var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(pending.end()));
 
-        switch (placement.spanning().apply(line, range)) {
-            case Spanning.Spanned(var span) -> {
-                placement.restore().accept(span);
-                span.addTo(line);
+        switch (pending.spanning(line, range)) {
+            case Spanning.Spanned(var span, _) -> {
+                span.setUserXOffsetSs(pending.xOffsetSs());
+                span.setUserYOffsetSs(pending.yOffsetSs());
+                span.addTo();
             }
 
-            case Spanning.Refused(var reasonKey, _) -> {
-                LOG.warn("Load pass: dropped an ill-formed {} over elements {}-{} of line {} ({})",
-                    placement.noun(), range.begin(), range.end(), lineIndex, reasonKey);
+            case Spanning.Refused<S> refused -> {
+                LOG.warn("Load pass: dropped an ill-formed span ({}) over elements {}-{} of line {} ({})",
+                    refused.headingKey(), range.begin(), range.end(), lineIndex, refused.reasonKey());
 
-                report.record(new ReportedChange(
-                    placement.droppedHeadingKey(),
-                    Strings.get(reasonKey),
-                    ElementLocationRange.onLine(lineIndex, range)));
+                report.record(refused.reportedAt(ElementLocationRange.onLine(lineIndex, range)));
             }
         }
     }

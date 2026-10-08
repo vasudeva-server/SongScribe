@@ -20,6 +20,7 @@
 
 package songscribe.dom;
 
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
@@ -28,17 +29,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
+import songscribe.dom.BatchReplay.ReportRecorder;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.engraving.StaffPosition;
+import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.BatchReplay.undo;
+import static org.assertj.core.api.Assertions.tuple;
+import static songscribe.dom.BatchReplay.NO_FONT_CHANGES;
 import static songscribe.dom.LineEdits.choose;
 import static songscribe.dom.LineEdits.move;
 import static songscribe.dom.SongFactory.compactSong;
+import static songscribe.dom.SpanFactory.addWithoutTracking;
+import static songscribe.dom.SpanFactory.beamOver;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.note;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
  * The tie rule on {@link NoteElement}: when the outermost modification bracket closes, a tie
@@ -62,6 +72,9 @@ class TieRuleTest extends UnitTest {
     /** A line with a tie from its first note to its second, and a note after them. */
     private static final String TIED_PAIR = TIED + " ~ " + TIED + " " + OTHER;
 
+    /** A line of two quavers, which a beam can join. */
+    private static final String QUAVER_PAIR = "Q Q";
+
     /**
      * One edit to the line {@link #TIED_PAIR} builds, and what it leaves of the tie.
      *
@@ -69,8 +82,13 @@ class TieRuleTest extends UnitTest {
      * @param edit        makes the edit, inside a modification bracket
      * @param endIndex    the index the tie from the first element ends on afterwards, or
      *                    {@code null} when the first element is no longer tied
+     * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
+     *                    {@link Strings#DIALOG_REPORT_TIES_REMOVED}, or {@code null} when the edit
+     *                    reports no tie
      */
-    private record EditCase(String description, Consumer<Line> edit, @Nullable Integer endIndex) {}
+    private record EditCase(
+        String description, Consumer<Line> edit, @Nullable Integer endIndex, @Nullable String reasonKey
+    ) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("editCases")
@@ -78,47 +96,104 @@ class TieRuleTest extends UnitTest {
         var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
         var line = song.getLine(FIRST_LINE);
 
-        song.withModification(() -> testCase.edit().accept(line));
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> testCase.edit().accept(line));
 
-        var first = (NoteElement) line.getElement(ANCHOR);
-        var expectedEnd = testCase.endIndex();
+            var first = (NoteElement) line.getElement(ANCHOR);
+            var expectedEnd = testCase.endIndex();
 
-        if (expectedEnd == null) {
-            assertThat(first.isTiedToNext()).as("the tie is removed, not only broken").isFalse();
+            assertTieReport(reports, testCase.reasonKey());
+
+            if (expectedEnd == null) {
+                assertThat(first.isTiedToNext()).as("the tie is removed, not only broken").isFalse();
+                return;
+            }
+
+            var tie = first.tie();
+
+            assertThat(tie).isNotNull();
+            assertThat(tie.end()).isSameAs(line.getElement(expectedEnd));
+        });
+    }
+
+    /**
+     * Asserts that the reports hold one tie removal under {@code reasonKey}, or none when it is
+     * {@code null}.
+     */
+    private static void assertTieReport(ReportRecorder reports, @Nullable String reasonKey) {
+        var tieEntries = reports.reports().stream()
+            .flatMap(List::stream)
+            .filter(change -> change.headingKey().equals(Strings.DIALOG_REPORT_TIES_REMOVED))
+            .toList();
+
+        if (reasonKey == null) {
+            assertThat(tieEntries).as("the edit reports no tie").isEmpty();
             return;
         }
 
-        var tie = first.tie();
-
-        assertThat(tie).isNotNull();
-        assertThat(tie.end()).isSameAs(line.getElement(expectedEnd));
+        assertThat(tieEntries).singleElement()
+            .extracting(ReportedChange::description)
+            .isEqualTo(Strings.get(reasonKey));
     }
 
     static Stream<EditCase> editCases() {
         return Stream.of(
             new EditCase("a sharp on the anchor removes it",
-                line -> choose(line, ANCHOR, Accidental.SHARP), null),
+                line -> choose(line, ANCHOR, Accidental.SHARP), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
             new EditCase("a sharp on the end removes it",
-                line -> choose(line, END, Accidental.SHARP), null),
+                line -> choose(line, END, Accidental.SHARP), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
             new EditCase("moving one note to another pitch removes it",
-                line -> move(line, END, OTHER), null),
+                line -> move(line, END, OTHER), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
             new EditCase("moving both notes to one new pitch keeps it",
                 line -> {
                     move(line, ANCHOR, OTHER);
                     move(line, END, OTHER);
                 },
-                END),
+                END, null),
             new EditCase("a same-pitch note inserted between them keeps it, ending on that note",
-                line -> line.addElement(END, note(TIED)), END),
+                line -> line.addElement(END, note(TIED)), END, null),
             new EditCase("a grace note inserted between them removes it",
-                line -> line.addElement(END, grace(TIED)), null),
+                line -> line.addElement(END, grace(TIED)), null, Strings.DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
             new EditCase("a note at another pitch inserted between them removes it",
-                line -> line.addElement(END, note(OTHER)), null),
-            new EditCase("converting the anchor to a grace note leaves nothing tied",
+                line -> line.addElement(END, note(OTHER)), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+            new EditCase("converting the anchor to a grace note leaves nothing tied and reports nothing",
                 line -> line.setElement(ANCHOR,
                     StaffElement.convertedFrom(ElementType.GRACE_QUAVER, line.getElement(ANCHOR))),
-                null)
+                null, null),
+            new EditCase("replacing the end with a rest removes it, with no note following",
+                line -> line.setElement(END, crotchetRest()),
+                null, Strings.DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
+            new EditCase("replacing the end with a note at another pitch removes it, as not held",
+                line -> line.setElement(END, note(OTHER)), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+            new EditCase("deleting the end note unties the anchor and reports nothing",
+                line -> line.removeRange(ElementRange.single(END)), null, null)
         );
+    }
+
+    @Test
+    void testATiedNoteInsertedInsideABeamKeepsItsTieAndTheBeamGoes() {
+        var song = compactSong(Key.NO_ACCIDENTALS, QUAVER_PAIR);
+        var line = song.getLine(FIRST_LINE);
+        var pitch = ((NoteElement) line.getElement(END)).getStaffPosition().value();
+        var tied = quaver(pitch, Stem.AUTO);
+
+        addWithoutTracking(song, () -> beamOver(line, new ElementRange(ANCHOR, END)));
+
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> {
+                line.addElement(END, tied);
+                line.addTie(tied);
+            });
+
+            assertThat(tied.isTiedTo((NoteElement) line.getElement(END + 1)))
+                .as("the tie stays on its notes").isTrue();
+            assertThat(line.spanRegistry().findBeamAt(END)).as("no beam holds both tied notes").isNull();
+            assertThat(reports.reports()).singleElement().satisfies(entries ->
+                assertThat(entries)
+                    .extracting(ReportedChange::headingKey, ReportedChange::description)
+                    .containsExactly(tuple(Strings.DIALOG_REPORT_BEAMS_REMOVED,
+                        Strings.get(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES))));
+        });
     }
 
     @Test
@@ -135,7 +210,7 @@ class TieRuleTest extends UnitTest {
 
             assertThat(anchor.isTiedToNext()).as("the fixture reaches the case only if the edit removes the tie").isFalse();
 
-            undo(song, recorder.batches().getFirst());
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst());
 
             assertThat(end.soundingAccidental()).isEqualTo(soundedBefore);
             assertThat(anchor.isTiedTo(end)).isTrue();
@@ -149,12 +224,17 @@ class TieRuleTest extends UnitTest {
      * line survives it.
      *
      * @param description the edit, as the test's display name
-     * @param lines       the song's lines in compact notation; the first line's last note is tied
-     *                    to the second line's first
+     * @param lines       the song's lines in compact notation; the first line ends in {@code ~}, so
+     *                    its last note is tied to the second line's first
      * @param edit        makes the edit, inside a modification bracket
      * @param kept        whether the first line's last note is still tied afterwards
+     * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
+     *                    {@link Strings#DIALOG_REPORT_TIES_REMOVED}, or {@code null} when the edit
+     *                    reports no tie
      */
-    private record CrossLineCase(String description, String[] lines, Consumer<Song> edit, boolean kept) {}
+    private record CrossLineCase(
+        String description, String[] lines, Consumer<Song> edit, boolean kept, @Nullable String reasonKey
+    ) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("crossLineCases")
@@ -163,29 +243,33 @@ class TieRuleTest extends UnitTest {
         var firstLine = song.getLine(FIRST_LINE);
         var anchor = (NoteElement) firstLine.getElement(firstLine.elementCount() - 1);
 
-        // The compact grammar ties only within a line, so the tie across the break is added here.
-        song.withoutMutationTracking(() -> firstLine.addTie(anchor));
-
         assertThat(anchor.isTiedTo((NoteElement) song.getLine(SECOND_LINE).getElement(ANCHOR)))
             .as("the fixture reaches the case only if the tie crosses into the second line")
             .isTrue();
 
-        song.withModification(() -> testCase.edit().accept(song));
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> testCase.edit().accept(song));
 
-        assertThat(anchor.isTiedToNext()).isEqualTo(testCase.kept());
+            assertThat(anchor.isTiedToNext()).isEqualTo(testCase.kept());
+            assertTieReport(reports, testCase.reasonKey());
+        });
     }
 
     static Stream<CrossLineCase> crossLineCases() {
         return Stream.of(
             new CrossLineCase("moving the next line's first note to another pitch removes it",
-                new String[] {"" + TIED, TIED + " " + OTHER},
-                song -> move(song.getLine(SECOND_LINE), ANCHOR, OTHER), false),
-            new CrossLineCase("deleting the line it ends in, bringing a note at another pitch, removes it",
-                new String[] {"" + TIED, "" + TIED, OTHER + " " + TIED},
-                song -> song.removeLine(SECOND_LINE), false),
-            new CrossLineCase("deleting the line it ends in, bringing a note at its pitch, keeps it",
-                new String[] {"" + TIED, "" + TIED, TIED + " " + OTHER},
-                song -> song.removeLine(SECOND_LINE), true)
+                new String[] {TIED + " ~", TIED + " " + OTHER},
+                song -> move(song.getLine(SECOND_LINE), ANCHOR, OTHER), false,
+                Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+            new CrossLineCase("deleting the end note that is the first note of the next line unties it silently",
+                new String[] {TIED + " ~", TIED + " " + OTHER, "" + TIED},
+                song -> song.getLine(SECOND_LINE).removeRange(ElementRange.single(ANCHOR)), false, null),
+            new CrossLineCase("deleting the line it ends in, bringing a note at another pitch, unties it silently",
+                new String[] {TIED + " ~", "" + TIED, OTHER + " " + TIED},
+                song -> song.removeLine(SECOND_LINE), false, null),
+            new CrossLineCase("deleting the line it ends in, bringing a note at its pitch, unties it silently",
+                new String[] {TIED + " ~", "" + TIED, TIED + " " + OTHER},
+                song -> song.removeLine(SECOND_LINE), false, null)
         );
     }
 

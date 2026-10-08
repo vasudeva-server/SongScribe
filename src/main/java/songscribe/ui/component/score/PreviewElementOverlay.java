@@ -184,8 +184,6 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
             return DisplayList.EMPTY;
         }
 
-        NoteGeometry.initializeAccidentalWidths();
-
         if (previewElement instanceof NoteElement note) {
             note.setStaffPosition(hover.staffPosition());
         }

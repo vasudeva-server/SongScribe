@@ -41,7 +41,7 @@ import songscribe.smufl.SMuFLMetadata;
  * This builder constructs the fundamental spacing units for the engraving system.
  * Each element (note, rest, barline, etc.) becomes an ElementColumn with:
  * <ul>
- *   <li>Horizontal extents (left for accidentals/grace notes, right for dots)</li>
+ *   <li>Horizontal extents (left for accidentals, right for dots)</li>
  *   <li>Stem positions (for beam coordination)</li>
  *   <li>Syllable text and measured width (for lyric-driven spacing)</li>
  *   <li>Beam group reference (for internal spacing coordination)</li>
@@ -64,7 +64,7 @@ public class ElementColumnBuilder {
      * optional glyphs are cue-<em>staff</em> glyphs, sized for a reduced staff rather than reduced
      * against a full-size one, so that bbox is 1.408 ss — wider than the full-size notehead it is
      * supposed to shrink, and 0.52 ss wider than the head actually drawn. Reserving it made every
-     * grace column charge phantom ink into its gaps (refs #560).
+     * grace column charge phantom ink into its gaps.
      *
      * <p>The layout itself no longer reads this: it consults
      * {@code ElementType.GRACE_QUAVER.getElementWidthSs()}, which derives the same number by a
@@ -122,8 +122,8 @@ public class ElementColumnBuilder {
     public ElementColumn buildColumn(StaffElement element, Line line, int elementIndex) {
         // Determine beam membership first — needed for right extent calculation. A grace
         // note sitting inside a beam span is not a member: the beam passes over it and it
-        // keeps its own short stem and flag (refs #592).
-        var beam = element.getType().isGraceNote() ? null : line.spanRegistry().findBeamAt(elementIndex);
+        // keeps its own short stem and flag.
+        var beam = line.spanRegistry().findBeamJoining(elementIndex);
         return buildColumnForBeam(element, beam, line.getSong().getActiveVerse());
     }
 
@@ -154,40 +154,22 @@ public class ElementColumnBuilder {
      * @return The constructed ElementColumn
      */
     private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam, int activeVerse) {
-        var beamed = beam != null;
+        var beaming = Beaming.of(beam);
+        var extents = new ElementColumn.Extents(
+            calculateLeftExtentSs(element),
+            calculateRightExtentSs(element, beaming),
+            calculateRightExtentExcludingAugmentationSs(element, beaming),
+            calculateStemTopSs(element),
+            calculateStemBottomSs(element));
 
-        // Calculate horizontal extents
-        var leftExtentSs = calculateLeftExtentSs(element);
-        var rightExtentSs = calculateRightExtentSs(element, beamed);
-        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, beamed);
-
-        // Calculate stem positions
-        var stemTopSs = calculateStemTopSs(element);
-        var stemBottomSs = calculateStemBottomSs(element);
-
-        // Get syllable and measure width
         var lyric = element.getLyricForVerse(activeVerse);
-        var syllable = lyric != null ? lyric.text() : null;
-        var syllableWidthSs = measureSyllableWidthSs(syllable);
+        var measuredLyric = lyric != null
+            ? new ElementColumn.MeasuredLyric(lyric, measureSyllableWidthSs(lyric.text()))
+            : null;
+        var column = new ElementColumn(element, extents, measuredLyric, beam);
 
-        // Get grace notes (currently not implemented in data model)
-        var graceNotes = getGraceNotes(element);
-
-        var column = new ElementColumn(
-            element,
-            graceNotes,
-            leftExtentSs,
-            rightExtentSs,
-            rightExtentExcludingAugmentationSs,
-            stemTopSs,
-            stemBottomSs,
-            lyric,
-            syllableWidthSs,
-            beamed
-        );
-
-        if (syllable != null) {
-            column.setSyllableFirstGraphemeWidthSs(lyricRenderMetrics.firstGraphemeWidthSs(syllable));
+        if (lyric != null) {
+            column.setSyllableFirstGraphemeWidthSs(lyricRenderMetrics.firstGraphemeWidthSs(lyric.text()));
         }
 
         // Lyric centering must use the notehead alone, not the (possibly flag-inflated) right extent,
@@ -206,7 +188,7 @@ public class ElementColumnBuilder {
         // so a lone hyphen sits in the tightest gap that still keeps the syllables apart. The
         // wider LyricRenderMetrics#preferredHyphenCellWidthSs is a distribution cell, not a
         // spacing requirement: LyricConnectorRenderer only steps up to it once a gap has room for
-        // more than one hyphen (refs #638).
+        // more than one hyphen.
         var gapToNextSyllableSs = isHyphenated
             ? lyricRenderMetrics.hyphenWidthSs()
             : lyricRenderMetrics.spaceWidthSs() * NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER;
@@ -214,11 +196,28 @@ public class ElementColumnBuilder {
         // may sit, so a lyric gap is never widened past what it needs, nor compressed below it.
         column.setMinGapToNextSyllableSs(gapToNextSyllableSs);
         column.setMinCollisionGapToNextSyllableSs(gapToNextSyllableSs);
-        // Tag the column with its beam so adjacent beam groups stay distinct and the spacing
-        // calculator does not merge them.
-        column.setBeam(beam);
 
         return column;
+    }
+
+    /**
+     * Builds a column that carries only {@code element}'s horizontal extents, for spacing a pair
+     * of columns without laying out a line: unbeamed, with no lyric, and with zero stem extents.
+     * Right for an element being inserted or previewed, which carries no lyric and belongs to no
+     * beam until it is on a line.
+     *
+     * @param element the element to build a column for, on a line or not
+     * @return the column; its X is unset
+     */
+    static ElementColumn buildLightweightColumn(StaffElement element) {
+        var extents = new ElementColumn.Extents(
+            calculateLeftExtentSs(element),
+            calculateRightExtentSs(element, Beaming.UNBEAMED),
+            calculateRightExtentExcludingAugmentationSs(element, Beaming.UNBEAMED),
+            0,
+            0);
+
+        return new ElementColumn(element, extents, null, null);
     }
 
     // ==========================================================================
@@ -254,11 +253,12 @@ public class ElementColumnBuilder {
      * Used for minimum spacing calculations, which must account for dots and fall to prevent overlap.
      *
      * @param element   The element
-     * @param beamed    {@code true} if the element is part of a beam group (flags are suppressed)
+     * @param beaming   whether the element is part of a beam group (a beamed element's flag is
+     *                  suppressed)
      * @return Right extent in ss relative to element head left edge (glyph origin)
      */
-    public static double calculateRightExtentSs(StaffElement element, boolean beamed) {
-        return calculateRightExtentInternal(element, beamed, true);
+    public static double calculateRightExtentSs(StaffElement element, Beaming beaming) {
+        return calculateRightExtentInternal(element, beaming, Augmentation.INCLUDED);
     }
 
     /**
@@ -266,25 +266,48 @@ public class ElementColumnBuilder {
      * <p>
      * Used for comfortable (default) spacing so dots and a fall do not push the next element
      * unless the minimum gap would otherwise be violated — mirroring how accidentals
-     * on the left do not widen the gap beyond the comfortable default (refs #441, #492).
+     * on the left do not widen the gap beyond the comfortable default.
      *
      * @param element   The element
-     * @param beamed    {@code true} if the element is part of a beam group (flags are suppressed)
+     * @param beaming   whether the element is part of a beam group (a beamed element's flag is
+     *                  suppressed)
      * @return Right extent in ss relative to element head left edge (glyph origin), dots and fall excluded
      */
-    public static double calculateRightExtentExcludingAugmentationSs(StaffElement element, boolean beamed) {
-        return calculateRightExtentInternal(element, beamed, false);
+    public static double calculateRightExtentExcludingAugmentationSs(
+        StaffElement element, Beaming beaming) {
+
+        return calculateRightExtentInternal(element, beaming, Augmentation.EXCLUDED);
+    }
+
+    /**
+     * Whether a right extent reaches past the notehead and flag to the note's augmentation — its
+     * dots and any fall.
+     */
+    private enum Augmentation {
+
+        /** The extent reaches the dots and fall: minimum spacing. */
+        INCLUDED,
+
+        /** The extent stops at the notehead and flag: comfortable spacing. */
+        EXCLUDED
     }
 
     /**
      * The direction that decides a note's right extent is the drawn one
      * ({@link NoteGeometry#effectiveDirection}): the flag hangs off the stem the renderer
      * draws, and the dots sit beside it.
+     *
+     * @param element      the element
+     * @param beaming      whether the element is part of a beam group
+     * @param augmentation whether the extent reaches the dots and fall
+     * @return the right extent in ss relative to the element head's left edge (glyph origin)
      */
     private static double calculateRightExtentInternal(
         StaffElement element,
-        boolean beamed,
-        boolean includeAugmentation) {
+        Beaming beaming,
+        Augmentation augmentation) {
+
+        var includeAugmentation = augmentation == Augmentation.INCLUDED;
 
         // Non-note elements (rests, barlines, breath marks, repeats) use their
         // actual visual width — they have no dots or flags.
@@ -302,11 +325,11 @@ public class ElementColumnBuilder {
         // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
         // the dots already clear the flag when an unbeamed up-stem one is present.
         var baseRightExtentSs = includeAugmentation
-            ? NoteGeometry.dotsRightExtentSs(note, beamed, direction, noteheadRightExtentSs)
+            ? NoteGeometry.dotsRightExtentSs(note, beaming, direction, noteheadRightExtentSs)
             : noteheadRightExtentSs;
 
         // Flag extent: only for unbeamed elements that have a flag
-        var flagBBox = NoteGeometry.flagBBoxLocalSs(note, direction, beamed);
+        var flagBBox = NoteGeometry.flagBBoxLocalSs(note, direction, beaming);
         var flagRightExtentSs = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
         var rightExtentSs = Math.max(baseRightExtentSs, flagRightExtentSs);
@@ -316,9 +339,9 @@ public class ElementColumnBuilder {
         // not overlap it. Unlike a connecting glissando — whose room is reserved between two notes by
         // HorizontalSpacingCalculator's glissando reservation — a fall has no following note, so its
         // own column must carry the reservation.
-        // Gated on includeAugmentation (like dots) so the fall only expands the minimum-spacing
+        // Gated on the augmentation (like dots) so the fall only expands the minimum-spacing
         // extent, not the comfortable-spacing extent — the next element shifts only when the minimum
-        // gap would otherwise be violated (refs #492).
+        // gap would otherwise be violated.
         if (includeAugmentation && note.hasFall()) {
             var fallAdvanceWidthSs = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
             // The fall anchors after the notehead/dots right edge, not the flag, so compute its
@@ -413,33 +436,14 @@ public class ElementColumnBuilder {
     /**
      * Measures a syllable's advance width.
      *
-     * @param syllable The syllable text, or null if the element carries none in the active verse
-     * @return Syllable width in staff spaces, or 0 if there is no syllable
+     * @param syllable The syllable text
+     * @return Syllable width in staff spaces, or 0 if the text is empty
      */
-    private double measureSyllableWidthSs(@Nullable String syllable) {
-        if (syllable == null || syllable.isEmpty()) {
+    private double measureSyllableWidthSs(String syllable) {
+        if (syllable.isEmpty()) {
             return 0;
         }
 
         return lyricRenderMetrics.lyricBoxWidthSs(syllable);
-    }
-
-    // ==========================================================================
-    // Grace Notes
-    // ==========================================================================
-
-    /**
-     * Gets the grace notes anchored to a main element.
-     * <p>
-     * Note: Grace notes are not yet fully implemented in the data model.
-     * This method returns an empty list for now.
-     *
-     * @param element The main element
-     * @return List of grace notes (empty for now)
-     */
-    private List<StaffElement> getGraceNotes(StaffElement element) {
-        // TODO: Implement grace note retrieval when data model supports it
-        // Grace notes would be stored on the main element or looked up from the line
-        return Collections.emptyList();
     }
 }

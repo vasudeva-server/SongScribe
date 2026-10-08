@@ -20,6 +20,10 @@
 
 package songscribe.dom;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import net.engio.mbassy.listener.Handler;
 import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
@@ -27,16 +31,19 @@ import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.message.MessageSubscription;
+import songscribe.message.notification.ChangesWereReportedNotification;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
-import static songscribe.dom.BatchReplay.redo;
-import static songscribe.dom.BatchReplay.undo;
-import static songscribe.dom.SongFactory.DOTTED_BEAT_TEMPO;
-import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.BatchReplay.NO_FONT_CHANGES;
+import static songscribe.dom.SongFactory.songOfQuavers;
+import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.SpanFactory.trillOver;
-import static songscribe.dom.SpanFactory.tripletOver;
-import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 /**
  * How an edit's {@link ChangeReport} reaches the bus: one edit delivers one
@@ -45,12 +52,12 @@ import static songscribe.dom.StaffElementFactory.quaver;
  * a redo and an edit under suspended tracking deliver none.
  *
  * <p>The edit is {@link #makeEveryKindOfRemoval}, on a line of quavers that holds a trill whose end
- * the edit deletes, a trill another trill replaces, and a triplet that a song tempo with a dotted
- * beat leaves invalid.
+ * the edit deletes, a trill another trill replaces, and an ending whose opening repeat the edit
+ * deletes.
  */
 class ChangeReportDeliveryTest extends UnitTest {
 
-    private static final int LINE_LENGTH = 16;
+    private static final int LINE_LENGTH = 20;
     private static final int FIRST_LINE = 0;
 
     /** The trill the funnel removes, when the edit deletes the element that ends it. */
@@ -61,89 +68,154 @@ class ChangeReportDeliveryTest extends UnitTest {
     private static final ElementRange REPLACED_TRILL = new ElementRange(9, 11);
     private static final ElementRange REPLACING_TRILL = new ElementRange(10, 12);
 
-    /** The triplet the beat rule removes: three quavers, valid in a crotchet beat only. */
-    private static final ElementRange TRIPLET = new ElementRange(13, 15);
+    /**
+     * The closing repeat that ends the section before {@link #OPENER_INDEX}, so that deleting the
+     * opener leaves the ending's split closing no open section.
+     */
+    private static final int CLOSER_INDEX = 13;
+    private static final int OPENER_INDEX = 14;
+
+    /**
+     * The ending the section rule removes: anchor, split (a closing repeat), one note, end. Its
+     * split closes the section the opener at {@link #OPENER_INDEX} starts. A quaver stands
+     * between the opener and the anchor, because a note anchor needs a note, a rest or a single
+     * barline in front of it.
+     */
+    private static final ElementRange ENDING = new ElementRange(16, 19);
+    private static final int ENDING_SPLIT_INDEX = 17;
 
     @Test
     void testOneEditDeliversOneReportHoldingEveryRemoval() {
         var song = fixtureSong();
-        var reports = new ReportRecorder();
+
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> makeEveryKindOfRemoval(song));
+
+            assertThat(reports.reports()).singleElement().satisfies(ChangeReportDeliveryTest::assertHoldsEveryRemoval);
+        });
+    }
+
+    @Test
+    void testANestedEditDeliversOneReportWhenItsOutermostBracketCloses() {
+        var song = fixtureSong();
+        var line = song.getLine(FIRST_LINE);
+
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> {
+                line.removeRange(ElementRange.single(OPENER_INDEX));
+                song.withModification(() -> trillOver(line, REPLACING_TRILL).addTo());
+
+                assertThat(reports.reports()).as("the inner bracket's close delivers nothing").isEmpty();
+
+                line.removeRange(ElementRange.single(DELETED_INDEX));
+            });
+
+            assertThat(reports.reports()).singleElement().satisfies(ChangeReportDeliveryTest::assertHoldsEveryRemoval);
+        });
+    }
+
+    @Test
+    void testTheReportArrivesAfterTheSongNotification() {
+        var song = fixtureSong();
+        var order = new DeliveryOrder();
 
         try {
             song.withModification(() -> makeEveryKindOfRemoval(song));
 
-            assertThat(reports.reports()).singleElement().satisfies(entries ->
-                assertThat(entries)
-                    .extracting(ReportedChange::headingKey, ReportedChange::description)
-                    .containsExactlyInAnyOrder(
-                        tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
-                            Strings.get(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED)),
-                        tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
-                            Strings.get(Strings.DIALOG_REPORT_REASON_REPLACED)),
-                        tuple(Strings.DIALOG_REPORT_TUPLETS_REMOVED,
-                            Strings.get(TupletValidator.Reason.NO_CONVENTIONAL_SPAN.messageKey()))));
+            assertThat(order.delivered())
+                .containsExactly(SongDidChangeNotification.class, ChangesWereReportedNotification.class);
         } finally {
-            reports.dispose();
+            order.dispose();
         }
+    }
+
+    /** Takes the song notification and the report notification an edit delivers, in arrival order. */
+    static final class DeliveryOrder {
+        private final List<Class<?>> delivered = new ArrayList<>();
+        private final MessageSubscription subscription = new MessageSubscription(this);
+
+        @Handler
+        void songDidChange(SongDidChangeNotification notification) {
+            delivered.add(SongDidChangeNotification.class);
+        }
+
+        @Handler
+        void changesWereReported(ChangesWereReportedNotification notification) {
+            delivered.add(ChangesWereReportedNotification.class);
+        }
+
+        List<Class<?>> delivered() {
+            return delivered;
+        }
+
+        void dispose() {
+            subscription.dispose();
+        }
+    }
+
+    private static void assertHoldsEveryRemoval(List<ReportedChange> entries) {
+        assertThat(entries)
+            .extracting(ReportedChange::headingKey, ReportedChange::description)
+            .containsExactlyInAnyOrder(
+                tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
+                    Strings.get(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED)),
+                tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
+                    Strings.get(Strings.DIALOG_REPORT_REASON_REPLACED)),
+                tuple(Strings.DIALOG_REPORT_ENDINGS_REMOVED,
+                    Strings.get(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION)));
     }
 
     @Test
     void testUndoAndRedoDeliverNoReport() {
         var song = fixtureSong();
         var batches = new BatchRecorder();
-        var reports = new ReportRecorder();
 
         try {
-            song.withModification(() -> makeEveryKindOfRemoval(song));
+            ReportRecorder.whileRecording(reports -> {
+                song.withModification(() -> makeEveryKindOfRemoval(song));
 
-            assertThat(reports.reports()).as("the edit delivers its own report").hasSize(1);
+                assertThat(reports.reports()).as("the edit delivers its own report").hasSize(1);
 
-            var batch = batches.batches().getFirst();
+                var batch = batches.batches().getFirst();
 
-            undo(song, batch);
-            redo(song, batch);
+                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
 
-            assertThat(reports.reports()).as("only the edit's report, none from the replays").hasSize(1);
+                assertThat(reports.reports()).as("only the edit's report, none from the replays").hasSize(1);
+            });
         } finally {
             batches.dispose();
-            reports.dispose();
         }
     }
 
     @Test
-    void testAnEditUnderSuspendedTrackingDeliversNoReport() {
+    void testReportNeitherThrowsNorRecordsWhileTrackingIsSuspended() {
         var song = fixtureSong();
-        var reports = new ReportRecorder();
 
-        try {
+        ReportRecorder.whileRecording(reports -> {
             song.withoutMutationTracking(() -> makeEveryKindOfRemoval(song));
 
-            assertThat(song.getLine(FIRST_LINE).spanRegistry().findSpans(Tuplet.class))
-                .as("no rule runs while tracking is suspended, so the triplet the beat rule would "
-                    + "remove stays, and nothing is reported for it")
-                .hasSize(1);
             assertThat(reports.reports()).isEmpty();
-        } finally {
-            reports.dispose();
-        }
+        });
     }
 
     /**
-     * A line of quavers holding the trill, the second trill and the triplet the edit removes, each
-     * placed before the edit runs.
+     * A line of quavers holding the trill, the second trill and the ending the edit removes, each
+     * placed before the edit runs. The closing repeat, the opening repeat and the ending's split
+     * stand among the quavers at {@link #CLOSER_INDEX}, {@link #OPENER_INDEX} and
+     * {@link #ENDING_SPLIT_INDEX}.
      */
     private static Song fixtureSong() {
-        var song = buildSong(line -> {
-            for (var i = 0; i < LINE_LENGTH; i++) {
-                line.addElement(quaver());
-            }
-        });
+        var song = songOfQuavers(LINE_LENGTH);
         var line = song.getLine(FIRST_LINE);
 
         song.withoutMutationTracking(() -> {
-            trillOver(line, FUNNELED_TRILL).addTo(line);
-            trillOver(line, REPLACED_TRILL).addTo(line);
-            tripletOver(line, TRIPLET, NoteValue.EIGHTH).addTo(line);
+            line.setElement(CLOSER_INDEX, repeatRight());
+            line.setElement(OPENER_INDEX, repeatLeft());
+            line.setElement(ENDING_SPLIT_INDEX, repeatRight());
+            trillOver(line, FUNNELED_TRILL).addTo();
+            trillOver(line, REPLACED_TRILL).addTo();
+            endingOver(line, ENDING).addTo();
         });
 
         return song;
@@ -151,15 +223,16 @@ class ChangeReportDeliveryTest extends UnitTest {
 
     /**
      * One edit that removes a span by each route: a deletion of a trill's end (the funnel), a
-     * trill added over another (a displacement), and a song tempo whose beat leaves the triplet
-     * invalid (a rule that runs when the bracket closes). The deletion comes last, so the indices
-     * the other changes name are still the fixture's.
+     * trill added over another (a displacement), and a deletion of the opening repeat that leaves
+     * the ending's split closing no open section (a rule that runs when the bracket closes). The
+     * deletion of the trill's end comes last, so the indices the other changes name are still the
+     * fixture's.
      */
     private static void makeEveryKindOfRemoval(Song song) {
         var line = song.getLine(FIRST_LINE);
 
-        song.setTempo(DOTTED_BEAT_TEMPO);
-        trillOver(line, REPLACING_TRILL).addTo(line);
+        line.removeRange(ElementRange.single(OPENER_INDEX));
+        trillOver(line, REPLACING_TRILL).addTo();
         line.removeRange(ElementRange.single(DELETED_INDEX));
     }
 }

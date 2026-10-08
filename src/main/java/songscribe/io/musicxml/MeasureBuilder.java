@@ -53,33 +53,17 @@ import songscribe.smufl.SMuFLGlyph;
  * {@link ScorePartwise}, together with every {@code <barline>} and the
  * {@code <ending>} children folded onto them.
  *
- * <p>This is the object-graph replacement for {@code MusicXmlMeasureWriter} and the
- * measure/barline logic inline in {@code MusicXmlWriter.writeLineDrivenMeasures}. Three
- * constructs from the streaming writer are deliberately absent:
+ * <p>A measure is an object created and appended to. The one running value across measures is
+ * the measure counter, which lives in {@link ScoreState} because measure numbers are continuous
+ * across lines. Every ending is attached to the {@code Barline} object it belongs to. Where
+ * MusicXML offers no host — {@code <ending>} is only ever a child of {@code <barline>} — the
+ * barline is inserted positionally with {@code items.add(index, barline)}. A note-terminated
+ * ending reuses the barline that follows its boundary note when that barline is already an
+ * invisible right barline; see {@link #rightBarlineAfterContent}.
  *
- * <ul>
- *   <li>{@code measureOpen} / {@code measureNumber} loop state. A measure is an object you
- *       create and append to, so "is the measure still open" is not a question anyone asks.
- *       The one running value that survives is the measure counter itself, which lives in
- *       {@link ScoreState} rather than in a loop variable, because measure numbers are
- *       continuous across lines.</li>
- *   <li>The stream-timed synthesized barlines. {@code writeNoteAnchoredEndingStart} and
- *       {@code writeInvisibleLeftBarline} existed because a flushed stream cannot go back to
- *       a position it has passed, so the writer had to manufacture a barline at whatever
- *       moment it happened to be passing the right spot. Here every ending is attached to the
- *       {@code Barline} object it belongs to, and where MusicXML genuinely offers no host —
- *       {@code <ending>} is only ever a child of {@code <barline>} — the barline is inserted
- *       positionally with {@code items.add(index, barline)} after the fact.</li>
- *   <li>{@code lastNoteEndingMarkers}, the deferred hold for a note-terminated ending whose
- *       boundary note is the line's last element. See
- *       {@link #rightBarlineAfterContent}: the barline that follows the note is simply looked
- *       at, and reused when it is already an invisible right barline.</li>
- * </ul>
- *
- * <p>What does <em>not</em> dissolve is the key carry. A MusicXML key persists
- * until restated, so which lines and which mid-line key changes emit a {@code <key>} is genuine
- * sequential state about the emitted format, not a streaming workaround — it lives in
- * {@link ScoreState} alongside the measure counter.
+ * <p>The key carry is sequential state: a MusicXML key persists until restated, so which lines
+ * and which mid-line key changes emit a {@code <key>} lives in {@link ScoreState} alongside the
+ * measure counter.
  *
  * <p><b>Where a {@code <key>} goes.</b> It lives in the {@code <attributes>} of the measure the
  * key takes effect in: a {@link Line} whose {@link Line#getRunningKey()} differs from the running
@@ -193,8 +177,8 @@ final class MeasureBuilder {
         /**
          * The node a wedge {@code <direction>} bound to this element must be inserted before:
          * its annotation direction when it has one, otherwise its note. That places a wedge
-         * after the tempo and metric-modulation directions and before the annotation — the
-         * order the streaming writer emitted. Null when the element produced no note, which
+         * after the tempo and metric-modulation directions and before the annotation. Null when
+         * the element produced no note, which
          * leaves a wedge bound to it with nothing to bind to.
          */
         @Nullable Object wedgeAnchor() {
@@ -211,8 +195,7 @@ final class MeasureBuilder {
      * built from it, and the elements that actually produced a {@code <note>}.
      *
      * <p>The emitted list is what makes "the next note" answerable without a peek. It is not the
-     * same as the next element — a breath mark or a barline produces no note — and the streaming
-     * writer's {@code pendingGlissandoNote} was carrying exactly this distinction.
+     * same as the next element — a breath mark or a barline produces no note.
      *
      * @param line the line these measures came from
      * @param lineIndex its index within the song
@@ -310,7 +293,7 @@ final class MeasureBuilder {
                 // Every other barline/repeat type closes the current measure with a right
                 // barline. REPEAT_LEFT and REPEAT_LEFT_RIGHT are handled above, so every
                 // remaining type has a forward-map entry; one that ever does not is passed
-                // over, as the streaming writer did, rather than failing the save.
+                // over rather than failing the save.
                 var entry = BarlineStyleMapping.forElementType(type);
 
                 if (entry == null) {
@@ -435,8 +418,8 @@ final class MeasureBuilder {
      * <p><b>The {@code <cancel>} comes from the policy, not from a second copy of it.</b>
      * {@link Key#accidentalsFrom} promises that a change which cancels puts its naturals first, so
      * the question "is a cancellation owed?" is answered by asking what the change draws. Restating
-     * the rule here — "when the key type differs" — would leave this file answering the old
-     * question after the policy changed, with both subsystems' tests still passing.
+     * the rule here — "when the key type differs" — would let this file answer a different question
+     * from the one the policy answers, with both subsystems' tests still passing.
      *
      * <p>Child order ({@code cancel, fifths, mode}) comes from the generated class's
      * {@code propOrder}, so unlike {@code <lyric>}'s choice list the caller cannot get it wrong.
@@ -499,8 +482,7 @@ final class MeasureBuilder {
      * Appends everything {@code element} contributes — its directions, then its {@code <note>}
      * — and records the nodes in {@code output}. An element with no MusicXML note form appends
      * nothing at all, directions included: that is a breath mark, already folded onto the
-     * preceding note's {@code <notations>}, or a type MusicXML has no note for. The streaming
-     * writer emitted nothing for either.
+     * preceding note's {@code <notations>}, or a type MusicXML has no note for.
      *
      * <p>Every {@code <direction>} precedes the note it marks, because the reader binds a
      * direction to the next note. That is the binding mechanism MusicXML provides, not one the
@@ -584,8 +566,7 @@ final class MeasureBuilder {
      * source of truth for both directions.
      *
      * <p>{@code <ending>} and {@code <repeat>} are typed properties of {@code Barline}, so
-     * JAXB emits them in schema order whatever order they are set in — the ordering comment
-     * the streaming writer carried is now a guarantee of the type.
+     * JAXB emits them in schema order whatever order they are set in.
      */
     private static Barline buildBarline(
         BuildContext context, String location, String barStyle, @Nullable String repeatDirection) {
@@ -614,33 +595,27 @@ final class MeasureBuilder {
      * Attaches every ending on {@code line} to the barlines it belongs to.
      *
      * <p>One SongScribe {@link songscribe.dom.Ending} expands to two MusicXML voltas. Volta 1
-     * runs from the anchor (a plain barline, or — per issue #306 — a note or a rest) to the
+     * runs from the anchor (a plain barline, or a note or a rest) to the
      * split (a {@code REPEAT_RIGHT} or {@code REPEAT_LEFT_RIGHT}); volta 2 runs
      * from that same split to the end. So the anchor carries {@code [1 start]}, the split
      * carries both {@code [1 stop]} and {@code [2 start]}, and the end carries {@code [2
      * stop]}. Every ending has a split, so it always expands to two voltas.
      *
      * <p>Each ending is walked once and attached to the {@code Barline} objects it touches.
-     * The streaming writer instead bucketed all of this onto per-element-index left- and
-     * right-barline marker lists ({@code MusicXmlSpanIndex.buildSpanIndex}) so its forward-only
-     * loop could read one array slot per element; with the barlines in hand there is nothing
-     * to precompute.
      */
     private static void attachEndings(BuildContext context, Line line, List<ElementOutput> outputs) {
         for (var ending : line.spanRegistry().findEndings()) {
             var anchorIndex = ending.requireAnchorElementIndex();
             var endIndex = ending.requireEndElementIndex();
 
-            attachEndingAnchor(
-                context, outputs.get(anchorIndex), line.getElement(anchorIndex).getType(),
-                ending.getUserYOffsetSs());
+            attachEndingAnchor(context, outputs.get(anchorIndex), ending);
             attachEndingEnd(context, outputs.get(endIndex), ending);
             attachEndingSplit(context, outputs.get(ending.getSplitIndex()));
         }
     }
 
     /**
-     * Attaches {@code <ending number="1" type="start">}. A note or rest anchor (issue #306) has
+     * Attaches {@code <ending number="1" type="start">}. A note or rest anchor has
      * no barline of its own, so one is inserted immediately before it; a plain barline anchor
      * closes the previous measure as a right barline and hosts the start there.
      *
@@ -648,16 +623,19 @@ final class MeasureBuilder {
      * the one bracket the reader can recover the offset from, so the writer states it once,
      * here.
      */
-    private static void attachEndingAnchor(
-        BuildContext context, ElementOutput output, ElementType anchorType, double yOffsetSs) {
+    private static void attachEndingAnchor(BuildContext context, ElementOutput output, Ending ending) {
+        var anchorType = ending.getAnchorElement().getType();
         var host = anchorType.isDuration() ? leftBarlineBeforeContent(context, output) : output.rightBarline;
+        var start = attachEnding(context, host, MusicXmlTags.NUMBER_1, StartStopDiscontinue.START);
 
-        attachEnding(context, host, MusicXmlTags.NUMBER_1, StartStopDiscontinue.START, yOffsetSs);
+        if (start != null) {
+            start.setRelativeY(MusicXmlUnits.shiftTenths(ending.getUserYOffsetSs()));
+        }
     }
 
     /**
      * Attaches the volta-2 close. A barline or repeat end hosts it on its own barline; a note
-     * end (issue #306) has no barline, so it rides on a right barline after the note. The type
+     * end has no barline, so it rides on a right barline after the note. The type
      * is {@code type="stop"} when {@link Ending#isSecondBracketClosed()}, and
      * {@code type="discontinue"} — an open bracket — otherwise.
      */
@@ -666,11 +644,11 @@ final class MeasureBuilder {
         var type = ending.isSecondBracketClosed() ? StartStopDiscontinue.STOP : StartStopDiscontinue.DISCONTINUE;
 
         if (endType == ElementType.REPEAT_LEFT) {
-            attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, type, 0);
+            attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, type);
         } else if (endType.isDuration()) {
-            attachEnding(context, rightBarlineAfterContent(context, output), MusicXmlTags.NUMBER_2, type, 0);
+            attachEnding(context, rightBarlineAfterContent(context, output), MusicXmlTags.NUMBER_2, type);
         } else {
-            attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_2, type, 0);
+            attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_2, type);
         }
     }
 
@@ -681,11 +659,10 @@ final class MeasureBuilder {
      *
      * <p>A {@code REPEAT_LEFT_RIGHT} split already has that forward-left barline. A
      * {@code REPEAT_RIGHT} split does not, so an invisible one is inserted at index 0 of the
-     * following measure — the position a flushed stream had already passed, which is why the
-     * streaming writer had to manufacture the barline at exactly the right moment instead.
+     * following measure.
      */
     private static void attachEndingSplit(BuildContext context, ElementOutput output) {
-        attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_1, StartStopDiscontinue.STOP, 0);
+        attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_1, StartStopDiscontinue.STOP);
 
         var left = output.leftBarline;
         var measureAfter = output.measureAfter;
@@ -696,7 +673,7 @@ final class MeasureBuilder {
             output.leftBarline = left;
         }
 
-        attachEnding(context, left, MusicXmlTags.NUMBER_2, StartStopDiscontinue.START, 0);
+        attachEnding(context, left, MusicXmlTags.NUMBER_2, StartStopDiscontinue.START);
     }
 
     /**
@@ -704,8 +681,7 @@ final class MeasureBuilder {
      * immediately before everything the note contributed, directions included.
      *
      * <p>Returns {@code null} when the element produced no content, which leaves the volta
-     * start unattached — the same outcome the streaming writer reached by never emitting the
-     * barline.
+     * start unattached.
      */
     @Nullable
     private static Barline leftBarlineBeforeContent(BuildContext context, ElementOutput output) {
@@ -738,10 +714,8 @@ final class MeasureBuilder {
      *
      * <p>When the note is already followed by an invisible right barline — the line break's
      * marker, or the one that precedes a {@code REPEAT_LEFT} — the volta rides on that one
-     * rather than adding a second invisible barline beside it. The streaming writer could only
-     * do this for the line's last element, and only by holding the markers in
-     * {@code lastNoteEndingMarkers} until the end of the line; here the following node is
-     * simply there to look at.
+     * rather than adding a second invisible barline beside it. The following node is simply
+     * there to look at.
      */
     @Nullable
     private static Barline rightBarlineAfterContent(BuildContext context, ElementOutput output) {
@@ -788,21 +762,20 @@ final class MeasureBuilder {
      *
      * <p>MusicXML allows at most one {@code <ending>} per {@code <barline>} — it is a single
      * typed property, not a list — so a second volta marker landing on the same barline is
-     * dropped rather than emitted. The streaming writer folded a list of markers onto one
-     * barline and would have written a document the schema rejects.
+     * dropped rather than emitted.
      */
-    private static void attachEnding(
-        BuildContext context, @Nullable Barline host, String number, StartStopDiscontinue type,
-        double yOffsetSs) {
+    private static org.audiveris.proxymusic.@Nullable Ending attachEnding(
+        BuildContext context, @Nullable Barline host, String number, StartStopDiscontinue type) {
         if (host == null || host.getEnding() != null) {
-            return;
+            return null;
         }
 
         var ending = context.factory().createEnding();
         ending.setNumber(number);
         ending.setType(type);
-        ending.setRelativeY(MusicXmlUnits.shiftTenths(yOffsetSs));
         host.setEnding(ending);
+
+        return ending;
     }
 
     /**

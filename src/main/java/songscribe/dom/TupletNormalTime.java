@@ -32,12 +32,12 @@ package songscribe.dom;
  * @param noteValue   V, the written value of those notes
  * @invariant {@code normalNotes} is positive
  */
-public record TupletRatio(int normalNotes, NotatableValue noteValue) {
+public record TupletNormalTime(int normalNotes, NotatableValue noteValue) {
 
     /**
      * @throws IllegalArgumentException if {@code normalNotes} is not positive
      */
-    public TupletRatio {
+    public TupletNormalTime {
         if (normalNotes <= 0) {
             throw new IllegalArgumentException(
                 "A tuplet ratio needs a positive normal-notes count, got " + normalNotes);

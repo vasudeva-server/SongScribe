@@ -38,7 +38,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * membership is derived anywhere else.
  * <p>
  * The song's auto-maintained terminal is excluded exactly once, by where {@link #of} stops
- * collecting columns (issue #713). Both answers follow from that one stopping point: the terminal
+ * collecting columns. Both answers follow from that one stopping point: the terminal
  * is not a member because it is not in the list, and the right-hand limit is where the list runs
  * out.
  * <p>

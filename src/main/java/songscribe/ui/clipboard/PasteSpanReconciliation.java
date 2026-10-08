@@ -24,48 +24,49 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.Strings;
 import songscribe.dom.Beam;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.ReportedChange;
 import songscribe.dom.Span;
 import songscribe.dom.Spanning;
+import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
-import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 
 /**
  * Decides which spans survive a paste: the destination spans the paste lands <em>inside</em>
- * of (#614), and the fragment spans the destination refuses where they land (#604).
+ * of, and the fragment spans the destination refuses where they land.
  *
  * <p>The two rules are independent and run in that order, at two different moments of
- * the paste — see {@link #reconcile} and {@link #settleAgainstTarget}.
+ * the paste, and each answers with a type of its own: {@link #reconcile} with this record,
+ * {@link #settle} with a {@link Settlement}. {@link FragmentPaste} runs the paste around them.
  *
  * <table border="1">
  *   <caption>The two drop rules</caption>
  *   <tr><th>Rule</th><th>Runs</th><th>Drops</th></tr>
  *   <tr>
- *     <td>straddle (#614)</td>
+ *     <td>straddle</td>
  *     <td>before the paste mutates anything</td>
  *     <td>straddled destination spans, and the fragment spans of a kind that a
  *         straddle invalidates</td>
  *   </tr>
  *   <tr>
- *     <td>target (#604)</td>
+ *     <td>target</td>
  *     <td>after the fragment's elements are in, before any of its spans is added</td>
- *     <td>fragment tuplets, endings and hairpins that their kind's own rule refuses
- *         where they landed</td>
+ *     <td>fragment tuplets, beams, endings and hairpins that their kind's own rule
+ *         refuses where they landed</td>
  *   </tr>
  * </table>
  *
- * <p>A paste never cancels because of a span. It leaves out what either rule drops, and the
- * caller reports every span in {@code targetSpansToRemove}, {@code fragmentSpansDropped} and
- * {@code fragmentSpansRejected}.
+ * <p>A paste never cancels because of a span. It leaves out what either rule drops, and every
+ * span it leaves out reaches the paste's report: a straddled destination span through
+ * {@link Span#removeReported}, with the reason its {@link LostSpan} carries, and a fragment
+ * span either rule drops through {@link Settlement#reports}.
  *
  * <h2>The straddle rule</h2>
  *
@@ -118,9 +119,9 @@ import songscribe.dom.TupletValidator;
  * already answers per clone via {@link Ending#outcomeFor}, the ending's own
  * barline/repeat-aware rule; this class does not second-guess it. A fragment carrying a
  * whole ending necessarily carries that ending's own barlines, so in practice that rule
- * usually removes the destination ending too, and the paste is confirmed on those terms.
+ * usually removes the destination ending too.
  *
- * <p><b>Only a straddle counts.</b> #614 words the tuplet/beam rule as "if the paste
+ * <p><b>Only a straddle counts.</b> The tuplet/beam rule reads as "if the paste
  * does not completely replace a group, remove it from both sides", which literally
  * also covers a paste-replace that clips a group at its edge — deleting one endpoint
  * and orphaning notes on the other side. That case is excluded: the destination group
@@ -135,61 +136,91 @@ import songscribe.dom.TupletValidator;
  *
  * <p>A fragment span is a copy of a span that was valid where it was captured. What the
  * destination can change is whether its range is still valid where it lands, and the
- * paste is the only moment that is knowable. Three kinds have a rule for that, and each is
- * judged by the same rule that judges creating that kind by hand there:
+ * paste is the only moment that is knowable. Every kind with a factory is judged by it, the
+ * same rule that judges creating that kind by hand there:
  *
  * <table border="1">
  *   <caption>Target policy by span kind</caption>
  *   <tr><th>Kind</th><th>Judged by</th><th>What is added when accepted</th></tr>
- *   <tr><td>{@link Tuplet}</td><td>{@link TupletValidator}, strictly, with the tuplet's
- *       own ratio</td><td>the fragment's tuplet</td></tr>
- *   <tr><td>{@link Ending}</td><td>{@link Ending#spanning}</td><td>the ending the factory
- *       built, carrying the fragment ending's user state</td></tr>
- *   <tr><td>{@link Hairpin}</td><td>{@link Hairpin#spanning}</td><td>the hairpin the
- *       factory built, carrying the fragment hairpin's user state</td></tr>
- *   <tr><td>{@link Beam}, {@link Trill}</td><td>nothing</td><td>the fragment's span</td></tr>
+ *   <tr><td>{@link Tuplet}</td><td>{@link Tuplet#spanningStated}, strictly, with the
+ *       tuplet's own grade and ratio</td><td rowspan="4">the span the factory built,
+ *       carrying the fragment span's user state</td></tr>
+ *   <tr><td>{@link Beam}</td><td>{@link Beam#spanning}</td></tr>
+ *   <tr><td>{@link Ending}</td><td>{@link Ending#spanning}</td></tr>
+ *   <tr><td>{@link Hairpin}</td><td>{@link Hairpin#spanning}</td></tr>
+ *   <tr><td>{@link Trill}</td><td>nothing</td><td>the fragment's trill</td></tr>
  * </table>
  *
- * <p>An ending or hairpin that the factory accepts is built by the factory, never taken
- * from the fragment, so every ending and hairpin a paste adds is one its kind's own rule
- * made. That rule covers what the straddle rule does not see: an ending pasted after a
- * {@code ||}, or in front of a barline; a hairpin whose range now holds a repeat; an
- * ending that would overlap one the destination keeps.
+ * <p>A span that its factory accepts is built by the factory, never taken from the fragment,
+ * so every tuplet, beam, ending and hairpin a paste adds is one its kind's own rule made. That
+ * rule covers what the straddle rule does not see: a tuplet that now crosses a beat barrier or
+ * a barline; an ending pasted after a {@code ||}, or in front of a barline; a hairpin whose
+ * range now holds a repeat; an ending that would overlap one the destination keeps. A trill
+ * has no rule a destination can break: it binds the fragment's own notes, which land
+ * together.
+ *
+ * <p>A tuplet travels through the clipboard with its ratio, so it is judged with that ratio
+ * rather than one re-derived from the destination's beat. Re-deriving would destroy the
+ * tuplets the model goes out of its way to preserve — a document may state a ratio the
+ * convention would not choose, and pasting such a tuplet back where it came from would refuse
+ * it. What the destination can break is its placement.
  *
  * <p><b>A paste that merely abuts a hairpin is not a refusal.</b> Two same-type hairpins
- * left nose to tail are one hairpin, and {@link Hairpin#spanning} judges the range the
- * converged hairpin will hold, which {@link Span#addTo} then widens the added hairpin to —
+ * left nose to tail are one hairpin, and {@link Hairpin#spanning} judges and builds the range
+ * the converged hairpin will hold, whose absorbed hairpins {@link Span#addTo} then removes —
  * the same rule that applies when the user draws a hairpin flush against an existing one.
  * A different type merges with nothing, and the two hairpins stand side by side, again
  * exactly as when drawn.
  *
- * @param targetSpansToRemove   Spans on the destination line to remove before inserting
- * @param fragmentSpans         The fragment's spans that should still be added
- * @param fragmentSpansDropped  The fragment's spans the straddle rule dropped, named so the
- *                              caller can report them
- * @param fragmentSpansRejected The fragment's spans the target rule refused, each with the
- *                              reason it was refused; empty until
- *                              {@link #settleAgainstTarget} has run
+ * @param targetSpansToRemove  the spans on the destination line the paste straddles, each with
+ *                             the reason it is removed; still on the line
+ * @param fragmentSpansKept    the fragment's spans the straddle rule kept, in the fragment's
+ *                             order; not yet judged by the target rule, which {@link #settle}
+ *                             applies
+ * @param fragmentSpansDropped the fragment's spans the straddle rule dropped, each with the
+ *                             reason it is reported with
  */
 public record PasteSpanReconciliation(
-    List<Span<?>> targetSpansToRemove,
-    List<Span<?>> fragmentSpans,
-    List<Span<?>> fragmentSpansDropped,
-    List<RejectedSpan> fragmentSpansRejected
+    List<LostSpan> targetSpansToRemove,
+    List<Span<?>> fragmentSpansKept,
+    List<LostSpan> fragmentSpansDropped
 ) {
 
+    public PasteSpanReconciliation {
+        targetSpansToRemove = List.copyOf(targetSpansToRemove);
+        fragmentSpansKept = List.copyOf(fragmentSpansKept);
+        fragmentSpansDropped = List.copyOf(fragmentSpansDropped);
+    }
+
     /**
-     * A fragment span the destination refused.
+     * A span the paste does not keep, paired with the reason the user is told.
      *
-     * @param span      the fragment span, never added to any line
-     * @param reasonKey the {@code Strings} key of the reason it was refused, as the user reads it
+     * @param span      the span: a destination span still on its line, or a fragment span never
+     *                  added to any line
+     * @param reasonKey the {@code Strings} key of the reason, whose value is plain text
      */
-    public record RejectedSpan(Span<?> span, String reasonKey) {}
+    public record LostSpan(Span<?> span, String reasonKey) {}
+
+    /**
+     * What the target rule leaves of the fragment's spans: the spans to add, and the report
+     * entry for every fragment span the paste leaves out.
+     *
+     * @param spansToAdd the span to add for each fragment span accepted, in the fragment's order;
+     *                   none of them is on a line yet
+     * @param reports    one entry per fragment span the straddle rule dropped or the target rule
+     *                   refused, located where the span's elements landed, ready to record
+     */
+    public record Settlement(List<Span<?>> spansToAdd, List<ReportedChange> reports) {
+
+        public Settlement {
+            spansToAdd = List.copyOf(spansToAdd);
+            reports = List.copyOf(reports);
+        }
+    }
 
     /**
      * Reconciles {@code fragmentSpans} against the spans already on {@code line} — the
-     * straddle rule. The returned reconciliation carries no rejected spans yet; that is
-     * {@link #settleAgainstTarget}'s job, later in the same paste.
+     * straddle rule.
      *
      * <p>Must be called on the <em>pre-mutation</em> line: {@code target} indexes the line as
      * it stands before the paste's delete and insert.
@@ -199,14 +230,20 @@ public record PasteSpanReconciliation(
      *                      first
      * @param fragmentSpans The spans the instantiated fragment carries
      * @return the straddled destination spans to remove, and the fragment spans split into
-     *     those kept and those dropped; its {@link #fragmentSpansRejected} is empty
+     *     those kept and those dropped
+     * @invariant every one of {@code fragmentSpans} is in exactly one of
+     *     {@link #fragmentSpansKept} and {@link #fragmentSpansDropped}
+     * @invariant every destination span to remove has the reason
+     *     {@link Strings#DIALOG_REPORT_REASON_PASTE_STRADDLED}, and every dropped fragment span
+     *     the reason {@link Strings#DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED}
+     * @effects none; {@code line} and its span registry are unchanged
      */
     public static PasteSpanReconciliation reconcile(
         Line line,
         StaffElementRun.InsertionTarget target,
         List<Span<?>> fragmentSpans
     ) {
-        var toRemove = new ArrayList<Span<?>>();
+        var toRemove = new ArrayList<LostSpan>();
         var dropTuplets = false;
         var dropBeams = false;
         var dropEndings = false;
@@ -218,17 +255,17 @@ public record PasteSpanReconciliation(
         for (var span : line.spanRegistry().findSpans(Span.straddling(target))) {
             switch (span) {
                 case Tuplet tuplet -> {
-                    toRemove.add(tuplet);
+                    toRemove.add(straddled(tuplet));
                     dropTuplets = true;
                 }
                 case Beam beam -> {
-                    toRemove.add(beam);
+                    toRemove.add(straddled(beam));
                     dropBeams = true;
                 }
-                case Trill trill -> toRemove.add(trill);
+                case Trill trill -> toRemove.add(straddled(trill));
                 case Hairpin hairpin -> {
                     if (fragmentContradictsHairpin(fragmentSpans, hairpin)) {
-                        toRemove.add(hairpin);
+                        toRemove.add(straddled(hairpin));
                     } else {
                         keptStraddledHairpinKinds.add(hairpin.getKind());
                     }
@@ -238,7 +275,7 @@ public record PasteSpanReconciliation(
         }
 
         var keptFragmentSpans = new ArrayList<Span<?>>(fragmentSpans.size());
-        var droppedFragmentSpans = new ArrayList<Span<?>>();
+        var droppedFragmentSpans = new ArrayList<LostSpan>();
 
         for (var span : fragmentSpans) {
             var dropped = (dropTuplets && span instanceof Tuplet)
@@ -247,110 +284,93 @@ public record PasteSpanReconciliation(
                 || (span instanceof Hairpin hairpin && keptStraddledHairpinKinds.contains(hairpin.getKind()));
 
             if (dropped) {
-                droppedFragmentSpans.add(span);
+                droppedFragmentSpans.add(new LostSpan(span, Strings.DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED));
             } else {
                 keptFragmentSpans.add(span);
             }
         }
 
-        return new PasteSpanReconciliation(toRemove, keptFragmentSpans, droppedFragmentSpans, List.of());
+        return new PasteSpanReconciliation(toRemove, keptFragmentSpans, droppedFragmentSpans);
     }
 
     /**
-     * Judges every one of {@link #fragmentSpans} against {@code line} as the paste leaves it —
-     * the target rule — and returns the spans to add in place of the fragment's.
+     * Judges every one of {@link #fragmentSpansKept} against {@code line} as the paste leaves it
+     * — the target rule — and returns the spans to add in their place, with the report entries
+     * for every fragment span the paste leaves out.
      *
      * <p><b>Call this after the fragment's elements have been inserted into {@code line} and
-     * before any fragment span is added.</b> Every index a judge reads resolves through the
-     * span's anchor element's own line, so the elements must already sit where they will
-     * finally sit. Every span is judged against the destination as it stood before any
-     * fragment span was added, so no fragment span is judged against another. Refusing a span
-     * that was never added is also what keeps this rule free of any mutation of its own:
-     * there is nothing for the paste's bracket to record, so the paste's single undo step
-     * covers the refusal by construction.
-     *
-     * <p>A tuplet travels through the clipboard with its ratio, so it is judged with that
-     * ratio rather than one re-derived from the destination's beat. Re-deriving would destroy
-     * the tuplets the model goes out of its way to preserve — a document may state a ratio the
-     * convention would not choose, and pasting such a tuplet back where it came from would
-     * refuse it. What the destination can break is its placement: a beat barrier, or a
-     * barline, repeat or breath mark, now inside it.
-     *
-     * <p>The straddle rule's accounting is left alone: {@link #targetSpansToRemove} and
-     * {@link #fragmentSpansDropped} are carried over unchanged.
+     * before any fragment span is added.</b> Every index a judge reads, and every location a
+     * report entry names, resolves through the span's anchor element's own line, so the elements
+     * must already sit where they will finally sit. Every span is judged against the destination
+     * as it stood before any fragment span was added, so no fragment span is judged against
+     * another. Refusing a span that was never added is also what keeps this rule free of any
+     * mutation of its own: there is nothing for the paste's bracket to record, so the paste's
+     * single undo step covers the refusal by construction.
      *
      * @param line The destination line, with the fragment's elements already inserted and
      *             none of its spans added
-     * @return a reconciliation whose {@link #fragmentSpans} holds, in the order of this one's,
-     *     the span to add for each fragment span accepted, and whose
-     *     {@link #fragmentSpansRejected} names each fragment span refused with its reason
-     * @invariant each of this reconciliation's {@link #fragmentSpans} is either accepted, and
-     *     contributes exactly one span to the result's {@link #fragmentSpans}, or refused, and
-     *     named in the result's {@link #fragmentSpansRejected}; never both
-     * @invariant a tuplet, beam or trill is added as the fragment's own span; an ending or
-     *     hairpin is added as the span {@link Ending#spanning} or {@link Hairpin#spanning}
-     *     built, never as the fragment's
-     * @invariant a refused tuplet has the reason
-     *     {@link Strings#DIALOG_REPORT_REASON_PASTE_TUPLET_REJECTED}; a refused ending or
-     *     hairpin has the reason of its {@link Spanning.Refused}
-     * @invariant an accepted ending or hairpin carries the fragment span's user state, taken
-     *     through {@link Span#copyUserStateFrom}
+     * @return the spans to add and the report entries; see {@link Settlement}
+     * @invariant each of {@link #fragmentSpansKept} is either accepted, and contributes exactly
+     *     one span to {@link Settlement#spansToAdd}, or refused, and contributes exactly one
+     *     entry to {@link Settlement#reports}; never both
+     * @invariant each of {@link #fragmentSpansDropped} contributes exactly one entry to
+     *     {@link Settlement#reports}, with the reason it carries
+     * @invariant a trill is added as the fragment's own span; a tuplet, beam, ending or hairpin
+     *     is added as the span its factory built ({@link Tuplet#spanningStated},
+     *     {@link Beam#spanning}, {@link Ending#spanning}, {@link Hairpin#spanning}), carrying
+     *     the fragment span's user state through {@link LineElement#copyBaseStateFrom}, never as the
+     *     fragment's
+     * @invariant a refused span is reported with the reason of its factory's
+     *     {@link Spanning.Refused}
      * @effects none; {@code line} and its span registry are unchanged
      */
-    public PasteSpanReconciliation settleAgainstTarget(Line line) {
-        var keptSpans = new ArrayList<Span<?>>(fragmentSpans.size());
-        var rejectedSpans = new ArrayList<RejectedSpan>();
+    public Settlement settle(Line line) {
+        var spansToAdd = new ArrayList<Span<?>>(fragmentSpansKept.size());
+        var reports = new ArrayList<ReportedChange>();
 
-        for (var span : fragmentSpans) {
+        for (var dropped : fragmentSpansDropped) {
+            reports.add(dropped.span().reportedAs(dropped.reasonKey()));
+        }
+
+        for (var span : fragmentSpansKept) {
             switch (span) {
-                case Tuplet tuplet -> {
-                    if (isRejectedByTarget(line, tuplet)) {
-                        rejectedSpans.add(new RejectedSpan(
-                            tuplet, Strings.DIALOG_REPORT_REASON_PASTE_TUPLET_REJECTED));
-                    } else {
-                        keptSpans.add(tuplet);
-                    }
-                }
-                case Ending ending -> {
-                    switch (Ending.spanning(line, ending.range())) {
-                        case Spanning.Spanned<Ending>(var spanned) -> {
-                            spanned.copyUserStateFrom(ending);
-                            keptSpans.add(spanned);
-                        }
-                        case Spanning.Refused<Ending>(var reasonKey, var ignored) ->
-                            rejectedSpans.add(new RejectedSpan(ending, reasonKey));
-                    }
-                }
-                case Hairpin hairpin -> {
-                    switch (Hairpin.spanning(line, hairpin.getKind(), hairpin.range())) {
-                        case Spanning.Spanned<Hairpin>(var spanned) -> {
-                            spanned.copyUserStateFrom(hairpin);
-                            keptSpans.add(spanned);
-                        }
-                        case Spanning.Refused<Hairpin>(var reasonKey, var ignored) ->
-                            rejectedSpans.add(new RejectedSpan(hairpin, reasonKey));
-                    }
-                }
-                case Beam beam -> keptSpans.add(beam);
-                case Trill trill -> keptSpans.add(trill);
+                case Tuplet tuplet -> settleWith(tuplet, Tuplet.spanningStated(
+                    Tuplet.Site.at(line, tuplet.range()), tuplet.getGrade(), tuplet.getRatio(),
+                    TupletValidator.Strictness.STRICT), spansToAdd, reports);
+                case Beam beam -> settleWith(beam, Beam.spanning(line, beam.range()), spansToAdd, reports);
+                case Ending ending -> settleWith(ending, Ending.spanning(line, ending.range()), spansToAdd, reports);
+                case Hairpin hairpin -> settleWith(
+                    hairpin, Hairpin.spanning(line, hairpin.getKind(), hairpin.range()), spansToAdd, reports);
+                case Trill trill -> spansToAdd.add(trill);
             }
         }
 
-        return new PasteSpanReconciliation(
-            targetSpansToRemove, keptSpans, fragmentSpansDropped, rejectedSpans);
+        return new Settlement(spansToAdd, reports);
     }
 
     /**
-     * Whether the destination refuses the tuplet now spanning {@code line}: its placement,
-     * checked strictly with its own ratio, exactly as creating the tuplet by hand there
-     * would be.
+     * Settles {@code fragmentSpan} on its factory's {@code answer}: the span the factory built,
+     * taking {@code fragmentSpan}'s user state, joins {@code spansToAdd}; a refusal joins
+     * {@code reports}, located at {@code fragmentSpan}'s landed elements.
      */
-    private static boolean isRejectedByTarget(Line line, Tuplet tuplet) {
-        var context = TupletValidator.describeSpan(line, tuplet.range());
-        var result = TupletValidator.validateStated(
-            context, tuplet.getGrade(), tuplet.getRatio(), TupletValidator.Strictness.STRICT);
+    private static <E extends StaffElement, S extends Span<E>> void settleWith(
+        S fragmentSpan,
+        Spanning<S> answer,
+        List<Span<?>> spansToAdd,
+        List<ReportedChange> reports
+    ) {
+        switch (answer) {
+            case Spanning.Spanned<S>(var spanned, var ignored) -> {
+                spanned.copyBaseStateFrom(fragmentSpan);
+                spansToAdd.add(spanned);
+            }
+            case Spanning.Refused<S> refused -> reports.add(fragmentSpan.reportedAs(refused.reasonKey()));
+        }
+    }
 
-        return result instanceof TupletValidator.Result.Invalid;
+    /** The removal of {@code span}, a destination span the paste straddles. */
+    private static LostSpan straddled(Span<?> span) {
+        return new LostSpan(span, Strings.DIALOG_REPORT_REASON_PASTE_STRADDLED);
     }
 
     /**

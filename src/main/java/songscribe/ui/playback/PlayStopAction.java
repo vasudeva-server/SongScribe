@@ -73,7 +73,7 @@ public final class PlayStopAction extends SequencerAction {
     public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         super.playbackStateDidChange(message);
 
-        if (message.getState() == PlaybackController.PlaybackState.PLAYING) {
+        if (message.getState() == PlaybackState.PLAYING) {
             toggleToStop();
         } else {
             toggleToPlay();

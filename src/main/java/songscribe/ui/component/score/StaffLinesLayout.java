@@ -79,8 +79,8 @@ public class StaffLinesLayout implements LayoutManager2 {
      * Two extents are kept per line, and the split is the whole point:
      * <ul>
      *   <li>{@code aboveMidlineSs} / {@code belowMidlineSs} — the line's <em>measured content</em>,
-     *       and the only inputs to {@code spacingSs}. Spacing therefore still follows content
-     *       exactly as issue #591 requires.</li>
+     *       and the only inputs to {@code spacingSs}. Spacing therefore follows content
+     *       exactly.</li>
      *   <li>{@code paintAboveMidlineSs} / {@code paintBelowMidlineSs} — the same values floored
      *       at the minimum staff surround, used only for component <em>bounds</em>. Without the
      *       floor a line whose ink stops at the staff top gets bounds that start there, and

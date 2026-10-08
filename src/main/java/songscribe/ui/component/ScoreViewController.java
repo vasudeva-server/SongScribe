@@ -40,7 +40,6 @@ import songscribe.dom.Attachment;
 import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.EndingValidationResult;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.KeyChangeStranding;
@@ -99,14 +98,16 @@ import songscribe.prefs.PrefsKey;
 import songscribe.ui.EditResult;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
-import songscribe.ui.MusicEditOperations.HairpinResolution;
+import songscribe.ui.playback.PlaybackState;
+import songscribe.ui.selection.RangeQueries.HairpinResolution;
+import songscribe.ui.FitRefusals;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.SlideOperations;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
-import songscribe.ui.clipboard.PasteSpanReconciliation;
+import songscribe.ui.clipboard.FragmentPaste;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.dialog.ReportDialog;
 import songscribe.ui.dialog.ReportDialogController;
@@ -372,11 +373,7 @@ public final class ScoreViewController {
 
     @Handler
     public void handleToggleTuplet(ToggleTupletCommand message) {
-        // The cached form, not operations.canToggleTuplet(): computing it walks the song
-        // backward to the governing beat and tests every candidate grade, and the cache
-        // holds the answer for this very selection, warmed by the same notification that
-        // enabled the action the user just triggered.
-        operations.toggleTuplet(message.getGrade(), canToggleTuplet());
+        operations.toggleTuplet(message.getGrade());
         score.selectionChanged();
     }
 
@@ -401,10 +398,7 @@ public final class ScoreViewController {
 
     @Handler
     public void handleFirstSecondEnding(FirstSecondEndingCommand message) {
-        var result = Actions.MAKE_ENDING_ACTION.getCachedResult();
-
-        if (result instanceof EndingValidationResult.Valid valid) {
-            operations.makeFirstSecondEnding(valid);
+        if (operations.makeFirstSecondEnding()) {
             MessageCenter.post(new DeselectCommand());
         }
     }
@@ -449,7 +443,7 @@ public final class ScoreViewController {
         return operations.resolveHairpinAction(kind);
     }
 
-    public EndingValidationResult canMakeFirstSecondEnding() {
+    public boolean canMakeFirstSecondEnding() {
         return operations.canMakeFirstSecondEnding();
     }
 
@@ -750,7 +744,7 @@ public final class ScoreViewController {
     ) {
         var state = message.getState();
 
-        if (state == PlaybackController.PlaybackState.PLAYING) {
+        if (state == PlaybackState.PLAYING) {
             return;
         }
 
@@ -759,7 +753,7 @@ public final class ScoreViewController {
         // here rather than being reached into from the playback controller. Guarded because
         // clearSelection() posts a MusicSelectionDidChangeNotification even when there was
         // nothing selected.
-        if (state == PlaybackController.PlaybackState.REWOUND && score.getSelection() != null) {
+        if (state == PlaybackState.REWOUND && score.getSelection() != null) {
             score.clearSelection();
         }
 
@@ -854,12 +848,14 @@ public final class ScoreViewController {
      *   <li>A selected {@code HitTarget.Lyric} clears the lyric via {@code modifyElement(LYRIC)},
      *       then restores action states, clears the selection, repaints and returns — it does not
      *       reach the shared tail.
-     *   <li>A non-null element range deletes it with {@code deleteElementRange()}.
+     *   <li>A non-null element range deletes it with {@code deleteElementRange()}. A tie whose end
+     *       note the range takes is untied with it.
      *   <li>A non-null selected target dispatches on its kind in {@code deleteSelectedTarget()}: a
-     *       slide, articulation or attachment goes through {@code modifyElement}; an ending or
-     *       trill through {@code removeSpan}; a hairpin, tie, beam or tuplet through its own
-     *       remover, with a tie removed from both lines it touches. An attachment resolves further
-     *       to its own field (fermata, dynamic, annotation, beat change, tempo change).
+     *       slide, articulation or attachment goes through {@code modifyElement}; every span kind
+     *       — ending, trill, hairpin, beam, tuplet — through its own {@code removeFrom}; a tie
+     *       through {@code removeTie}, once, on its anchor's line, even when it crosses a line
+     *       break. An attachment resolves further to its own field (fermata, dynamic,
+     *       annotation, beat change, tempo change).
      *   <li>Otherwise, if {@code canDeleteLine()} allows it, the line itself is removed. Taking a
      *       line out moves the key every following line inherits, so this branch removes with it
      *       any mid-line key change the move strands, exactly as an inserted key change does.
@@ -994,37 +990,33 @@ public final class ScoreViewController {
             }
 
             case HitTarget.Ending(var ending) ->
-                line.getSong().withModification(OpNames.deleteEndingLabel(), () -> ending.removeFrom(line));
+                line.getSong().withModification(OpNames.deleteEndingLabel(), () -> ending.removeFrom());
 
             case HitTarget.Hairpin(var hairpin) ->
-                line.getSong().withModification(OpNames.deleteHairpinLabel(hairpin), () -> hairpin.removeFrom(line));
+                line.getSong().withModification(OpNames.deleteHairpinLabel(hairpin), () -> hairpin.removeFrom());
 
             // A cross-line tie's anchor sits on only the first of its two lines (see
             // HitTarget.Tie), which is not necessarily the line the hit was made against, so
             // the removal is recorded on the anchor's own line.
             case HitTarget.Tie(var tie) -> {
                 var anchor = tie.anchor();
-                var anchorLine = anchor.getParentLine();
-
-                if (anchorLine == null) {
-                    throw RuntimeError.exit("a selected tie's anchor is in no line");
-                }
+                var anchorLine = anchor.requireParentLine();
 
                 anchorLine.getSong().withModification(
                     OpNames.removeTieLabel(), () -> anchorLine.removeTie(anchor));
             }
 
             case HitTarget.Beam(var beam) ->
-                line.getSong().withModification(OpNames.removeBeamLabel(), () -> beam.removeFrom(line));
+                line.getSong().withModification(OpNames.removeBeamLabel(), () -> beam.removeFrom());
 
             case HitTarget.Tuplet(var tuplet) ->
-                line.getSong().withModification(OpNames.removeTupletLabel(), () -> tuplet.removeFrom(line));
+                line.getSong().withModification(OpNames.removeTupletLabel(), () -> tuplet.removeFrom());
 
             // The explicit label is not optional: the generic SpanRemoval's unlabeled fallback
             // op-name is the literal text "Ending", so an unlabeled trill removal would make
             // the undo menu read "Undo Ending".
             case HitTarget.Trill(var trill) ->
-                line.getSong().withModification(OpNames.removeTrillLabel(), () -> trill.removeFrom(line));
+                line.getSong().withModification(OpNames.removeTrillLabel(), () -> trill.removeFrom());
 
             case HitTarget.Articulation(var articulation) -> {
                 var owner = articulation.owner();
@@ -1164,9 +1156,7 @@ public final class ScoreViewController {
      * <p>
      * The stranding is the caller's, in {@code stranding}, computed before any bracket opens
      * against the pre-removal line, which is why it is swept before the range goes: its ranges
-     * name pre-removal indices, all past the range, which the removal would move. A
-     * paste-replace sweeps its own stranding around the paste as a whole and passes an empty one
-     * here.
+     * name pre-removal indices, all past the range, which the removal would move.
      */
     private void deleteElementRange(
         Line line,
@@ -1259,6 +1249,13 @@ public final class ScoreViewController {
      * it renders overflowing and flagged, which is what the program does everywhere outside the
      * edits {@code KeyEditFitCalculator} covers.
      *
+     * <p><b>The paste reports every span it removes or leaves out.</b> Once the gates pass,
+     * {@link FragmentPaste#paste} lands the fragment: it records into the open bracket's report
+     * each destination span the paste lands inside, each fragment span a span kind's rule drops
+     * or refuses where it landed, and each fragment span whose endpoint went with a key change the
+     * paste dropped. The report is shown when the caller's bracket closes. A refusal reports
+     * nothing.
+     *
      * @param line   The destination line
      * @param target Where the fragment lands: a plain index, or a range this paste deletes
      *               first and the index it leaves the fragment at
@@ -1286,44 +1283,27 @@ public final class ScoreViewController {
         // that survives.
         var rawDeleteRange = deleteRange == null ? null : deleteRange.range();
 
-        // The first index this paste leaves standing after itself, and so the first one every
-        // projection below re-reads.
-        var successorIndex = rawDeleteRange == null ? insertIndex : rawDeleteRange.end() + 1;
-
         // The key the fragment's first element lands in.
         var keyAtInsertion = line.keyBefore(insertIndex);
 
-        // Fresh clones every paste — the stored fragment is never itself inserted.
-        // Instantiated before any mutation because the span reconciliation below decides
-        // which of *these* spans survive, and it must read pre-mutation
-        // indices off the line. The clones carry no line back-reference until addElement
-        // below, so building them early touches nothing — which is also why the fit gate
-        // can measure these clones rather than the stored fragment's elements.
+        // Fresh clones every paste — the stored fragment is never itself inserted. The clones
+        // carry no line back-reference until the paste inserts them, so building them early
+        // touches nothing — which is also why the fit gate can measure these clones rather than
+        // the stored fragment's elements.
         //
         // A fragment carries the key it was copied under, so one of its own key changes can
         // arrive restating the key already running where it lands. It is dropped here rather
         // than deleted after the insertion, so the chain walk, the fit measurement and the
-        // span reconciliation below all see the run that actually lands.
-        var instantiated = fragment.instantiate().withoutRedundantKeyChanges(keyAtInsertion);
-
-        // A key the fragment brings in reaches the rest of this line and every line inheriting
-        // past it, exactly as a key change written by hand does — these are the key changes it
-        // strands along the way, computed against the pre-mutation line.
-        var keyAfterFragment = instantiated.keyAtEndUnder(keyAtInsertion);
-        var stranding = KeyChangeStranding.ofMidLineEdit(
-            line,
-            line.redundantKeyChangeRanges(successorIndex, keyAfterFragment),
-            line.keyAtEndUnder(successorIndex, keyAfterFragment));
+        // span reconciliation all see the run that actually lands.
+        var reduction = fragment.instantiate().withoutRedundantKeyChanges(keyAtInsertion);
+        var instantiated = reduction.fragment();
 
         // A fragment of nothing but a key change restating the key already running here, and the
         // barline behind it, leaves nothing to place. What is left of the paste is the deletion a
-        // paste-replace owes, with the stranding just computed; a pure insertion has nothing left
-        // to do at all. Either way the gesture is spent, not declined.
+        // paste-replace owes; a pure insertion has nothing left to do at all. Either way the
+        // gesture is spent, not declined.
         if (instantiated.elements().isEmpty()) {
-            if (deleteRange != null) {
-                deleteElementRange(line, deleteRange, stranding);
-            }
-
+            FragmentPaste.paste(line, target, reduction);
             return FragmentInsertOutcome.INSERTED;
         }
 
@@ -1350,6 +1330,7 @@ public final class ScoreViewController {
             // that actually lands. A breath mark anchors no span, so every fragment span survives.
             var elements = instantiated.elements();
             instantiated = new Fragment(elements.subList(1, elements.size()), instantiated.spans());
+            reduction = new Fragment.KeyChangeReduction(instantiated, reduction.strandedSpans());
         }
 
         var clones = instantiated.elements();
@@ -1371,110 +1352,21 @@ public final class ScoreViewController {
         // leaving only the clones stamped.
         var lyricRenderMetrics = score.getLyricRenderMetrics();
 
-        var committed = AccidentalFitGate.fits(
-            line, restamps, clones, lyricRenderMetrics, () -> {
-                var fit = InsertionSpacingCalculator.calculateFragmentInsertion(
-                    line, clones, target, lyricRenderMetrics);
+        var verdict = AccidentalFitGate.judge(
+            line, restamps, clones, lyricRenderMetrics,
+            () -> InsertionSpacingCalculator.calculateFragmentInsertion(line, clones, target, lyricRenderMetrics)
+                .fitsWithinLine(line.getSong().getLineWidthSs().value()));
 
-                if (!fit.fitsWithinLine(line.getSong().getLineWidthSs().value())) {
-                    OptionDialogs.showErrorMessage(
-                        null,
-                        Strings.ALERT_TITLE_INSERT_ERROR,
-                        Strings.ERROR_LINE_FULL_PASTE
-                    );
-                    return false;
-                }
-
-                return true;
-            });
+        var committed = FitRefusals.accepts(
+            verdict, null,
+            () -> OptionDialogs.showErrorMessage(
+                null, Strings.ALERT_TITLE_INSERT_ERROR, Strings.ERROR_LINE_FULL_PASTE));
 
         if (!committed) {
             return FragmentInsertOutcome.LINE_FULL;
         }
 
-        // The key changes the moved key strands on the lines inheriting past this one, in the
-        // caller's bracket, so the paste and every removal it owes are one undo step. Nothing below
-        // touches those lines, so their indices are still the ones the stranding reported. What
-        // the key strands on this line waits until the paste is done moving it — see the deferred
-        // sweep at the end of this method.
-        stranding.sweepExcept(line);
-
-        var reconciliation = PasteSpanReconciliation.reconcile(line, target, instantiated.spans());
-
-        // Drop the destination spans this paste lands inside before anything moves,
-        // while their anchor/end indices still resolve against the pre-paste line.
-        for (var span : reconciliation.targetSpansToRemove()) {
-            span.removeReported(line, Strings.DIALOG_REPORT_REASON_PASTE_STRADDLED);
-        }
-
-        var insertAt = insertIndex;
-
-        if (deleteRange != null) {
-            // The stranding this paste owes is swept around the paste as a whole — the deletion
-            // and the insertion are one mutation — so the range delete sweeps nothing of its own.
-            deleteElementRange(line, deleteRange, new KeyChangeStranding(List.of()));
-
-            // The deletion removes exactly the range, so the successor closes up onto its begin
-            // and the clones land there.
-            insertAt = deleteRange.range().begin();
-        }
-
-        // Hard ordering constraint: every clone must be inserted before the first
-        // span is added. Adding a span re-parents only the span, not its
-        // anchor/end, and getAnchorElementIndex() resolves through the anchor's
-        // own getLine() — a span added while its anchors still carry the source
-        // line's back-reference makes the insertion sweep evaluate it against the
-        // wrong line, yielding a wrong index or -1. The hairpin merge a span's addTo
-        // runs reads those same indices, so it would mis-measure what to absorb for
-        // exactly the same reason.
-        //
-        // The addElement inside insertRun additionally drops the destination spans the
-        // inserted element types invalidate, each by its own rule: the ending's
-        // barline/repeat-aware one, which is more precise than the straddle test
-        // PasteSpanReconciliation applies to the other span kinds, so a destination
-        // ending is left to it; and the tuplet's interior rule, which finds nothing here
-        // because the reconciliation above already removed a straddled tuplet. A tie is
-        // not a span and is not swept here at all: it is state the pasted notes carry with
-        // them, and the tie rule judges every tie the paste touches, including one that
-        // spans the paste point, when the caller's modification bracket closes.
-        line.insertRun(insertAt, clones);
-
-        // Every fragment tuplet, ending and hairpin is judged here by its kind's own rule
-        // against the line the paste leaves (#604): after the clones are in, so every index
-        // resolves against the final line, and before any span is added, so a refused span
-        // is never created and needs no undo of its own. An accepted ending or hairpin comes
-        // back as the one its kind's factory built, in place of the fragment's clone.
-        reconciliation = reconciliation.settleAgainstTarget(line);
-
-        // The fragment spans the straddle rule dropped and the ones the destination refused
-        // are spans the user did not ask to lose, so each goes into the edit's report, which
-        // is shown when this paste's bracket closes.
-        var song = line.getSong();
-
-        for (var span : reconciliation.fragmentSpansDropped()) {
-            song.report(span.reportedAs(Strings.DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED));
-        }
-
-        for (var rejected : reconciliation.fragmentSpansRejected()) {
-            song.report(rejected.span().reportedAs(rejected.reasonKey()));
-        }
-
-        // A pasted hairpin flush against a same-type hairpin already on the line is
-        // merged into it by addTo's own displacement policy, the same rule that applies
-        // when the user draws one there, and the range settleAgainstTarget judged is the
-        // merged one.
-        for (var span : reconciliation.fragmentSpans()) {
-            span.addTo(line);
-        }
-
-        // The key changes the fragment's key strands on the rest of this line go last, so
-        // every index the paste itself resolves — the successor it measures the trailing shift
-        // from, the span anchors — is still the one it was measured against. Each of these ranges
-        // begins at or past the successor, so all of them moved by exactly what the successor
-        // moved by.
-        var strandedShift = insertAt + clones.size() - successorIndex;
-
-        stranding.sweepDeferred(line, strandedShift);
+        FragmentPaste.paste(line, target, reduction);
 
         return FragmentInsertOutcome.INSERTED;
     }

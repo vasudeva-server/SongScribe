@@ -360,8 +360,8 @@ public final class PreviewElementManager {
      * Returns whether the hover preview should be drawn on {@code lc}.
      * <p>
      * The single home for "is the preview visible": the component asks rather than re-assembling
-     * the conditions, which is how they used to exist — as a chain of early returns inside the
-     * renderer, far from the predicates they test.
+     * the conditions in a chain of early returns inside the renderer, far from the predicates
+     * they test.
      */
     static boolean shouldShowPreviewOn(LineComponent lc) {
         return activePreviewElementOn(lc) != null && lc.isPreviewElementVisible();
@@ -535,7 +535,8 @@ public final class PreviewElementManager {
 
     /**
      * Handles mouse movement over a line, updating preview element position.
-     * Replaces the preview element logic formerly inline in {@code LineComponent.mouseMoved()}.
+     * Owns the preview element logic for mouse movement, so {@code LineComponent.mouseMoved()}
+     * delegates to it.
      */
     static void trackMouse(LineComponent lc, MouseEvent e) {
         if (e.isAltDown()) {

@@ -27,8 +27,8 @@ import songscribe.Strings;
 import songscribe.dom.Hairpin;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddHairpinCommand;
-import songscribe.ui.MusicEditOperations;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.selection.RangeQueries.HairpinResolution;
 
 public final class HairpinAction extends UIAction {
 
@@ -55,11 +55,11 @@ public final class HairpinAction extends UIAction {
         // fine, and a rest at either end makes the selection INELIGIBLE.
         super(
             mainFrame,
-            Strings.get(kind == Hairpin.Kind.CRESCENDO ? Strings.ACTION_HAIRPIN_CRESCENDO : Strings.ACTION_HAIRPIN_DIMINUENDO),
+            Strings.get(new HairpinResolution.Ineligible(kind).nameKey()),
             null,
             0,
             kind == Hairpin.Kind.CRESCENDO ? "add-crescendo" : "add-diminuendo",
-            Strings.get(kind == Hairpin.Kind.CRESCENDO ? Strings.ACTION_HAIRPIN_CRESCENDO_TOOLTIP : Strings.ACTION_HAIRPIN_DIMINUENDO_TOOLTIP),
+            Strings.get(new HairpinResolution.Ineligible(kind).tooltipKey()),
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
@@ -84,8 +84,10 @@ public final class HairpinAction extends UIAction {
      */
     @Override
     public boolean updateEnabledState() {
+        var ineligible = new HairpinResolution.Ineligible(kind);
+
         if (!super.updateEnabledState()) {
-            applyLabel(false);
+            applyLabel(ineligible);
             return false;
         }
 
@@ -95,47 +97,21 @@ public final class HairpinAction extends UIAction {
             // Without a controller the state cannot be resolved, and super has already
             // enabled the action from flags alone — exactly the flag-only enable this
             // override exists to prevent.
-            applyLabel(false);
+            applyLabel(ineligible);
             setEnabled(false);
             return false;
         }
 
-        applyHairpinState(ctrl.resolveHairpinAction(kind).state());
+        var resolution = ctrl.resolveHairpinAction(kind);
+        applyLabel(resolution);
+        setEnabled(resolution instanceof HairpinResolution.Applicable);
         return true;
     }
 
-    private void applyHairpinState(MusicEditOperations.HairpinActionState state) {
-        var isExtend = state == MusicEditOperations.HairpinActionState.EXTEND;
-        applyLabel(isExtend);
-        setEnabled(isExtend || state == MusicEditOperations.HairpinActionState.CAN_ADD);
-    }
-
-    /**
-     * Sets the menu text and tooltip to either the extend or the add wording.
-     */
-    private void applyLabel(boolean isExtend) {
-        String nameKey;
-        String tooltipKey;
-        var isCrescendo = kind == Hairpin.Kind.CRESCENDO;
-
-        if (isExtend) {
-            nameKey = isCrescendo
-                ? Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND
-                : Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND;
-            tooltipKey = isCrescendo
-                ? Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND_TOOLTIP
-                : Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND_TOOLTIP;
-        } else {
-            nameKey = isCrescendo
-                ? Strings.ACTION_HAIRPIN_CRESCENDO
-                : Strings.ACTION_HAIRPIN_DIMINUENDO;
-            tooltipKey = isCrescendo
-                ? Strings.ACTION_HAIRPIN_CRESCENDO_TOOLTIP
-                : Strings.ACTION_HAIRPIN_DIMINUENDO_TOOLTIP;
-        }
-
-        putValue(Action.NAME, Strings.get(nameKey));
-        putValue(Action.SHORT_DESCRIPTION, Strings.get(tooltipKey));
+    /** Sets the menu text and tooltip to the wording {@code resolution} names. */
+    private void applyLabel(HairpinResolution resolution) {
+        putValue(Action.NAME, Strings.get(resolution.nameKey()));
+        putValue(Action.SHORT_DESCRIPTION, Strings.get(resolution.tooltipKey()));
     }
 
     @Override

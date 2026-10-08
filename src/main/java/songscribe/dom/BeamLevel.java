@@ -32,20 +32,16 @@ import org.jspecify.annotations.Nullable;
  */
 public enum BeamLevel {
     /** The primary beam, carried by every member of a beam group. */
-    EIGHTH(1),
+    EIGHTH,
 
     /** The second beam, carried by 16ths and shorter. */
-    SIXTEENTH(2),
+    SIXTEENTH,
 
     /** The third beam, carried by 32nds. */
-    THIRTY_SECOND(3);
+    THIRTY_SECOND;
 
-    /** The MusicXML {@code <beam number>} of this level. */
-    private final int musicXmlNumber;
-
-    BeamLevel(int musicXmlNumber) {
-        this.musicXmlNumber = musicXmlNumber;
-    }
+    /** Every level, outermost first; {@link #values()} would copy the array on each call. */
+    private static final BeamLevel[] LEVELS = values();
 
     /**
      * Returns this level's MusicXML {@code <beam number>}, which counts levels from the outside
@@ -54,7 +50,7 @@ public enum BeamLevel {
      * @return 1 for the primary beam, one more for each level further in
      */
     public int number() {
-        return musicXmlNumber;
+        return ordinal() + 1;
     }
 
     /**
@@ -77,9 +73,8 @@ public enum BeamLevel {
      *     {@link #THIRTY_SECOND}
      */
     public @Nullable BeamLevel next() {
-        var levels = values();
         var nextOrdinal = ordinal() + 1;
 
-        return nextOrdinal < levels.length ? levels[nextOrdinal] : null;
+        return nextOrdinal < LEVELS.length ? LEVELS[nextOrdinal] : null;
     }
 }

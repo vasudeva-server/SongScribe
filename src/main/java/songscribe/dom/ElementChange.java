@@ -139,10 +139,8 @@ public sealed interface ElementChange {
      * a set of one ({@link #single}). Nothing moves, so the projection is the line with each
      * replaced position holding its new element.
      * <p>
-     * A replacement <b>re-points</b> a span's endpoint rather than deleting it: a replaced
-     * element is absent from {@code projectedElements}, and a span whose anchor or end was
-     * that element is to be read as having that endpoint become its replacement
-     * ({@link #replacementOf}) — not as having lost an endpoint.
+     * A replaced element is absent from {@code projectedElements}; a span endpoint on it is read
+     * through {@link ElementChange#projectedEndpointIndexOf}.
      * <p>
      * The replaced elements are read off the line rather than held, so a replacement is valid
      * only until its line changes — the window every reader uses it in, like every other shape.
@@ -189,26 +187,6 @@ public sealed interface ElementChange {
             var newElements = new TreeMap<Integer, StaffElement>();
             newElements.put(index, newElement);
             return new Replacement(line, newElements);
-        }
-
-        /**
-         * This replacement with one more pair.
-         *
-         * @param index      the position of a further element to replace
-         * @param newElement the element taking its place
-         * @return a new replacement holding this one's pairs and {@code (index, newElement)};
-         *     this replacement is unchanged
-         * @throws IllegalArgumentException if {@code index} is already replaced
-         * @throws IndexOutOfBoundsException if no element stands at {@code index}
-         */
-        public Replacement with(int index, StaffElement newElement) {
-            if (newElements.containsKey(index)) {
-                throw new IllegalArgumentException("index " + index + " is already replaced");
-            }
-
-            var extended = new TreeMap<>(newElements);
-            extended.put(index, newElement);
-            return new Replacement(line, extended);
         }
 
         /**

@@ -26,11 +26,12 @@ Three pieces cross the boundary:
 
 - **a record in** — `I`, what to show, asked on **each opening**, and always a **copy**;
 - **a record out** — `O`, what the controls now say, gathered on OK;
-- **a `DialogOps<I, O>`** — four function references: `read`, `validate`, `commit`, `remove`.
+- **a `DialogOps<I, O>`** — five function references: `read`, `wasModified`, `validate`, `commit`, `remove`.
 
 ```java
 record DialogOps<I extends @Nullable Copyable<I>, O extends @Nullable Object>(
     Supplier<I>                    read,
+    Predicate<O>                   wasModified,
     Function<O, ValidationResult>  validate,
     Consumer<O>                    commit,
     @Nullable Runnable             remove     // null = this dialog offers no Remove
@@ -66,7 +67,7 @@ document's in it to alias. Its bound is `@Nullable Object`, so a dialog that gat
 
 **Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. A bundle of references exposes exactly those calls and can never expose another.
 
-The other end is a `DialogController<I, O>`. It holds the line, the element, the score and the view, and does whatever the four operations need. **The dialog never sees it.**
+The other end is a `DialogController<I, O>`. It holds the line, the element, the score and the view, and does whatever the five operations need. **The dialog never sees it.**
 
 ```java
 abstract class DialogController<I extends @Nullable Copyable<I>, O extends @Nullable Object> {
@@ -108,7 +109,7 @@ the document stays untouched, and the dialog still closes exactly as an
 ordinary OK would, because `StandardDialog` sees the commit run to
 completion either way.
 
-**Whoever opens the dialog constructs the controller** and passes `controller.ops()`. `ops()` is public because openers are not all in `ui.dialog` — `Actions` registers the cached menu actions from `ui.action`. `AttachmentDialogController` is the worked example: it resolves the element and line, builds the controller around them, and hands the dialog four references that already hold them.
+**Whoever opens the dialog constructs the controller** and passes `controller.ops()`. `ops()` is public because openers are not all in `ui.dialog` — `Actions` registers the cached menu actions from `ui.action`. `AttachmentDialogController` is the worked example: it resolves the element and line, builds the controller around them, and hands the dialog five references that already hold them.
 
 **A controller bound to a gesture is constructed per gesture.** `removal()` is asked once, when `ops()` assembles the bundle, and decides whether a Remove button is *built* — not merely whether it is enabled. A controller serving a dialog reached from a cached action holds nothing of the document and resolves it in `read()`, which is what `DocumentDialogController` exists for.
 

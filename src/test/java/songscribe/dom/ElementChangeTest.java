@@ -24,9 +24,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -88,6 +90,8 @@ class ElementChangeTest extends UnitTest {
         var deleted = new ElementRange(SECOND_NOTE, REPEAT);
         var firstPairReplacement = crotchet();
         var secondPairReplacement = crotchet();
+        Map<Integer, StaffElement> twoPairs =
+            Map.of(SECOND_NOTE, firstPairReplacement, REPEAT, secondPairReplacement);
 
         return Stream.of(
             new ProjectionCase("an insertion",
@@ -97,10 +101,8 @@ class ElementChangeTest extends UnitTest {
                 line -> ElementChange.Replacement.single(line, REPEAT, replacement),
                 List.of(REPEAT), Map.of(REPEAT, replacement)),
             new ProjectionCase("a replacement of two pairs",
-                line -> ElementChange.Replacement.single(line, SECOND_NOTE, firstPairReplacement)
-                    .with(REPEAT, secondPairReplacement),
-                List.of(SECOND_NOTE, REPEAT),
-                Map.of(SECOND_NOTE, firstPairReplacement, REPEAT, secondPairReplacement)),
+                line -> new ElementChange.Replacement(line, new TreeMap<>(twoPairs)),
+                List.of(SECOND_NOTE, REPEAT), twoPairs),
             new ProjectionCase("a deletion",
                 line -> new ElementChange.Deletion(line, deleted),
                 List.of(SECOND_NOTE, REPEAT), Map.of()),
@@ -140,6 +142,54 @@ class ElementChangeTest extends UnitTest {
         });
 
         assertThat(projected).hasSize(survivors.size() + arrivals.size());
+    }
+
+    /** The run the deletion rows of {@link #endpointCases} remove. */
+    private static final ElementRange DELETED_RUN = new ElementRange(SECOND_NOTE, REPEAT);
+
+    /**
+     * One change to the fixture line, and where a span endpoint on one of its elements stands
+     * afterwards.
+     *
+     * @param description the case, as the test's display name
+     * @param change      builds the change against the line
+     * @param endpoint    the line index of the element the span endpoint is on
+     * @param expected    the endpoint's position in the projection, or {@code null} when the
+     *                    change removes the endpoint
+     */
+    private record EndpointCase(
+        String description,
+        Function<Line, ElementChange> change,
+        int endpoint,
+        @Nullable Integer expected
+    ) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endpointCases")
+    void testAnEndpointAnswersTheProjectedPositionOfItselfOrOfItsReplacement(EndpointCase testCase) {
+        var line = fixtureLine();
+        var change = testCase.change().apply(line);
+
+        assertThat(change.projectedEndpointIndexOf(line.getElement(testCase.endpoint())))
+            .isEqualTo(testCase.expected());
+    }
+
+    static Stream<EndpointCase> endpointCases() {
+        return Stream.of(
+            new EndpointCase("a replaced endpoint answers its replacement's position",
+                line -> ElementChange.Replacement.single(line, REPEAT, crotchet()), REPEAT, REPEAT),
+            new EndpointCase("an endpoint a replacement leaves in place answers its own position",
+                line -> ElementChange.Replacement.single(line, REPEAT, crotchet()), SECOND_NOTE, SECOND_NOTE),
+            new EndpointCase("a deleted endpoint answers null",
+                line -> new ElementChange.Deletion(line, DELETED_RUN), SECOND_NOTE, null),
+            new EndpointCase("an endpoint after a deletion answers its position less the deleted run",
+                line -> new ElementChange.Deletion(line, DELETED_RUN), DELETED_RUN.end() + 1, DELETED_RUN.begin()),
+            new EndpointCase("an endpoint at an insertion index is pushed one along",
+                line -> new ElementChange.Insertion(line, REPEAT, crotchet()), REPEAT, REPEAT + 1),
+            new EndpointCase("an endpoint on a modified element answers its own position",
+                line -> new ElementChange.Modification(line, SECOND_NOTE, Set.of(ElementField.LYRIC)),
+                SECOND_NOTE, SECOND_NOTE)
+        );
     }
 
     @Test

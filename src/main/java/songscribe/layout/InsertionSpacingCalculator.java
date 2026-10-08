@@ -223,7 +223,7 @@ public final class InsertionSpacingCalculator {
                 "insertIndex " + insertIndex + " out of bounds [0, " + elementCount + ']');
         }
 
-        var insertedColumn = createLightweightColumn(insertedElement);
+        var insertedColumn = ElementColumnBuilder.buildLightweightColumn(insertedElement);
 
         if (lyricRenderMetrics != null) {
             // A freshly inserted element carries no lyric, so ElementColumnBuilder would space it as
@@ -327,7 +327,7 @@ public final class InsertionSpacingCalculator {
         StaffElement element, Line line, int elementIndex, @Nullable ElementColumnBuilder columnBuilder) {
 
         if (columnBuilder == null) {
-            return createLightweightColumn(element);
+            return ElementColumnBuilder.buildLightweightColumn(element);
         }
 
         return columnBuilder.buildColumn(element, line, elementIndex);
@@ -427,7 +427,7 @@ public final class InsertionSpacingCalculator {
 
             columns.add(columnBuilder != null
                 ? columnBuilder.buildDetachedColumn(measured, activeVerse)
-                : createLightweightColumn(measured));
+                : ElementColumnBuilder.buildLightweightColumn(measured));
         }
 
         for (var i = successorIndex; i < effectiveCount; i++) {
@@ -458,7 +458,7 @@ public final class InsertionSpacingCalculator {
      * <p>
      * Without this gate an infeasible modification is not refused at mutation time: it surfaces
      * later as a line laid out on its collision floors, whose tail runs past the staff and is
-     * clipped, drawn in red (refs #696) — the modified element may itself be the part cut off.
+     * clipped, drawn in red — the modified element may itself be the part cut off.
      *
      * @param line               The line being modified, in its pre-modification state
      * @param projectedElements  The line's effective elements as they will read after the
@@ -530,7 +530,7 @@ public final class InsertionSpacingCalculator {
      * question those modifications do ({@link ModificationResult#fitsWithinLine}). Solving rather
      * than measuring is what lets a full line with slack in its springs accept a slide: the
      * projection is derived from the chain, never from the elements' current X positions, which
-     * still carry the pre-slide (and possibly stale) spacing (refs #617).
+     * still carry the pre-slide (and possibly stale) spacing.
      * <p>
      * The whole batch is projected in one solve, so the verdict accounts for the slides' cumulative
      * demand. Asking about each candidate separately against the unchanged line would accept N
@@ -633,50 +633,9 @@ public final class InsertionSpacingCalculator {
         }
 
         var lastElement = line.getElement(effectiveCount - 1);
-        var lastColumn = createLightweightColumn(lastElement);
+        var lastColumn = ElementColumnBuilder.buildLightweightColumn(lastElement);
         lastColumn.setXSs(layout.getElementXSs(lastElement) + shiftSs);
 
         return Math.max(baseWidthSs, lastColumn.getRightEdgeXSs());
-    }
-
-    /**
-     * Creates a lightweight ElementColumn for spacing calculations.
-     * <p>
-     * This column has accurate geometric extents but no syllable information — correct for the
-     * element being inserted, which carries no lyric yet, and for an element that is not on a line
-     * at all. Columns already on the line are built by {@link #buildSurroundingColumn} instead, so
-     * they bring their real syllable widths to the spacing.
-     *
-     * @param element The element to create a column for
-     * @return An ElementColumn with geometric extents but no syllable data
-     */
-    private static ElementColumn createLightweightColumn(StaffElement element) {
-        // Calculate geometric extents using ElementColumnBuilder's static methods
-        var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false);
-        var rightExtentExcludingAugmentationSs = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false);
-
-        // For insertion operations, we don't need stem positions or beam group info
-        // since we're only calculating horizontal spacing
-        double stemTopSs = 0;
-        double stemBottomSs = 0;
-
-        // No syllable information for lightweight columns
-        Lyric lyric = null;
-        double syllableWidthSs = 0;
-
-        //noinspection ConstantValue
-        return new ElementColumn(
-            element,
-            Collections.emptyList(),  // No grace notes
-            leftExtentSs,
-            rightExtentSs,
-            rightExtentExcludingAugmentationSs,
-            stemTopSs,
-            stemBottomSs,
-            lyric,
-            syllableWidthSs,
-            false
-        );
     }
 }

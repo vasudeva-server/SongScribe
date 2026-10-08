@@ -100,7 +100,7 @@ public final class StemDirectionAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        var ctrl = message.getScoreViewController();
+        var ctrl = getScoreViewController();
 
         if (ctrl != null && updateEnabledState()) {
             setEnabled(ctrl.canModifyStemDirection());

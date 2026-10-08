@@ -73,7 +73,7 @@ import songscribe.hit.HitTarget;
  *   decorationLayouts ▸ five Attachment      ──▶  Attachment
  *     subtypes, each registered explicitly
  *   decorationLayouts ▸ Trill                ──▶  Trill
- *     (X narrowed to the drawn ink:
+ *     (the reserved ink:
  *      tr glyph ∪ wavy line)
  *   decorationLayouts ▸ Tuplet               ──▶  Tuplet
  *     (number ink box, plus the sloped
@@ -154,7 +154,7 @@ public final class HitRegionBuilder {
         addAttachments(layoutResult, builder);
         addTrills(layoutResult, builder);
         addTuplets(layoutResult, builder);
-        addTies(line, layoutResult, builder);
+        addTies(layoutResult, builder);
         addBeams(line, layoutResult, builder);
         addAttribution(layoutResult, builder);
         addStaffLine(line, builder);
@@ -168,7 +168,7 @@ public final class HitRegionBuilder {
 
     /**
      * Registers each note head's expanded hit rect, including the song's auto-maintained
-     * terminal element, so an annotation can be attached to it (issue #713).
+     * terminal element, so an annotation can be attached to it.
      */
     private static void addElements(
         Line line,
@@ -215,7 +215,7 @@ public final class HitRegionBuilder {
     }
 
     private static void addEndings(LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var entry : layoutResult.decorationLayouts().<Ending>getDecorationLayoutsByType(Ending.class)) {
+        for (var entry : layoutResult.decorationLayouts().endings().entrySet()) {
             addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Ending(entry.getKey()));
         }
     }
@@ -307,51 +307,14 @@ public final class HitRegionBuilder {
      * Registers each trill: the {@code tr} glyph, plus the wavy line out to the end note when the
      * trill spans a range.
      * <p>
-     * The X extent is taken from the drawn ink rather than from the stacker's reservation, which
-     * starts at the note column and is padded by a glyph width at the right. The vertical extent
-     * is the reserved band: the wavy line is drawn along the glyph's own baseline, so it adds
-     * nothing below or above it.
+     * The stacker reserves the trill's ink extent ({@link TrillGeometry#inkExtentSs}), so the
+     * layout's bounds are the drawn ink: the wavy line is drawn along the glyph's own baseline, so
+     * it adds nothing below or above the reserved band.
      */
     private static void addTrills(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.decorationLayouts().<Trill>getDecorationLayoutsByType(Trill.class)) {
-            var trill = entry.getKey();
-            var anchor = trill.getAnchorElement();
-
-            if (anchor == null) {
-                continue;
-            }
-
-            var layout = entry.getValue();
-            var glyphLeftXSs = TrillGeometry.glyphLeftXSs(
-                layoutResult.getElementXSs(anchor), NoteGeometry.getNoteheadCenterXSs(anchor));
-            var rightXSs = trillRightEdgeXSs(trill, anchor, glyphLeftXSs, layoutResult);
-            var rectSs = new Rectangle2D.Double(
-                glyphLeftXSs,
-                layout.ySs(),
-                rightXSs - glyphLeftXSs,
-                layout.heightSs() + layout.marginSs());
-            addRegion(builder, rectSs, new HitTarget.Trill(trill));
+            addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Trill(entry.getKey()));
         }
-    }
-
-    /**
-     * The right edge of a trill's ink: the end note's own right edge for a multi-note trill —
-     * where {@code TrillRenderer} stops the wavy line — or the {@code tr} glyph's right edge for
-     * a single-note trill, which draws no wavy line at all.
-     */
-    private static double trillRightEdgeXSs(
-        Trill trill,
-        StaffElement anchor,
-        double glyphLeftXSs,
-        LayoutResult layoutResult) {
-
-        var endNote = trill.getEndElement();
-
-        if (endNote == null || endNote == anchor) {
-            return glyphLeftXSs + trill.intrinsicWidthSs();
-        }
-
-        return layoutResult.getElementXSs(endNote) + endNote.getType().getElementWidthSs();
     }
 
     /**
@@ -359,7 +322,7 @@ public final class HitRegionBuilder {
      * and no bracket is drawn — the number alone.
      * <p>
      * A bracket reaches past the notes it spans at both ends, so its X extent comes from the same
-     * {@link Tuplet} edge helpers the renderer and the stacker use, not from the anchor-to-end run
+     * {@link TupletGeometry} edge helpers the renderer and the stacker use, not from the anchor-to-end run
      * the reservation records. A bare number is far narrower than that run, and registering the
      * run for it would make empty space above a beam select the tuplet.
      */
@@ -367,15 +330,10 @@ public final class HitRegionBuilder {
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
-        for (var entry : layoutResult.decorationLayouts().<Tuplet>getDecorationLayoutsByType(Tuplet.class)) {
+        for (var entry : layoutResult.decorationLayouts().tuplets().entrySet()) {
             var tuplet = entry.getKey();
-            var shapeSs = tupletHitShapeSs(tuplet, layoutResult, entry.getValue());
-
-            if (shapeSs == null) {
-                continue;
-            }
-
-            addRegion(builder, shapeSs, new HitTarget.Tuplet(tuplet));
+            addRegion(builder, tupletHitShapeSs(tuplet, layoutResult, entry.getValue()),
+                new HitTarget.Tuplet(tuplet));
         }
     }
 
@@ -389,15 +347,9 @@ public final class HitRegionBuilder {
      * part of the computation: the inner curve lies inside the outer curve's hull, so it can
      * never widen the box.
      */
-    private static void addTies(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var tie : line.ownedTies()) {
-            var tieLayout = layoutResult.getTieLayout(tie);
-
-            if (tieLayout == null) {
-                continue;
-            }
-
-            addRegion(builder, tieBoundsSs(tieLayout), new HitTarget.Tie(tie));
+    private static void addTies(LayoutResult layoutResult, HitRegistry.Builder builder) {
+        for (var tieLayout : layoutResult.tieLayouts()) {
+            addRegion(builder, tieBoundsSs(tieLayout), new HitTarget.Tie(tieLayout.placement().tie()));
         }
     }
 
@@ -413,7 +365,7 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            addRegion(builder, beamGroupRectSs(line, beam, beamLayout, layoutResult), new HitTarget.Beam(beam));
+            addRegion(builder, beamGroupRectSs(beam, beamLayout, layoutResult), new HitTarget.Beam(beam));
         }
     }
 
@@ -455,8 +407,8 @@ public final class HitRegionBuilder {
     /**
      * The hit rect of a thin decoration: its drawn box plus its bottom margin.
      * <p>
-     * The margin is part of the clickable area for these kinds only — a hairpin, an ending or an
-     * articulation is a thin marking, and the space reserved below it is the difference between
+     * The margin is part of the clickable area for these kinds only — a hairpin, an ending, a trill
+     * or an articulation is a thin marking, and the space reserved below it is the difference between
      * comfortable and fiddly. Attachments are large enough already and take the bare box; see
      * {@link #addAttachments}.
      */
@@ -483,8 +435,7 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * The hit shape of one tuplet, or {@code null} when its anchor or end note has no column — the
-     * same incomplete-tuplet case {@code TupletRenderer} skips.
+     * The hit shape of one tuplet.
      * <p>
      * A number-only tuplet is its number's ink box and nothing else. A bracketed one is that box
      * plus the bracket, drawn as the quad through the four arm ends — top and bottom of the left
@@ -495,54 +446,24 @@ public final class HitRegionBuilder {
      * The two pieces are subpaths of one shape rather than two registered regions, so that a click
      * resolves against a single area and a drag rectangle reports the tuplet once.
      */
-    private static @Nullable Shape tupletHitShapeSs(
+    private static Shape tupletHitShapeSs(
         Tuplet tuplet,
         LayoutResult layoutResult,
-        LayoutResult.DecorationLayout layout) {
+        LayoutResult.DecorationLayout.Sloped layout) {
 
-        var anchor = tuplet.getAnchorElement();
-        var endNote = tuplet.getEndElement();
-
-        if (anchor == null || endNote == null) {
-            return null;
-        }
-
-        var anchorColumn = layoutResult.getElementColumn(anchor);
-        var endColumn = layoutResult.getElementColumn(endNote);
-
-        if (anchorColumn == null || endColumn == null) {
-            return null;
-        }
-
-        // A bracket reaches past the notes it spans at both ends, so the edges come from the same
-        // Tuplet helpers the renderer and the stacker use, not from the anchor-to-end run.
-        var anchorXSs = layout.xSs();
-        var leftEdgeXSs = TupletGeometry.bracketLeftEdgeXSs(
-            tuplet, anchorXSs, anchorColumn.getNoteheadWidthSs());
-        var rightEdgeXSs = TupletGeometry.bracketRightEdgeXSs(
-            anchorXSs + layout.widthSs(), endColumn.getNoteheadWidthSs());
-
-        // The reserved box top is sloped, so it has to be evaluated at an X rather than read off
-        // the layout: dySs is its rise over the anchor-to-end run, measured from the anchor X.
-        // widthSs is always positive: TupletGeometry.getSpanWidthSs floors it at
-        // TupletGeometry.MIN_SPAN_WIDTH_SS.
-        if (!(layout instanceof LayoutResult.DecorationLayout.Sloped sloped)) {
-            throw new IllegalStateException(
-                "Tuplet decoration layout is not Sloped for " + tuplet);
-        }
-
-        var slope = sloped.dySs() / layout.widthSs();
-        DoubleUnaryOperator boxTopYAtSs = xSs -> layout.ySs() + slope * (xSs - anchorXSs);
-
-        var numberRectSs = tupletNumberRectSs(tuplet, leftEdgeXSs, rightEdgeXSs, boxTopYAtSs);
+        // A bracket reaches past the notes it spans at both ends, so the edges come from the frame
+        // the renderer draws from, not from the anchor-to-end run.
+        var frame = TupletGeometry.BracketFrame.of(tuplet, layout, layoutResult);
+        var leftEdgeXSs = frame.leftEdgeXSs();
+        var rightEdgeXSs = frame.rightEdgeXSs();
+        var numberRectSs = tupletNumberRectSs(tuplet, frame);
 
         if (tuplet.isNumberOnly()) {
             return numberRectSs;
         }
 
-        var bracketLineOffsetSs = TupletGeometry.bracketLineOffsetSs();
-        var leftArmTopYSs = boxTopYAtSs.applyAsDouble(leftEdgeXSs) + bracketLineOffsetSs;
-        var rightArmTopYSs = boxTopYAtSs.applyAsDouble(rightEdgeXSs) + bracketLineOffsetSs;
+        var leftArmTopYSs = frame.bracketLineYAtSs(leftEdgeXSs);
+        var rightArmTopYSs = frame.bracketLineYAtSs(rightEdgeXSs);
 
         // Wound left to right along the top and back along the bottom — the same direction the
         // appended number rect is wound in. The two subpaths overlap where the number hangs below
@@ -562,25 +483,18 @@ public final class HitRegionBuilder {
     /**
      * The ink box of a tuplet's number, bracketed or not.
      * <p>
-     * The number is centered between the bracket edges either way, so the two edges locate it here
-     * exactly as they locate it in the renderer. Its ink top is the reserved box top at that center
+     * The number is centered between the bracket edges either way, so the frame locates it here
+     * exactly as it locates it in the renderer. Its ink top is the reserved box top at that center
      * X: the number straddles the bracket line, which sits {@link TupletGeometry#bracketLineOffsetSs}
      * — half an ink height — below the box top.
-     *
-     * @param boxTopYAtSs the reserved box top as a function of X, following the bracket's slope
      */
-    private static Rectangle2D.Double tupletNumberRectSs(
-        Tuplet tuplet,
-        double leftEdgeXSs,
-        double rightEdgeXSs,
-        DoubleUnaryOperator boxTopYAtSs) {
-
-        var centerXSs = (leftEdgeXSs + rightEdgeXSs) / 2;
+    private static Rectangle2D.Double tupletNumberRectSs(Tuplet tuplet, TupletGeometry.BracketFrame frame) {
+        var centerXSs = frame.centerXSs();
         var inkWidthSs = TupletGeometry.numberInkWidthSs(tuplet.getGrade());
 
         return new Rectangle2D.Double(
             centerXSs - inkWidthSs / 2,
-            boxTopYAtSs.applyAsDouble(centerXSs),
+            frame.boxTopYAtSs(centerXSs),
             inkWidthSs,
             TupletGeometry.TUPLET_NUMBER_INK_HEIGHT_SS);
     }
@@ -689,9 +603,8 @@ public final class HitRegionBuilder {
      * <p>
      * The group's X extent runs from the leftmost to the rightmost stem's element X. Because the
      * beam's slope is constant across the whole group, the outer (tip-side) edge at any X between
-     * those two is a straight line between {@code startYSs} at the left end and
-     * {@code startYSs + slope * width} at the right end — so its extremes occur at the two ends,
-     * and it is enough to evaluate there. The same is true of the innermost edge of the deepest
+     * those two is the straight {@link LayoutResult.BeamLine} — so its extremes occur at the two
+     * ends, and it is enough to evaluate there. The same is true of the innermost edge of the deepest
      * sub-beam, offset from the outer edge by a constant depth, so the two ends again bound
      * everything nested between them.
      * <p>
@@ -701,7 +614,6 @@ public final class HitRegionBuilder {
      * depth extends toward the noteheads: downward when {@code stemsUp}, upward otherwise.
      */
     private static Rectangle2D.Double beamGroupRectSs(
-        Line line,
         Beam beam,
         LayoutResult.BeamLayout beamLayout,
         LayoutResult layoutResult) {
@@ -715,13 +627,13 @@ public final class HitRegionBuilder {
             maxXSs = Math.max(maxXSs, elementXSs);
         }
 
-        var widthSs = maxXSs - minXSs;
-        var outerStartYSs = beamLayout.startYSs();
-        var outerEndYSs = outerStartYSs + beamLayout.slope() * widthSs;
+        var line = beamLayout.line();
+        var outerStartYSs = line.yAtSs(minXSs);
+        var outerEndYSs = line.yAtSs(maxXSs);
 
         var totalDepthSs =
             BeamMetrics.beamStackHeightSs(beam.beamStackCount(), beamLayout.thickeningSs());
-        var innerOffsetSs = beamLayout.stemsUp() ? totalDepthSs : -totalDepthSs;
+        var innerOffsetSs = beamLayout.direction().isUp() ? totalDepthSs : -totalDepthSs;
 
         // The four corners: each end of the outer edge, and each end of the deepest inner edge.
         return boundingBoxSs(

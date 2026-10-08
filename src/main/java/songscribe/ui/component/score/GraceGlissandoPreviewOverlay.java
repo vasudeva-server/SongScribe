@@ -30,7 +30,7 @@ import songscribe.util.GraphicUtils;
 
 /**
  * The connecting glissando between a grace note awaiting its host and the host-note insertion
- * preview the user is positioning (refs #650).
+ * preview the user is positioning.
  * <p>
  * The pair is only connected once the host note is committed, so until then the line has nothing
  * to draw from: the grace note carries no slide (see {@code GraceModeManager.mouseDragged} for why

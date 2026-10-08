@@ -28,12 +28,14 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.DetachedLyricRun;
 import songscribe.dom.ElementType;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
@@ -53,12 +55,9 @@ import songscribe.dom.StaffElementRun;
  * the corresponding clones.
  *
  * <p>{@code instantiate} produces fresh clones and fresh spans. Each clone's {@code xOffset} is
- * zeroed — a fragment carries semantic content, not layout corrections.
- * {@code PasteSpanReconciliation.reconcile} then runs <em>before
- * any mutation</em>, removing straddled destination spans and invalidating fragment spans that
- * straddle a dropped one. The clones are inserted into the destination line, tuplets the
- * destination's beat context rejects have their brackets dropped (the notes stay), and the
- * surviving spans are added.
+ * zeroed — a fragment carries semantic content, not layout corrections. Which of those spans
+ * a paste keeps is {@link PasteSpanReconciliation}'s to decide, and {@link FragmentPaste} lands
+ * the clones and the spans it keeps.
  *
  * <p>Because the stored {@code Fragment} is never itself inserted, repeated pastes
  * are independent by construction. {@code docs/clipboard.md} gives the surrounding
@@ -103,11 +102,11 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
      * a paste can never join the copied syllables to whatever they land next to.
      *
      * <p>A span is captured only when the range contains <b>both</b> its endpoints; one with
-     * an endpoint outside is dropped from the fragment. A {@link songscribe.dom.Tie} is not a
-     * span and is never dropped this way: it is state the anchor note carries, so a range that
-     * clips a tie still clones its anchor tied, and the tie rule judges what the clone reaches
-     * once the paste lands, the same as it judges any other tie in a line a paste's bracket
-     * touched.
+     * an endpoint outside is dropped from the fragment. A {@link songscribe.dom.Tie} is held
+     * the same way: a copied note keeps its tie only when the note the tie ends on is copied
+     * too. A copied note whose tie end was not copied is untied
+     * ({@link NoteElement#untieDetached}), so a paste never ties it to whatever it lands in
+     * front of.
      *
      * @param line  The line to capture from
      * @param range The elements to capture, as selected — capture widens it itself
@@ -140,6 +139,8 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
             elements.add(clone);
         }
 
+        untieClippedTies(originalToClone);
+
         // A lyric chain says "the syllable next to me continues this word" by position, so a
         // chain crossing either end of the capture would, once pasted, say it about whatever
         // element now sits there. The clones are a run of their own now, and this ends every
@@ -167,6 +168,26 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         }
 
         return original.clone();
+    }
+
+    /**
+     * Unties each tied clone in {@code originalToClone} whose original's tie ends on an element
+     * with no clone in the map, or reaches no note to end on.
+     */
+    private static void untieClippedTies(Map<StaffElement, StaffElement> originalToClone) {
+        for (var entry : originalToClone.entrySet()) {
+            if (!(entry.getKey() instanceof NoteElement original)
+                || !(entry.getValue() instanceof NoteElement clone)
+                || !clone.isTiedToNext()) {
+                continue;
+            }
+
+            var tie = original.tie();
+
+            if (tie == null || !originalToClone.containsKey(tie.end())) {
+                clone.untieDetached();
+            }
+        }
     }
 
     /**
@@ -268,18 +289,26 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
      * fragment as the run it is — so a pasted pair is resolved by the rule that resolves a
      * deleted one, and neither has to be kept in step with the other by hand. In practice that is
      * the barline in front of it, which {@link #capture} widens a captured range back over
-     * precisely so this fragment holds both. A span with an endpoint on any removed element goes
-     * with it, as it would if the user deleted the same range off a line.
+     * precisely so this fragment holds both.
+     *
+     * <p>A span with an endpoint on a removed element cannot be drawn, so it goes with it. The
+     * user did not ask to lose it, so the reduction names it in
+     * {@link KeyChangeReduction#strandedSpans}, for the paste to report. An ending can be hit,
+     * and so can a tuplet that ends on a barline; a beam and a hairpin cannot, because their
+     * endpoints are notes.
      *
      * @param keyAtInsertion the key in effect immediately before the insertion point
-     * @return this fragment when it strands nothing, and a reduced one otherwise — which may hold
-     *     no elements at all, when the whole fragment was one such pair
+     * @return the reduction: this fragment and no stranded span when it strands no key change;
+     *     otherwise a reduced fragment — which may hold no elements at all, when the whole
+     *     fragment was one such pair — and every span it left out
+     * @invariant every one of this fragment's spans is either in the reduced fragment's spans or
+     *     in {@link KeyChangeReduction#strandedSpans}, never both
      */
-    public Fragment withoutRedundantKeyChanges(Key keyAtInsertion) {
+    public KeyChangeReduction withoutRedundantKeyChanges(Key keyAtInsertion) {
         var stranded = run().redundantKeyChangeRanges(keyAtInsertion);
 
         if (stranded.isEmpty()) {
-            return this;
+            return new KeyChangeReduction(this, List.of());
         }
 
         var removedIndices = new HashSet<Integer>();
@@ -293,23 +322,67 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         }
 
         var keptElements = new ArrayList<StaffElement>();
-        var removedElements = new ArrayList<StaffElement>();
 
         for (var index = 0; index < elements.size(); index++) {
-            if (removedIndices.contains(index)) {
-                removedElements.add(elements.get(index));
-                continue;
+            if (!removedIndices.contains(index)) {
+                keptElements.add(elements.get(index));
             }
-
-            keptElements.add(elements.get(index));
         }
 
-        // StaffElement overrides neither equals nor hashCode, so this compares by identity.
-        var keptSpans = spans.stream()
-            .filter(span -> !removedElements.contains(span.getAnchorElement())
-                && !removedElements.contains(span.getEndElement()))
-            .toList();
+        var keptSpans = new ArrayList<Span<?>>();
+        var strandedSpans = new ArrayList<StrandedSpan>();
 
-        return new Fragment(keptElements, keptSpans);
+        for (var span : spans) {
+            // StaffElement overrides neither equals nor hashCode, so this compares by identity.
+            var anchorIndex = elements.indexOf(span.getAnchorElement());
+            var endIndex = elements.indexOf(span.getEndElement());
+
+            if (removedIndices.contains(anchorIndex) || removedIndices.contains(endIndex)) {
+                strandedSpans.add(new StrandedSpan(span, elements.subList(anchorIndex, endIndex + 1)));
+            } else {
+                keptSpans.add(span);
+            }
+        }
+
+        return new KeyChangeReduction(new Fragment(keptElements, keptSpans), strandedSpans);
+    }
+
+    /**
+     * What {@link #withoutRedundantKeyChanges} leaves of a fragment.
+     *
+     * @param fragment      the fragment to land
+     * @param strandedSpans every span of the original fragment with an endpoint on a removed
+     *                      element, in the original fragment's order; empty when nothing was
+     *                      removed
+     */
+    public record KeyChangeReduction(Fragment fragment, List<StrandedSpan> strandedSpans) {
+
+        public KeyChangeReduction {
+            strandedSpans = List.copyOf(strandedSpans);
+        }
+    }
+
+    /**
+     * A span {@link #withoutRedundantKeyChanges} left out because an endpoint of it was removed.
+     *
+     * @param span    the span, never added to any line
+     * @param covered the elements it covered in the original fragment, from its anchor to its
+     *                end, both inclusive; those not removed land with the reduced fragment
+     */
+    public record StrandedSpan(Span<?> span, List<StaffElement> covered) {
+
+        public StrandedSpan {
+            covered = List.copyOf(covered);
+        }
+
+        /**
+         * The {@code Strings} key of the reason the span is reported with: the one a deletion
+         * that takes a span's endpoint gives.
+         *
+         * @return {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED}
+         */
+        public String reasonKey() {
+            return Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED;
+        }
     }
 }

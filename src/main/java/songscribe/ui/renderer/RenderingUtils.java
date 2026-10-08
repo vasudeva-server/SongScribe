@@ -48,7 +48,7 @@ import static songscribe.util.GraphicsState.Property.FONT;
  * Stateless rendering utilities shared by element renderers.
  * <p>
  * Holds the music-font constants and the common drawing/coordinate helpers
- * that the renderers used to inherit from {@code BaseElementRenderer}.
+ * that the renderers share through {@code BaseElementRenderer}.
  */
 public final class RenderingUtils {
 

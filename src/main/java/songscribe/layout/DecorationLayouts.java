@@ -28,9 +28,15 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Attachment;
+import songscribe.dom.Ending;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tuplet;
 import songscribe.layout.LayoutResult.DecorationLayout;
+import songscribe.layout.LayoutResult.DecorationLayout.Plain;
+import songscribe.layout.LayoutResult.DecorationLayout.Sloped;
+import songscribe.layout.LayoutResult.DecorationLayout.Typeset;
+import songscribe.layout.LayoutResult.DecorationLayout.Volta;
 
 /**
  * The decoration layouts of one line: for every decorated element — an articulation, an
@@ -39,15 +45,19 @@ import songscribe.layout.LayoutResult.DecorationLayout;
  * <p>
  * All positions are in staff-space units, in the line's layout space.
  * <p>
- * This table is query-only: {@link #getDecorationLayout}, {@link #requireDecorationLayout},
- * {@link #getDecorationLayouts}, {@link #getDecorationLayoutsByType} and
- * {@link #findAttachmentDecorationLayout} are its whole surface, and none of them can add or
- * replace an entry. {@link Builder} is the only way to fill one: the stacking pass records each
- * placement through {@link Builder#putDecorationLayout} as it runs, and {@link Builder#build}
- * freezes the recorded entries into the table an instance of this class wraps. A
- * {@link LayoutResult} holds only that frozen table, so every reader past the stacking pass — the
- * renderers, the hit regions, the insertion preview — only ever queries it; nothing downstream of
- * a built result can write into it.
+ * Each kind of layout is an entry of its own type: a tuplet's is always a {@link Sloped}, an
+ * ending's always a {@link Volta}, a typeset decoration's always a {@link Typeset}, and every other
+ * decoration's a {@link Plain}. The typed reads — {@link #tuplets}, {@link #endings} and
+ * {@link #getTypeset} — hand each back as the type it was recorded as, so no reader tests or casts
+ * the member it holds. The general reads answer every entry as a {@link DecorationLayout}, for a
+ * reader that needs only the bounds.
+ * <p>
+ * This table is query-only: none of its methods can add or replace an entry. {@link Builder} is
+ * the only way to fill one: the stacking pass records each placement through the builder's typed
+ * entries as it runs, and {@link Builder#build} freezes the recorded entries into the table an
+ * instance of this class wraps. A {@link LayoutResult} holds only that frozen table, so every
+ * reader past the stacking pass — the renderers, the hit regions, the insertion preview — only
+ * ever queries it; nothing downstream of a built result can write into it.
  * <p>
  * A table also stands on its own, without a layout result: the insertion preview stacks one
  * note's decorations into a fresh {@link Builder} and reads the frozen table {@link Builder#build}
@@ -56,18 +66,24 @@ import songscribe.layout.LayoutResult.DecorationLayout;
 public final class DecorationLayouts {
 
     private final Map<LineElement, DecorationLayout> layouts;
+    private final Map<Tuplet, Sloped> tuplets;
+    private final Map<Ending, Volta> endings;
+    private final Map<LineElement, Typeset> typesets;
     private final Map<StaffElement, Map<Class<? extends Attachment>, DecorationLayout>>
         layoutsByOwnerAndAttachmentType;
     private final Map<Class<?>, List<Map.Entry<LineElement, DecorationLayout>>> layoutsByExactType;
 
-    private DecorationLayouts(Map<LineElement, DecorationLayout> layouts) {
-        this.layouts = Map.copyOf(layouts);
+    private DecorationLayouts(Builder builder) {
+        tuplets = Map.copyOf(builder.tuplets);
+        endings = Map.copyOf(builder.endings);
+        typesets = Map.copyOf(builder.typesets);
+        layouts = Map.copyOf(builder.allLayouts());
 
         var byOwnerAndAttachmentType =
             new HashMap<StaffElement, Map<Class<? extends Attachment>, DecorationLayout>>();
         var byExactType = new HashMap<Class<?>, List<Map.Entry<LineElement, DecorationLayout>>>();
 
-        for (var entry : this.layouts.entrySet()) {
+        for (var entry : layouts.entrySet()) {
             var element = entry.getKey();
 
             byExactType.computeIfAbsent(element.getClass(), type -> new ArrayList<>()).add(entry);
@@ -83,7 +99,7 @@ public final class DecorationLayouts {
     }
 
     /**
-     * Returns the decoration layout for an above-staff decoration element.
+     * Returns the decoration layout recorded for an element, whatever its kind.
      *
      * @param element The decoration element to look up
      * @return The decoration layout, or null if not computed
@@ -142,6 +158,53 @@ public final class DecorationLayouts {
     }
 
     /**
+     * Returns every placed tuplet with its sloped layout.
+     *
+     * @return an unmodifiable map, in no promised order; empty when the line places no tuplet
+     */
+    public Map<Tuplet, Sloped> tuplets() {
+        return tuplets;
+    }
+
+    /**
+     * Returns every placed ending with its layout and brackets.
+     *
+     * @return an unmodifiable map, in no promised order; empty when the line places no ending
+     */
+    public Map<Ending, Volta> endings() {
+        return endings;
+    }
+
+    /**
+     * Returns the typeset layout of a decoration that draws content the layout pass typeset for
+     * it: a metronome marking, the song's tempo mark or the attribution block.
+     *
+     * @param element the typeset decoration to look up
+     * @return its layout, or {@code null} when {@code element} was not stacked on this line — the
+     *     song's tempo mark and the attribution on any line but the first
+     */
+    public @Nullable Typeset getTypeset(LineElement element) {
+        return typesets.get(element);
+    }
+
+    /**
+     * Returns the typeset layout of a decoration that must have been stacked on this line.
+     *
+     * @param element the typeset decoration to look up
+     * @return its layout
+     * @throws IllegalStateException if no typeset layout is recorded for {@code element}
+     */
+    public Typeset requireTypeset(LineElement element) {
+        var typeset = typesets.get(element);
+
+        if (typeset == null) {
+            throw new IllegalStateException("no typeset layout recorded for " + element);
+        }
+
+        return typeset;
+    }
+
+    /**
      * Returns the layout of the attachment of class {@code attachmentType} on
      * {@code ownerElement}, for a caller that holds the element rather than the attachment. An
      * element carries at most one attachment of any class, so the answer is the layout rather
@@ -171,35 +234,91 @@ public final class DecorationLayouts {
 
     /**
      * Fills a {@link DecorationLayouts}: the stacking pass records each element's placement
-     * through {@link #putDecorationLayout} as it runs — placing an element again, a manual offset
-     * applied after stacking, replaces the record — and {@link #build} freezes the table as it
-     * then stands into the {@link DecorationLayouts} the builder returns.
+     * through the entry of its kind as it runs — {@link #putPlain}, {@link #putTypeset},
+     * {@link #putTuplet} or {@link #putEnding} — and {@link #build} freezes the table as it then
+     * stands into the {@link DecorationLayouts} the builder returns.
+     * <p>
+     * An element is recorded through one kind of entry only: placing it again through that entry
+     * replaces its record, and {@link #applyUserOffsets} rewrites every record in place.
      */
     public static final class Builder {
 
-        private final Map<LineElement, DecorationLayout> layouts = new HashMap<>();
+        private final Map<LineElement, Plain> plains = new HashMap<>();
+        private final Map<LineElement, Typeset> typesets = new HashMap<>();
+        private final Map<Tuplet, Sloped> tuplets = new HashMap<>();
+        private final Map<Ending, Volta> endings = new HashMap<>();
 
         /**
-         * Records the computed layout of a decoration element, replacing any layout already
-         * recorded for it.
+         * Records the layout of a decoration that draws itself from the model, replacing any
+         * plain layout already recorded for it.
          *
-         * @param element          The decoration element
-         * @param decorationLayout The computed decoration geometry
-         * @effects afterwards {@link #getDecorationLayout} answers {@code decorationLayout} for
+         * @param element the decoration element
+         * @param layout  its placed bounds
+         * @effects afterwards {@link #getDecorationLayout} answers {@code layout} for
          *          {@code element}, and so does the built {@link DecorationLayouts}
          */
-        public void putDecorationLayout(LineElement element, DecorationLayout decorationLayout) {
-            layouts.put(element, decorationLayout);
+        public void putPlain(LineElement element, Plain layout) {
+            plains.put(element, layout);
         }
 
         /**
-         * Returns the decoration layout recorded so far for a decoration element.
+         * Records the layout of a decoration that draws typeset content, replacing any typeset
+         * layout already recorded for it.
+         *
+         * @param element the decoration element
+         * @param layout  its placed bounds and content
+         * @effects afterwards {@link #getDecorationLayout} answers {@code layout} for
+         *          {@code element}, and the built {@link DecorationLayouts} answers it from both
+         *          {@link DecorationLayouts#getDecorationLayout} and
+         *          {@link DecorationLayouts#getTypeset}
+         */
+        public void putTypeset(LineElement element, Typeset layout) {
+            typesets.put(element, layout);
+        }
+
+        /**
+         * Records the layout of a tuplet, replacing any layout already recorded for it.
+         *
+         * @param tuplet the tuplet
+         * @param layout its placed, sloped bounds
+         * @effects afterwards {@link #getDecorationLayout} answers {@code layout} for
+         *          {@code tuplet}, and the built {@link DecorationLayouts} holds it in
+         *          {@link DecorationLayouts#tuplets}
+         */
+        public void putTuplet(Tuplet tuplet, Sloped layout) {
+            tuplets.put(tuplet, layout);
+        }
+
+        /**
+         * Records the layout of an ending, replacing any layout already recorded for it.
+         *
+         * @param ending the ending
+         * @param layout its placed bounds and brackets
+         * @effects afterwards {@link #getDecorationLayout} answers {@code layout} for
+         *          {@code ending}, and the built {@link DecorationLayouts} holds it in
+         *          {@link DecorationLayouts#endings}
+         */
+        public void putEnding(Ending ending, Volta layout) {
+            endings.put(ending, layout);
+        }
+
+        /**
+         * Returns the decoration layout recorded so far for a decoration element, whatever its
+         * kind.
          *
          * @param element The decoration element to look up
          * @return The decoration layout, or null if not yet recorded
          */
         public @Nullable DecorationLayout getDecorationLayout(LineElement element) {
-            return layouts.get(element);
+            for (var layoutsOfKind : List.of(plains, typesets, tuplets, endings)) {
+                var layout = layoutsOfKind.get(element);
+
+                if (layout != null) {
+                    return layout;
+                }
+            }
+
+            return null;
         }
 
         /**
@@ -211,7 +330,7 @@ public final class DecorationLayouts {
          * @throws IllegalStateException if no layout is recorded for {@code element}
          */
         public DecorationLayout requireDecorationLayout(LineElement element) {
-            var decorationLayout = layouts.get(element);
+            var decorationLayout = getDecorationLayout(element);
 
             if (decorationLayout == null) {
                 throw new IllegalStateException("no decoration layout recorded for " + element);
@@ -221,24 +340,52 @@ public final class DecorationLayouts {
         }
 
         /**
-         * Returns every layout recorded so far, for a caller that must revisit them before the
-         * table is frozen — a manual-offset pass that rewrites each entry in place.
+         * Moves every layout recorded so far by its element's user offsets,
+         * {@link LineElement#getUserXOffsetSs()} and {@link LineElement#getUserYOffsetSs()}.
+         * <p>
+         * Each entry is shifted through its own member's {@code shiftedBy}, so it stays the type it
+         * was recorded as and keeps every component that member carries.
          *
-         * @return an unmodifiable view, in no promised order; a caller that writes through
-         *     {@link #putDecorationLayout} while iterating copies it first
+         * @effects every record is replaced by its copy shifted by its element's offsets
          */
-        public Map<LineElement, DecorationLayout> getDecorationLayouts() {
-            return Map.copyOf(layouts);
+        public void applyUserOffsets() {
+            shiftByUserOffsets(plains, Plain::shiftedBy);
+            shiftByUserOffsets(typesets, Typeset::shiftedBy);
+            shiftByUserOffsets(tuplets, Sloped::shiftedBy);
+            shiftByUserOffsets(endings, Volta::shiftedBy);
+        }
+
+        /** One kind's {@code shiftedBy}, which returns the kind it was given. */
+        @FunctionalInterface
+        private interface Shift<L extends DecorationLayout> {
+            L shiftedBy(L layout, double dxSs, double dySs);
+        }
+
+        private static <E extends LineElement, L extends DecorationLayout> void shiftByUserOffsets(
+            Map<E, L> layouts, Shift<L> shift) {
+
+            layouts.replaceAll((element, layout) -> shift.shiftedBy(
+                layout, element.getUserXOffsetSs(), element.getUserYOffsetSs()));
         }
 
         /**
          * Freezes the entries recorded so far into a queryable table.
          *
-         * @return a {@link DecorationLayouts} that cannot be written to; later calls to
-         *     {@link #putDecorationLayout} on this builder do not affect it
+         * @return a {@link DecorationLayouts} that cannot be written to; later writes to this
+         *     builder do not affect it
          */
         public DecorationLayouts build() {
-            return new DecorationLayouts(layouts);
+            return new DecorationLayouts(this);
+        }
+
+        /** Every entry recorded so far, of every kind, keyed by element. */
+        private Map<LineElement, DecorationLayout> allLayouts() {
+            var all = new HashMap<LineElement, DecorationLayout>(plains);
+            all.putAll(typesets);
+            all.putAll(tuplets);
+            all.putAll(endings);
+
+            return all;
         }
     }
 }

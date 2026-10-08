@@ -20,10 +20,15 @@
 
 package songscribe.dom;
 
-import org.junit.jupiter.api.Test;
+import java.util.List;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
+
+import songscribe.dom.SongFactory.LineBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.breathMark;
@@ -38,8 +43,6 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  */
 class BreathMarkLoadPassTest extends UnitTest {
 
-    private static final int LINE_INDEX = 0;
-
     /** The index each removed breath mark is reported at, once earlier removals have closed the line up. */
     private static final int LEADING_BREATH_MARK_REPORTED_INDEX = 0;
     private static final int BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX = 2;
@@ -50,9 +53,17 @@ class BreathMarkLoadPassTest extends UnitTest {
     private static final int REMAINING_BREATH_MARK_AFTER_NOTE_INDEX = 3;
     private static final int REMAINING_FIRST_OF_CONSECUTIVE_PAIR_INDEX = 5;
 
-    @Test
-    void testRunDropsEveryBreathMarkNotFollowingADurationElementAndEmitsNoMutation() {
-        var song = SongFactory.buildSong(line -> {
+    /** A line index of the song under test that holds the breath marks, after zero, one or two lines. */
+    @ParameterizedTest(name = "line {0}")
+    @ValueSource(ints = {0, 1, 2})
+    void testRunDropsEveryBreathMarkNotFollowingADurationElementAndEmitsNoMutation(int lineIndex) {
+        var builders = new LineBuilder[lineIndex + 1];
+
+        for (var i = 0; i < lineIndex; i++) {
+            builders[i] = line -> line.addElement(crotchet());
+        }
+
+        builders[lineIndex] = line -> {
             line.addElement(breathMark());       // leads the line — removed
             line.addElement(crotchet());
             line.addElement(singleBarline());
@@ -63,19 +74,18 @@ class BreathMarkLoadPassTest extends UnitTest {
             line.addElement(breathMark());       // first of a consecutive pair, follows a note — kept
             line.addElement(breathMark());       // second of the pair, follows a breath mark — removed
             line.addElement(crotchet());
-        });
+        };
 
-        var report = new ChangeReport();
-
-        BreathMarkLoadPass.run(song, report);
+        var song = SongFactory.buildSong(builders);
+        var report = new ParsedSong(song, List.of(), List.of(), List.of(), List.of()).settle();
 
         assertThat(report.changes()).containsExactly(
-            removedAt(LEADING_BREATH_MARK_REPORTED_INDEX),
-            removedAt(BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX),
-            removedAt(SECOND_OF_CONSECUTIVE_PAIR_REPORTED_INDEX)
+            removedAt(lineIndex, LEADING_BREATH_MARK_REPORTED_INDEX),
+            removedAt(lineIndex, BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX),
+            removedAt(lineIndex, SECOND_OF_CONSECUTIVE_PAIR_REPORTED_INDEX)
         );
 
-        var line = song.getLine(LINE_INDEX);
+        var line = song.getLine(lineIndex);
         assertThat(line.elementCount()).isEqualTo(REMAINING_ELEMENT_COUNT);
         assertThat(line.getElement(REMAINING_BREATH_MARK_AFTER_NOTE_INDEX).getType().isBreathMark()).isTrue();
         assertThat(line.getElement(REMAINING_FIRST_OF_CONSECUTIVE_PAIR_INDEX).getType().isBreathMark()).isTrue();
@@ -83,11 +93,11 @@ class BreathMarkLoadPassTest extends UnitTest {
         assertThat(song.isModified()).isFalse();
     }
 
-    /** The entry the pass records for the breath mark that stood at {@code index}. */
-    private static ReportedChange removedAt(int index) {
+    /** The entry the pass records for the breath mark that stood at {@code index} of line {@code lineIndex}. */
+    private static ReportedChange removedAt(int lineIndex, int index) {
         return new ReportedChange(
             Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
             Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),
-            ElementLocationRange.single(new ElementLocation(LINE_INDEX, index)));
+            ElementLocationRange.single(new ElementLocation(lineIndex, index)));
     }
 }

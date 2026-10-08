@@ -31,7 +31,7 @@ import songscribe.ui.component.MainFrame;
 /**
  * The final double barline entry, at the foot of <b>Notation ▸ Barline</b> and in the barline
  * popup panel in {@code BarlineToolbar}. Unlike every other barline entry it applies to the song's
- * auto-maintained terminal alone (issue #713): it arms no pen and retypes no ordinary barline, so
+ * auto-maintained terminal alone: it arms no pen and retypes no ordinary barline, so
  * it is enabled only while the terminal is selected, and it is checked while that terminal is a
  * {@code FINAL_DOUBLE_BARLINE}.
  * <p>

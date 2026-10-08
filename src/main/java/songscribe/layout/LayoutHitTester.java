@@ -179,7 +179,7 @@ public final class LayoutHitTester {
      * leading accidental is not part of the element it belongs to as far as this is concerned.
      * <p>
      * Columns are checked in element order and the first match wins, so on an overlap — a grace
-     * note's column can overlap its host's when the host's flag is discounted (refs #560) — the
+     * note's column can overlap its host's when the host's flag is discounted — the
      * lower index (the grace note, which always precedes its host) is returned.
      * <p>
      * The spacing solver assigns each column's X as a running sum of non-negative gaps, so left
@@ -351,14 +351,14 @@ public final class LayoutHitTester {
                     // doesn't overflow the staff boundary.
                     if (line.getSong().isTerminal(element, line)) {
                         var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                                previewElement, false);
+                                previewElement, Beaming.UNBEAMED);
                         return elementX + column.getRightExtentSs() - previewRightExtentSs;
                     }
 
                     // Center the preview's glyph on the hovered element's glyph rather than
                     // aligning the two origins: a preview narrower than what it would replace —
                     // a thin barline over a notehead — otherwise sits against that element's
-                    // left edge instead of on it (refs #689). Both widths are measured the same
+                    // left edge instead of on it. Both widths are measured the same
                     // way, so a preview of the hovered element's own type still lands exactly
                     // on it.
                     return centeredInRoomSs(
@@ -391,18 +391,7 @@ public final class LayoutHitTester {
             }
 
             // Build a temporary column for the preview element to calculate proper spacing
-            var insertionColumn = new ElementColumn(
-                previewElement,
-                Collections.emptyList(),
-                ElementColumnBuilder.calculateLeftExtentSs(previewElement),
-                ElementColumnBuilder.calculateRightExtentSs(previewElement, false),
-                ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false),
-                0,
-                0,
-                null,  // a preview element carries no lyric
-                0,
-                false
-            );
+            var insertionColumn = ElementColumnBuilder.buildLightweightColumn(previewElement);
 
             var song = line.getSong();
 
@@ -417,7 +406,7 @@ public final class LayoutHitTester {
             // hard boundary is the auto-maintained terminal (excluded from elementCount above) when
             // the line has one, otherwise the staff margin itself. Splitting the remaining room
             // between the last real element and that boundary reads as the preview floating past
-            // the end of the line, rather than pinned flush against the boundary (refs #608).
+            // the end of the line, rather than pinned flush against the boundary.
             var boundarySs = song.getLineWidthSs().value();
             var terminalColumn = line.elementCount() > elementCount
                 ? layoutResult.getElementColumn(line.getElement(elementCount))
@@ -452,7 +441,7 @@ public final class LayoutHitTester {
         // which is that element's drawn left edge. Extents are deliberately not consulted: a flag,
         // dot or accidental does not shrink the room, but the glyphs themselves do — starting the
         // room at the previous element's own origin would center the preview over that element's
-        // notehead rather than in the space beside it (refs #689). The width is the element's, not
+        // notehead rather than in the space beside it. The width is the element's, not
         // its type's: a mid-line key change's type width is only a one-accidental floor, so the
         // room would otherwise start inside the signature and the marker land on its accidentals.
         var roomStartSs = prevColumn.getXSs() + prevElement.getGlyphWidthSs();

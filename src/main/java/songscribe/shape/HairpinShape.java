@@ -21,6 +21,7 @@
 package songscribe.shape;
 
 import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
 
 /**
  * The two straight segments of a dynamics hairpin. A crescendo opens from a narrow tip on the left
@@ -33,35 +34,39 @@ public final class HairpinShape {
 
     private HairpinShape() {}
 
-    /**
-     * Builds the two hairpin segments.
-     *
-     * @param x1          left x, in staff spaces
-     * @param x2          right x, in staff spaces
-     * @param topYSs      top y, in staff spaces
-     * @param bottomYSs   bottom y, in staff spaces
-     * @param middleYSs   vertical midpoint, in staff spaces (the tip side)
-     * @param isCrescendo true for a crescendo (tip on the left), false for a diminuendo
-     * @return the two segments
-     */
-    public static Line2D.Double[] lines(
-        double x1,
-        double x2,
-        double topYSs,
-        double bottomYSs,
-        double middleYSs,
-        boolean isCrescendo
-    ) {
-        if (isCrescendo) {
-            return new Line2D.Double[]{
-                new Line2D.Double(x1, middleYSs, x2, topYSs),
-                new Line2D.Double(x1, middleYSs, x2, bottomYSs)
-            };
-        }
+    /** Which side of a hairpin its narrow tip is on. */
+    public enum Tip {
+        /** Tip on the left, mouth on the right: a crescendo. */
+        LEFT,
 
-        return new Line2D.Double[]{
-            new Line2D.Double(x1, topYSs, x2, middleYSs),
-            new Line2D.Double(x1, bottomYSs, x2, middleYSs)
+        /** Tip on the right, mouth on the left: a diminuendo. */
+        RIGHT
+    }
+
+    /**
+     * Builds the two hairpin segments: from the tip, at the vertical middle of its side of
+     * {@code boundsSs}, to the top and bottom corners of the other side.
+     *
+     * @param boundsSs the wedge's bounds, in staff spaces
+     * @param tip      which side the tip is on
+     * @return the two segments, the one meeting the top edge first
+     */
+    public static Line2D.Double[] lines(Rectangle2D boundsSs, Tip tip) {
+        var leftXSs = boundsSs.getMinX();
+        var rightXSs = boundsSs.getMaxX();
+        var topYSs = boundsSs.getMinY();
+        var bottomYSs = boundsSs.getMaxY();
+        var middleYSs = boundsSs.getCenterY();
+
+        return switch (tip) {
+            case LEFT -> new Line2D.Double[]{
+                new Line2D.Double(leftXSs, middleYSs, rightXSs, topYSs),
+                new Line2D.Double(leftXSs, middleYSs, rightXSs, bottomYSs)
+            };
+            case RIGHT -> new Line2D.Double[]{
+                new Line2D.Double(leftXSs, topYSs, rightXSs, middleYSs),
+                new Line2D.Double(leftXSs, bottomYSs, rightXSs, middleYSs)
+            };
         };
     }
 }

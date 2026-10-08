@@ -75,10 +75,42 @@ public final class DynamicGrouper {
         int leftIndex();
 
         /**
-         * A hairpin, carrying the range already resolved against the asking line so no caller
-         * has to resolve it a second time.
+         * A hairpin. Its range is resolved once, when the member is made, because the grouping
+         * reads it repeatedly — to sort, to merge clusters and to test which dynamics abut it —
+         * and {@link Hairpin#range()} resolves both indices on every call.
          */
-        record OfHairpin(Hairpin hairpin, ElementRange range) implements Member {
+        final class OfHairpin implements Member {
+
+            private final Hairpin hairpin;
+            private final ElementRange range;
+
+            /**
+             * Makes the member for {@code hairpin}, resolving its range.
+             *
+             * @param hairpin the hairpin
+             */
+            OfHairpin(Hairpin hairpin) {
+                this.hairpin = hairpin;
+                range = hairpin.range();
+            }
+
+            /**
+             * Returns the hairpin this member stands for.
+             *
+             * @return the hairpin
+             */
+            public Hairpin hairpin() {
+                return hairpin;
+            }
+
+            /**
+             * Returns the hairpin's range, as resolved when this member was made.
+             *
+             * @return the hairpin's element range
+             */
+            public ElementRange range() {
+                return range;
+            }
 
             @Override
             public int leftIndex() {
@@ -119,9 +151,9 @@ public final class DynamicGrouper {
      * Element index order is X order: columns are laid out in reading order, and a hairpin's
      * drawn left tip may be pulled back only as far as a dynamic at {@code anchorIndex - 1} or
      * sitting on {@code anchorIndex} itself, both of which are in the same group anyway.
-     * <p>
-     * A hairpin whose endpoints do not both resolve to a position in {@code line} is skipped
-     * entirely — it belongs to another line and has no geometry here.
+     *
+     * @param line the line whose hairpins and text dynamics to group
+     * @return the groups, every hairpin and text dynamic of {@code line} in exactly one of them
      */
     public static List<Group> group(Line line) {
         var clusters = clusterHairpins(line);
@@ -150,7 +182,7 @@ public final class DynamicGrouper {
         var spans = line.spanRegistry();
 
         for (var hairpin : spans.findSpans(Hairpin.class)) {
-            hairpins.add(new Member.OfHairpin(hairpin, hairpin.range()));
+            hairpins.add(new Member.OfHairpin(hairpin));
         }
 
         hairpins.sort(Comparator.comparingInt(hairpin -> hairpin.range().begin()));

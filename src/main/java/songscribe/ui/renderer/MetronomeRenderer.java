@@ -40,7 +40,7 @@ import static songscribe.util.GraphicsState.Property.FONT;
  * Abstract base renderer for metronome-style markings (tempo and beat change).
  * <p>
  * Provides the shared font constant, the content-painting primitive
- * {@link #drawContent}, and decoration layout lookup used by
+ * {@link #drawContent}, and the render sequence {@link #renderAttachment} used by
  * {@link TempoChangeRenderer} and {@link BeatChangeRenderer}.
  */
 public abstract class MetronomeRenderer implements ElementRenderer<StaffElement> {
@@ -107,6 +107,8 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
      *
      * @param element    the note owning the attachment
      * @param attachment the attachment being drawn
+     * @throws IllegalStateException if the stacking pass recorded no typeset layout for
+     *                               {@code attachment}
      */
     protected void renderAttachment(
         StaffElement element,
@@ -115,7 +117,7 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         ElementFrame frame,
         Graphics2D g2
     ) {
-        var decorationLayout = requireDecorationLayout(element, attachment.getClass(), invariants);
+        var decorationLayout = invariants.getLayoutResult().decorationLayouts().requireTypeset(attachment);
         var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
         // A metronome marking is selectable in its own right, so its selection is folded into
@@ -126,32 +128,5 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
 
         DecorationContentRenderer.draw(
             g2, decorationLayout.content(), decorationLayout.xSs(), ySs, color);
-    }
-
-    /**
-     * Looks up the typeset decoration layout for the given attachment type on the given note.
-     * <p>
-     * The decoration map is keyed by element, so what comes back is untyped; a metronome marking's
-     * layout always carries its content, because the stacker typesets it before the layout exists.
-     * Anything else here is a layout bug, and drawing nothing would hide exactly the class of
-     * failure that carrying the content exists to prevent.
-     *
-     * @throws IllegalStateException if the note carries no typeset layout for that attachment
-     */
-    protected LayoutResult.DecorationLayout.Typeset requireDecorationLayout(
-        StaffElement note,
-        Class<? extends MetronomeAttachment> attachmentClass,
-        LineInvariants invariants
-    ) {
-        var decorationLayout = invariants.getLayoutResult().decorationLayouts().findAttachmentDecorationLayout(
-            note, attachmentClass);
-
-        if (!(decorationLayout instanceof LayoutResult.DecorationLayout.Typeset typeset)) {
-            throw new IllegalStateException(
-                "No typeset DecorationLayout found for " + attachmentClass.getSimpleName()
-                    + " on note");
-        }
-
-        return typeset;
     }
 }

@@ -65,7 +65,7 @@ public class TupletPopupButton extends PopupMenuButton {
 
     @Handler
     public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        updateDefaultAction(message.getScoreViewController());
+        updateDefaultAction(MainFrame.getInstance().getScoreViewController());
     }
 
     /**
@@ -76,23 +76,12 @@ public class TupletPopupButton extends PopupMenuButton {
      */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
-        updateDefaultAction(getScoreViewController());
+        updateDefaultAction(MainFrame.getInstance().getScoreViewController());
     }
 
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
-        updateDefaultAction(getScoreViewController());
-    }
-
-    /**
-     * The controller for the document on screen, or null before one exists. Unlike the
-     * selection notification, the song and load notifications carry no controller of their
-     * own, so it is looked up the same way the tuplet menu looks it up.
-     */
-    private static @Nullable ScoreViewController getScoreViewController() {
-        var scoreView = MainFrame.getInstance().getScoreView();
-
-        return (scoreView != null) ? scoreView.getController() : null;
+        updateDefaultAction(MainFrame.getInstance().getScoreViewController());
     }
 
     /**

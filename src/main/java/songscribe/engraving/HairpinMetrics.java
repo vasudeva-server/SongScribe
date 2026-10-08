@@ -40,12 +40,19 @@ public final class HairpinMetrics {
     public static final double BOUND_PADDING_SS = 1.0;
 
     /**
-     * The gap each of two back-to-back hairpins keeps from their shared column
-     * center. {@code Hairpin::print} uses {@code padding / 3} for this case
-     * ("we're not adjacent to a text-dynamic, and we may move closer"), so it is
-     * derived from {@link #BOUND_PADDING_SS} rather than written as a literal.
+     * How many times closer than {@link #BOUND_PADDING_SS} a back-to-back hairpin may come to its
+     * neighbor: {@code Hairpin::print} uses {@code padding / 3} for this case ("we're not adjacent
+     * to a text-dynamic, and we may move closer").
      */
-    public static final double BACK_TO_BACK_PADDING_SS = BOUND_PADDING_SS / 3;
+    private static final double BACK_TO_BACK_PADDING_DIVISOR = 3;
+
+    /**
+     * The gap each of two back-to-back hairpins keeps from their shared column
+     * center, derived from {@link #BOUND_PADDING_SS} by
+     * {@link #BACK_TO_BACK_PADDING_DIVISOR} as LilyPond derives it.
+     */
+    public static final double BACK_TO_BACK_PADDING_SS =
+        BOUND_PADDING_SS / BACK_TO_BACK_PADDING_DIVISOR;
 
     private HairpinMetrics() {}
 }

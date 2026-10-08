@@ -20,11 +20,11 @@
 package songscribe.io;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
+import songscribe.util.LoadStage;
 
 /**
  * Ordered, two-phase migration of a parsed song from any legacy {@code .mssw} format to
@@ -49,48 +49,40 @@ final class MigrationPipeline {
 
     // Stages that run before the Song is assembled, in declaration order. Each is gated on the
     // file's format version, except the line-width fix, which is gated on the value itself.
-    static final List<SongMigration> PRE_ASSEMBLY = List.of(
-        versioned(StageId.LEGACY_FORMAT, 2, 0, ctx -> FormatMigrator.migrate(ctx.lines, ctx.legacyLineOffsets, 1)),
-        versioned(StageId.ANNOTATION_DYNAMICS, 2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
-        versioned(StageId.FINAL_TERMINAL, 2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
-        versioned(StageId.PIXELS_TO_SS, 2, 1, FormatMigrator::migratePixelsToStaffSpace),
-        new SongMigration(StageId.LINE_WIDTH_FIX,
+    static final List<LoadStage<MigrationContext>> PRE_ASSEMBLY = List.of(
+        versioned(2, 0, ctx -> FormatMigrator.migrate(ctx.lines, ctx.legacyLineOffsets, 1)),
+        versioned(2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
+        versioned(2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
+        versioned(2, 1, FormatMigrator::migratePixelsToStaffSpace),
+        LoadStage.when(
             ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,
-            ctx -> ctx.lineWidthSs /= DocumentScale.PIXELS_PER_STAFF_SPACE
-        ));
+            ctx -> ctx.lineWidthSs /= DocumentScale.PIXELS_PER_STAFF_SPACE));
 
     // Stages that run once ctx.song is set. Only the legacy-lyrics import is conditional; the
     // grace-host melisma repair and syllabic backfill run for every file.
-    static final List<SongMigration> POST_ASSEMBLY = List.of(
-        new SongMigration(StageId.LEGACY_LYRICS,
+    static final List<LoadStage<MigrationContext>> POST_ASSEMBLY = List.of(
+        LoadStage.when(
             ctx -> !ctx.lyrics.isBlank() && ctx.isBefore(2, PER_NOTE_LYRIC_VERSION),
             MigrationPipeline::applyLegacyLyrics),
-        new SongMigration(StageId.GRACE_HOST_MELISMA,
-            ctx -> true,
-            MigrationPipeline::applyGraceHostMelismaRepair),
-        new SongMigration(StageId.SYLLABIC_BACKFILL,
-            ctx -> true,
-            MigrationPipeline::applySyllabicBackfill));
+        MigrationPipeline::applyGraceHostMelismaRepair,
+        MigrationPipeline::applySyllabicBackfill);
 
     private MigrationPipeline() {
     }
 
-    private static SongMigration versioned(StageId id, int major, int minor, Consumer<MigrationContext> apply) {
-        return new SongMigration(id, ctx -> ctx.isBefore(major, minor), apply);
+    /** A stage that runs only for a file whose format version is before {@code major.minor}. */
+    private static LoadStage<MigrationContext> versioned(int major, int minor, LoadStage<MigrationContext> step) {
+        return LoadStage.when(ctx -> ctx.isBefore(major, minor), step);
     }
 
     private static void applyLegacyLyrics(MigrationContext ctx) {
         LegacyLyricsImporter.importLegacyLyrics(requireSong(ctx).getLines(), ctx.lyrics);
     }
 
-    // Bring imported grace-host pairs onto the automatic melisma: a legacy file may carry the
-    // syllable on the host, or a syllable on the grace with no melisma across it. Runs before
-    // the syllabic backfill, which reads the syllabic chain in element order and so must see
-    // syllables at their final positions. The song is assembled by now, so tracking has been
-    // resumed; suspend it again to keep the repair silent, as the rest of the load path is.
+    // Runs before the syllabic backfill, which reads the syllabic chain in element order and so
+    // must see syllables at their final positions.
     private static void applyGraceHostMelismaRepair(MigrationContext ctx) {
-        var song = requireSong(ctx);
-        song.withoutMutationTracking(() -> song.getLines().forEach(Line::repairGraceHostMelismas));
+        requireSong(ctx).repairGraceHostMelismasAfterParsing();
     }
 
     // Normalize stored syllabic values to match relation-chain derivation. Required
@@ -111,18 +103,10 @@ final class MigrationPipeline {
     }
 
     static void runPreAssembly(MigrationContext ctx) {
-        run(PRE_ASSEMBLY, ctx);
+        LoadStage.runAll(PRE_ASSEMBLY, ctx);
     }
 
     static void runPostAssembly(MigrationContext ctx) {
-        run(POST_ASSEMBLY, ctx);
-    }
-
-    private static void run(List<SongMigration> migrations, MigrationContext ctx) {
-        for (var migration : migrations) {
-            if (migration.appliesTo().test(ctx)) {
-                migration.apply().accept(ctx);
-            }
-        }
+        LoadStage.runAll(POST_ASSEMBLY, ctx);
     }
 }

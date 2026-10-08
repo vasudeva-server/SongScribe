@@ -23,8 +23,10 @@ package songscribe.dom;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
+import java.util.List;
 
 import songscribe.Strings;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.ElementField;
 
 /**
@@ -43,11 +45,17 @@ public final class Tuplet extends Span<StaffElement> {
     // the grade alone would leave the tuplet printing one ratio and playing another, so there is
     // no setter: a grade change is a remove plus an add, which re-derives both.
     private final TupletGrade grade;
-    private final TupletRatio ratio;
+    private final TupletNormalTime ratio;
+
+    /** The heading a removed or refused tuplet is reported under. */
+    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_TUPLETS_REMOVED;
 
     /**
      * Creates a fully specified tuplet grouping: {@code grade} notes played in the time
-     * {@code ratio} states.
+     * {@code ratio} states. Its two callers are the two ways to make a tuplet:
+     * {@link #spanning} and {@link #spanningStated} call it once {@link TupletValidator} has
+     * accepted the span, and {@link #createCopy} over the endpoints of a tuplet it already
+     * accepted.
      * <p>
      * The ratio's written value is a base type plus its dots rather than a tick duration, so
      * it needs no decomposition on the way out to MusicXML.
@@ -57,19 +65,113 @@ public final class Tuplet extends Span<StaffElement> {
      * @param grade         The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      * @param ratio         The time the group occupies
      */
-    public Tuplet(StaffElement anchorElement, StaffElement endElement, TupletGrade grade, TupletRatio ratio) {
+    private Tuplet(StaffElement anchorElement, StaffElement endElement, TupletGrade grade, TupletNormalTime ratio) {
         super(StaffElement.class, anchorElement, endElement);
         this.grade = grade;
         this.ratio = ratio;
     }
 
-    @Override
-    protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
-        return new Tuplet(newAnchor, newEnd, grade, ratio);
+    /**
+     * Where a tuplet would sit: a range of a line, and the beat in effect at its anchor.
+     * <p>
+     * The beat travels with the range because resolving it costs a walk over every element
+     * before the anchor ({@link Song#beatUnitAt}). A caller judging one range resolves it once
+     * through {@link #at}, however many grades it tries; a caller judging every tuplet of a song
+     * takes its sites from {@link TupletValidator#sitesFrom}, which carries the beat forward.
+     *
+     * @param line  the line the tuplet would be on, one of its song's lines
+     * @param range the range the tuplet would cover, from its anchor to its last element; both
+     *              of its indices are indices of {@code line}
+     * @param beat  the beat in effect at {@code range.begin()} of {@code line}, including a beat
+     *              the anchor itself defines
+     */
+    public record Site(Line line, ElementRange range, BeatUnit beat) {
+
+        /**
+         * The site of {@code range} of {@code line}, with the beat looked up.
+         *
+         * @param line  a line of its song
+         * @param range a range of {@code line}
+         * @return the site, carrying {@link Song#beatUnitAt} at {@code range.begin()}
+         * @throws IllegalStateException if {@code line} is not one of its song's lines
+         */
+        public static Site at(Line line, ElementRange range) {
+            return new Site(line, range, line.getSong().beatUnitAt(line.index(), range.begin()));
+        }
+    }
+
+    /**
+     * Returns a tuplet of {@code grade} over {@code site}, with the ratio derived from the span
+     * and its beat, when {@link TupletValidator#validate} accepts the span; or the reason it does
+     * not. This is the form for a tuplet whose ratio nobody stated: the user's toggle, and a
+     * file that records only the printed number. It costs the span's length.
+     * <p>
+     * The tuplet is built, not added: the line's span registry is unchanged. Adding it replaces
+     * every tuplet it overlaps ({@link Displacement#REPLACE_OVERLAPPING}), and reports each.
+     *
+     * @param site       the range and the beat at its anchor
+     * @param grade      N, the printed tuplet number
+     * @param strictness how much of the rule set to enforce
+     * @return {@link Spanning.Spanned} with a new tuplet of {@code grade} over
+     *     {@code site.range()}, anchored on its first element and ending on its last, with the
+     *     derived ratio, absorbing nothing; or {@link Spanning.Refused} with
+     *     {@link Spanning.Cause#RANGE}, under {@link Strings#DIALOG_REPORT_TUPLETS_REMOVED}, and
+     *     the reason of the first check {@link TupletValidator#validate} fails, in the order it
+     *     states
+     */
+    public static Spanning<Tuplet> spanning(Site site, TupletGrade grade, TupletValidator.Strictness strictness) {
+        var context = TupletValidator.measure(site);
+
+        return spanningFor(site, grade, TupletValidator.validate(context, grade, strictness));
+    }
+
+    /**
+     * Returns a tuplet of {@code grade} over {@code site} with the ratio {@code stated}, when
+     * {@link TupletValidator#validateStated} accepts it there; or the reason it does not. This is
+     * the form for a tuplet that already carries a ratio: one a file states, and one on the
+     * clipboard. It costs the span's length.
+     * <p>
+     * The tuplet is built, not added: the line's span registry is unchanged. Adding it replaces
+     * every tuplet it overlaps ({@link Displacement#REPLACE_OVERLAPPING}), and reports each.
+     *
+     * @param site       the range and the beat at its anchor
+     * @param grade      N, as stated
+     * @param stated     M and V, as stated
+     * @param strictness how much of the rule set to enforce
+     * @return {@link Spanning.Spanned} with a new tuplet of {@code grade} over
+     *     {@code site.range()}, anchored on its first element and ending on its last, with
+     *     {@code stated} as its ratio, absorbing nothing; or {@link Spanning.Refused} with
+     *     {@link Spanning.Cause#RANGE}, under {@link Strings#DIALOG_REPORT_TUPLETS_REMOVED}, and
+     *     the reason of the first check {@link TupletValidator#validateStated} fails, in the
+     *     order it states
+     */
+    public static Spanning<Tuplet> spanningStated(
+        Site site, TupletGrade grade, TupletNormalTime stated, TupletValidator.Strictness strictness
+    ) {
+        var context = TupletValidator.measure(site);
+
+        return spanningFor(site, grade, TupletValidator.validateStated(context, grade, stated, strictness));
+    }
+
+    /** The answer for {@code site} once {@link TupletValidator} has given {@code verdict}. */
+    private static Spanning<Tuplet> spanningFor(Site site, TupletGrade grade, TupletValidator.Result verdict) {
+        return switch (verdict) {
+            case TupletValidator.Result.Valid(var ratio) -> {
+                var line = site.line();
+                var range = site.range();
+                var tuplet = new Tuplet(line.getElement(range.begin()), line.getElement(range.end()), grade, ratio);
+
+                yield new Spanning.Spanned<>(tuplet, List.of());
+            }
+
+            case TupletValidator.Result.Invalid(var reasonKey) ->
+                new Spanning.Refused<>(reasonKey, Spanning.Cause.RANGE, REPORT_HEADING_KEY);
+        };
     }
 
     @Override
-    protected void copyOwnStateFrom(Span<StaffElement> source) {
+    protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        return new Tuplet(newAnchor, newEnd, grade, ratio);
     }
 
     /**
@@ -88,16 +190,15 @@ public final class Tuplet extends Span<StaffElement> {
     }
 
     /**
-     * Returns true when only the number is drawn (no bracket): the tuplet is beamed
-     * at both its anchor and end index and its anchor note has upward stems.
+     * Returns true when only the number is drawn (no bracket): one beam covers the whole tuplet
+     * and its anchor draws an upward stem ({@link #anchorStemUp}). A beam is a contiguous range,
+     * so one beam that holds both the anchor and the end covers the tuplet; a tuplet under two
+     * beams, one at each end, draws its bracket.
      *
      * @return {@code true} when the bracket is omitted and only the number is drawn
      */
     public boolean isNumberOnly() {
-        var spans = line().spanRegistry();
-
-        return spans.findBeamAt(requireAnchorElementIndex()) != null
-            && spans.findBeamAt(requireEndElementIndex()) != null
+        return line().spanRegistry().sameBeamAt(requireAnchorElementIndex(), requireEndElementIndex())
             && anchorStemUp();
     }
 
@@ -111,7 +212,7 @@ public final class Tuplet extends Span<StaffElement> {
      * group did not account for; a deletion overlapping the bracket takes time away; and a
      * replacement any of whose pairs rewrites a written duration inside it, or an in-place
      * modification that does — the distinction {@link ElementField#DURATION_AFFECTING} draws —
-     * leaves the group rhythmically invalid (refs #726). An insertion at the anchor's own
+     * leaves the group rhythmically invalid. An insertion at the anchor's own
      * index, or just past the end element, stays outside and leaves the group alone.
      * <p>
      * A replacement's pairs are judged one at a time, and one unbalancing pair is enough to
@@ -121,43 +222,83 @@ public final class Tuplet extends Span<StaffElement> {
      * those for another non-duration element cannot unbalance it. Past that gate, any change
      * of element type or dot count drops the group. That is deliberately broader than "the
      * written duration changed": a note swapped for a rest of the same value keeps the group's
-     * total time but can starve it of the pitched notes {@link TupletValidator.Reason#TOO_FEW_NOTES}
-     * demands, so it goes too. The user re-brackets what they meant.
+     * total time but can starve it of the pitched notes {@link TupletValidator} demands, so it
+     * goes too. The user re-brackets what they meant.
+     * <p>
+     * A modification that writes {@link ElementField#FERMATA} on an element inside the tuplet,
+     * endpoints included, removes it for a reason of its own: a fermata leaves the group's
+     * timing indefinite. The sweep runs before the change lands, and a
+     * {@link ElementChange.Modification} names only the fields it rewrites, so this arm cannot
+     * tell adding a fermata from removing one. It does not need to: a kept tuplet never holds a
+     * fermata, so every fermata write inside one is an addition.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
      * @return a {@link SpanOutcome.Remove} whose reason is
-     *     {@link Strings#DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code change}
-     *     invalidates the group, otherwise {@link SpanOutcome.Keep#INSTANCE}
+     *     {@link Strings#DIALOG_REPORT_REASON_FERMATA} for a fermata written inside the group,
+     *     or {@link Strings#DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code change}
+     *     otherwise invalidates it; otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
     public SpanOutcome outcomeFor(ElementChange change) {
         var range = range();
 
-        var invalidated = switch (change) {
+        return switch (change) {
             case ElementChange.Insertion insertion ->
-                range.begin() < insertion.index() && insertion.index() <= range.end();
+                interiorChangedWhen(range.begin() < insertion.index() && insertion.index() <= range.end());
 
-            case ElementChange.Deletion deletion -> range.overlaps(deletion.range());
+            case ElementChange.Deletion deletion -> interiorChangedWhen(range.overlaps(deletion.range()));
 
             case ElementChange.Replacement replacement -> {
                 var line = replacement.line();
 
-                yield replacement.newElements().entrySet().stream()
+                yield interiorChangedWhen(replacement.newElements().entrySet().stream()
                     .anyMatch(pair -> range.contains(pair.getKey())
-                        && replacementUnbalances(line.getElement(pair.getKey()), pair.getValue()));
+                        && replacementUnbalances(line.getElement(pair.getKey()), pair.getValue())));
             }
 
-            case ElementChange.Modification modification ->
-                range.contains(modification.index())
-                    && !Collections.disjoint(modification.fields(), ElementField.DURATION_AFFECTING);
+            case ElementChange.Modification modification -> outcomeForModification(modification, range);
         };
+    }
 
-        return removeWhen(invalidated, Strings.DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED);
+    /**
+     * The modification arm of {@link #outcomeFor}: a fermata written inside {@code range}
+     * removes the tuplet for the fermata reason, and a duration-affecting field written inside
+     * it for the interior reason.
+     *
+     * @param modification the pending modification
+     * @param range        this tuplet's range in the pre-modification line
+     * @return the outcome {@link #outcomeFor} states for {@code modification}
+     */
+    private static SpanOutcome outcomeForModification(ElementChange.Modification modification, ElementRange range) {
+        if (!range.contains(modification.index())) {
+            return SpanOutcome.Keep.INSTANCE;
+        }
+
+        var fields = modification.fields();
+
+        if (fields.contains(ElementField.FERMATA)) {
+            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_FERMATA);
+        }
+
+        return interiorChangedWhen(!Collections.disjoint(fields, ElementField.DURATION_AFFECTING));
+    }
+
+    /**
+     * The {@link #outcomeFor} answer for a change that does or does not unbalance the group's
+     * interior.
+     *
+     * @param invalidated whether the change unbalances the group
+     * @return a {@link SpanOutcome.Remove} with
+     *     {@link Strings#DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code invalidated},
+     *     otherwise {@link SpanOutcome.Keep#INSTANCE}
+     */
+    private static SpanOutcome interiorChangedWhen(boolean invalidated) {
+        return outcomeWhen(invalidated, Strings.DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED);
     }
 
     @Override
     protected String reportHeadingKey() {
-        return Strings.DIALOG_REPORT_TUPLETS_REMOVED;
+        return REPORT_HEADING_KEY;
     }
 
     /**
@@ -189,7 +330,7 @@ public final class Tuplet extends Span<StaffElement> {
      *
      * @return the ratio the tuplet was built with
      */
-    public TupletRatio getRatio() {
+    public TupletNormalTime getRatio() {
         return ratio;
     }
 

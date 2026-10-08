@@ -57,8 +57,8 @@ import songscribe.dom.TempoMarking;
  *
  * <p>Each method here <em>returns</em> the {@link Direction} it builds rather than appending it
  * anywhere. That return value is the handle: the caller places it in the measure's child list
- * at the position that expresses the binding, and Phase 8's {@code applyHairpins} pass reaches
- * the wedge directions the same way — it builds them from {@code line.getHairpins()} and holds
+ * at the position that expresses the binding, and the {@code applyHairpins} pass reaches
+ * the wedge directions the same way — it builds them from the line's hairpin spans and holds
  * what {@link #buildHairpinStartDirection} and {@link #buildHairpinStopDirection} hand back.
  * A builder that appended to a measure itself would have to know where in that measure the
  * bound note sits, which is exactly the ordering knowledge the orchestrator already has.
@@ -249,17 +249,17 @@ final class DirectionBuilder {
 
     /**
      * Builds the start wedge {@code <direction>} for {@code hairpin}:
-     * {@code <wedge type="crescendo|diminuendo" number="1">}, carrying {@code x1ShiftSs} as
-     * {@code relative-x} and the hairpin's {@code userYOffsetSs} as {@code relative-y}
-     * (ss × 10 = tenths), each only when non-zero. Belongs immediately before the hairpin's
-     * anchor note.
+     * {@code <wedge type="crescendo|diminuendo" number="1">}, carrying the hairpin's
+     * {@code userXOffsetSs} as {@code relative-x} and its {@code userYOffsetSs} as
+     * {@code relative-y} (ss × 10 = tenths), each only when non-zero. Belongs immediately before
+     * the hairpin's anchor note.
      */
     static Direction buildHairpinStartDirection(BuildContext context, Hairpin hairpin) {
         var factory = context.factory();
         var wedge = factory.createWedge();
         wedge.setType(WedgeType.fromValue(WedgeTypeMapping.wedgeType(hairpin)));
         wedge.setNumber(WEDGE_NUMBER);
-        wedge.setRelativeX(MusicXmlUnits.shiftTenths(hairpin.getX1ShiftSs()));
+        wedge.setRelativeX(hairpinXOffsetTenths(hairpin));
         wedge.setRelativeY(MusicXmlUnits.shiftTenths(hairpin.getUserYOffsetSs()));
 
         return buildWedgeDirection(factory, wedge);
@@ -267,19 +267,28 @@ final class DirectionBuilder {
 
     /**
      * Builds the stop wedge {@code <direction>} for {@code hairpin}:
-     * {@code <wedge type="stop" number="1">}, carrying {@code x2ShiftSs} as {@code relative-x}
-     * (ss × 10 = tenths), only when non-zero. Belongs immediately before the hairpin's end
-     * note — a stop wedge binds forward exactly like a start wedge, which is what gives the
-     * reader one uniform look-ahead rule.
+     * {@code <wedge type="stop" number="1">}, carrying the hairpin's {@code userXOffsetSs} as
+     * {@code relative-x} (ss × 10 = tenths), only when non-zero. Belongs immediately before the
+     * hairpin's end note — a stop wedge binds forward exactly like a start wedge, which is what
+     * gives the reader one uniform look-ahead rule.
      */
     static Direction buildHairpinStopDirection(BuildContext context, Hairpin hairpin) {
         var factory = context.factory();
         var wedge = factory.createWedge();
         wedge.setType(WedgeType.STOP);
         wedge.setNumber(WEDGE_NUMBER);
-        wedge.setRelativeX(MusicXmlUnits.shiftTenths(hairpin.getX2ShiftSs()));
+        wedge.setRelativeX(hairpinXOffsetTenths(hairpin));
 
         return buildWedgeDirection(factory, wedge);
+    }
+
+    /**
+     * Returns the {@code relative-x} of both of {@code hairpin}'s wedges. A wedge's
+     * {@code relative-x} moves only its own end, so the same value on both wedges moves the
+     * whole hairpin, as {@code userXOffsetSs} does.
+     */
+    private static @Nullable BigDecimal hairpinXOffsetTenths(Hairpin hairpin) {
+        return MusicXmlUnits.shiftTenths(hairpin.getUserXOffsetSs());
     }
 
     /** Wraps {@code wedge} in its {@code <direction><direction-type>} envelope. */

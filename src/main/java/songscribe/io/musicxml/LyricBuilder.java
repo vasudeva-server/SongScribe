@@ -36,7 +36,7 @@ import songscribe.dom.StaffElement;
  * {@code <extend type="start"/>} when it begins a melisma. A carrier — a text-less note that
  * sustains or ends a melisma — emits only {@code <extend type="stop|continue"/>}.
  *
- * <p>{@code <end-line/>} is deliberately not emitted here; that is GitHub issue #761.
+ * <p>{@code <end-line/>} is deliberately not emitted here.
  */
 final class LyricBuilder {
 

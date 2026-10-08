@@ -268,7 +268,7 @@ public final class GraceModeManager {
      * {@code lineComponent}, or null when no host preview is showing there.
      * <p>
      * Gates the preview glissando between the already-inserted grace note and the host ghost
-     * (refs #650): while the host is only a preview the grace note carries no slide of its own,
+     *: while the host is only a preview the grace note carries no slide of its own,
      * so the connecting line is render-only state derived from here rather than from the DOM.
      * The index rides along with the predicate so {@link ActiveGrace#index()} needs no accessor
      * of its own outside this package.

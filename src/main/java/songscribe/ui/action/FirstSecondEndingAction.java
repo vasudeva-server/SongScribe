@@ -22,18 +22,18 @@ package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.Strings;
-import songscribe.dom.EndingValidationResult;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 
+/**
+ * Makes a first/second ending from the selection. Its enabled state is judged when the menu
+ * opens; the command judges the selection again when it runs, so a trigger that reaches it
+ * after the selection changed acts on the selection as it is then.
+ */
 public final class FirstSecondEndingAction extends UIAction {
-
-    private @Nullable EndingValidationResult cachedResult;
 
     FirstSecondEndingAction(MainFrame mainFrame) {
         super(
@@ -46,24 +46,20 @@ public final class FirstSecondEndingAction extends UIAction {
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_MAKE_ENDING);
     }
 
+    /**
+     * Enables the action when {@code ctrl}'s selection can make an ending and the standard
+     * flags allow it, and disables it otherwise.
+     *
+     * @param ctrl the controller of the score whose selection the menu acts on
+     */
     public void validate(ScoreViewController ctrl) {
-        cachedResult = ctrl.canMakeFirstSecondEnding();
-
-        if (!(cachedResult instanceof EndingValidationResult.Valid)) {
+        if (!ctrl.canMakeFirstSecondEnding()) {
             setEnabled(false);
             return;
         }
 
         // Validity alone doesn't imply enablement, so defer to the standard chain.
         updateEnabledState();
-    }
-
-    public @Nullable EndingValidationResult getCachedResult() {
-        return cachedResult;
-    }
-
-    public void setCachedResult(@Nullable EndingValidationResult result) {
-        cachedResult = result;
     }
 
     @Override

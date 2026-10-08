@@ -48,7 +48,7 @@ public final class OptionDialogs {
     private static final Logger LOG = LoggerFactory.getLogger(OptionDialogs.class);
 
     // Extra width added to each JOptionPane message label so FlatLaf's fractional/LCD
-    // glyph ink, which extends past the integer advance width, is never clipped (#440).
+    // glyph ink, which extends past the integer advance width, is never clipped.
     private static final int MESSAGE_LABEL_CLIP_PAD = 8;
 
     private static boolean suppressDialogs = false;
@@ -263,7 +263,7 @@ public final class OptionDialogs {
         // exactly once, at whatever the labels then prefer, so padding here folds the clip
         // compensation into that single pack. Padding after createDialog instead would need
         // a second pack, which races the not-yet-settled native peer and clips the widest
-        // label the first time such a dialog is shown in the session (#459).
+        // label the first time such a dialog is shown in the session.
         padMessageLabels(pane);
 
         var dialog = pane.createDialog(parent, title);
@@ -280,7 +280,7 @@ public final class OptionDialogs {
      * <p>JOptionPane bursts a plain-text message into JLabels that BasicLabelUI
      * sizes to the integer advance width. FlatLaf paints with fractional/LCD
      * subpixel metrics whose glyph ink extends a couple pixels past that advance,
-     * clipping the last character (issue #440). A render-context measurement can't
+     * clipping the last character. A render-context measurement can't
      * reliably recover that overhang on a HiDPI screen (the realized context is 2x,
      * so its pixel bounds are device pixels), so instead pad by a small fixed
      * amount — the slack is invisible trailing space on left-aligned message text.

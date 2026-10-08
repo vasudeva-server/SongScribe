@@ -50,7 +50,7 @@ public final class LyricTargetResolver {
      *     resolves to can bear no syllable
      */
     public static @Nullable Integer resolveLyricTarget(Line line, int index) {
-        var targetIndex = line.isHostOfPairedGraceNote(index) ? index - 1 : index;
+        var targetIndex = line.isPairedGraceNoteTarget(index) ? index - 1 : index;
         return line.canBearSyllableAt(targetIndex) ? targetIndex : null;
     }
 

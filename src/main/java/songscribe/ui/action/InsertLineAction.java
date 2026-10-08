@@ -31,31 +31,24 @@ import songscribe.util.UIUtils;
 
 public final class InsertLineAction extends UIAction {
 
-    /** Where the new line goes. The two relative variants need a selected line; the first does not. */
-    public enum Type {
-        ADD_AT_END,
-        INSERT_BEFORE,
-        INSERT_AFTER,
-    }
-
-    private final Type type;
+    private final InsertLineCommand.Type type;
 
     public static InsertLineAction createAddLineAction(MainFrame mainFrame) {
         return new InsertLineAction(
-            mainFrame, Strings.get(Strings.MENU_SONG_LINE_AT_END), Type.ADD_AT_END);
+            mainFrame, Strings.get(Strings.MENU_SONG_LINE_AT_END), InsertLineCommand.Type.ADD_AT_END);
     }
 
     public static InsertLineAction createInsertLineBeforeAction(MainFrame mainFrame) {
         return new InsertLineAction(
-            mainFrame, Strings.get(Strings.MENU_SONG_LINE_BEFORE), Type.INSERT_BEFORE);
+            mainFrame, Strings.get(Strings.MENU_SONG_LINE_BEFORE), InsertLineCommand.Type.INSERT_BEFORE);
     }
 
     public static InsertLineAction createInsertLineAfterAction(MainFrame mainFrame) {
         return new InsertLineAction(
-            mainFrame, Strings.get(Strings.MENU_SONG_LINE_AFTER), Type.INSERT_AFTER);
+            mainFrame, Strings.get(Strings.MENU_SONG_LINE_AFTER), InsertLineCommand.Type.INSERT_AFTER);
     }
 
-    private InsertLineAction(MainFrame mainFrame, String name, Type type) {
+    private InsertLineAction(MainFrame mainFrame, String name, InsertLineCommand.Type type) {
         super(
             mainFrame,
             name,
@@ -69,7 +62,7 @@ public final class InsertLineAction extends UIAction {
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_INSERT_LINE);
     }
 
-    private static String getActionCommand(Type type) {
+    private static String getActionCommand(InsertLineCommand.Type type) {
         return switch (type) {
             case ADD_AT_END -> "add-line";
             case INSERT_BEFORE -> "insert-line-before";
@@ -81,7 +74,7 @@ public final class InsertLineAction extends UIAction {
      * All three variants are Return with the menu shortcut key; the two that act
      * relative to the selected line add a distinguishing modifier.
      */
-    private static int getAcceleratorModifiers(Type type) {
+    private static int getAcceleratorModifiers(InsertLineCommand.Type type) {
         return switch (type) {
             case ADD_AT_END -> UIUtils.MENU_SHORTCUT_MASK;
             case INSERT_BEFORE -> UIUtils.MENU_SHORTCUT_MASK | InputEvent.SHIFT_DOWN_MASK;
@@ -100,7 +93,7 @@ public final class InsertLineAction extends UIAction {
             return false;
         }
 
-        if (type == Type.ADD_AT_END) {
+        if (type == InsertLineCommand.Type.ADD_AT_END) {
             return true;
         }
 

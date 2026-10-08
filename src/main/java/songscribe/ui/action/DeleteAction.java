@@ -25,6 +25,7 @@ import javax.swing.KeyStroke;
 
 import songscribe.Strings;
 import songscribe.hit.HitTarget;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -37,7 +38,7 @@ public final class DeleteAction extends PasteboardAction {
     private DeleteAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Operation.DELETE,
+            PasteboardOpCommand.Operation.DELETE,
             Strings.get(Strings.ACTION_EDIT_DELETE),
             "edit-delete",
             0,

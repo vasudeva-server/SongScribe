@@ -32,18 +32,11 @@ import songscribe.ui.component.MainFrame;
 
 public class PasteboardAction extends UIAction {
 
-    public enum Operation {
-        COPY,
-        CUT,
-        DELETE,
-        PASTE,
-    }
-
-    private final Operation op;
+    private final PasteboardOpCommand.Operation op;
 
     public PasteboardAction(
         MainFrame mainFrame,
-        Operation op,
+        PasteboardOpCommand.Operation op,
         String name,
         String actionCommand,
         int virtualKey,
@@ -88,8 +81,7 @@ public class PasteboardAction extends UIAction {
 
     /**
      * True when the selection is exactly the song's auto-maintained terminal. The terminal is
-     * selectable so an annotation can be attached to it and so its type can be changed (issue
-     * #713), but it may not be copied, cut, pasted over or deleted, so every pasteboard
+     * selectable so an annotation can be attached to it and so its type can be changed, but it may not be copied, cut, pasted over or deleted, so every pasteboard
      * operation is disabled while it is selected — leaving nothing to invoke by menu or
      * keystroke.
      */

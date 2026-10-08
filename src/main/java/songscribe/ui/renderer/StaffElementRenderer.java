@@ -40,6 +40,7 @@ import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.LedgerLine;
 import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
+import songscribe.layout.Beaming;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.util.GraphicsState;
@@ -132,8 +133,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             g2.translate(noteX, noteY);
             g2.setFont(RenderingUtils.MUSIC_FONT);
 
-            var isBeamed = isNoteBeamed(element, invariants);
-            renderNoteHead(g2, element, isBeamed, invariants);
+            renderNoteHead(g2, element, noteBeaming(element, invariants), invariants);
             renderLedgerLines(g2, element, invariants);
             renderAccidental(g2, element, invariants, frame);
         }
@@ -173,7 +173,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     private void renderNoteHead(
         Graphics2D g2,
         NoteElement note,
-        boolean beamed,
+        Beaming beaming,
         LineInvariants invariants
     ) {
         var noteType = note.getType();
@@ -191,16 +191,16 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         }
 
         // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
-        var stemTip = renderStem(g2, note, direction, beamed, noteType, invariants);
+        var stemTip = renderStem(g2, note, beaming, invariants);
 
         // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
-        if (!beamed) {
-            renderFlags(g2, note, direction, noteType, stemTip);
+        if (beaming == Beaming.UNBEAMED) {
+            renderFlags(g2, note, stemTip);
         }
 
         // Draw dots (grace notes don't have dots)
         if (!noteType.isGraceNote()) {
-            renderDots(g2, note, beamed, direction);
+            renderDots(g2, note, beaming, direction);
         }
     }
 
@@ -208,18 +208,31 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Stem Rendering
     // ==========================================================================
 
-    // Returns the flag attachment point (x = stem left edge, y = stem tip), or null if no stem.
+    /**
+     * Draws {@code note}'s stem in its drawn direction ({@link NoteGeometry#effectiveDirection}),
+     * tucked inside its beam when it is beamed.
+     *
+     * @param g2         the graphics, translated to the note's origin
+     * @param note       the note whose stem to draw
+     * @param beaming    whether the note is a member of a beam, which decides the stem's length
+     *                   and its inset into the beam
+     * @param invariants the render invariants holding the line and its layout
+     * @return the flag attachment point (x = stem left edge, y = stem tip), or {@code null} when
+     *     the note's type has no stem
+     */
     private Point2D.@Nullable Double renderStem(
         Graphics2D g2,
         NoteElement note,
-        Direction direction,
-        boolean beamed,
-        ElementType noteType,
+        Beaming beaming,
         LineInvariants invariants
     ) {
+        var noteType = note.getType();
+
         if (!noteType.isNoteWithStem()) {
             return null;
         }
+
+        var direction = NoteGeometry.effectiveDirection(note);
 
         var upper = direction.isUp();
         var geom = NoteGeometry.computeBaseStemGeometry(note, direction);
@@ -239,6 +252,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         var frenchShorteningLevels = (stemLayout != null) ? stemLayout.frenchShorteningLevels() : 0;
 
         var beamThickeningSs = 0.0;
+        var beamed = beaming == Beaming.BEAMED;
 
         if (beamed) {
             var line = invariants.requireCurrentLine();
@@ -308,18 +322,26 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Flag Rendering
     // ==========================================================================
 
-    private void renderFlags(
-        Graphics2D g2,
-        StaffElement note,
-        Direction direction,
-        ElementType noteType,
-        Point2D.@Nullable Double stemTip
-    ) {
+    /**
+     * Draws the flag {@code note}'s type carries on a stem in its drawn direction
+     * ({@link NoteGeometry#effectiveDirection}), hung from {@code stemTip}. Called only for an
+     * unbeamed note: a beamed one carries its beams instead.
+     *
+     * @param g2      the graphics, translated to the note's origin
+     * @param note    the note whose flag to draw
+     * @param stemTip the stem's flag attachment point as {@link #renderStem} answered it (x = stem
+     *                left edge, y = stem tip), or {@code null} when the note has no stem
+     * @effects draws nothing when {@code stemTip} is {@code null} or the note's type carries no
+     *     flag ({@link ElementType#getFlagGlyph}); otherwise draws the flag glyph, at grace size
+     *     for a grace note, leaving {@code g2}'s font as it was
+     */
+    private void renderFlags(Graphics2D g2, NoteElement note, Point2D.@Nullable Double stemTip) {
         if (stemTip == null) {
             return;
         }
 
-        var flagGlyph = noteType.getFlagGlyph(direction);
+        var noteType = note.getType();
+        var flagGlyph = noteType.getFlagGlyph(NoteGeometry.effectiveDirection(note));
 
         if (flagGlyph == null) {
             return;
@@ -352,7 +374,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     private void renderDots(
         Graphics2D g2,
         NoteElement note,
-        boolean beamed,
+        Beaming beaming,
         Direction direction
     ) {
         if (note.dots() == Dots.NONE) {
@@ -363,7 +385,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             g2.setFont(RenderingUtils.MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
             NoteGeometry.forEachDotPosition(
-                note, beamed, direction, (dotX, yOffset) ->
+                note, beaming, direction, (dotX, yOffset) ->
                 g2.drawString(dotStr, dotX.floatValue(), yOffset.floatValue()));
         }
     }
@@ -435,18 +457,23 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     /**
-     * Returns whether {@code note} sits under a beam on the current line. The insertion preview
-     * is on no line and is never beamed.
+     * Returns whether {@code note} is a member of a beam on the current line. The insertion
+     * preview is drawn on the current line without being one of its elements, so it belongs to
+     * no beam.
+     *
+     * @param note       the note to test
+     * @param invariants the render invariants holding the current line
+     * @return {@link Beaming#BEAMED} when {@code note} is an element of the current line and a
+     *     member of one of its beams ({@link songscribe.dom.LineSpans#findBeamJoining}), otherwise
+     *     {@link Beaming#UNBEAMED}
      */
-    private boolean isNoteBeamed(StaffElement note, LineInvariants invariants) {
+    private Beaming noteBeaming(StaffElement note, LineInvariants invariants) {
         var line = invariants.requireCurrentLine();
 
         if (!line.contains(note)) {
-            return false;
+            return Beaming.UNBEAMED;
         }
 
-        var noteIndex = line.getElementIndex(note);
-        return line.spanRegistry().findBeamAt(noteIndex) != null &&
-            note.getType() != ElementType.GRACE_QUAVER;
+        return Beaming.of(line.spanRegistry().findBeamJoining(line.getElementIndex(note)));
     }
 }

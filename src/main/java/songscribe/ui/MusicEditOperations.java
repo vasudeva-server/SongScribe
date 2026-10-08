@@ -20,10 +20,9 @@
 
 package songscribe.ui;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 
 import org.jspecify.annotations.Nullable;
 
@@ -31,22 +30,17 @@ import songscribe.Strings;
 import songscribe.dom.Beam;
 import songscribe.dom.Direction;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
-import songscribe.dom.EndingValidationResult;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.LineSpans;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
-import songscribe.dom.Span;
 import songscribe.dom.Spanning;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Stem;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletValidator;
-import songscribe.error.RuntimeError;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.selection.ElementSelection;
@@ -55,32 +49,23 @@ import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
 /**
- * Handles music editing operations for a song.
- * Extracted from ScoreView.java as part of Phase 5 of the ScoreView Cleanup refactoring.
+ * The music editing commands over the current selection, and the queries that enable them.
+ * Each query asks {@link RangeQueries}, and each edit judges the selection again when it runs
+ * rather than trusting an answer a menu cached.
  */
 public final class MusicEditOperations {
 
-
-    // Mutable so the same MusicEditOperations instance can outlive a document
-    // load — ScoreView holds it across setSong(), avoiding stale references.
-    private Song song;
     private final SelectionCoordinator coordinator;
 
-    public MusicEditOperations(
-        Song song,
-        SelectionCoordinator coordinator
-    ) {
-        this.song = song;
+    public MusicEditOperations(SelectionCoordinator coordinator) {
         this.coordinator = coordinator;
     }
 
-    public void setSong(Song song) {
-        this.song = song;
-    }
-
     /**
-     * The current selection in the form every query and edit below takes it, or {@code null}
-     * when nothing is selected.
+     * The current selection in the form every query and edit below over the selected range
+     * reads it through, or {@code null}
+     * when no element range is selected: nothing is, or a target such as a slide, an ending or
+     * a hairpin is.
      *
      * <p>The coordinator's range additionally carries the anchor a click or drag started from,
      * which matters only while the user is extending the selection. Nothing from here down
@@ -99,85 +84,64 @@ public final class MusicEditOperations {
         return (range != null) && RangeQueries.canToggleBeaming(range);
     }
 
+    /**
+     * Adds or removes the beam over the current selection, as {@link RangeQueries#beamToggle}
+     * decides when the command runs. A selection inside a beam removes the whole beam, unlike
+     * {@link #toggleBeamWithPredecessor}, which breaks it. Does nothing when no element range is
+     * selected or the selection can be neither beamed nor unbeamed.
+     *
+     * @effects adds or removes one beam inside one modification bracket; adding it absorbs every
+     *     beam it overlaps
+     */
     public void toggleBeaming() {
-        var range = selectedRange();
+        var selection = selectedRange();
 
-        if (range == null) {
+        if (selection == null) {
             return;
         }
 
-        var line = range.line();
+        var song = selection.line().getSong();
 
-        // The beam spans the selection's non-grace endpoints; a leading or trailing grace
-        // note is left outside it (refs #592).
-        var grouped = line.nonGraceRange(range.range());
-
-        if (grouped == null || grouped.size() < 2) {
-            return;
-        }
-
-        var begin = grouped.begin();
-        var end = grouped.end();
-        var spans = line.spanRegistry();
-
-        line.getSong().withModification(() -> {
-            // Looked up rather than asked via LineSpans.sameBeamAt: the remove branch needs
-            // the Beam object itself, and going through the boolean would only mean finding
-            // it again afterwards.
-            var beginBeam = spans.findBeamAt(begin);
-
-            //noinspection ObjectEquality
-            if (beginBeam == null || beginBeam != spans.findBeamAt(end)) {
-                // canToggleBeaming has admitted the range, so both endpoints are beamable notes.
-                new Beam(line.noteAt(begin), line.noteAt(end)).addTo(line);
-            } else {
-                beginBeam.removeFrom(line);
+        switch (RangeQueries.beamToggle(selection)) {
+            case RangeQueries.BeamToggle.Add(var beam) -> song.withModification(beam::addTo);
+            case RangeQueries.BeamToggle.Remove(var beam) -> song.withModification(beam::removeFrom);
+            case RangeQueries.BeamToggle.Ineligible() -> {
             }
-        });
+        }
     }
 
     /**
      * Toggles a beam between the element at {@code elementIndex} and its nearest preceding
-     * non-grace neighbor, and returns whether the line was modified.
+     * non-grace neighbor, and returns whether the line was modified. This is the toggle while
+     * typing; {@link #toggleBeaming} is the toggle over a selection.
      *
      * <p>Static and taking the line explicitly because the operation does not go through the
      * selection coordinator — the caller looks up the state.
      *
-     * <p>Grace notes are transparent at both ends: the walk backward skips over them, and a
-     * grace note is never itself a beam member, so a grace-note target is refused (refs #592).
+     * <p>The two elements are asked about as a two-note selection, through
+     * {@link RangeQueries#beamToggle}, which asks {@link Beam#spanning} for every beam rule. Grace
+     * notes are transparent: the walk backward skips over them, and a grace-note target leaves
+     * the pair with one non-grace note, which no beam joins.
      *
-     * <p>When one beam already covers both elements, it is broken <em>between</em> them rather
-     * than removed wholesale. A single-element remainder is dropped, because a beam needs two
-     * members:
+     * <p>The two removal behaviors differ on purpose. From select mode, a selection inside a beam
+     * removes the whole beam. While typing, one beam joining both elements is broken
+     * <em>between</em> them and its parts are kept: a beam {@code [a,e]} broken between
+     * {@code p} and {@code t} yields {@code [a,p]} and {@code [t,e]}, each kept only when
+     * {@link Beam#spanning} accepts it, so a part of one note is dropped. Grace notes between the
+     * two elements fall in the gap and belong to neither part. The break removes the beam and
+     * adds its parts, so every step is a tracked mutation and undo restores the original beam.
      *
-     * <p>Breaking a beam {@code [a,e]} between the two selected elements {@code p} and {@code t}
-     * yields the two remainders {@code [a,p]} and {@code [t,e]}, minus any remainder of fewer than
-     * two members. So the left remainder is dropped when {@code a == p}, the right one when
-     * {@code t == e}, and when both hold the beam disappears entirely.
-     *
-     * The break is a {@link Beam#removeFrom} followed by up to two {@link Beam#addTo} calls
-     * so every step is a tracked mutation and undo restores the original span; mutating the
-     * beam's endpoints in place would not be recorded. The two new spans do not re-merge,
-     * since {@code addTo} merges overlapping spans without absorbing merely adjacent ones.
-     * Grace notes between the two elements fall in the gap and belong to neither span.
-     *
-     * <p>The add branch, by contrast, can fuse two adjacent beam groups into one: {@code
-     * addTo} widens at both ends, so with beams [0,1] and [2,3], beaming element 2 to its
-     * predecessor yields a single [0,3]. That matches what the select-mode toggle does from the
-     * same call, and the two must not disagree.
+     * <p>The add case agrees with the select-mode toggle over the same two notes: a beam absorbs
+     * every beam it overlaps, so with beams [0,1] and [2,3], beaming element 2 to its
+     * predecessor yields a single [0,3].
      *
      * @param line         the line holding the element
-     * @param elementIndex the index of the later of the two elements
+     * @param elementIndex the index of the later of the two elements; one outside {@code line}
+     *                     modifies nothing
      * @return {@code true} when the line was modified
      */
     public static boolean toggleBeamWithPredecessor(Line line, int elementIndex) {
         if (!line.hasIndex(elementIndex)) {
-            return false;
-        }
-
-        var targetType = line.getElement(elementIndex).getType();
-
-        if (targetType.isGraceNote()) {
             return false;
         }
 
@@ -187,49 +151,39 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var spans = line.spanRegistry();
-        var predecessorBeam = spans.findBeamAt(predecessorIndex);
+        var pair = new ElementSelection(line, new ElementRange(predecessorIndex, elementIndex));
+        var song = line.getSong();
 
-        // The break branch needs the Beam object itself, not just the identity test, so it
-        // looks both beams up rather than going through LineSpans.sameBeamAt.
-        //noinspection ObjectEquality
-        if (predecessorBeam != null && predecessorBeam == spans.findBeamAt(elementIndex)) {
-            var anchorIndex = predecessorBeam.requireAnchorElementIndex();
-            var endIndex = predecessorBeam.requireEndElementIndex();
+        return switch (RangeQueries.beamToggle(pair)) {
+            case RangeQueries.BeamToggle.Add(var beam) -> {
+                song.withModification(beam::addTo);
+                yield true;
+            }
 
-            line.getSong().withModification(() -> {
-                predecessorBeam.removeFrom(line);
+            case RangeQueries.BeamToggle.Remove(var beam) -> {
+                var left = new ElementRange(beam.requireAnchorElementIndex(), predecessorIndex);
+                var right = new ElementRange(elementIndex, beam.requireEndElementIndex());
 
-                // Both selected elements are non-grace members of the beam, so they are notes.
-                if (anchorIndex < predecessorIndex) {
-                    new Beam(predecessorBeam.getAnchorElement(), line.noteAt(predecessorIndex)).addTo(line);
-                }
+                song.withModification(() -> {
+                    // The parts are judged once the beam is gone, or the factory would widen
+                    // each of them back over it.
+                    beam.removeFrom();
+                    addBeamOver(line, left);
+                    addBeamOver(line, right);
+                });
 
-                if (elementIndex < endIndex) {
-                    new Beam(line.noteAt(elementIndex), predecessorBeam.getEndElement()).addTo(line);
-                }
-            });
+                yield true;
+            }
 
-            return true;
+            case RangeQueries.BeamToggle.Ineligible() -> false;
+        };
+    }
+
+    /** Adds the beam {@link Beam#spanning} builds over {@code range}, when it builds one. */
+    private static void addBeamOver(Line line, ElementRange range) {
+        if (Beam.spanning(line, range) instanceof Spanning.Spanned<Beam>(var beam, var _)) {
+            beam.addTo();
         }
-
-        if (!targetType.isBeamable() || !line.getElement(predecessorIndex).getType().isBeamable()) {
-            return false;
-        }
-
-        // Both are beamable, so both are notes.
-        var anchorNote = line.noteAt(predecessorIndex);
-        var endNote = line.noteAt(elementIndex);
-
-        // Conflict: beaming may not connect what a tie already connects, the same rule
-        // RangeQueries.canToggleBeaming applies. A break is never blocked by a tie.
-        if (anchorNote.isTiedTo(endNote)) {
-            return false;
-        }
-
-        line.getSong().withModification(() -> new Beam(anchorNote, endNote).addTo(line));
-
-        return true;
     }
 
     // ========== Tie Operations ==========
@@ -264,7 +218,7 @@ public final class MusicEditOperations {
         var line = range.line();
 
         // A tie joins the two notes the selection begins and ends on, and any separator
-        // between them stays outside the tie (refs #527).
+        // between them stays outside the tie.
         var bounds = range.range();
         var beginIndex = bounds.begin();
         var endIndex = bounds.end();
@@ -277,21 +231,34 @@ public final class MusicEditOperations {
             // canToggleTie has admitted the range, so both endpoints are pitched notes with at
             // most a legal separator between them, and the tie added to the first ends on the
             // second.
-            var anchor = line.noteAt(beginIndex);
-
-            if (anchor.isTiedTo(line.noteAt(endIndex))) {
-                line.removeTie(anchor);
-            } else {
-                line.addTie(anchor);
-            }
+            toggleTieBetween(line.noteAt(beginIndex), line.noteAt(endIndex));
 
             return true;
         });
     }
 
     /**
+     * Removes the tie from {@code anchor} when it ends on {@code end}, and otherwise ties
+     * {@code anchor}, recording either on the anchor's line. The one statement of "if tied,
+     * remove, else add" behind every tie toggle; whether the pair is already tied is
+     * {@link NoteElement#isTiedTo}'s question.
+     *
+     * @param anchor the earlier note of the pair, in a line
+     * @param end    the later note, which a tie added to {@code anchor} ends on
+     */
+    private static void toggleTieBetween(NoteElement anchor, NoteElement end) {
+        var anchorLine = anchor.requireParentLine();
+
+        if (anchor.isTiedTo(end)) {
+            anchorLine.removeTie(anchor);
+        } else {
+            anchorLine.addTie(anchor);
+        }
+    }
+
+    /**
      * Toggles a tie between the element at {@code elementIndex} and the note before it, and
-     * returns whether the line was modified (#706).
+     * returns whether the line was modified.
      *
      * <p>Static and taking the line explicitly because the operation does not go through the
      * selection coordinator — the caller looks up the state.
@@ -307,12 +274,12 @@ public final class MusicEditOperations {
     }
 
     /**
-     * Toggles the cross-line tie candidate at {@code index} in {@code line}, if any (#493).
+     * Toggles the cross-line tie candidate at {@code index} in {@code line}, if any.
      * <p>
      * The tie is recorded on the anchor's line, which is the line before {@code line} when
-     * {@code index} is where a tie enters {@code line}. Add-versus-remove is decided by
-     * {@link NoteElement#isTiedTo} over the two notes, so a same-line tie that merely ends on
-     * the boundary note (a chained tie) is never mistaken for the boundary tie itself.
+     * {@code index} is where a tie enters {@code line}. Add-versus-remove is decided over the two
+     * notes ({@link #toggleTieBetween}), so a same-line tie that merely ends on the boundary
+     * note (a chained tie) is never mistaken for the boundary tie itself.
      *
      * @return Whether a partner was found and the tie toggled
      */
@@ -323,18 +290,7 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var anchor = boundaryTie.anchor();
-        var anchorLine = anchor.getParentLine();
-
-        if (anchorLine == null) {
-            throw RuntimeError.exit("a boundary tie candidate's anchor is in no line");
-        }
-
-        if (anchor.isTiedTo(boundaryTie.end())) {
-            anchorLine.removeTie(anchor);
-        } else {
-            anchorLine.addTie(anchor);
-        }
+        toggleTieBetween(boundaryTie.anchor(), boundaryTie.end());
 
         return true;
     }
@@ -381,179 +337,117 @@ public final class MusicEditOperations {
 
     // ========== Tuplet Operations ==========
 
+    /**
+     * Returns what the tuplet menu offers for the current selection.
+     *
+     * @return {@link RangeQueries#canToggleTuplet}'s answer for the selection, or
+     *     {@link TupletToggleInfo#NONE} when no element range is selected
+     */
     public TupletToggleInfo canToggleTuplet() {
-        var range = selectedRange();
-        return (range != null)
-            ? RangeQueries.canToggleTuplet(range)
-            : new TupletToggleInfo(false, null, false);
+        var selection = selectedRange();
+        return (selection != null) ? RangeQueries.canToggleTuplet(selection) : TupletToggleInfo.NONE;
     }
 
     /**
-     * Handles four cases: (1) no existing tuplet → add; (2) existing tuplet, selection spans
-     * its full span, requested grade matches → no-op; (3) existing tuplet, full coverage,
-     * different grade → remove then add in one bracket (emits TupletRemoval +
-     * TupletAddition); (4) existing tuplet, selection is a strict sub-range → rejected with
-     * {@link IllegalStateException} so a programmatic caller cannot silently replace a tuplet
-     * with a sub-range tuplet.
-     *
-     * <p>Deleting a tuplet is not one of them — the user selects the tuplet's number or
-     * bracket and deletes it, which runs through {@code deleteSelectedTarget()}.</p>
-     *
-     * <p>Callers must pass the {@link TupletToggleInfo} obtained from {@link #canToggleTuplet()}
-     * so there is a single source of truth for the decision. The UI gates every refused case
-     * via action enable state, so reaching one indicates a caller bug. Does nothing when
-     * there is no selected range.
+     * Makes the current selection a tuplet of {@code grade}, judging the selection when it
+     * runs. The tuplet covers the selection from its first non-grace element to its last
+     * ({@link RangeQueries#tupletSite}), and {@link RangeQueries#tupletOverlap} decides what
+     * happens:
+     * <ul>
+     *   <li>{@link RangeQueries.TupletOverlap.NoTuplet}: adds the tuplet of {@code grade},
+     *       when {@link Tuplet#spanning} accepts it there.</li>
+     *   <li>{@link RangeQueries.TupletOverlap.Covers} a tuplet of another grade: replaces it
+     *       with the tuplet of {@code grade}, when {@link Tuplet#spanning} accepts that.</li>
+     *   <li>{@link RangeQueries.TupletOverlap.Covers} a tuplet of {@code grade}: nothing. The
+     *       grade is shown checked, and a checked item that deleted what it reports on would
+     *       be a trap.</li>
+     *   <li>{@link RangeQueries.TupletOverlap.PartlyInside}: nothing, since a tuplet over the
+     *       selection would destroy the one it reaches into.</li>
+     * </ul>
+     * Deleting a tuplet is not a toggle: the user selects its number or bracket and deletes
+     * it. Does nothing when no element range is selected or it holds only grace notes.
      *
      * @param grade the grade asked for
-     * @param info  what {@link #canToggleTuplet()} answered for the current selection
-     * @throws IllegalStateException if the selection is a strict sub-range of the existing
-     *     tuplet; if {@code info.canToggle()} is {@code false}; or if the selection holds fewer
-     *     than two non-grace elements, which means {@code info} is stale
+     * @effects adds one tuplet, or removes one and adds its replacement, inside one modification
+     *     bracket; the removal is not reported
      */
-    public void toggleTuplet(TupletGrade grade, TupletToggleInfo info) {
-        var range = selectedRange();
+    public void toggleTuplet(TupletGrade grade) {
+        var selection = selectedRange();
+        var site = (selection != null) ? RangeQueries.tupletSite(selection) : null;
 
-        if (range == null) {
+        if (site == null) {
             return;
         }
 
-        var existing = info.existing();
-
-        // A sub-range selection reports canToggle == false, so this must be diagnosed before
-        // the generic guard below or the caller loses the reason it was rejected.
-        if ((existing != null) && !info.coversExisting()) {
-            throw new IllegalStateException(
-                "toggleTuplet with a strict sub-range of an existing tuplet is not allowed");
+        switch (RangeQueries.tupletOverlap(site.line(), site.range())) {
+            case RangeQueries.TupletOverlap.NoTuplet() -> placeTuplet(site, grade, null);
+            case RangeQueries.TupletOverlap.Covers(var existing) when existing.getGrade() != grade ->
+                placeTuplet(site, grade, existing);
+            case RangeQueries.TupletOverlap.Covers _, RangeQueries.TupletOverlap.PartlyInside _ -> {
+            }
         }
-
-        if (!info.canToggle()) {
-            throw new IllegalStateException(
-                "toggleTuplet called with info.canToggle() == false; caller must check canToggleTuplet() first");
-        }
-
-        var line = range.line();
-
-        // The tuplet spans the selection's non-grace endpoints; a leading or trailing grace
-        // note is left outside it (refs #592).
-        var span = line.nonGraceRange(range.range());
-
-        // canToggleTuplet() rejects a selection without two non-grace elements, so reaching
-        // this with no usable span means the caller passed stale info.
-        if (span == null || span.size() < 2) {
-            throw new IllegalStateException(
-                "toggleTuplet requires at least two non-grace elements in the selection");
-        }
-
-        if (existing == null) {
-            var newTuplet = createValidatedTuplet(line, span, grade);
-            line.getSong().withModification(() -> newTuplet.addTo(line));
-            return;
-        }
-
-        // Re-picking the grade the tuplet already has does nothing. The grade is shown
-        // checked (Action.SELECTED_KEY), and a checked radio item that deletes what it
-        // reports on would be a trap.
-        if (existing.getGrade() == grade) {
-            return;
-        }
-
-        var replacement = createValidatedTuplet(line, span, grade);
-
-        line.getSong().withModification(() -> {
-            existing.removeFrom(line);
-            replacement.addTo(line);
-        });
     }
 
     /**
-     * Builds a tuplet whose ratio the validator derived for this span.
-     * <p>
-     * The UI gates tuplet creation on the same validator, so an invalid verdict here
-     * means the caller skipped that gate — the same contract as the other
-     * {@link IllegalStateException}s in {@link #toggleTuplet}.
+     * Adds the tuplet of {@code grade} that {@link Tuplet#spanning} builds at {@code site},
+     * removing {@code replaced} first, or does nothing when the factory refuses.
      *
-     * @return the tuplet over {@code span}, not yet added to {@code line}
+     * @param replaced the tuplet the new one replaces, or {@code null} when it replaces none
      */
-    private Tuplet createValidatedTuplet(Line line, ElementRange span, TupletGrade grade) {
-        var result = TupletValidator.validateDerived(
-            line, span, grade, TupletValidator.Strictness.STRICT);
+    private static void placeTuplet(Tuplet.Site site, TupletGrade grade, @Nullable Tuplet replaced) {
+        if (!(Tuplet.spanning(site, grade, TupletValidator.Strictness.STRICT)
+                instanceof Spanning.Spanned<Tuplet>(var tuplet, var _))) {
+            return;
+        }
 
-        return switch (result) {
-            case TupletValidator.Result.Valid(var ratio) ->
-                new Tuplet(line.getElement(span.begin()), line.getElement(span.end()), grade, ratio);
+        site.line().getSong().withModification(() -> {
+            // Removed before the add, which would otherwise displace it with a report entry.
+            if (replaced != null) {
+                replaced.removeFrom();
+            }
 
-            case TupletValidator.Result.Invalid(var reason) -> throw new IllegalStateException(
-                "toggleTuplet called for a span that cannot carry a tuplet of " + grade + ": " + reason);
-        };
+            tuplet.addTo();
+        });
     }
 
     // ========== Dynamics Operations ==========
 
     /**
-     * Adds a hairpin over the current selection, or extends an existing same-type
-     * hairpin to cover it.
+     * Adds a {@code kind} hairpin over the current selection, or extends a same-kind hairpin
+     * to cover it, as {@link RangeQueries#resolveHairpin} resolves the selection when this
+     * runs. Does nothing when no element range is selected or the resolution is
+     * {@link RangeQueries.HairpinResolution.Ineligible} or
+     * {@link RangeQueries.HairpinResolution.Blocked}.
      * <p>
-     * The decision comes from {@link #resolveHairpinAction(Hairpin.Kind)} and the hairpin
-     * from {@link Hairpin#spanning}, the same judge the resolution consults — nothing
-     * here re-derives either. Two copies of that decision tree would eventually disagree,
-     * and the first divergence turns an "Extend Crescendo" click into a second stray
-     * crescendo under a mislabeled undo entry.
+     * The hairpin added is the one the resolution carries, so the menu item's wording and the
+     * edit cannot disagree: an "Extend Crescendo" click never adds a second stray crescendo.
+     *
+     * @param kind the hairpin kind to add
+     * @effects inside one modification bracket named by the resolution's
+     *     {@link RangeQueries.HairpinResolution#nameKey}: adds the hairpin, which absorbs the
+     *     same-kind hairpins it reaches, and removes the point dynamic from every element
+     *     strictly inside the hairpin's range
      */
     public void addHairpinToSelection(Hairpin.Kind kind) {
-        var range = coordinator.getRange();
+        var selection = selectedRange();
 
-        if (range == null) {
+        if (selection == null
+            || !(RangeQueries.resolveHairpin(selection, kind) instanceof RangeQueries.HairpinResolution.Applicable applicable)) {
             return;
         }
 
-        var resolution = resolveHairpinAction(kind);
-        var span = resolution.span();
+        var line = selection.line();
+        var hairpin = applicable.hairpin();
 
-        // A resolution carries a span exactly when it can add or extend.
-        if (span == null) {
-            return;
-        }
+        line.getSong().withModification(Strings.get(applicable.nameKey()), () -> {
+            hairpin.addTo();
 
-        var resolvedState = resolution.state();
-
-        // One action performs both Add and Extend, so the op name is chosen per
-        // invocation rather than at construction time.
-        //
-        // These are the same keys HairpinAction puts on the menu item. The undo entry
-        // and the menu item must read alike — "Extend Crescendo" then "Undo Extend
-        // Crescendo" — so they share one string rather than two that happen to match
-        // and could later be edited apart.
-        String opNameKey;
-        var isCrescendo = kind == Hairpin.Kind.CRESCENDO;
-
-        if (resolvedState == HairpinActionState.CAN_ADD) {
-            opNameKey = isCrescendo
-                ? Strings.ACTION_HAIRPIN_CRESCENDO
-                : Strings.ACTION_HAIRPIN_DIMINUENDO;
-        } else {
-            opNameKey = isCrescendo
-                ? Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND
-                : Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND;
-        }
-
-        var line = range.line();
-
-        // The resolution just answered Spanned for this selection, and nothing has
-        // changed the line since, so the factory answers the same again.
-        if (!(Hairpin.spanning(line, kind, range.range()) instanceof Spanning.Spanned<Hairpin>(var added))) {
-            throw new IllegalStateException("Hairpin factory refused a selection the resolution accepted");
-        }
-
-        line.getSong().withModification(Strings.get(opNameKey), () -> {
-            // Span.addTo applies the hairpin's displacement policy, which absorbs the
-            // same-kind hairpins in reach — the extend path depends on that.
-            added.addTo(line);
-
-            // addTo widens the added hairpin in place to the converged range, so its
-            // range after the add is the one to strip. A point dynamic on its anchor or end
-            // element survives — the wedge pads away from it — but one stranded strictly
-            // inside breaks the invariant DynamicMarkingAction.updateEnabledState() relies on.
-            stripInteriorPointDynamics(line, added.range());
+            // The hairpin is built over the range it holds once it has absorbed the
+            // same-kind hairpins in reach, so its range is the one to strip. A point dynamic
+            // on its anchor or end element survives — the wedge pads away from it — but one
+            // stranded strictly inside breaks the invariant
+            // DynamicMarkingAction.updateEnabledState() relies on.
+            stripInteriorPointDynamics(line, hairpin.range());
         });
     }
 
@@ -588,194 +482,58 @@ public final class MusicEditOperations {
     }
 
     /**
-     * What one hairpin menu item should show for the current selection.
-     * <p>
-     * The resolution is per menu item, not a joint verdict about both: the crescendo
-     * and diminuendo items are resolved separately and may legitimately disagree.
-     * <p>
-     * Two states mean "not now", and they differ in why. {@code INELIGIBLE} means the
-     * span itself cannot carry a hairpin, whatever else is on the line.
-     * {@code BLOCKED} means another hairpin is the obstacle.
-     */
-    public enum HairpinActionState {
-        /** This item reads "Add …", disabled — the span cannot host a hairpin. */
-        INELIGIBLE,
-        /** This item reads "Add …", enabled. */
-        CAN_ADD,
-        /** This item reads "Extend …", enabled. */
-        EXTEND,
-        /** This item reads "Add …", disabled — another hairpin is in the way. */
-        BLOCKED
-    }
-
-    /**
-     * The resolved hairpin action for the current selection: what the menu should
-     * show, and the exact span the execution path will use.
-     *
-     * <p>Returned by a single call so the label and the mutation cannot disagree —
-     * {@code addHairpinToSelection} consumes this rather than recomputing.
-     * {@code span} is present exactly for {@code CAN_ADD} and {@code EXTEND}, and null
-     * for every other state.
-     *
-     * @throws IllegalArgumentException if {@code span}'s presence disagrees with {@code state}
-     */
-    public record HairpinResolution(HairpinActionState state, @Nullable ElementRange span) {
-
-        public HairpinResolution {
-            var resolved = state == HairpinActionState.CAN_ADD || state == HairpinActionState.EXTEND;
-
-            if (resolved != (span != null)) {
-                throw new IllegalArgumentException("Hairpin resolution " + state + " with span " + span);
-            }
-        }
-    }
-
-    /**
-     * Resolves what the {@code kind} hairpin menu item should do for the current
-     * selection.
-     * <p>
-     * The resolution is type-aware, and each menu item asks for its own: with a
-     * crescendo already on the notes just before the selection, the crescendo item
-     * extends while the diminuendo item adds a back-to-back wedge. One shared verdict
-     * could not say both.
-     * <p>
-     * {@link Hairpin#spanning} is the one judge of whether the selection holds a hairpin;
-     * this method adds only what the menu needs on top of its answer.
-     * <p>
-     * <b>Step 0 — input guard.</b> No selection, or a selection that is a target rather
-     * than an index range (a slide, ending or hairpin selection) → {@code INELIGIBLE}.
-     * This has to come first: nothing below may touch an element index before it
-     * passes.
-     * <p>
-     * <b>Step 1 — converge.</b> {@link Hairpin#converge} gives the range a {@code kind}
-     * hairpin over the selection holds once it has absorbed the same-kind hairpins in
-     * reach, and those hairpins. An absorbed hairpin that already covers the whole
-     * selection leaves nothing to extend → {@code BLOCKED}.
-     * <p>
-     * <b>Step 2 — judge.</b> {@link Hairpin#spanning} judges the selection. A
-     * {@link Spanning.Spanned} answer is {@code EXTEND} when the convergence absorbed a
-     * hairpin and {@code CAN_ADD} when it absorbed none, over the converged range in
-     * both cases. A {@link Spanning.Refused} answer maps its cause:
-     * {@link Spanning.Cause#RANGE} → {@code INELIGIBLE}, {@link Spanning.Cause#OTHER_SPAN}
-     * → {@code BLOCKED}.
-     * <p>
-     * The two "not now" states differ in why: {@code INELIGIBLE} means the selection
-     * itself cannot carry a hairpin, whatever else is on the line; {@code BLOCKED} means
-     * another hairpin is the obstacle.
-     * <p>
-     * <b>Do not cache this.</b> It is deliberately recomputed on every call. Two menu
-     * items resolving independently costs a handful of O(spans) scans per selection
-     * change, which is free; a cache keyed on the selection would go stale the moment
-     * a hairpin is added or undone without the selection moving, leaving both items
-     * lying about what they will do.
-     *
-     * <p><b>Worked examples.</b>
-     *
-     * <ul>
-     *   <li>Crescendo on {@code [0, 4]}, selection {@code [4, 8]}: {@code CRESCENDO}
-     *       resolves to {@code EXTEND} over {@code [0, 8]}, {@code DIMINUENDO} to
-     *       {@code CAN_ADD} over {@code [4, 8]}. The two items legitimately disagree.
-     *   <li>Crescendo on {@code [0, 4]}, selection {@code [2, 8]}: {@code DIMINUENDO}
-     *       is {@code BLOCKED} — the overlap is more than the one shared endpoint.
-     *   <li>One note plus the rest after it, no hairpin nearby: {@code INELIGIBLE} — a
-     *       hairpin never ends on a rest.
-     *   <li>A lone rest: {@code INELIGIBLE} — a rest cannot anchor a hairpin.
-     * </ul>
+     * Resolves what the {@code kind} hairpin menu item does for the current selection.
      *
      * @param kind the hairpin kind the menu item adds
-     * @return what the item would do for the current selection, with the span it would act on
+     * @return {@link RangeQueries#resolveHairpin} for the selection, or
+     *     {@link RangeQueries.HairpinResolution.Ineligible} when no element range is selected,
+     *     which includes a selected slide, ending or hairpin
      */
-    public HairpinResolution resolveHairpinAction(Hairpin.Kind kind) {
-        var range = coordinator.getRange();
+    public RangeQueries.HairpinResolution resolveHairpinAction(Hairpin.Kind kind) {
+        var selection = selectedRange();
 
-        // A slide, ending or hairpin selection is a target rather than a range, and
-        // Line.getElement does not bounds check, so this guard has to come before
-        // anything that touches an element index.
-        if (range == null) {
-            return ineligibleHairpinResolution();
-        }
-
-        var line = range.line();
-        var selection = range.range();
-        var convergence = Hairpin.converge(line, kind, selection);
-        var absorbed = convergence.absorbed();
-
-        // Tested against the selection, never the converged range: a hairpin absorbed
-        // on a later widening pass covers the converged range by construction, and
-        // would block every extension that reached it.
-        if (absorbed.stream().anyMatch(hairpin -> hairpin.range().contains(selection))) {
-            return blockedHairpinResolution();
-        }
-
-        return switch (Hairpin.spanning(line, kind, selection)) {
-            case Spanning.Spanned<Hairpin> spanned -> new HairpinResolution(
-                absorbed.isEmpty() ? HairpinActionState.CAN_ADD : HairpinActionState.EXTEND,
-                convergence.range());
-            case Spanning.Refused<Hairpin> refused -> switch (refused.cause()) {
-                case RANGE -> ineligibleHairpinResolution();
-                case OTHER_SPAN -> blockedHairpinResolution();
-            };
-        };
-    }
-
-    private static HairpinResolution ineligibleHairpinResolution() {
-        return new HairpinResolution(HairpinActionState.INELIGIBLE, null);
-    }
-
-    private static HairpinResolution blockedHairpinResolution() {
-        return new HairpinResolution(HairpinActionState.BLOCKED, null);
+        return (selection != null)
+            ? RangeQueries.resolveHairpin(selection, kind)
+            : new RangeQueries.HairpinResolution.Ineligible(kind);
     }
 
     // ========== First-Second Ending Operations ==========
 
-    public EndingValidationResult canMakeFirstSecondEnding() {
-        var range = coordinator.getRange();
+    /**
+     * Returns whether a first/second ending can be made from the current selection. It serves
+     * the menu item's enabled state; {@link #makeFirstSecondEnding} judges again when it runs.
+     *
+     * @return {@code true} when an element range is selected and
+     *     {@link RangeQueries#firstSecondEnding} answers {@link Spanning.Spanned} for it
+     */
+    public boolean canMakeFirstSecondEnding() {
+        var selection = selectedRange();
 
-        if (range == null) {
-            return EndingValidationResult.Invalid.INSTANCE;
-        }
-
-        var line = range.line();
-        var bounds = range.range();
-        var begin = bounds.begin();
-        var end = bounds.end();
-
-        // A multi-element selection never reaches the terminal (the selection coordinator
-        // clamps it out), so if the selection ends just before it, extend end to include it
-        // for an ending at the song's end to pass structural validation. Only extend if the
-        // current end is not already a terminal. For FINAL_DOUBLE_BARLINE, isEndingTerminal()
-        // returns true and the guard handles it. For REPEAT_RIGHT, isEndingTerminal() returns
-        // false (deliberately excluded), so extendedEnd < line.elementCount() bounds check
-        // prevents bad extension.
-        var extendedEnd = end + 1;
-
-        if (!line.getElement(end).getType().isEndingTerminal()
-                && line.isTerminalAt(extendedEnd)) {
-            end = extendedEnd;
-        }
-
-        // Ending's own rule decides whether a well-formed ending fits here: it refuses one
-        // that overlaps, or is not separated from, an ending already on the line, and one
-        // whose split closes no open repeated section.
-        //
-        // Where a bracket anchored here would open is Ending's rule, so that the anchor this
-        // sets and the element layout later draws from cannot drift apart. It answers with
-        // the anchor itself when the element in front of it is not a plain barline, or when
-        // it has no predecessor on this line, since an ending never spans lines.
-        var anchorIndex = Ending.openingElementIndex(line, begin);
-
-        return switch (Ending.spanning(line, new ElementRange(anchorIndex, end))) {
-            case Spanning.Spanned<Ending> spanned ->
-                new EndingValidationResult.Valid(line, spanned.span());
-            case Spanning.Refused<Ending> refused -> EndingValidationResult.Invalid.INSTANCE;
-        };
+        return (selection != null)
+            && RangeQueries.firstSecondEnding(selection) instanceof Spanning.Spanned<Ending>;
     }
 
+    /**
+     * Makes a first/second ending from the current selection, judging the selection when it
+     * runs, and returns whether it made one.
+     *
+     * @return {@code true} when an element range is selected and
+     *     {@link RangeQueries#firstSecondEnding} answers {@link Spanning.Spanned} for it;
+     *     {@code false}, with the song unchanged, otherwise
+     * @effects adds the ending {@link RangeQueries#firstSecondEnding} built, inside one
+     *     modification bracket
+     */
+    public boolean makeFirstSecondEnding() {
+        var selection = selectedRange();
 
-    public void makeFirstSecondEnding(EndingValidationResult.Valid valid) {
-        var line = valid.line();
+        if (selection == null
+            || !(RangeQueries.firstSecondEnding(selection) instanceof Spanning.Spanned<Ending>(var ending, var _))) {
+            return false;
+        }
 
-        line.getSong().withModification(() -> valid.ending().addTo(line));
+        selection.line().getSong().withModification(ending::addTo);
+
+        return true;
     }
 
 
@@ -830,15 +588,15 @@ public final class MusicEditOperations {
     }
 
     private void modifyStemDirection(StemDirectionChange change) {
-        var range = coordinator.getRange();
+        var selection = selectedRange();
 
-        if (range == null) {
+        if (selection == null) {
             return;
         }
 
-        var line = range.line();
+        var line = selection.line();
         var spans = line.spanRegistry();
-        var bounds = range.range();
+        var bounds = selection.range();
         var stemFields = EnumSet.of(ElementField.STEM);
 
         line.getSong().withModification(() -> {
@@ -853,8 +611,8 @@ public final class MusicEditOperations {
                 }
 
                 // A grace note sitting inside a beam span is not a member — the beam passes
-                // over it and it keeps its own stem, so it flips on its own (refs #592).
-                var beam = note.getType().isGraceNote() ? null : spans.findBeamAt(i);
+                // over it and it keeps its own stem, so it flips on its own.
+                var beam = spans.findBeamJoining(i);
 
                 if (beam != null) {
                     // Modify the whole beam group together, once per group. The group's new
@@ -871,43 +629,32 @@ public final class MusicEditOperations {
                 }
             }
 
-            // Apply the same change to every note a tie joins to the selection, in whichever
-            // line each one sits. Chained ties (note1-2 tied, note2-3 tied separately) must be
-            // walked to their full transitive closure so every note in the chain gets updated,
-            // not just the immediate partner of a selected note, and a chain that crosses a
-            // line break is followed into that line rather than stopped at the edge.
-            var visited = new HashSet<NoteElement>();
+            // Apply the same change to every note a tie chain joins to the selection, in
+            // whichever line each one sits.
+            var selected = new LinkedHashSet<NoteElement>();
 
             for (var i = bounds.begin(); i <= bounds.end(); i++) {
                 if (line.getElement(i) instanceof NoteElement note) {
-                    visited.add(note);
+                    selected.add(note);
                 }
             }
 
-            var tiePartnersToModify = new ArrayList<NoteElement>();
-            var pending = new ArrayDeque<>(visited);
+            var tiePartnersToModify = new LinkedHashSet<NoteElement>();
 
-            while (!pending.isEmpty()) {
-                var note = pending.remove();
-
-                for (var partner : note.tiePartners()) {
-                    if (visited.add(partner)) {
-                        pending.add(partner);
-                        tiePartnersToModify.add(partner);
-                    }
-                }
+            for (var note : selected) {
+                tiePartnersToModify.addAll(note.tieChain());
             }
+
+            tiePartnersToModify.removeAll(selected);
 
             for (var partner : tiePartnersToModify) {
-                var partnerLine = partner.getParentLine();
+                var partnerLine = partner.requireParentLine();
 
-                if (partnerLine != null) {
-                    applyStemChange(
-                        partnerLine,
-                        partnerLine.getElementIndex(partner),
-                        stemFields,
-                        flippedDirection(partner, change));
-                }
+                applyStemChange(
+                    partnerLine,
+                    partnerLine.getElementIndex(partner),
+                    stemFields,
+                    flippedDirection(partner, change));
             }
         });
     }

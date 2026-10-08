@@ -121,8 +121,8 @@ public final class DotAction<E extends StaffElement & Dottable> extends PreviewE
     }
 
     @Override
-    public void applyToElement(Line line, int index, E element, boolean selected) {
-        element.setDots(selected ? dots : Dots.NONE);
+    public void applyToElement(Line line, int index, E element, Toggle toggle) {
+        element.setDots(toggle == Toggle.APPLY ? dots : Dots.NONE);
     }
 
     @Override

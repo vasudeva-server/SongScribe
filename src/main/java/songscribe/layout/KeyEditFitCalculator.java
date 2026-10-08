@@ -59,7 +59,7 @@ import songscribe.dom.Song;
  * ({@link ElementColumnBuilder} + {@link HorizontalSpacingCalculator#solveLine}), over the same
  * columns, so a change these queries accept is one the layout can always place. The committed
  * layout only discovers an overflow at paint time, and by then it can only place the line on its
- * collision floors and draw the tail clipped, in red (refs #696).
+ * collision floors and draw the tail clipped, in red.
  *
  * <p><b>Deliberate divergence from {@link LyricEditFitCalculator}, decided by the domain owner.</b>
  * That class's callers first ask {@link LyricEditFitCalculator#lineFits} and let the edit through

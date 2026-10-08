@@ -164,7 +164,11 @@ what the table actually covers, or make the taxonomy part of the contract.
 
 A golden-file test compares output with a checked-in fixture that a person approved, such as
 `VoltaAlignmentFixtureTest` against `src/test/resources/fixtures/volta-alignments.musicxml`.
-When a change to that output is intended, regenerate the fixture:
+That test pins the markup `MusicXmlWriter` emits for each ending, not bracket geometry, which
+`EndingBracketGeometryTest` pins. A golden-file test pins what its fixture holds and nothing
+more, so name that in its Javadoc. It also excludes anything in the output that varies without a
+behavior change, such as the writer's `<software>` version string, so that a release does not fail
+it. When a change to that output is intended, regenerate the fixture:
 
 ```bash
 ./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest

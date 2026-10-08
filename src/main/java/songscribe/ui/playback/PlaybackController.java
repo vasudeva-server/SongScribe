@@ -67,24 +67,6 @@ import songscribe.ui.selection.ElementSelection;
 })
 public final class PlaybackController {
 
-    public enum PlaybackState {
-        PLAYING,
-
-        /**
-         * Playback ended with the music selection left intact, so the next {@link #play}
-         * resumes at the beginning of that selection.
-         */
-        STOPPED,
-
-        /**
-         * Playback ended and the music selection was dropped, so the next {@link #play}
-         * starts at the beginning of the song. Distinct from {@link #STOPPED} only in
-         * that the selection is gone — the score clears its own selection when it sees
-         * this state, rather than being reached into from here.
-         */
-        REWOUND,
-    }
-
     // The MIDI velocity values for normal and accented notes
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;

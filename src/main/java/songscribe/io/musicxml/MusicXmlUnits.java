@@ -64,13 +64,6 @@ final class MusicXmlUnits {
     // inter-staff spacing, so a zero distance is emitted and ignored on read.
     static final String STAFF_DISTANCE_TENTHS = "0";
 
-    /**
-     * Empty-string sentinel stored in beam-level values for levels where the
-     * note has no {@code <beam>} element. A level entry is empty when the note
-     * is not short enough for that secondary beam level.
-     */
-    static final String NO_BEAM_AT_LEVEL = "";
-
     private MusicXmlUnits() {}
 
     /**
@@ -124,6 +117,9 @@ final class MusicXmlUnits {
     /**
      * Converts a MusicXML tenths value to staff-spaces (tenths ÷ 10) without
      * rounding — the exact inverse of {@link #ssToTenths(double)}.
+     *
+     * @param tenths a length in MusicXML tenths
+     * @return the same length in staff-spaces
      */
     static double tenthsToExactSs(double tenths) {
         return tenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE;
@@ -132,6 +128,10 @@ final class MusicXmlUnits {
     /**
      * Converts an optional {@code tenths}-valued attribute to staff-spaces without
      * rounding, or 0 when the attribute is absent.
+     *
+     * @param tenths the attribute's value, or null when the attribute is absent, which selects 0
+     * @return {@code tenths} in staff-spaces, exactly as {@link #tenthsToExactSs(double)} gives it,
+     *     or 0 when {@code tenths} is null
      */
     static double tenthsToExactSs(@Nullable BigDecimal tenths) {
         return tenths == null ? 0 : tenthsToExactSs(tenths.doubleValue());

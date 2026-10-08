@@ -962,7 +962,7 @@ final class BeamScoring {
      * to a single running total. The {@code base_lengths_} term is structurally 0
      * here: it is the offset from the beam position to the beam rank a stem
      * terminates at, and every SongScribe stem terminates at the outer beam.
-     * French beaming (issue #652) does not change that — it shortens inner stems
+     * French beaming does not change that — it shortens inner stems
      * at drawing time only, and LilyPond likewise excludes it from quanting
      * ("French Beaming is irrelevant for beam quanting", {@code beam-quanting.cc}).
      *

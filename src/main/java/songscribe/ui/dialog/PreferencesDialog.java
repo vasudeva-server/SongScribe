@@ -646,8 +646,8 @@ public class PreferencesDialog extends BaseDialog {
         /**
          * The instrument list leads this tab. Declared rather than requested from
          * {@link #tabWillShow}, which runs before the window exists when the dialog is
-         * opening — {@code requestFocusInWindow} is a no-op there, so the list used to take
-         * focus only when the user switched to this tab in an already-open dialog.
+         * opening — {@code requestFocusInWindow} is a no-op there, so the list takes focus
+         * only when the user switches to this tab in an already-open dialog.
          * {@link BaseDialog} reads this on both paths and defers the request until the
          * window is up.
          */

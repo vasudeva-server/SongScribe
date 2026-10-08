@@ -251,7 +251,7 @@ class NoteDragHandler {
      * A group formed across a cross-line tie moves the partner note in the adjacent line too,
      * and that line's tie geometry lives in its own cached {@code LayoutResult}. Repainting it
      * is not enough: the note head is redrawn at its new staff position while the tie is drawn
-     * from the stale cached curve, leaving the tie pointing at where the note used to be. Only
+     * from the stale cached curve, leaving the tie pointing at the note's previous position. Only
      * the layout being recomputed puts the two back together.
      */
     private void invalidateDraggedLines() {

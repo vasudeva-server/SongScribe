@@ -66,9 +66,9 @@ public enum Dots {
     }
 
     /**
-     * Returns {@code ticks} lengthened by these dots, as an exact integer: each dot adds half of
-     * what the previous one added, so the result is {@code ticks × (2^(d+1) − 1) / 2^d} where
-     * {@code d} is {@link #count()}.
+     * Returns {@code ticks} lengthened by these dots: each dot adds half of what the previous one
+     * added, so the result is {@code ticks × (2^(d+1) − 1) / 2^d} where {@code d} is
+     * {@link #count()}.
      *
      * <p>At both tick bases in use — {@link songscribe.midi.MidiSequenceBuilder#PPQ} in the
      * model and {@link songscribe.io.musicxml.NoteTypeMapping#DIVISIONS} in MusicXML — every

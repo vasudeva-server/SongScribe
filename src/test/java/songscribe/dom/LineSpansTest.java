@@ -37,6 +37,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
 import static songscribe.dom.SongFactory.editableLine;
+import static songscribe.dom.SongFactory.lineOfQuavers;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.quaver;
@@ -112,6 +113,13 @@ class LineSpansTest extends UnitTest {
     /** A span sharing its first element with {@link #EXISTING}'s last. */
     private static final ElementRange OVERLAPPING = new ElementRange(EXISTING.end(), LINE_LENGTH - 1);
 
+    /**
+     * A span sharing its first element with {@link #EXISTING}'s last, and as long as
+     * {@link #EXISTING}: the three notes a triplet of quavers needs.
+     */
+    private static final ElementRange OVERLAPPING_SAME_LENGTH =
+        new ElementRange(EXISTING.end(), EXISTING.end() + EXISTING.end() - EXISTING.begin());
+
     /** A span beginning just past {@link #EXISTING}, within the reach that counts as touching. */
     private static final ElementRange FLUSH =
         new ElementRange(EXISTING.end() + SPAN_ADJACENCY_REACH, LINE_LENGTH - 1);
@@ -167,7 +175,7 @@ class LineSpansTest extends UnitTest {
             case BOTH -> List.of(testCase.existing(), testCase.added());
         };
 
-        assertThat(rangesOfKind(line, testCase)).isEqualTo(expected);
+        assertThat(rangesOfKind(line, testCase)).containsExactlyInAnyOrderElementsOf(expected);
     }
 
     @Test
@@ -181,43 +189,43 @@ class LineSpansTest extends UnitTest {
     static Stream<DisplacementCase> displacementCases() {
         return Stream.of(
             new DisplacementCase("a beam absorbs the beam it overlaps",
-                Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
+                Beam.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newBeam,
                 EXISTING, OVERLAPPING, Outcome.MERGED),
             new DisplacementCase("a beam absorbs the beam its end falls inside",
-                Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
+                Beam.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newBeam,
                 OVERLAPPING, EXISTING, Outcome.MERGED),
             new DisplacementCase("a beam absorbs the beam its start falls inside",
-                Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
+                Beam.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newBeam,
                 INNER, PAST_INNER, Outcome.MERGED),
             new DisplacementCase("a beam leaves the beam flush against it standing",
-                Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
+                Beam.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newBeam,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("a crescendo absorbs the crescendo it overlaps",
-                Hairpin.class, LineSpansTest::lineOfQuavers, LineSpansTest::newCrescendo,
+                Hairpin.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newCrescendo,
                 EXISTING, OVERLAPPING, Outcome.MERGED),
             new DisplacementCase("a crescendo absorbs the crescendo flush against its start",
-                Hairpin.class, LineSpansTest::lineOfQuavers, LineSpansTest::newCrescendo,
+                Hairpin.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newCrescendo,
                 EXISTING, FLUSH, Outcome.MERGED),
             new DisplacementCase("a crescendo absorbs the crescendo flush against its end",
-                Hairpin.class, LineSpansTest::lineOfQuavers, LineSpansTest::newCrescendo,
+                Hairpin.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newCrescendo,
                 FLUSH, EXISTING, Outcome.MERGED),
             new DisplacementCase("a diminuendo absorbs the diminuendo it overlaps",
-                Hairpin.class, LineSpansTest::lineOfQuavers, LineSpansTest::newDiminuendo,
+                Hairpin.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newDiminuendo,
                 EXISTING, OVERLAPPING, Outcome.MERGED),
             new DisplacementCase("a diminuendo absorbs the diminuendo flush against its start",
-                Hairpin.class, LineSpansTest::lineOfQuavers, LineSpansTest::newDiminuendo,
+                Hairpin.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newDiminuendo,
                 EXISTING, FLUSH, Outcome.MERGED),
             new DisplacementCase("a tuplet removes the tuplet it overlaps",
-                Tuplet.class, LineSpansTest::lineOfQuavers, LineSpansTest::newTriplet,
-                EXISTING, OVERLAPPING, Outcome.ONLY_THE_NEW),
+                Tuplet.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTriplet,
+                EXISTING, OVERLAPPING_SAME_LENGTH, Outcome.ONLY_THE_NEW),
             new DisplacementCase("a tuplet leaves the tuplet flush against it standing",
-                Tuplet.class, LineSpansTest::lineOfQuavers, LineSpansTest::newTriplet,
+                Tuplet.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTriplet,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("a trill removes the trill it overlaps",
-                Trill.class, LineSpansTest::lineOfQuavers, Trill::new,
+                Trill.class, () -> lineOfQuavers(LINE_LENGTH), Trill::new,
                 EXISTING, OVERLAPPING, Outcome.ONLY_THE_NEW),
             new DisplacementCase("a trill leaves the trill flush against it standing",
-                Trill.class, LineSpansTest::lineOfQuavers, Trill::new,
+                Trill.class, () -> lineOfQuavers(LINE_LENGTH), Trill::new,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("an ending stands beside the ending a repeat opening separates it from",
                 Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding,
@@ -279,7 +287,10 @@ class LineSpansTest extends UnitTest {
     /** The element strictly inside {@link #LAST_LEFT}, which the second case deletes. */
     private static final ElementRange LAST_LEFT_INTERIOR = ElementRange.single(4);
 
-    private static final double FIRST_HAIRPIN_X1_SHIFT_SS = 0.5;
+    /** The first element of the line, which the first-note deletion row deletes. */
+    private static final ElementRange FIRST_ELEMENT = ElementRange.single(EXISTING.begin());
+
+    private static final double FIRST_HAIRPIN_Y_OFFSET_SS = 0.5;
 
     /** A hairpin of {@code kind} over {@code range}. */
     private record PlacedHairpin(Hairpin.Kind kind, ElementRange range) {}
@@ -296,13 +307,21 @@ class LineSpansTest extends UnitTest {
      * A deletion from a line of hairpins.
      *
      * @param description the case, as the test's display name
-     * @param hairpins    the hairpins before the deletion, in the order they are added
-     * @param deleted     the elements the deletion takes
+     * @param hairpins    the hairpins before the first deletion, in the order they are added
+     * @param deletions   the elements each deletion takes, in the order they are made
      * @param expected    the hairpins the line holds afterwards, in any order
      */
     private record HairpinDeletionCase(
-        String description, List<PlacedHairpin> hairpins, ElementRange deleted, List<PlacedHairpin> expected
-    ) {}
+        String description, List<PlacedHairpin> hairpins, List<ElementRange> deletions, List<PlacedHairpin> expected
+    ) {
+
+        /** A case with one deletion. */
+        HairpinDeletionCase(
+            String description, List<PlacedHairpin> hairpins, ElementRange deleted, List<PlacedHairpin> expected
+        ) {
+            this(description, hairpins, List.of(deleted), expected);
+        }
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("hairpinDeletionCases")
@@ -310,9 +329,9 @@ class LineSpansTest extends UnitTest {
         HairpinDeletionCase testCase
     ) {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        testCase.hairpins().forEach(placed -> hairpinOver(line, placed.kind(), placed.range()).addTo(line));
+        testCase.hairpins().forEach(placed -> hairpinOver(line, placed.kind(), placed.range()).addTo());
 
-        line.deleteRange(line.effectiveRange(testCase.deleted()));
+        testCase.deletions().forEach(deleted -> line.deleteRange(line.effectiveRange(deleted)));
 
         assertThat(placedHairpins(line)).containsExactlyInAnyOrderElementsOf(testCase.expected());
     }
@@ -337,6 +356,14 @@ class LineSpansTest extends UnitTest {
             new HairpinDeletionCase("two crescendos left touching across a diminuendo stay apart",
                 List.of(crescendo(EXISTING), diminuendo(MIDDLE), crescendo(LAST)), MIDDLE_INTERIOR,
                 List.of(crescendo(EXISTING), diminuendo(MIDDLE_LEFT), crescendo(LAST_LEFT))),
+            new HairpinDeletionCase(
+                "deleting the first note of a crescendo that touches another across a diminuendo leaves them apart",
+                List.of(crescendo(EXISTING), diminuendo(MIDDLE), crescendo(LAST)),
+                List.of(MIDDLE_INTERIOR, FIRST_ELEMENT),
+                List.of(
+                    crescendo(new ElementRange(EXISTING.begin(), EXISTING.end() + ONE_PLACE_BACK)),
+                    diminuendo(MIDDLE_LEFT.shiftedBy(ONE_PLACE_BACK)),
+                    crescendo(LAST_LEFT.shiftedBy(ONE_PLACE_BACK)))),
             new HairpinDeletionCase("two diminuendos left touching across a shortened crescendo stay apart",
                 List.of(diminuendo(MIDDLE_LEFT), crescendo(LAST_LEFT), diminuendo(LAST)), LAST_LEFT_INTERIOR,
                 List.of(
@@ -356,23 +383,23 @@ class LineSpansTest extends UnitTest {
     @Test
     void testTheJoinedHairpinCarriesTheFirstOnesOffsets() {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        var first = crescendoOver(line, EXISTING);
-        first.setX1ShiftSs(FIRST_HAIRPIN_X1_SHIFT_SS);
-        first.addTo(line);
-        crescendoOver(line, ONE_ELEMENT_ON).addTo(line);
+        var first = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
+        first.setUserYOffsetSs(FIRST_HAIRPIN_Y_OFFSET_SS);
+        first.addTo();
+        hairpinOver(line, Hairpin.Kind.CRESCENDO, ONE_ELEMENT_ON).addTo();
 
         deleteElement(line, DELETED_INDEX);
 
         assertThat(line.spanRegistry().getSpans()).singleElement()
             .isInstanceOfSatisfying(Hairpin.class,
-                joined -> assertThat(joined.getX1ShiftSs()).isEqualTo(FIRST_HAIRPIN_X1_SHIFT_SS));
+                joined -> assertThat(joined.getUserYOffsetSs()).isEqualTo(FIRST_HAIRPIN_Y_OFFSET_SS));
     }
 
     @Test
     void testAHairpinWhoseEndpointsBothSurviveADeletionIsLeftAsItIs() {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        var hairpin = crescendoOver(line, EXISTING);
-        hairpin.addTo(line);
+        var hairpin = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
+        hairpin.addTo();
 
         deleteElement(line, DELETED_INDEX);
 
@@ -405,13 +432,13 @@ class LineSpansTest extends UnitTest {
     static Stream<WholeSpanDeletionCase> wholeSpanDeletionCases() {
         return Stream.of(
             new WholeSpanDeletionCase("a beam",
-                Beam.class, LineSpansTest::songLineOfQuavers, LineSpansTest::newBeam, EXISTING),
+                Beam.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newBeam, EXISTING),
             new WholeSpanDeletionCase("a crescendo",
-                Hairpin.class, LineSpansTest::songLineOfQuavers, LineSpansTest::newCrescendo, EXISTING),
+                Hairpin.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newCrescendo, EXISTING),
             new WholeSpanDeletionCase("a tuplet",
-                Tuplet.class, LineSpansTest::songLineOfQuavers, LineSpansTest::newTriplet, EXISTING),
+                Tuplet.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTriplet, EXISTING),
             new WholeSpanDeletionCase("a trill",
-                Trill.class, LineSpansTest::songLineOfQuavers, Trill::new, EXISTING),
+                Trill.class, () -> lineOfQuavers(LINE_LENGTH), Trill::new, EXISTING),
             new WholeSpanDeletionCase("an ending",
                 Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding, EXISTING_ENDING)
         );
@@ -425,16 +452,12 @@ class LineSpansTest extends UnitTest {
         add(line, testCase.newSpan(), testCase.extent());
         song.endSuspendMutationTracking();
 
-        var reports = new ReportRecorder();
-
-        try {
+        ReportRecorder.whileRecording(reports -> {
             song.withModification(() -> line.deleteRange(line.effectiveRange(testCase.extent())));
 
             assertThat(rangesOf(line, testCase.kind())).isEmpty();
             assertThat(reports.reports()).as("the user deleted the span, so nothing is reported").isEmpty();
-        } finally {
-            reports.dispose();
-        }
+        });
     }
 
     private static void deleteElement(Line line, int index) {
@@ -456,24 +479,6 @@ class LineSpansTest extends UnitTest {
         }
 
         return leaves;
-    }
-
-    private static Line lineOfQuavers() {
-        return lineOfQuavers(LINE_LENGTH);
-    }
-
-    /**
-     * A line of a real song holding {@link #LINE_LENGTH} quavers, for a case that edits inside a
-     * modification bracket, which the song mock behind {@link #lineOfQuavers()} cannot open.
-     */
-    private static Line songLineOfQuavers() {
-        var line = editableLine();
-
-        for (var i = 0; i < LINE_LENGTH; i++) {
-            line.addElement(quaver());
-        }
-
-        return line;
     }
 
     /**
@@ -538,15 +543,15 @@ class LineSpansTest extends UnitTest {
     }
 
     private static void add(Line line, BiFunction<StaffElement, StaffElement, Span<?>> newSpan, ElementRange range) {
-        newSpan.apply(line.getElement(range.begin()), line.getElement(range.end())).addTo(line);
+        newSpan.apply(line.getElement(range.begin()), line.getElement(range.end())).addTo();
     }
 
-    /** The extents of every span on {@code line} of the case's kind, in registry order. */
+    /** The extents of every span on {@code line} of the case's kind, in no defined order. */
     private static List<ElementRange> rangesOfKind(Line line, DisplacementCase testCase) {
         return rangesOf(line, testCase.kind());
     }
 
-    /** The extents of every span on {@code line} of {@code kind}, in registry order. */
+    /** The extents of every span on {@code line} of {@code kind}, in no defined order. */
     private static List<ElementRange> rangesOf(Line line, Class<? extends Span<?>> kind) {
         return line.spanRegistry().getSpans().stream()
             .filter(kind::isInstance)

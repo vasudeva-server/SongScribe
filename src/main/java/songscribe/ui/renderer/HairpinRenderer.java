@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import java.awt.BasicStroke;
 import java.awt.Graphics2D;
 import java.awt.geom.Line2D;
+import java.awt.geom.Rectangle2D;
 
 import org.jspecify.annotations.Nullable;
 
@@ -86,15 +87,20 @@ public final class HairpinRenderer {
         Hairpin.Kind kind,
         LineInvariants invariants
     ) {
-        var x1 = layout.xSs();
-        var x2 = x1 + layout.widthSs();
-        var topYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
-        var bottomYSs = topYSs + layout.heightSs();
-        var middleYSs = topYSs + layout.heightSs() / 2.0;
+        var boundsSs = new Rectangle2D.Double(
+            layout.xSs(),
+            RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants),
+            layout.widthSs(),
+            layout.heightSs());
 
-        // HairpinShape.lines' boolean means "tip on the left," not "is a crescendo" —
-        // songscribe.shape is pure geometry and must not depend on songscribe.dom.
-        return HairpinShape.lines(x1, x2, topYSs, bottomYSs, middleYSs, kind == Hairpin.Kind.CRESCENDO);
+        // songscribe.shape is pure geometry and does not depend on songscribe.dom, so it takes
+        // the side the tip is on rather than the hairpin's kind.
+        var tip = switch (kind) {
+            case CRESCENDO -> HairpinShape.Tip.LEFT;
+            case DIMINUENDO -> HairpinShape.Tip.RIGHT;
+        };
+
+        return HairpinShape.lines(boundsSs, tip);
     }
 
     /**

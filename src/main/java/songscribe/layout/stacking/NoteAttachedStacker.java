@@ -31,19 +31,21 @@ import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Direction;
 import songscribe.dom.Trill;
+import songscribe.layout.Chord;
 import songscribe.layout.DecorationLayouts;
+import songscribe.layout.ElementAtColumn;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.ElementSeat;
+import songscribe.layout.Footprint;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
+import songscribe.layout.SupportPadding;
 import songscribe.layout.TrillGeometry;
 import songscribe.shape.AccentShape;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
-
-import static songscribe.layout.stacking.StackingUtils.stackStaccato;
 
 /**
  * Seeds note bounds and stacks note-attached decorations (tiers 1-2).
@@ -55,12 +57,6 @@ import static songscribe.layout.stacking.StackingUtils.stackStaccato;
  * {@link VerticalStackingCalculator} for the full tier order and why it is this way.
  */
 public class NoteAttachedStacker {
-
-    /**
-     * Default vertical margin between note decorations during stacking.
-     * Used for trill until a later phase gives it its own padding.
-     */
-    public static final double NOTE_DECORATION_MARGIN_SS = 0.5;  // 4px
 
     /**
      * Padding a staccato dot keeps from the neighbor it stacks against.
@@ -104,6 +100,11 @@ public class NoteAttachedStacker {
      */
     // LilyPond define-grobs.scm Script staff-padding
     public static final double SCRIPT_STAFF_PADDING_SS = 0.25;
+
+    // The fermata sits above the staff and keeps its full padding from the staff line as well as
+    // from a tie or notehead.
+    private static final AlignedSide FERMATA_SIDE = new AlignedSide(Direction.UP,
+        FERMATA_PADDING_SS, scriptStaffPaddingSs(FERMATA_PADDING_SS), FERMATA_HORIZON_PADDING_SS);
 
     /**
      * Staff-padding for dynamics: the minimum gap they keep from the staff line when the staff
@@ -185,12 +186,23 @@ public class NoteAttachedStacker {
     // ~0.2 ss tip error that midpoint-sampled flat steps introduced.
     private static final int TIE_BOUND_MIN_SAMPLES = 16;
 
-    private final StackingContext context;
-    private final StaffExtents noteAttachedExtents;
+    // A trill's layout records no margin: each note's padding is already folded into the inner
+    // edge it seats at.
+    private static final double TRILL_LAYOUT_MARGIN_SS = 0.0;
 
+    private final StackingContext context;
+    private final StackingLayer noteAttachedLayer;
+
+    /**
+     * Makes the stacker for the line in {@code context}, reserving in {@code noteAttachedExtents}.
+     *
+     * @param context             the line being stacked and the builder layouts are recorded in
+     * @param noteAttachedExtents the note-attached extents layer this stacker owns
+     */
     public NoteAttachedStacker(StackingContext context, StaffExtents noteAttachedExtents) {
         this.context = context;
-        this.noteAttachedExtents = noteAttachedExtents;
+        noteAttachedLayer =
+            new StackingLayer(noteAttachedExtents, context.getBuilder().decorationLayouts());
     }
 
     /**
@@ -205,16 +217,15 @@ public class NoteAttachedStacker {
      */
     public void stackInner() {
         var columns = context.getColumns();
-        var decorationLayouts = context.getBuilder().decorationLayouts();
 
-        // Seed note bounding areas into noteAttachedExtents
+        // Seed note bounding areas into the note-attached layer
         seedNoteBounds();
 
         // Seed the tie arc before the articulations. In LilyPond a script takes the tie as a
         // side-support element (Script_engraver::acknowledge_tie -> add_support), so the tie is
         // innermost — nearest the note — and each script is positioned just *outside* it wherever
         // the two overlap horizontally. This is the opposite of a slur, which is stacked outside
-        // the scripts via `avoid-slur`; ties were previously modelled as slurs by mistake. Seeding
+        // the scripts via `avoid-slur`. Seeding
         // the tie first lets the staccato and accent passes clear it through the same skyline
         // query they already use for the notehead.
         seedTieBounds();
@@ -225,11 +236,11 @@ public class NoteAttachedStacker {
         // — leaves the articulations exactly where they'd sit untied, while a center-attached one,
         // which starts on top of the notehead, pushes them outward.
         for (var column : columns) {
-            stackStaccatoColumn(column, decorationLayouts);
+            stackStaccatoColumn(column);
         }
 
         for (var column : columns) {
-            stackAccentColumn(column, decorationLayouts);
+            stackAccentColumn(column);
         }
     }
 
@@ -240,20 +251,20 @@ public class NoteAttachedStacker {
      * bracket therefore skips (tuplet-bracket.cc lines 688-690): rather than being cleared by the
      * bracket, they float outside it. The full pipeline honours that by running this phase after the
      * bracket has reserved its footprint and passing the layer holding it, so the skyline query below
-     * pushes them clear (issue #520). The bracket's own placement is unaffected — it never consults
+     * pushes them clear. The bracket's own placement is unaffected — it never consults
      * the skyline, deriving its ceiling from note tips and inner scripts alone.
      *
      * @param outerExtents the layer to stack against and reserve into: the tuplet bracket's layer in
      *                     the full pipeline, or this stacker's own layer where no bracket exists
      */
     public void stackOuterScripts(StaffExtents outerExtents) {
-        var decorationLayouts = context.getBuilder().decorationLayouts();
+        var outerLayer = new StackingLayer(outerExtents, context.getBuilder().decorationLayouts());
 
         for (var column : context.getColumns()) {
-            stackFermata(column, outerExtents, decorationLayouts);
+            stackFermata(column, outerLayer);
         }
 
-        stackTrills(outerExtents, decorationLayouts);
+        stackTrills(outerLayer);
     }
 
     /**
@@ -292,11 +303,13 @@ public class NoteAttachedStacker {
 
         // Seed note bounds using the non-beamed path
         var bounds = computeNoteBounds(note);
-        extents.ySet(true, xSs, noteheadWidthSs, bounds.topSs());
-        extents.ySet(false, xSs, noteheadWidthSs, bounds.botSs());
+        var noteheadFootprint = new Footprint(xSs, noteheadWidthSs);
+        extents.ySet(Direction.UP, noteheadFootprint, bounds.topSs());
+        extents.ySet(Direction.DOWN, noteheadFootprint, bounds.botSs());
 
         var decorationLayouts = new DecorationLayouts.Builder();
-        var staffPosition = ElementSeat.seatSp(note).value();
+        var layer = new StackingLayer(extents, decorationLayouts);
+        var host = new ElementAtColumn<>(note, xSs);
 
         // Tier 1: Articulations
         Articulation staccatoArticulation = null;
@@ -309,17 +322,13 @@ public class NoteAttachedStacker {
             }
         }
 
-        var direction = articulationDirection(note);
-
         // No tie in the preview: place the staccato, then the accent just outside it —
         // equivalent to the full pipeline with no tie seeded ahead of the two passes.
-        stackStaccatoOnly(staccatoArticulation, extents, note, xSs, STACCATO_PADDING_SS,
-            staffPosition, direction, decorationLayouts);
-        stackAccentAboveExtents(accentArticulation, extents, note, xSs, direction, decorationLayouts);
+        stackStaccatoOnly(staccatoArticulation, layer, host);
+        stackAccentAboveExtents(accentArticulation, layer, host);
 
         // Tier 2: Fermata
-        stackFermataAt(note.findAttachment(FermataAttachment.class), extents, note, xSs,
-            decorationLayouts);
+        stackFermataAt(note.findAttachment(FermataAttachment.class), layer, host);
 
         return decorationLayouts.build();
     }
@@ -366,6 +375,7 @@ public class NoteAttachedStacker {
     private void seedNoteBounds() {
         var columns = context.getColumns();
         var builder = context.getBuilder();
+        var extents = noteAttachedLayer.extents();
 
         for (var column : columns) {
             var element = column.getElement();
@@ -388,9 +398,9 @@ public class NoteAttachedStacker {
                 botSs = bounds.botSs();
             }
 
-            var noteheadWidthSs = element.getType().getElementWidthSs();
-            noteAttachedExtents.ySet(true, xSs, noteheadWidthSs, topSs);
-            noteAttachedExtents.ySet(false, xSs, noteheadWidthSs, botSs);
+            var noteheadFootprint = new Footprint(xSs, element.getType().getElementWidthSs());
+            extents.ySet(Direction.UP, noteheadFootprint, topSs);
+            extents.ySet(Direction.DOWN, noteheadFootprint, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
             var noteheadCenterYSs = ElementSeat.seatSs(element);
@@ -414,20 +424,8 @@ public class NoteAttachedStacker {
      * down) reserve above the staff; downward-arcing ties (stem up) reserve below.
      */
     private void seedTieBounds() {
-        var line = context.getLine();
-        var builder = context.getBuilder();
-        var ties = line.ownedTies();
-
-        if (ties.isEmpty()) {
-            return;
-        }
-
-        for (var tie : ties) {
-            var tieLayout = builder.getTieLayout(tie);
-
-            if (tieLayout == null) {
-                continue;
-            }
+        for (var tieLayout : context.getBuilder().tieLayouts()) {
+            var tie = tieLayout.placement().tie();
 
             // Sample the outer Bezier curve to reserve tie vertical extent
             var sx = tieLayout.startXSs();
@@ -439,41 +437,45 @@ public class NoteAttachedStacker {
             }
 
             // Reserve on the side the renderer actually draws: Tie.arcSign() > 0 ⇒ arc below
-            // (reserve on the below side, above=false); < 0 ⇒ arc above. Routing this through the
-            // shared rule keeps a conflicting-stem tie from reserving the opposite side from its bulge.
-            var arcsDown = tie.arcSign() > 0;
+            // (reserve on the below side); < 0 ⇒ arc above. Routing this through the shared rule
+            // keeps a conflicting-stem tie from reserving the opposite side from its bulge.
+            var arcSide = tie.arcSign() > 0 ? Direction.DOWN : Direction.UP;
 
-            seedTieArcIntoExtents(tieLayout, spanWidthSs, !arcsDown);
+            seedTieArcIntoExtents(tieLayout, spanWidthSs, arcSide);
         }
     }
 
     /**
      * Reserves the tie arc's vertical extent in the note-attached layer so line sizing accounts for
-     * the arc. For downward arcs (above=false) also feeds the sampled Y values into the context's
+     * the arc. For downward arcs ({@link Direction#DOWN}) also feeds the sampled Y values into the
+     * context's
      * below-staff content extent so lyric placement clears the arc. Only ties flow through this
-     * path today; slur seeding is future work (#515).
+     * path today; slur seeding is future work.
      * <p>
      * The reservation spans exactly {@code [startXSs, endXSs]} — where the arc physically is — and
      * never the noteheads it joins. That single rule reproduces LilyPond in both attachment modes:
      * an edge-attached tie starts a {@code NOTE_HEAD_GAP_SS} beyond the notehead, clear of the
      * scripts, which therefore sit exactly where they would untied; a center-attached tie (one whose
      * seat drops past the head box, so {@code tieEndpointXSs} recedes to the notehead center) starts
-     * inside the head, genuinely overlaps the scripts, and pushes them outward. Reserving the arc
-     * across the notehead — as this once did, at the Bezier Y a full notehead-width into the span —
-     * forced the second behaviour onto both.
+     * inside the head, genuinely overlaps the scripts, and pushes them outward.
      * <p>
      * The arc is reserved as a run of chords between points sampled on the curve itself, rather than
      * as flat steps at each segment's midpoint Y. The chord's endpoints are the curve's own
      * {@code (x(t), y(t))}, so the two must be evaluated at the same {@code t}: the control points
      * are inset by {@code BezierBow.indent}, not by a third of the span, so {@code x} is not linear
      * in {@code t} and a chord drawn between uniform x-steps would shear against the arc.
+     *
+     * @param tieLayout   the tie's resolved geometry
+     * @param spanWidthSs the tie's horizontal run, which sets the chord count
+     * @param arcSide     the side of the staff the arc bulges toward, and so reserves on
      */
     private void seedTieArcIntoExtents(
         LayoutResult.TieLayout tieLayout,
         double spanWidthSs,
-        boolean above) {
+        Direction arcSide) {
 
         var sampleCount = Math.max(TIE_BOUND_MIN_SAMPLES, (int) Math.ceil(spanWidthSs));
+        var extents = noteAttachedLayer.extents();
         var startXSs = evaluateBezierXSs(0.0, tieLayout);
         var startYSs = evaluateBezierYSs(0.0, tieLayout);
 
@@ -482,9 +484,9 @@ public class NoteAttachedStacker {
             var endXSs = evaluateBezierXSs(tEnd, tieLayout);
             var endYSs = evaluateBezierYSs(tEnd, tieLayout);
 
-            noteAttachedExtents.ySetSloped(above, startXSs, endXSs, startYSs, endYSs);
+            extents.ySetSloped(arcSide, new Chord(startXSs, endXSs, startYSs, endYSs));
 
-            if (!above) {
+            if (arcSide.isDown()) {
                 context.updateBotContentExtentSs(Math.max(startYSs, endYSs));
             }
 
@@ -501,24 +503,48 @@ public class NoteAttachedStacker {
      * @return the Y coordinate of the outer curve at {@code t}
      */
     static double evaluateBezierYSs(double t, LayoutResult.TieLayout tieLayout) {
-        return cubicAt(t, tieLayout.startYSs(), tieLayout.cp1YSs(), tieLayout.cp2YSs(),
+        var axis = new CubicAxis(tieLayout.startYSs(), tieLayout.cp1YSs(), tieLayout.cp2YSs(),
             tieLayout.endYSs());
+
+        return axis.at(t);
     }
 
     /**
      * Evaluates the outer cubic Bezier curve X at parameter {@code t}.
      */
     static double evaluateBezierXSs(double t, LayoutResult.TieLayout tieLayout) {
-        return cubicAt(t, tieLayout.startXSs(), tieLayout.cp1XSs(), tieLayout.cp2XSs(),
+        var axis = new CubicAxis(tieLayout.startXSs(), tieLayout.cp1XSs(), tieLayout.cp2XSs(),
             tieLayout.endXSs());
+
+        return axis.at(t);
     }
 
-    private static double cubicAt(double t, double p0, double p1, double p2, double p3) {
-        var mt = 1.0 - t;
-        return mt * mt * mt * p0
-            + 3 * mt * mt * t * p1
-            + 3 * mt * t * t * p2
-            + t * t * t * p3;
+    /**
+     * One coordinate of a cubic Bezier curve, given by its four control values in curve order.
+     *
+     * @param p0 the value at the start point
+     * @param p1 the value at the first control point
+     * @param p2 the value at the second control point
+     * @param p3 the value at the end point
+     */
+    private record CubicAxis(double p0, double p1, double p2, double p3) {
+
+        // The Bernstein coefficient of the two interior control points.
+        private static final int INTERIOR_COEFFICIENT = 3;
+
+        /**
+         * Returns this coordinate at curve parameter {@code t}.
+         *
+         * @param t the curve parameter, in [0, 1]
+         * @return the coordinate's value at {@code t}
+         */
+        double at(double t) {
+            var mt = 1.0 - t;
+            return mt * mt * mt * p0
+                + INTERIOR_COEFFICIENT * mt * mt * t * p1
+                + INTERIOR_COEFFICIENT * mt * t * t * p2
+                + t * t * t * p3;
+        }
     }
 
 
@@ -534,10 +560,7 @@ public class NoteAttachedStacker {
      * protrudes into its footprint, since LilyPond adds the tie as a side-support element to every
      * script.
      */
-    private void stackStaccatoColumn(
-        ElementColumn column,
-        DecorationLayouts.Builder decorationLayouts) {
-
+    private void stackStaccatoColumn(ElementColumn column) {
         if (!(column.getElement() instanceof NoteElement note)) {
             return;
         }
@@ -548,11 +571,10 @@ public class NoteAttachedStacker {
             return;
         }
 
-        var direction = articulationDirection(note);
-        var edgeYSs = stackStaccatoOnly(staccato, noteAttachedExtents, note, column.getXSs(),
-            STACCATO_PADDING_SS, note.getStaffPosition().value(), direction, decorationLayouts);
+        var edgeYSs = stackStaccatoOnly(
+            staccato, noteAttachedLayer, new ElementAtColumn<>(note, column.getXSs()));
 
-        updateBelowStaffContentExtent(direction, edgeYSs);
+        updateBelowStaffContentExtent(articulationDirection(note), edgeYSs);
     }
 
     /**
@@ -562,12 +584,9 @@ public class NoteAttachedStacker {
      * where its arc protrudes past the note, else the notehead or staff line. Every script takes
      * the tie as a side-support element in LilyPond, so the accent clears the arc directly when no
      * staccato sits between them. Clearance is uniformly {@link #ACCENT_PADDING_SS} from the
-     * neighbor's outer edge, resolved by {@link StackingUtils#placeAndReserveClamped}.
+     * neighbor's outer edge, resolved by {@link StackingLayer#placeAndReserveClamped}.
      */
-    private void stackAccentColumn(
-        ElementColumn column,
-        DecorationLayouts.Builder decorationLayouts) {
-
+    private void stackAccentColumn(ElementColumn column) {
         if (!(column.getElement() instanceof NoteElement note)) {
             return;
         }
@@ -578,79 +597,83 @@ public class NoteAttachedStacker {
             return;
         }
 
-        var direction = articulationDirection(note);
+        var edgeYSs = stackAccentAboveExtents(
+            accent, noteAttachedLayer, new ElementAtColumn<>(note, column.getXSs()));
 
-        var edgeYSs = stackAccentAboveExtents(accent, noteAttachedExtents, note,
-            column.getXSs(), direction, decorationLayouts);
-
-        updateBelowStaffContentExtent(direction, edgeYSs);
+        updateBelowStaffContentExtent(articulationDirection(note), edgeYSs);
     }
 
     /**
      * Places the staccato dot (if present) at its note-relative anchor
-     * ({@link StackingUtils#stackStaccato}). Shared by the full pipeline's staccato pass and the
-     * no-tie preview so the two agree on staccato placement.
+     * ({@link StackingLayer#stackStaccato}), on the side {@link #articulationDirection} gives and
+     * with {@link #STACCATO_PADDING_SS}. Shared by the full pipeline's staccato pass and the no-tie
+     * preview so the two agree on staccato placement.
      *
+     * @param staccato the note's staccato, or {@code null} when it has none
+     * @param layer    the layer to stack against, reserve in and record into
+     * @param host     the note the dot sits over and its column's X
      * @return the dot's top Y (above) or bottom Y (below) in staff-space units, or {@code null}
      *     when no staccato is present
      */
     private static @Nullable Double stackStaccatoOnly(
-        @Nullable Articulation staccato,
-        StaffExtents extents,
-        StaffElement note,
-        double columnXSs, double paddingSs, int staffPosition,
-        Direction direction,
-        DecorationLayouts.Builder decorationLayouts) {
+        @Nullable Articulation staccato, StackingLayer layer, ElementAtColumn<NoteElement> host) {
 
         if (staccato == null) {
             return null;
         }
 
-        var widthSs = staccato.intrinsicWidthSs();
-        var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
+        var note = host.element();
+        var direction = articulationDirection(note);
+        var footprint = NoteGeometry.centeredOverNotehead(host, staccato.intrinsicWidthSs());
         var reserveProfile = direction.isUp()
             ? STACCATO_RESERVE_PROFILE_ABOVE
             : STACCATO_RESERVE_PROFILE_BELOW;
+        var outline = new Outline(footprint, new StaffExtents.Profiles(
+            StaffExtents.Profile.flat(footprint.widthSs()), reserveProfile));
+        var side = new AlignedSide(direction, STACCATO_PADDING_SS,
+            scriptStaffPaddingSs(STACCATO_PADDING_SS), StackingUtils.SCRIPT_HORIZON_PADDING_SS);
 
-        return stackStaccato(direction, extents, staccato, xSs,
-            widthSs, reserveProfile, paddingSs,
-            scriptStaffPaddingSs(paddingSs), StackingUtils.SCRIPT_HORIZON_PADDING_SS,
-            staffPosition, decorationLayouts);
+        return layer.stackStaccato(staccato, outline, side, note.getStaffPosition().value());
     }
 
     /**
      * Places the accent (if present) against its immediate neighbor in the skyline via
-     * {@link StackingUtils#placeAndReserveClamped}. The neighbor — tie, staccato, notehead, or
-     * staff line — and its clearance are resolved from the extents, so one accent path serves
-     * both the full pipeline's accent pass and the no-tie preview.
+     * {@link StackingLayer#placeAndReserveClamped}, on the side {@link #articulationDirection}
+     * gives. The neighbor — tie, staccato, notehead, or staff line — and its clearance are resolved
+     * from the extents, so one accent path serves both the full pipeline's accent pass and the
+     * no-tie preview.
+     * <p>
+     * The collision footprint is centered on the notehead, exactly where
+     * {@code ArticulationRenderer} draws the glyph. The column x is not the footprint's left edge:
+     * an accent is wider than a notehead, so anchoring its box at the column x pushes the box off
+     * the glyph by half the width difference and makes it collide with whatever sits to the note's
+     * right — a tie arc, most visibly.
      *
+     * @param accent the note's accent, or {@code null} when it has none
+     * @param layer  the layer to stack against, reserve in and record into
+     * @param host   the note the accent sits over and its column's X
      * @return the accent's top Y (above) or bottom Y (below) in staff-space units, or
      *     {@code null} when no accent is present
      */
     private static @Nullable Double stackAccentAboveExtents(
-        @Nullable Articulation accent,
-        StaffExtents extents,
-        StaffElement note,
-        double columnXSs,
-        Direction direction,
-        DecorationLayouts.Builder decorationLayouts) {
+        @Nullable Articulation accent, StackingLayer layer, ElementAtColumn<NoteElement> host) {
 
         if (accent == null) {
             return null;
         }
 
-        var widthSs = accent.intrinsicWidthSs();
-        var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
+        var direction = articulationDirection(host.element());
+        var footprint = NoteGeometry.centeredOverNotehead(host, accent.intrinsicWidthSs());
         var innerEdge = direction.isUp() ? ACCENT_PROFILE_ABOVE : ACCENT_PROFILE_BELOW;
 
         // The accent reserves its flat box, not its wedge: letting a dynamic or hairpin nestle under
-        // its arm is a separate change with a far wider blast radius (#528 §6).
-        var profiles = new StaffExtents.Profiles(innerEdge, StaffExtents.Profile.flat(widthSs));
+        // its arm is a separate change.
+        var outline = new Outline(footprint, new StaffExtents.Profiles(
+            innerEdge, StaffExtents.Profile.flat(footprint.widthSs())));
+        var side = new AlignedSide(direction, ACCENT_PADDING_SS,
+            scriptStaffPaddingSs(ACCENT_PADDING_SS), StackingUtils.SCRIPT_HORIZON_PADDING_SS);
 
-        return StackingUtils.placeAndReserveClamped(direction, extents, accent, xSs,
-            widthSs, profiles,
-            ACCENT_PADDING_SS, scriptStaffPaddingSs(ACCENT_PADDING_SS),
-            StackingUtils.SCRIPT_HORIZON_PADDING_SS, decorationLayouts);
+        return layer.placeAndReserveClamped(accent, outline, side);
     }
 
     /**
@@ -663,19 +686,6 @@ public class NoteAttachedStacker {
         if (direction.isDown() && edgeYSs != null) {
             context.updateBotContentExtentSs(edgeYSs);
         }
-    }
-
-    /**
-     * X of an articulation's collision footprint — the glyph's left edge, centered on the notehead,
-     * which is exactly where {@code ArticulationRenderer} draws it. The note's column x is not the
-     * footprint: an accent is wider than a notehead, so anchoring its box at the column x pushes the
-     * box off the glyph by half the width difference and makes it collide with whatever sits to the
-     * note's right — a tie arc, most visibly.
-     */
-    private static double articulationFootprintXSs(
-        StaffElement note, double columnXSs, double widthSs) {
-
-        return NoteGeometry.centeredOverNoteheadXSs(note, columnXSs, widthSs);
     }
 
     /**
@@ -709,50 +719,42 @@ public class NoteAttachedStacker {
     /**
      * Stacks fermata for the given column.
      */
-    private void stackFermata(
-        ElementColumn column,
-        StaffExtents outerExtents,
-        DecorationLayouts.Builder decorationLayouts) {
-
+    private void stackFermata(ElementColumn column, StackingLayer outerLayer) {
         var note = column.getElement();
 
-        stackFermataAt(note.findAttachment(FermataAttachment.class), outerExtents,
-            note, column.getXSs(), decorationLayouts);
+        stackFermataAt(note.findAttachment(FermataAttachment.class), outerLayer,
+            new ElementAtColumn<>(note, column.getXSs()));
     }
 
     /**
-     * Places the fermata (if present) above the staff via {@link
-     * StackingUtils#placeAndReserveClamped}. Shared by the full pipeline's fermata pass and the
-     * no-tie preview so the two agree on fermata placement.
+     * Places the fermata (if present) above the staff via
+     * {@link StackingLayer#placeAndReserveClamped}. Shared by the full pipeline's fermata pass and
+     * the no-tie preview so the two agree on fermata placement.
      * <p>
-     * The collision footprint is centered on the notehead, exactly where {@code FermataRenderer}
-     * draws the glyph — not anchored at the column x. Anchoring at the column x offsets the box
-     * from the glyph by half the difference between the fermata's width and the notehead's, so it
-     * clears the tie at the wrong x and the drawn glyph's inner bottom corner ends up nearer the
-     * tie than its padding. This mirrors {@link #articulationFootprintXSs}.
+     * The collision footprint is centered on the notehead
+     * ({@link NoteGeometry#centeredOverNotehead}), exactly
+     * where {@code FermataRenderer} draws the glyph — not anchored at the column x. Anchoring at the
+     * column x offsets the box from the glyph by half the difference between the fermata's width
+     * and the notehead's, so it clears the tie at the wrong x and the drawn glyph's inner bottom
+     * corner ends up nearer the tie than its padding.
      * <p>
      * The staff clamp goes through {@link #scriptStaffPaddingSs}, so the fermata keeps its full
      * padding from the top staff line just as it does from a tie or notehead.
+     *
+     * @param fermata the element's fermata, or {@code null} when it has none
+     * @param layer   the layer to stack against, reserve in and record into
+     * @param host    the element the fermata sits over and its column's X
      */
     private static void stackFermataAt(
-        @Nullable FermataAttachment fermata,
-        StaffExtents extents,
-        StaffElement note,
-        double columnXSs,
-        DecorationLayouts.Builder decorationLayouts) {
+        @Nullable FermataAttachment fermata, StackingLayer layer, ElementAtColumn<?> host) {
 
         if (fermata == null) {
             return;
         }
 
-        var widthSs = fermata.intrinsicWidthSs();
-        var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
+        var footprint = NoteGeometry.centeredOverNotehead(host, fermata.intrinsicWidthSs());
 
-        StackingUtils.placeAndReserveClamped(Direction.UP, extents, fermata, xSs,
-            widthSs,
-            StaffExtents.Profiles.flat(widthSs),
-            FERMATA_PADDING_SS, scriptStaffPaddingSs(FERMATA_PADDING_SS),
-            FERMATA_HORIZON_PADDING_SS, decorationLayouts);
+        layer.placeAndReserveClamped(fermata, Outline.flat(footprint), FERMATA_SIDE);
     }
 
     /**
@@ -761,23 +763,21 @@ public class NoteAttachedStacker {
      * Processes {@link Trill} spans from {@code line.spanRegistry().findSpans(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
-    private void stackTrills(StaffExtents outerExtents, DecorationLayouts.Builder decorationLayouts) {
+    private void stackTrills(StackingLayer outerLayer) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var trills = line.spanRegistry().findSpans(Trill.class);
 
         for (var trill : trills) {
-            stackSingleTrill(trill, outerExtents, columnsByElement, decorationLayouts);
+            stackSingleTrill(trill, outerLayer, columnsByElement);
         }
     }
 
     /**
      * Stacks a single trill span.
      * <p>
-     * Unlike hairpins and endings, trills allow a missing or same-as-anchor end note
-     * (single-note trill), defaulting endX to the anchor X.
-     * <p>
-     * The trill is one horizontal reservation spanning the range, but each note in the range
+     * The trill is one horizontal reservation over its ink extent
+     * ({@link TrillGeometry#inkExtentSs}), but each note in the range
      * demands its own vertical clearance: the first note seats the trill as a script
      * ({@link #TRILL_SCRIPT_PADDING_SS}), later notes as a spanner
      * ({@link #TRILL_SPANNER_PADDING_SS}). LilyPond places the whole span at whichever note pushes
@@ -786,45 +786,19 @@ public class NoteAttachedStacker {
      */
     private void stackSingleTrill(
         Trill trill,
-        StaffExtents outerExtents,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        DecorationLayouts.Builder decorationLayouts) {
+        StackingLayer outerLayer,
+        Map<StaffElement, ElementColumn> columnsByElement) {
 
-        var anchor = trill.getAnchorElement();
+        var spanColumns = ElementColumn.resolveSpan(trill, columnsByElement);
 
-        if (anchor == null) {
+        if (spanColumns == null) {
             return;
-        }
-
-        var anchorColumn = columnsByElement.get(anchor);
-
-        if (anchorColumn == null) {
-            return;
-        }
-
-        var anchorXSs = anchorColumn.getXSs();
-        var endXSs = anchorXSs;
-
-        var endNote = trill.getEndElement();
-
-        if (endNote != null && endNote != anchor) {
-            var endColumn = columnsByElement.get(endNote);
-
-            if (endColumn != null) {
-                endXSs = endColumn.getXSs();
-            }
         }
 
         var line = context.getLine();
+        var outerExtents = outerLayer.extents();
         var anchorIndex = trill.requireAnchorElementIndex();
         var endIndex = trill.requireEndElementIndex();
-
-        // requireEndElementIndex answers from the end element's own line, so a trill whose end
-        // sits in a later line can report an index below its anchor's; it degenerates to the
-        // anchor alone, seated with the first-note script padding.
-        if (endIndex < anchorIndex) {
-            endIndex = anchorIndex;
-        }
 
         // Start from the staff clamp. With no support the trill is a lone script at its anchor, so
         // it keeps its own script padding from the staff line — never seating closer to the staff
@@ -860,8 +834,8 @@ public class NoteAttachedStacker {
                 paddingSs = TRILL_SPANNER_PADDING_SS;
             }
 
-            var support = outerExtents.clearance(true, footprintXSs, profile,
-                paddingSs, StackingUtils.SCRIPT_HORIZON_PADDING_SS);
+            var support = outerExtents.clearance(Direction.UP, footprintXSs, profile,
+                new SupportPadding(paddingSs, StackingUtils.SCRIPT_HORIZON_PADDING_SS));
 
             // An empty footprint carries no real reservation, so only the staff clamp applies.
             if (!support.present()) {
@@ -872,10 +846,12 @@ public class NoteAttachedStacker {
         }
 
         // Reserve the full span at the computed inner edge; the per-note padding is already folded
-        // in, so the placement core adds no further margin.
-        var widthSs = TrillGeometry.getSpanWidthSs(anchorXSs, endXSs);
-        StackingUtils.placeAndReserve(Direction.UP, outerExtents, trill, anchorXSs, widthSs,
-            innerEdgeYSs, 0.0, decorationLayouts);
+        // in, so the placement adds no further margin.
+        var inkExtent = TrillGeometry.inkExtentSs(trill, spanColumns);
+        var footprint = new Footprint(inkExtent.leftXSs(), inkExtent.widthSs());
+
+        outerLayer.placeAtInnerEdge(trill, Outline.flat(footprint),
+            new InnerEdge(Direction.UP, innerEdgeYSs, TRILL_LAYOUT_MARGIN_SS));
     }
 
 }

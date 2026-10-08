@@ -243,7 +243,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     /**
      * The song-terminal type this entry stands for, or {@code null} if it stands for none. An
      * entry stands only for itself, so the two that can act on the terminal are exactly the two
-     * whose own type may occupy the terminal slot (issue #713): the right repeat in
+     * whose own type may occupy the terminal slot: the right repeat in
      * {@code RepeatsMenu}/the toolbar, and {@link FinalDoubleBarlineAction} at the foot of
      * {@code BarlineMenu}.
      * <p>
@@ -288,7 +288,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     }
 
     @Override
-    public StaffElement createReplacement(StaffElement element, boolean selected) {
+    public StaffElement createReplacement(StaffElement element) {
         var targetType = element.getType().isRest() ? type.toRest() : type.toNote();
         return StaffElement.convertedFrom(targetType, element);
     }

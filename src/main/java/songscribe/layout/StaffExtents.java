@@ -22,6 +22,9 @@ package songscribe.layout;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.DoubleBinaryOperator;
+
+import songscribe.dom.Direction;
 
 /**
  * Exact-interval y-extent skyline for above/below-staff collision detection.
@@ -59,16 +62,22 @@ public class StaffExtents {
      * rectangle edge; a sloped one is a chord of some curve.
      */
     private record Building(
-        double xStartSs, double xEndSs, double yStartSs, double yEndSs, double slopeSs) {
+        double xStartSs, double xEndSs, double yStartSs, double yEndSs, double slopeSs)
+        implements LinearRun {
 
         /** {@code slopeSs} is derived; a query evaluates the building millions of times per line. */
-        Building(double xStartSs, double xEndSs, double yStartSs, double yEndSs) {
-            this(xStartSs, xEndSs, yStartSs, yEndSs,
-                StaffExtents.slopeSs(xStartSs, xEndSs, yStartSs, yEndSs));
+        Building(Chord chord) {
+            this(chord.xStartSs(), chord.xEndSs(), chord.yStartSs(), chord.yEndSs(),
+                chord.slopeSs());
         }
 
         boolean isFlat() {
             return slopeSs == 0.0;
+        }
+
+        @Override
+        public double startValueSs() {
+            return yStartSs;
         }
 
         /**
@@ -77,43 +86,48 @@ public class StaffExtents {
          * {@link StaffExtents#clearance}).
          */
         double heightSs(double xSs) {
-            return valueAt(xSs, xStartSs, xEndSs, yStartSs, slopeSs);
+            return valueAt(xSs);
         }
     }
 
     /**
-     * The slope of a linear run, or zero where it is flat or degenerate. A non-zero slope therefore
-     * implies {@code xEndSs > xStartSs}, which is what lets {@link #valueAt} clamp without checking
-     * the interval's orientation.
+     * A linear run with a precomputed slope: a reservation's, carrying an absolute Y, or a profile
+     * segment's, carrying an offset from a bounding edge. The arithmetic of reading one is the same
+     * for both, so {@link Building#heightSs} and {@link Profile.Segment#offsetSs} share it here.
      */
-    private static double slopeSs(
-        double xStartSs, double xEndSs, double yStartSs, double yEndSs) {
+    private sealed interface LinearRun permits Building, Profile.Segment {
 
-        var spanSs = xEndSs - xStartSs;
+        double xStartSs();
 
-        if (spanSs <= 0.0 || yStartSs == yEndSs) {
-            return 0.0;
+        double xEndSs();
+
+        /** The run's value at {@link #xStartSs()}. */
+        double startValueSs();
+
+        /**
+         * The run's slope, from {@link Chord#slopeSs}: non-zero only when
+         * {@code xEndSs() > xStartSs()}, which is what lets {@link #valueAt} clamp without checking
+         * the interval's orientation.
+         */
+        double slopeSs();
+
+        /**
+         * Returns the run's value at {@code xSs}, holding its endpoint value beyond either end.
+         *
+         * @param xSs the X to read the run at, in the same frame as {@link #xStartSs()}
+         * @return the run's value at {@code xSs}, clamped to its ends
+         */
+        default double valueAt(double xSs) {
+            var slopeSs = slopeSs();
+            var startValueSs = startValueSs();
+
+            if (slopeSs == 0.0) {
+                return startValueSs;
+            }
+
+            var xStartSs = xStartSs();
+            return startValueSs + Math.clamp(xSs - xStartSs, 0.0, xEndSs() - xStartSs) * slopeSs;
         }
-
-        return (yEndSs - yStartSs) / spanSs;
-    }
-
-    /**
-     * The value at {@code xSs} of the linear run rising from {@code yStartSs} at {@code xStartSs} at
-     * {@code slopeSs}, holding its endpoint value beyond either end.
-     * <p>
-     * A reservation's run carries an absolute Y and a profile segment's an offset from a bounding
-     * edge, but the arithmetic is the same, so {@link Building#heightSs} and
-     * {@link Profile.Segment#offsetSs} share it.
-     */
-    private static double valueAt(
-        double xSs, double xStartSs, double xEndSs, double yStartSs, double slopeSs) {
-
-        if (slopeSs == 0.0) {
-            return yStartSs;
-        }
-
-        return yStartSs + Math.clamp(xSs - xStartSs, 0.0, xEndSs - xStartSs) * slopeSs;
     }
 
     /**
@@ -138,7 +152,7 @@ public class StaffExtents {
         /** One linear run of an element's inner edge. */
         public record Segment(
             double xStartSs, double xEndSs, double yOffsetStartSs, double yOffsetEndSs,
-            double slopeSs) {
+            double slopeSs) implements LinearRun {
 
             /**
              * {@code slopeSs} is derived, never supplied: this overwrites whatever a caller passes,
@@ -146,7 +160,7 @@ public class StaffExtents {
              * than recomputed because a query evaluates the segment millions of times per line.
              */
             public Segment {
-                slopeSs = StaffExtents.slopeSs(xStartSs, xEndSs, yOffsetStartSs, yOffsetEndSs);
+                slopeSs = new Chord(xStartSs, xEndSs, yOffsetStartSs, yOffsetEndSs).slopeSs();
             }
 
             public Segment(
@@ -159,9 +173,19 @@ public class StaffExtents {
                 return slopeSs == 0.0;
             }
 
+            /**
+             * Returns the segment's offset at its start.
+             *
+             * @return {@link #yOffsetStartSs()}
+             */
+            @Override
+            public double startValueSs() {
+                return yOffsetStartSs;
+            }
+
             /** The offset at {@code localXSs} (relative to the element's left edge), end-clamped. */
             double offsetSs(double localXSs) {
-                return valueAt(localXSs, xStartSs, xEndSs, yOffsetStartSs, slopeSs);
+                return valueAt(localXSs);
             }
         }
 
@@ -174,26 +198,7 @@ public class StaffExtents {
             return new Profile(List.of(new Segment(0.0, widthSs, 0.0, 0.0)));
         }
 
-        /**
-         * The inner edge's outward offset at {@code localXSs}, measured from the element's left
-         * edge, holding the end value beyond either end. {@link #clearance} does not call this — it
-         * needs each segment clipped against a building — but it is how the profile is read.
-         */
-        public double offsetSs(double localXSs) {
-            var first = segments.getFirst();
 
-            if (localXSs <= first.xStartSs()) {
-                return first.yOffsetStartSs();
-            }
-
-            for (var segment : segments) {
-                if (localXSs <= segment.xEndSs()) {
-                    return segment.offsetSs(localXSs);
-                }
-            }
-
-            return segments.getLast().yOffsetEndSs();
-        }
     }
 
     /**
@@ -245,33 +250,36 @@ public class StaffExtents {
     }
 
     /**
-     * Reserves vertical space at the given horizontal range.
+     * Reserves vertical space over a footprint.
      * <p>
      * Appends an exact {@code [xStart, xEnd]} rectangle; no merging with existing reservations is
      * needed because {@link #yGet} already resolves the extreme value across overlapping
      * rectangles.
      *
-     * @param above   true to reserve above-staff space, false for below-staff
-     * @param xSs     horizontal start position in staff-space units
-     * @param widthSs horizontal width in staff-space units
-     * @param ySs     the Y extent to reserve in staff-space units
+     * @param direction {@link Direction#UP} to reserve above-staff space, {@link Direction#DOWN}
+     *                  for below-staff
+     * @param footprint the horizontal range to reserve, in staff-space units
+     * @param ySs       the Y extent to reserve in staff-space units
      */
-    public void ySet(boolean above, double xSs, double widthSs, double ySs) {
-        addBuilding(above, clampToLine(xSs), clampToLine(xSs + widthSs), ySs, ySs);
+    public void ySet(Direction direction, Footprint footprint, double ySs) {
+        var xSs = footprint.xSs();
+
+        addBuilding(direction,
+            new Chord(clampToLine(xSs), clampToLine(xSs + footprint.widthSs()), ySs, ySs));
     }
 
     /**
-     * Reserves a sloped vertical extent: the chord running from {@code (xStartSs, yStartSs)} to
-     * {@code (xEndSs, yEndSs)}. Used to reserve a curve — a tie arc — as a run of chords, which
-     * tracks the curve far more closely than the flat steps an equal number of {@link #ySet} calls
-     * would lay down.
+     * Reserves a sloped vertical extent: {@code chord}, clamped to the line. Used to reserve a
+     * curve — a tie arc — as a run of chords, which tracks the curve far more closely than the flat
+     * steps an equal number of {@link #ySet} calls would lay down.
      *
-     * @param above true to reserve above-staff space, false for below-staff
+     * @param direction {@link Direction#UP} to reserve above-staff space, {@link Direction#DOWN}
+     *                  for below-staff
+     * @param chord     the run to reserve, in staff-space units
      */
-    public void ySetSloped(
-        boolean above, double xStartSs, double xEndSs, double yStartSs, double yEndSs) {
-
-        addBuilding(above, clampToLine(xStartSs), clampToLine(xEndSs), yStartSs, yEndSs);
+    public void ySetSloped(Direction direction, Chord chord) {
+        addBuilding(direction, new Chord(clampToLine(chord.xStartSs()),
+            clampToLine(chord.xEndSs()), chord.yStartSs(), chord.yEndSs()));
     }
 
     /**
@@ -288,12 +296,16 @@ public class StaffExtents {
      * the flat {@link #ySet} rectangle: reserving a profile can only give space back, never take
      * more. A {@link Profile#flat} profile reproduces {@link #ySet} exactly.
      *
-     * @param above   true to reserve above-staff space, false for below-staff
-     * @param xSs     the element's left edge, which {@code profile} x-values are relative to
-     * @param profile the element's outer edge, from {@link ShapeProfile#outerEdge}
-     * @param edgeYSs the element's outer bounding edge (its top above the staff, its bottom below)
+     * @param direction {@link Direction#UP} to reserve above-staff space, {@link Direction#DOWN}
+     *                  for below-staff
+     * @param xSs       the element's left edge, which {@code profile} x-values are relative to
+     * @param profile   the element's outer edge, from {@link ShapeProfile#outerEdge}
+     * @param edgeYSs   the element's outer bounding edge (its top above the staff, its bottom
+     *                  below)
      */
-    public void ySetProfile(boolean above, double xSs, Profile profile, double edgeYSs) {
+    public void ySetProfile(Direction direction, double xSs, Profile profile, double edgeYSs) {
+        var above = direction.isUp();
+
         for (var segment : profile.segments()) {
             // Inward is toward the staff: larger Y above it, smaller Y below.
             var yStartSs = above
@@ -303,17 +315,15 @@ public class StaffExtents {
                 ? edgeYSs + segment.yOffsetEndSs()
                 : edgeYSs - segment.yOffsetEndSs();
 
-            addBuilding(above, clampToLine(xSs + segment.xStartSs()),
-                clampToLine(xSs + segment.xEndSs()), yStartSs, yEndSs);
+            addBuilding(direction, new Chord(clampToLine(xSs + segment.xStartSs()),
+                clampToLine(xSs + segment.xEndSs()), yStartSs, yEndSs));
         }
     }
 
-    private void addBuilding(
-        boolean above, double xStartSs, double xEndSs, double yStartSs, double yEndSs) {
+    private void addBuilding(Direction direction, Chord chord) {
+        var building = new Building(chord);
 
-        var building = new Building(xStartSs, xEndSs, yStartSs, yEndSs);
-
-        if (above) {
+        if (direction.isUp()) {
             aboveBuildings.add(building);
         }
         else {
@@ -322,27 +332,28 @@ public class StaffExtents {
     }
 
     /**
-     * Queries the current vertical extent at the given horizontal range.
+     * Queries the current vertical extent over a footprint.
      * <p>
-     * For above ({@code above=true}): returns the minimum Y reached by any building overlapping the
-     * range (the highest occupied point, Y-down). For below ({@code above=false}): the maximum.
-     * Because a building is linear, its extreme over the clipped sub-range is at one of that
-     * sub-range's two endpoints.
+     * Above the staff: returns the minimum Y reached by any building overlapping the range (the
+     * highest occupied point, Y-down). Below: the maximum. Because a building is linear, its
+     * extreme over the clipped sub-range is at one of that sub-range's two endpoints.
      * <p>
      * A range with no overlapping reservation reports {@code 0.0} — the middle staff line. That is
      * not a sentinel but the identity for the {@code min}/{@code max} every caller folds it into;
      * a caller that must tell "nothing is reserved here" apart from "something is reserved exactly
      * at the middle line" wants {@link #clearance} instead.
      *
-     * @param above   true to query above-staff extent, false for below-staff
-     * @param xSs     horizontal start position in staff-space units
-     * @param widthSs horizontal width in staff-space units
+     * @param direction {@link Direction#UP} to query above-staff extent, {@link Direction#DOWN}
+     *                  for below-staff
+     * @param footprint the horizontal range to query, in staff-space units
      * @return the extreme Y value across the queried range, in staff-space units
      */
-    public double yGet(boolean above, double xSs, double widthSs) {
+    public double yGet(Direction direction, Footprint footprint) {
+        var xSs = footprint.xSs();
         var xStartSs = clampToLine(xSs);
-        var xEndSs = clampToLine(xSs + widthSs);
-        var buildings = above ? aboveBuildings : belowBuildings;
+        var xEndSs = clampToLine(xSs + footprint.widthSs());
+        var buildings = buildingsOn(direction);
+        var outermost = outermost(direction);
         var extremeYSs = 0.0;
         var hasOverlap = false;
 
@@ -356,11 +367,11 @@ public class StaffExtents {
             if (!building.isFlat()) {
                 var clippedStartSs = Math.max(building.xStartSs(), xStartSs);
                 var clippedEndSs = Math.min(building.xEndSs(), xEndSs);
-                candidateYSs = combine(above,
+                candidateYSs = outermost.applyAsDouble(
                     building.heightSs(clippedStartSs), building.heightSs(clippedEndSs));
             }
 
-            extremeYSs = hasOverlap ? combine(above, extremeYSs, candidateYSs) : candidateYSs;
+            extremeYSs = hasOverlap ? outermost.applyAsDouble(extremeYSs, candidateYSs) : candidateYSs;
             hasOverlap = true;
         }
 
@@ -369,7 +380,7 @@ public class StaffExtents {
 
     /**
      * The inner edge an element must sit at to clear every reservation under its {@code profile} by
-     * {@code paddingSs}, or {@link Support#present} {@code == false} when nothing lies under it.
+     * the padding, or {@link Support#present} {@code == false} when nothing lies under it.
      * <p>
      * This is LilyPond's {@code Side_position_interface::aligned_side} distance query
      * (side-position-interface.cc:355), evaluated exactly. LilyPond first merges the supports into
@@ -383,7 +394,7 @@ public class StaffExtents {
      * Skyline::internal_distance} (skyline.cc:617) evaluates only at segment endpoints. No sorting,
      * no merging, no sampling.
      * <p>
-     * <strong>{@code horizonPaddingSs} widens the buildings, never the profile.</strong> That is
+     * <strong>The horizon padding widens the buildings, never the profile.</strong> That is
      * what LilyPond does — {@code internal_distance} pads {@code dim}, the support skyline, and
      * notes that padding {@code other} as well would merely double the padding (skyline.cc:544).
      * The distinction is invisible for a flat profile but decides the sloped case: widening the
@@ -392,19 +403,23 @@ public class StaffExtents {
      * its bounding box would have. Widening the profile instead would let it slip closer.
      * <p>
      * Unlike LilyPond, the widened building keeps its endpoint height rather than tapering back to
-     * {@code -infinity} over a further {@code horizonPaddingSs} ({@code Skyline::padded}); nothing
-     * here places an element in that taper's reach.
+     * {@code -infinity} over a further horizon padding ({@code Skyline::padded}); nothing here
+     * places an element in that taper's reach.
      *
-     * @param above            true to query above-staff space, false for below-staff
-     * @param xSs              the element's left edge, which {@code profile} x-values are relative to
-     * @param profile          the element's inner edge
-     * @param paddingSs        the gap the element keeps from whatever its profile contacts
-     * @param horizonPaddingSs how far beyond its own footprint the element looks for a support
+     * @param direction {@link Direction#UP} to query above-staff space, {@link Direction#DOWN}
+     *                  for below-staff
+     * @param xSs       the element's left edge, which {@code profile} x-values are relative to
+     * @param profile   the element's inner edge
+     * @param padding   the gap the element keeps from its supports and how far it looks for them
+     * @return the padded inner edge, or {@link Support#present} {@code == false} when no
+     *     reservation lies under the horizon-padded profile
      */
     public Support clearance(
-        boolean above, double xSs, Profile profile, double paddingSs, double horizonPaddingSs) {
+        Direction direction, double xSs, Profile profile, SupportPadding padding) {
 
-        var buildings = above ? aboveBuildings : belowBuildings;
+        var buildings = buildingsOn(direction);
+        var outermost = outermost(direction);
+        var horizonPaddingSs = padding.horizonPaddingSs();
         var segments = profile.segments();
         var profileStartSs = clampToLine(xSs + segments.getFirst().xStartSs());
         var profileEndSs = clampToLine(xSs + segments.getLast().xEndSs());
@@ -436,12 +451,11 @@ public class StaffExtents {
                     continue;
                 }
 
-                var overlapStartSs = Math.max(paddedStartSs, segmentStartSs);
-                var overlapEndSs = Math.min(paddedEndSs, segmentEndSs);
-                var candidateYSs = extremeOverOverlap(
-                    above, building, segment, xSs, overlapStartSs, overlapEndSs);
+                var contact = new Contact(building, segment, xSs,
+                    Math.max(paddedStartSs, segmentStartSs), Math.min(paddedEndSs, segmentEndSs));
+                var candidateYSs = contact.extremeYSs(direction);
 
-                extremeYSs = hasOverlap ? combine(above, extremeYSs, candidateYSs) : candidateYSs;
+                extremeYSs = hasOverlap ? outermost.applyAsDouble(extremeYSs, candidateYSs) : candidateYSs;
                 hasOverlap = true;
             }
         }
@@ -450,67 +464,108 @@ public class StaffExtents {
             return NO_SUPPORT;
         }
 
-        return new Support(true, above ? extremeYSs - paddingSs : extremeYSs + paddingSs);
+        var paddingSs = padding.paddingSs();
+        return new Support(true,
+            direction.isUp() ? extremeYSs - paddingSs : extremeYSs + paddingSs);
     }
 
     /**
-     * The extreme of {@code building(x) ± profile(x)} over {@code [overlapStartSs, overlapEndSs]} —
-     * the inner edge this one building forces on this one profile segment, before padding.
-     * <p>
-     * Above the staff the element's edge lies {@code offset} <em>above</em> its inner edge, so the
-     * building's demand at x is {@code height(x) + offset(x)} and the binding x is the minimum;
-     * below, the edge lies {@code offset} below, giving {@code height(x) - offset(x)} and a maximum.
-     * Both summands are linear except where the building's own ends interrupt it (the flat
-     * extension the horizon padding added), so evaluating the four breakpoints is exact.
+     * One building against one profile segment, over the X range where the horizon-padded
+     * building and the segment overlap.
+     *
+     * @param building         the reservation
+     * @param segment          the profile segment
+     * @param profileOriginXSs the element's left edge, which the segment's x-values are relative to
+     * @param overlapStartSs   the overlap's start X
+     * @param overlapEndSs     the overlap's end X
      */
-    private static double extremeOverOverlap(
-        boolean above, Building building, Profile.Segment segment, double profileOriginXSs,
+    private record Contact(
+        Building building, Profile.Segment segment, double profileOriginXSs,
         double overlapStartSs, double overlapEndSs) {
 
-        if (building.isFlat() && segment.isFlat()) {
-            var offsetSs = segment.yOffsetStartSs();
-            return above ? building.yStartSs() + offsetSs : building.yStartSs() - offsetSs;
-        }
+        /**
+         * The extreme of {@code building(x) ± profile(x)} over the overlap — the inner edge this
+         * one building forces on this one profile segment, before padding.
+         * <p>
+         * Above the staff the element's edge lies {@code offset} <em>above</em> its inner edge, so
+         * the building's demand at x is {@code height(x) + offset(x)} and the binding x is the
+         * minimum; below, the edge lies {@code offset} below, giving {@code height(x) - offset(x)}
+         * and a maximum. Both summands are linear except where the building's own ends interrupt it
+         * (the flat extension the horizon padding added), so evaluating the four breakpoints is
+         * exact.
+         *
+         * @param direction the side of the staff the element sits on
+         * @return the binding inner edge Y, unpadded
+         */
+        double extremeYSs(Direction direction) {
+            if (building.isFlat() && segment.isFlat()) {
+                var offsetSs = segment.yOffsetStartSs();
+                return direction.isUp()
+                    ? building.yStartSs() + offsetSs
+                    : building.yStartSs() - offsetSs;
+            }
 
-        var extremeYSs = demandAt(above, building, segment, profileOriginXSs, overlapStartSs);
-        extremeYSs = combine(above, extremeYSs,
-            demandAt(above, building, segment, profileOriginXSs, overlapEndSs));
+            var outermost = outermost(direction);
+            var extremeYSs = demandAt(direction, overlapStartSs);
+            extremeYSs = outermost.applyAsDouble(extremeYSs, demandAt(direction, overlapEndSs));
 
-        // A flat building holds one height across the whole overlap, so the sum is linear there and
-        // the two ends already bound it. Only a sloped building — a tie chord — kinks the sum where
-        // its own ends interrupt the flat extension the horizon padding added.
-        if (building.isFlat()) {
+            // A flat building holds one height across the whole overlap, so the sum is linear
+            // there and the two ends already bound it. Only a sloped building — a tie chord — kinks
+            // the sum where its own ends interrupt the flat extension the horizon padding added.
+            if (building.isFlat()) {
+                return extremeYSs;
+            }
+
+            var buildingStartSs = building.xStartSs();
+
+            if (buildingStartSs > overlapStartSs && buildingStartSs < overlapEndSs) {
+                extremeYSs =
+                    outermost.applyAsDouble(extremeYSs, demandAt(direction, buildingStartSs));
+            }
+
+            var buildingEndSs = building.xEndSs();
+
+            if (buildingEndSs > overlapStartSs && buildingEndSs < overlapEndSs) {
+                extremeYSs =
+                    outermost.applyAsDouble(extremeYSs, demandAt(direction, buildingEndSs));
+            }
+
             return extremeYSs;
         }
 
-        var buildingStartSs = building.xStartSs();
-
-        if (buildingStartSs > overlapStartSs && buildingStartSs < overlapEndSs) {
-            extremeYSs = combine(above, extremeYSs,
-                demandAt(above, building, segment, profileOriginXSs, buildingStartSs));
+        /**
+         * The inner edge the building demands of the segment at one X.
+         *
+         * @param direction the side of the staff the element sits on
+         * @param xSs       the X, within the overlap
+         * @return the building's height moved outward by the segment's offset at {@code xSs}
+         */
+        private double demandAt(Direction direction, double xSs) {
+            var heightYSs = building.heightSs(xSs);
+            var offsetSs = segment.offsetSs(xSs - profileOriginXSs);
+            return direction.isUp() ? heightYSs + offsetSs : heightYSs - offsetSs;
         }
-
-        var buildingEndSs = building.xEndSs();
-
-        if (buildingEndSs > overlapStartSs && buildingEndSs < overlapEndSs) {
-            extremeYSs = combine(above, extremeYSs,
-                demandAt(above, building, segment, profileOriginXSs, buildingEndSs));
-        }
-
-        return extremeYSs;
     }
 
-    private static double demandAt(
-        boolean above, Building building, Profile.Segment segment, double profileOriginXSs,
-        double xSs) {
-
-        var heightYSs = building.heightSs(xSs);
-        var offsetSs = segment.offsetSs(xSs - profileOriginXSs);
-        return above ? heightYSs + offsetSs : heightYSs - offsetSs;
+    /**
+     * The reservations on one side of the staff.
+     *
+     * @param direction the side
+     * @return the live list of that side's buildings
+     */
+    private List<Building> buildingsOn(Direction direction) {
+        return direction.isUp() ? aboveBuildings : belowBuildings;
     }
 
-    private static double combine(boolean above, double leftYSs, double rightYSs) {
-        return above ? Math.min(leftYSs, rightYSs) : Math.max(leftYSs, rightYSs);
+    /**
+     * The fold that picks the more outward of two Ys on one side of the staff: the smaller above
+     * (Y-down), the larger below.
+     *
+     * @param direction the side
+     * @return {@link Math#min} above the staff, {@link Math#max} below
+     */
+    private static DoubleBinaryOperator outermost(Direction direction) {
+        return direction.isUp() ? Math::min : Math::max;
     }
 
     /**

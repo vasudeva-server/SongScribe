@@ -15,9 +15,8 @@ elements, and they stay valid across arbitrary interleaving of undo and redo
 because no instance is ever replaced underneath them. A replacement-based design
 would invalidate all three on every step and need each of them to re-resolve.
 
-A tie holds no such reference to keep valid. It is state on its anchor note, and
-the note it ends on is derived from wherever the notes stand once the step has
-replayed.
+A tie holds no such reference to keep valid: its records (`TieAddition`,
+`TieRemoval`) name only its anchor.
 
 ## The selection follows the edit
 
@@ -43,6 +42,16 @@ not by suppressing recording, which would cost the repaint. Replay mode is a
 separate, orthogonal thing: it stops the model doing companion side-work the
 recorded batch already accounts for. See [mutations.md](mutations.md).
 
+The procedure is the same for both directions: enter replay mode, open the
+bracket inside it, apply every record of the step — last to first for undo,
+first to last for redo — and close both. The nesting is what matters. The rules
+that judge an edit run when its bracket closes, unless the model is replaying
+then; because the bracket closes while replay mode is still in force, those
+rules never run over a replayed step, whose records already carry everything
+they removed when the edit was first made, and nothing is reported again. The
+model owns that nesting, and the replayer owns the order of the records, so no
+caller writes the procedure out for itself.
+
 ## Modified is a position, not a comparison
 
 A document is modified exactly when its position in the history differs from the
@@ -50,7 +59,13 @@ position it held at the last save. This is not a comparison of content: editing
 and then undoing back returns the document to clean, while arriving at an
 identical document by a different route does not.
 
-Two things end that, both deliberately:
+A freshly opened document starts clean at the start of its history, unless the
+load itself changed the song — repaired it, or dropped something it could not
+keep. Then no position in the history is clean: the version on screen was never
+saved, so undoing every edit back to the start still leaves it modified until
+it is saved.
+
+Two more things end that, both deliberately:
 
 - Beyond a bounded history depth the oldest step is evicted. If the evicted step
   was the saved position, the document can no longer reach clean and stays

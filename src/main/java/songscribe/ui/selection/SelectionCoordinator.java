@@ -283,7 +283,7 @@ public final class SelectionCoordinator implements Disposable {
     /**
      * Assigns a range on {@code line}, clamped so a multi-element range never reaches the song's
      * auto-maintained terminal. Only {@link #selectSingleElement} may select the terminal — a
-     * click on it is the one gesture that selects it (issue #713), so a Shift+click or
+     * click on it is the one gesture that selects it, so a Shift+click or
      * Shift+arrow that would sweep it in stops at the last editable element instead.
      * <p>
      * The range's first element needs no clamp: the terminal is the last element, so a range
@@ -303,7 +303,7 @@ public final class SelectionCoordinator implements Disposable {
     /**
      * Selects {@code range} on the active line, anchored at its first element. The anchor comes
      * to rest anywhere else only when {@link #extendSelectionTo} carries the range past it
-     * (issue #748). Does nothing when no line is active.
+     *. Does nothing when no line is active.
      */
     public void selectRange(ElementRange range) {
         var line = getActiveLine();
@@ -449,7 +449,7 @@ public final class SelectionCoordinator implements Disposable {
      * The leading {@code activeLineIndex} gate is kind-dependent. Every {@link HitTarget} kind
      * except {@link HitTarget.Tie} lives on exactly one line, so asking about any other line
      * must answer {@code false} — the gate short-circuits that before the switch runs. A tie
-     * can cross a line break (#493), with half drawn by each of its two lines. Both lines'
+     * can cross a line break, with half drawn by each of its two lines. Both lines'
      * repaints ask this method with their own line index (see
      * {@code LineRenderer.buildInvariants}), so the tie case answers from record equality and
      * from whether the line at {@code lineIndex} holds one of the tie's two notes — record
@@ -462,9 +462,9 @@ public final class SelectionCoordinator implements Disposable {
      * whether it can ever read as selected is the decision the arm records.
      */
     public boolean isSelected(HitTarget target, int lineIndex) {
-        if (target instanceof HitTarget.Tie(var tie)) {
+        if (target instanceof HitTarget.Tie tieTarget) {
             var line = getLine(lineIndex);
-            return isSelectedTarget(target) && line != null && isDrawnOn(tie, line);
+            return isSelectedTarget(target) && line != null && tieTarget.isDrawnOn(line);
         }
 
         if (activeLineIndex == null || activeLineIndex != lineIndex) {
@@ -544,19 +544,8 @@ public final class SelectionCoordinator implements Disposable {
     /**
      * Clears the selection if its target no longer refers to something live on its line —
      * e.g. after an undo/redo that removed the selected notation outright. No-op if the
-     * current selection is still valid, or if it is not a target.
-     * <p>
-     * One rule covers every kind a selection can hold but a tie, rather than one arm per kind.
-     * {@link HitTarget.Selectable#owner()} names the element the target hangs off, so asking
-     * {@link #isOnLine} whether that element is still on the line answers for an articulation
-     * on a note and a hairpin alike.
-     * <p>
-     * A tie is the exception, for two reasons. Its owner is its anchor note, which stays on its
-     * line when the tie is removed, so the owner's line cannot tell a removed tie from a live
-     * one; the tie is live while its anchor still derives it
-     * ({@link songscribe.dom.NoteElement#tie()}). And a tie across a line break can be selected
-     * from either of its two lines, while its anchor is on only the first, so it reads as on
-     * the line when either of its notes is.
+     * current selection is still valid, or if it is not a target. Each target answers its own
+     * liveness through {@link HitTarget.Selectable#isLiveOn}.
      *
      * @return whether the selection was cleared
      */
@@ -564,36 +553,13 @@ public final class SelectionCoordinator implements Disposable {
         var line = getActiveLine();
         var target = getSelectedTarget();
 
-        if (line == null || target == null || isLiveOn(target, line)) {
+        if (line == null || target == null || target.isLiveOn(line)) {
             return false;
         }
 
         // The line stays active: only what was selected on it went stale.
         clearActiveSelection();
         return true;
-    }
-
-    /**
-     * Returns whether {@code target} still names something live on {@code line}. See
-     * {@link #revalidateDecorationSelection}.
-     */
-    private static boolean isLiveOn(HitTarget.Selectable target, Line line) {
-        if (target instanceof HitTarget.Tie(var tie)) {
-            return tie.equals(tie.anchor().tie()) && isDrawnOn(tie, line);
-        }
-
-        // A null owner means the target is the staff line itself, which cannot go stale.
-        var owner = target.owner();
-
-        return owner == null || isOnLine(owner, line);
-    }
-
-    /**
-     * Returns whether {@code line} draws {@code tie} or a half of it: whether it holds either of
-     * the tie's two notes.
-     */
-    private static boolean isDrawnOn(Tie tie, Line line) {
-        return line.contains(tie.anchor()) || line.contains(tie.end());
     }
 
     /**
@@ -644,32 +610,6 @@ public final class SelectionCoordinator implements Disposable {
         }
 
         selected = range;
-    }
-
-    /**
-     * Returns whether {@code owner} still hangs off {@code line}.
-     * <p>
-     * A staff element answers from its own parent line, which the line clears when it drops
-     * the element, so a reference comparison against {@code line} settles it in constant time.
-     * An attachment or an articulation answers its host's line, which is null once it is taken
-     * off its host, so the same comparison settles it.
-     * <p>
-     * A span has no parent line: the lines it is in are derived from its
-     * endpoints, which a removal leaves exactly where they were. So a span is asked of the
-     * line's span list instead, the only record of a span having been removed. That list is
-     * short, and it is scanned once per mutation rather than per element.
-     *
-     * @param owner what a {@link HitTarget.Selectable} target hangs off
-     * @param line the line the selection is on
-     * @return {@code true} when {@code owner} is live on {@code line}
-     */
-    private static boolean isOnLine(LineContent owner, Line line) {
-        return switch (owner) {
-            case StaffElement element -> element.getParentLine() == line;
-            case Attachment attachment -> attachment.getParentLine() == line;
-            case Articulation articulation -> articulation.getParentLine() == line;
-            case Span<?> span -> line.spanRegistry().getSpans().contains(span);
-        };
     }
 
     @SuppressWarnings("ObjectEquality")

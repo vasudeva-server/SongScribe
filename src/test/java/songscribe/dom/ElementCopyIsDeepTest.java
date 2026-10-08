@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * That an element's copy owns its children rather than sharing the original's.
@@ -130,7 +131,7 @@ class ElementCopyIsDeepTest extends UnitTest {
      *         position it would have been given by default
      */
     private static NoteElement placedNote() {
-        var note = (NoteElement) lineWith(ElementType.CROTCHET).getElement(0);
+        var note = (NoteElement) lineOf(crotchet()).getElement(0);
 
         var attachment = new AnnotationAttachment(new Annotation("dolce"));
         note.addAttachment(attachment);

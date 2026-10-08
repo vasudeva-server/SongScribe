@@ -25,11 +25,19 @@ package songscribe.engraving;
  */
 public final class TupletMetrics {
 
-    /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
-    public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
+    /** Outward extension of the bracket arm at each endpoint (LilyPond: 0.2ss). */
+    public static final double ARM_EXTENSION_SS = 0.2;
 
     /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss). */
-    public static final double BRACKET_ARM_HEIGHT_SS = 0.7;  // 5.6px
+    public static final double BRACKET_ARM_HEIGHT_SS = 0.7;
+
+    /**
+     * The gap from the worst note tip to the bracket <em>line</em>, from LilyPond's
+     * {@code TupletBracket.padding} (measured tip → line in {@code calc_position_and_height},
+     * {@code *offset += padding * dir}). The vertical arms hang {@link #BRACKET_ARM_HEIGHT_SS} down
+     * from the line into this gap; they do not push the line up.
+     */
+    public static final double BRACKET_PADDING_SS = 1.1;
 
     /** Maximum bracket slope, as a fraction of rise over run (LilyPond: 0.5). */
     public static final double MAX_SLOPE_FACTOR = 0.5;

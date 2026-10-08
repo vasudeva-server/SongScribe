@@ -19,22 +19,18 @@
  */
 package songscribe.io.musicxml;
 
-import java.util.List;
-
 import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.SAXException;
 
-import songscribe.dom.Line;
+import songscribe.dom.ParsedSong;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
-import songscribe.io.LoadPasses;
-import songscribe.io.SongLoadResult;
 import songscribe.util.Utils;
 
 /**
- * Turns an unmarshalled {@link ScorePartwise} graph into a {@link SongLoadResult.Success}.
+ * Turns an unmarshalled {@link ScorePartwise} graph into a {@link ParsedSong}.
  * The read-side orchestrator: it runs the format and provenance gates, then drives
- * {@link HeaderMapper} and {@link MeasureMapper} and the load-time passes.
+ * {@link HeaderMapper} and {@link MeasureMapper}.
  *
  * <p><b>No {@code File} parameter.</b> This class never learns where the bytes came
  * from, so compressed {@code .mxl} input can be added upstream without touching it, and
@@ -48,12 +44,14 @@ final class SongMapper {
     }
 
     /**
-     * Maps {@code document} onto a freshly parsed {@link Song}.
+     * Maps {@code document} onto a freshly parsed {@link Song}, and its fonts onto
+     * {@code documentFonts}.
      *
-     * @param document the unmarshalled score, with the root element name and {@code version}
-     *                 attribute as the document actually wrote them
-     * @return the mapped song, its document fonts, the load warnings and what the
-     *         post-parse migration passes changed
+     * @param document      the unmarshalled score, with the root element name and {@code version}
+     *                      attribute as the document actually wrote them
+     * @param documentFonts the fonts to apply the document's font block to
+     * @return the mapped song, with the spans it found pending and the report entries the mapping
+     *         made; the load passes have not run
      * @throws SAXException if the document is not a supported MusicXML version
      *                      ({@link MusicXmlReader.InvalidFormatException}), was not
      *                      written by SongScribe
@@ -62,7 +60,9 @@ final class SongMapper {
      *                      ({@link MusicXmlReader.UnsupportedVersionException}), or is
      *                      corrupt in a way a mapper rejects
      */
-    static SongLoadResult.Success map(MusicXmlSerializer.ParsedDocument document) throws SAXException {
+    static ParsedSong map(
+        MusicXmlSerializer.ParsedDocument document, DocumentFonts documentFonts
+    ) throws SAXException {
         checkFormat(document);
 
         var score = document.score();
@@ -75,8 +75,7 @@ final class SongMapper {
         HeaderMapper.checkProvenance(score);
 
         var song = Song.newParsingStub();
-        var documentFonts = DocumentFonts.defaultFonts();
-        LoadPasses.Input mapped;
+        ParsedSong parsed;
 
         // A load records no mutations, posts no notification and sets no modified flag.
         // begin/end rather than withoutMutationTracking(Runnable) because the mappers
@@ -85,7 +84,7 @@ final class SongMapper {
 
         try {
             HeaderMapper.map(score, song, documentFonts);
-            mapped = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
+            parsed = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
 
             // Restore the terminal invariant while tracking is still suspended so the
             // fix-ups are silent: the writer emits a line's closing barline only as a
@@ -99,24 +98,13 @@ final class SongMapper {
             song.settleKeysAfterParsing();
 
             // Grace-host pairing is only settled once every <slide> has been resolved, so
-            // the melisma repair runs over the finished song rather than per note. A file
-            // written before the melisma was automatic may put the syllable on the host,
-            // or leave the grace's syllable with no melisma at all.
-            song.getLines().forEach(Line::repairGraceHostMelismas);
+            // the melisma repair runs over the finished song rather than per note.
+            song.repairGraceHostMelismasAfterParsing();
         } finally {
             song.endSuspendMutationTracking();
         }
 
-        // Run here rather than in the UI: SongLoader's headless route runs it too, and a
-        // song whose tuplets were settled in only one of the two routes would export a
-        // different MIDI file than it displays.
-        var report = LoadPasses.run(song, mapped);
-
-        return new SongLoadResult.Success(
-            song,
-            documentFonts,
-            List.of(),
-            report);
+        return parsed;
     }
 
     /**

@@ -20,6 +20,7 @@
 
 package songscribe.message.notification;
 
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Song;
 import songscribe.message.Message;
 
@@ -30,13 +31,44 @@ import songscribe.message.Message;
  */
 public class DocumentDidLoadNotification extends Message {
 
-    private final Song song;
+    /** Whether the load left the song as its file holds it. */
+    public enum LoadChange {
+        /** The song is what the file holds, or a new document no file holds yet. */
+        UNCHANGED,
 
-    public DocumentDidLoadNotification(Song song) {
+        /** The load changed the song, so it differs from its file until it is saved. */
+        CHANGED;
+
+        /**
+         * Returns the load change a load with {@code report} made.
+         *
+         * @param report what the load changed in the document
+         * @return {@link #CHANGED} when {@code report} holds an entry, otherwise
+         *     {@link #UNCHANGED}
+         */
+        public static LoadChange of(ChangeReport report) {
+            return report.isEmpty() ? UNCHANGED : CHANGED;
+        }
+    }
+
+    private final Song song;
+    private final LoadChange loadChange;
+
+    public DocumentDidLoadNotification(Song song, LoadChange loadChange) {
         this.song = song;
+        this.loadChange = loadChange;
     }
 
     public Song getSong() {
         return song;
+    }
+
+    /**
+     * Returns whether the load changed the song.
+     *
+     * @return {@link LoadChange#CHANGED} when the song differs from the file it was read from
+     */
+    public LoadChange getLoadChange() {
+        return loadChange;
     }
 }

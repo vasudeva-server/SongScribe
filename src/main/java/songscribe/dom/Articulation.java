@@ -23,8 +23,8 @@ package songscribe.dom;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One articulation marking on a note: a {@link NoteElement} child whose only state of its own is
- * its {@link ArticulationType}, which decides what it draws and how much room it takes.
+ * One articulation marking on a note, owned by that {@link NoteElement}. Its only state of its
+ * own is its {@link ArticulationType}, which decides what it draws and how much room it takes.
  * <p>
  * <b>The owner and the line.</b> The note owns it: {@link NoteElement#addArticulation} sets
  * {@link #owner()} and {@link NoteElement#removeArticulation} and

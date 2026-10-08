@@ -41,10 +41,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
+import songscribe.Strings;
 import songscribe.dom.Annotation;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.ElementLocation;
+import songscribe.dom.ElementLocationRange;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
@@ -53,20 +56,25 @@ import songscribe.dom.Line;
 import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
+import songscribe.dom.ParsedSong;
 import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
+import songscribe.dom.ReportedChange;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
+import songscribe.dom.Spanning;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.TempoMarking;
+import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.TupletGrade;
-import songscribe.dom.TupletRatio;
+import songscribe.dom.TupletNormalTime;
+import songscribe.error.RuntimeError;
 import songscribe.io.DocumentValidation;
-import songscribe.io.LoadPasses;
 import songscribe.io.ReadAnnotation;
 
 /**
@@ -105,9 +113,15 @@ import songscribe.io.ReadAnnotation;
  * resolves before its start on the same note; a hairpin's stop before its start, except
  * when one note both opens and closes one; the first tempo mark of the first measure is
  * the song's own; and a tie may cross a line boundary, while a hairpin and a volta may
- * not. A beam, a tuplet bracket or a trill whose two ends land on different lines is a
- * span no line can hold, so the pass that pairs it drops that span, logs a warning and
- * reads the rest of the document.
+ * not.
+ *
+ * <p><b>Damaged marks.</b> This writer pairs every span mark it emits, so a mark that does not
+ * pair is damage in a file of ours: a start no stop pairs with, a stop no start pairs with, a
+ * beam, tuplet bracket or trill whose two ends land on different lines, or a wedge bound to no
+ * note. A paired tuplet whose ratio cannot be read is damaged too, as is a tie, a beam mark or a
+ * slide mark on an element that cannot carry it. The pass that meets a damaged mark drops it,
+ * keeps the notes it sat on, adds one entry to the reader's report entries and reads the rest of
+ * the document, so a file damaged in one span still opens and the user sees what was dropped.
  *
  * <p>A {@link Line} is committed to the song only once its elements are complete. While a
  * line is detached it is never the song's last line, which is what makes
@@ -124,14 +138,40 @@ final class MeasureMapper {
     // (duration equals beat), so the writer emits exactly two <metronome-note>s.
     private static final int METRIC_MODULATION_NOTE_COUNT = 2;
 
-    // The markers named in the pairing diagnostics, one pair per span kind.
-    private static final String SLIDE_START_MARKER = "<slide type=\"start\">";
-    private static final String BEAM_BEGIN_MARKER = "<beam>begin</beam>";
-    private static final String BEAM_END_MARKER = "<beam>end</beam>";
-    private static final String TIED_START_MARKER = "<tied type=\"start\">";
-    private static final String TUPLET_START_MARKER = "<tuplet type=\"start\">";
-    private static final String WAVY_LINE_START_MARKER = "<wavy-line type=\"start\">";
-    private static final String WAVY_LINE_STOP_MARKER = "<wavy-line type=\"stop\">";
+    /**
+     * How a damaged mark fails, each with the reason its report entry gives. The class Javadoc
+     * states which marks are damaged.
+     */
+    private enum Damage {
+
+        /** A start mark that no stop mark pairs with. */
+        NO_END(Strings.DIALOG_REPORT_REASON_DAMAGED_NO_END),
+
+        /** A stop mark that no start mark pairs with. */
+        NO_START(Strings.DIALOG_REPORT_REASON_DAMAGED_NO_START),
+
+        /** A start and a stop on different lines, for a span one line must hold whole. */
+        LINE_BREAK(Strings.DIALOG_REPORT_REASON_DAMAGED_LINE_BREAK),
+
+        /** A {@code <wedge>} with no note after it to bind to. */
+        UNBOUND(Strings.DIALOG_REPORT_REASON_DAMAGED_UNBOUND),
+
+        /** A tie, beam or slide mark on an element that cannot carry it. */
+        WRONG_ELEMENT(Strings.DIALOG_REPORT_REASON_DAMAGED_WRONG_ELEMENT),
+
+        /** A tuplet whose {@code <actual-notes>} no {@link TupletGrade} holds. */
+        TUPLET_NUMBER(Strings.DIALOG_REPORT_REASON_DAMAGED_TUPLET_NUMBER),
+
+        /** A tuplet that states a {@code <normal-type>} without a positive {@code <normal-notes>}. */
+        NORMAL_NOTES(Strings.DIALOG_REPORT_REASON_DAMAGED_NORMAL_NOTES);
+
+        /** The {@code Strings} key of the reason, whose value is plain text the user reads. */
+        private final String reasonKey;
+
+        Damage(String reasonKey) {
+            this.reasonKey = reasonKey;
+        }
+    }
 
     // -------------------------------------------------------------------------
     // What the walk records
@@ -190,26 +230,44 @@ final class MeasureMapper {
         @Nullable Metronome metronome
     ) {}
 
-    /** A {@code <wedge>} start's kind and its user-adjustable shifts. */
-    private record WedgeStart(Hairpin.Kind kind, double x1ShiftSs, double yShiftSs) {}
+    /**
+     * A {@code <wedge>} start's kind and its user's offsets. The writer puts the hairpin's
+     * horizontal offset on both of its wedges, so the start wedge's {@code relative-x} is the
+     * hairpin's.
+     */
+    private record WedgeStart(Hairpin.Kind kind, double xOffsetSs, double yOffsetSs) {}
 
-    /** A hairpin whose start wedge has bound to {@code anchor} and awaits its stop. */
-    private record OpenHairpin(StaffElement anchor, WedgeStart start) {}
+    /** A span mark whose start has been read from a note's site and awaits its stop. */
+    private sealed interface OpenMark permits OpenHairpin, OpenSlide, OpenBeam, OpenTuplet, OpenTrill {
 
-    /** A beam whose begin marker has bound to {@code begin}, on {@code line}, and awaits its end. */
-    private record OpenBeam(NoteElement begin, Line line) {}
+        /** The site the start mark was read from. */
+        NoteSite opener();
+    }
+
+    /** A hairpin whose start wedge has bound to {@code opener}'s note and awaits its stop. */
+    private record OpenHairpin(NoteSite opener, WedgeStart start) implements OpenMark {}
+
+    /** A glissando whose start marker sits on {@code opener} and awaits its stop. */
+    private record OpenSlide(NoteSite opener) implements OpenMark {}
+
+    /** A beam whose begin marker sits on {@code opener} and awaits its end. */
+    private record OpenBeam(NoteSite opener) implements OpenMark {}
+
+    /** A tuplet bracket whose start sits on {@code opener} and awaits its stop. */
+    private record OpenTuplet(NoteSite opener, NoteMapper.TupletMarker marker) implements OpenMark {}
+
+    /** A trill whose start wavy line sits on {@code opener} and awaits its stop. */
+    private record OpenTrill(NoteSite opener, double yOffsetSs) implements OpenMark {}
 
     /**
-     * A tuplet bracket whose start has bound to {@code anchor}, on {@code line}, and awaits its
+     * An ending whose {@code number="1"} start has been read and awaits its {@code number="2"}
      * stop.
+     *
+     * @param anchor    the element the ending starts on, or {@code null} while a note-anchored start
+     *                  awaits the next note
+     * @param yOffsetSs the start marker's vertical offset
      */
-    private record OpenTuplet(StaffElement anchor, Line line, NoteMapper.TupletMarker marker) {}
-
-    /**
-     * A trill whose start wavy line has bound to {@code anchor}, on {@code line}, and awaits its
-     * stop.
-     */
-    private record OpenTrill(StaffElement anchor, Line line, double yPositionSs) {}
+    private record OpenEnding(@Nullable StaffElement anchor, double yOffsetSs) {}
 
     // -------------------------------------------------------------------------
     // Walk state — the whole of it
@@ -227,26 +285,29 @@ final class MeasureMapper {
     @Nullable
     private Integer lineStartMeasureIndex = null;
 
-    // True once any note's <accidental> token was a retired legacy token converted
-    // to its replacement; carried into SongLoadResult.Success by the caller.
+    // True once any note's <accidental> token was a retired legacy token converted to its
+    // replacement. One report entry stands for every conversion, so map adds it once the walk is
+    // over, after every entry the walk made.
     private boolean accidentalsConverted = false;
 
     // Every tuplet bracket the walk has closed, with no stated ratio when the file states
-    // none; carried to the post-load pass by the caller, the way a reader's pending tuplets
-    // always are — a mapper cannot build a Tuplet, since the beat a stated-less ratio derives
-    // from may still change in a later measure while the walk is mid-part.
+    // none; carried to the load passes in the ParsedSong — a mapper cannot build a Tuplet, since
+    // the beat a stated-less ratio derives from may still change in a later measure while the
+    // walk is mid-part.
     private final List<PendingTuplet> pendingTuplets = new ArrayList<>();
 
-    // Every ending the walk paired a number="1" start with a number="2" stop; carried to the
-    // post-load pass by the caller, the way a reader's pending tuplets always are — a mapper does
-    // not build an Ending, since whether the range is well formed is EndingLoadPass's question,
-    // not the walk's.
+    // Every ending the walk paired a number="1" start with a number="2" stop; carried to the load
+    // passes in the ParsedSong — a mapper does not build an Ending, since whether the range is
+    // well formed is the span load pass's question, not the walk's.
     private final List<PendingEnding> pendingEndings = new ArrayList<>();
 
-    // Every hairpin the walk paired a wedge start with a stop; carried to the post-load pass by
-    // the caller — a mapper does not build a Hairpin, since whether the range is well formed, and
-    // whether it merges with another, is HairpinLoadPass's question, not the walk's.
+    // Every hairpin the walk paired a wedge start with a stop; carried to the load passes in the
+    // ParsedSong — a mapper does not build a Hairpin, since whether the range is well formed, and
+    // whether it merges with another, is the span load pass's question, not the walk's.
     private final List<PendingHairpin> pendingHairpins = new ArrayList<>();
+
+    // Every report entry the walk made, one per damaged mark it dropped, in the order it made them.
+    private final List<ReportedChange> readerEntries = new ArrayList<>();
 
     // The features the document declares; decides which per-note attributes the walk honors.
     private final Set<SupportedFeature> features;
@@ -262,14 +323,17 @@ final class MeasureMapper {
 
     /**
      * Maps {@code score}'s first part onto {@code song}'s lines, honoring only the
-     * per-note attributes {@code features} declares.
+     * per-note attributes {@code features} declares. A damaged span mark does not refuse the
+     * document: it is dropped and reported, as the class Javadoc states.
      *
-     * @throws SAXException if the document is corrupt (a tuplet with no valid span,
-     *                      a note before any line has been started, a {@code <fifths>} no key
-     *                      can hold, or a mid-measure {@code <key>} with no barline
-     *                      before it)
+     * @return {@code song}, with the tuplets, endings and hairpins the walk paired still pending,
+     *     and the report entries the walk made: one for each damaged mark it dropped, in the order
+     *     it dropped them, then the accidentals-converted entry when the walk converted a retired
+     *     accidental
+     * @throws SAXException if the document is corrupt, or states something SongScribe cannot
+     *                      represent
      */
-    static LoadPasses.Input map(ScorePartwise score, Song song, Set<SupportedFeature> features)
+    static ParsedSong map(ScorePartwise score, Song song, Set<SupportedFeature> features)
         throws SAXException {
         var mapper = new MeasureMapper(song, features);
         var part = ProxyMusicAccess.firstPart(score);
@@ -278,8 +342,12 @@ final class MeasureMapper {
             mapper.mapPart(part);
         }
 
-        return new LoadPasses.Input(
-            mapper.pendingTuplets, mapper.pendingEndings, mapper.pendingHairpins, mapper.accidentalsConverted);
+        if (mapper.accidentalsConverted) {
+            mapper.readerEntries.add(ParsedSong.accidentalsConvertedEntry());
+        }
+
+        return new ParsedSong(
+            song, mapper.pendingTuplets, mapper.pendingEndings, mapper.pendingHairpins, mapper.readerEntries);
     }
 
     private void mapPart(ScorePartwise.Part part) throws SAXException {
@@ -302,8 +370,10 @@ final class MeasureMapper {
         resolveMetronomes(sites);
         resolveHairpins(sites);
         resolveSlides(notes);
-        resolveBeams(notes);
+        // Ties before beams: Beam.spanning refuses a beam over a tied pair, so a file that beams
+        // two tied notes loses the beam, which only changes the look, and keeps the tie.
         resolveTies(notes);
+        resolveBeams(notes);
         resolveTuplets(notes);
         resolveTrills(notes);
     }
@@ -653,33 +723,35 @@ final class MeasureMapper {
      * </pre>
      *
      * <p>Either marker may ride on an invisible barline, which produces no element of
-     * its own (issue #306): a note-anchored start then binds to the next mapped note,
+     * its own: a note-anchored start then binds to the next mapped note,
      * and a note-terminated stop to the last element the line had at that point.
      *
-     * <p>An ending is an intra-line span, so one still open when a new line starts is
-     * dropped, as is one still open at the end of the part: a complete ending is built
-     * on its {@code number="2"} stop, so anything left over is not a valid ending.
+     * <p>An ending is an intra-line span, and a complete ending is built on its
+     * {@code number="2"} stop, so a start still open when a new line starts or when the part
+     * ends is a damaged mark, as is a {@code number="2"} stop with no start open on its line.
+     * Each is dropped and reported. A note-anchored start awaiting its note is not yet on a
+     * line, so a line break does not close it.
      */
     private void resolveEndings(List<ChildSite> sites) {
-        StaffElement anchor = null;
-        var anchorFromNextNote = false;
-        var anchorYOffsetSs = 0.0;
+        OpenEnding open = null;
         StaffElement lastElement = null;
         Line line = null;
 
         for (var site : sites) {
             if (site.line != line) {
-                warnIncompleteEnding(anchor);
-                anchor = null;
+                if (open != null && open.anchor() != null) {
+                    dropOpenEnding(open);
+                    open = null;
+                }
+
                 lastElement = null;
                 line = site.line;
             }
 
             var noteSite = site.noteSite;
 
-            if (noteSite != null && anchorFromNextNote) {
-                anchor = noteSite.element();
-                anchorFromNextNote = false;
+            if (noteSite != null && open != null && open.anchor() == null) {
+                open = new OpenEnding(noteSite.element(), open.yOffsetSs());
             }
 
             if (site.child instanceof Barline barline) {
@@ -692,23 +764,23 @@ final class MeasureMapper {
 
                     if (MusicXmlTags.NUMBER_1.equals(marker.number())
                         && MusicXmlTags.TYPE_START.equals(marker.type())) {
-                        warnIncompleteEnding(anchor);
-                        // A note-anchored start defers to the next note, which the
-                        // invisible barline carrying it always precedes — including
-                        // across a line break, so the deferral outlives the drop above.
-                        anchorFromNextNote = host == null;
-                        anchor = host;
-                        anchorYOffsetSs = MusicXmlUnits.tenthsToExactSs(marker.relativeY());
+                        dropOpenEnding(open);
+                        // A note-anchored start (a null host) defers to the next note, which the
+                        // invisible barline carrying it always precedes — including across a
+                        // line break.
+                        open = new OpenEnding(host, MusicXmlUnits.tenthsToExactSs(marker.relativeY()));
                     } else if (MusicXmlTags.NUMBER_2.equals(marker.number()) && isStop) {
                         var end = host != null ? host : lastElement;
+                        var anchor = open == null ? null : open.anchor();
 
-                        if (anchor != null && end != null) {
-                            buildEnding(line, anchor, end, anchorYOffsetSs);
-                            anchor = null;
-                            anchorFromNextNote = false;
+                        if (open != null && anchor != null && end != null) {
+                            // The writer states no horizontal offset for an ending.
+                            pendingEndings.add(new PendingEnding(anchor, end, 0, open.yOffsetSs()));
                         } else {
-                            LOG.warn("Ignoring <ending number=\"2\" type=\"stop\"> with no open ending");
+                            dropDamaged(Strings.DIALOG_REPORT_ENDINGS_REMOVED, Damage.NO_START, at(end));
                         }
+
+                        open = null;
                     }
 
                     // A number="1" stop (the volta-1 split close) and a number="2" start
@@ -722,25 +794,20 @@ final class MeasureMapper {
             }
         }
 
-        warnIncompleteEnding(anchor);
-    }
-
-    private static void warnIncompleteEnding(@Nullable StaffElement anchor) {
-        if (anchor != null) {
-            LOG.warn("Dropping incomplete <ending> with no number=\"2\" stop");
-        }
+        dropOpenEnding(open);
     }
 
     /**
-     * Records a {@link PendingEnding} over [{@code anchor}, {@code end}], unless no line was
-     * open when its stop closed it — nothing to record it against.
+     * Drops an ending start that no stop pairs with, and reports it at the element it starts on.
+     *
+     * @param open the open ending, or {@code null} when none is open
+     * @effects when {@code open} is not {@code null}, adds one entry to the reader's entries,
+     *     with no location when the start still awaits its note
      */
-    private void buildEnding(@Nullable Line line, StaffElement anchor, StaffElement end, double yOffsetSs) {
-        if (line == null) {
-            return;
+    private void dropOpenEnding(@Nullable OpenEnding open) {
+        if (open != null) {
+            dropDamaged(Strings.DIALOG_REPORT_ENDINGS_REMOVED, Damage.NO_END, at(open.anchor()));
         }
-
-        pendingEndings.add(new PendingEnding(anchor, end, yOffsetSs));
     }
 
     // -------------------------------------------------------------------------
@@ -1060,8 +1127,10 @@ final class MeasureMapper {
      * hairpin immediately before their bound {@code <note>}, so one uniform rule
      * applies: every wedge binds to the next note after it.
      *
-     * <p>A hairpin is an intra-line span, so one still open when a new line starts is
-     * dropped, as is one still open at the end of the part.
+     * <p>A hairpin is an intra-line span, so a start still open when a new line starts or when
+     * the part ends is a damaged mark, as is a stop with no start open on its line, a second
+     * start while one is open, and a wedge no note follows on its line. Each is dropped and
+     * reported.
      */
     private void resolveHairpins(List<ChildSite> sites) {
         var pendingWedges = new ArrayList<Wedge>();
@@ -1071,7 +1140,7 @@ final class MeasureMapper {
         for (var site : sites) {
             if (site.line != line) {
                 dropUnboundWedges(pendingWedges);
-                warnDanglingStart(open, "hairpin");
+                dropDangling(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, open);
                 open = null;
                 line = site.line;
             }
@@ -1099,13 +1168,17 @@ final class MeasureMapper {
         }
 
         dropUnboundWedges(pendingWedges);
-        warnDanglingStart(open, "hairpin");
+        dropDangling(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, open);
     }
 
-    private static void dropUnboundWedges(List<Wedge> wedges) {
-        for (var wedge : wedges) {
-            LOG.warn("Dropping <wedge type=\"{}\"> with no bound note",
-                ProxyMusicAccess.token(wedge.getType(), WedgeType::value));
+    /**
+     * Drops every wedge that no note followed on its line, and empties {@code wedges}.
+     *
+     * @effects adds one entry with no location to the reader's entries for each wedge
+     */
+    private void dropUnboundWedges(List<Wedge> wedges) {
+        for (var _ : wedges) {
+            dropDamaged(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, Damage.UNBOUND, null);
         }
 
         wedges.clear();
@@ -1123,14 +1196,12 @@ final class MeasureMapper {
     private OpenHairpin applyWedges(@Nullable OpenHairpin open, NoteSite noteSite, List<Wedge> wedges) {
         WedgeStart start = null;
         var hasStop = false;
-        var stopX2ShiftSs = 0.0;
 
         for (var wedge : wedges) {
             var type = wedge.getType();
 
             if (type == WedgeType.STOP) {
                 hasStop = true;
-                stopX2ShiftSs = MusicXmlUnits.tenthsToExactSs(wedge.getRelativeX());
                 continue;
             }
 
@@ -1147,59 +1218,54 @@ final class MeasureMapper {
                 continue;
             }
 
-            // Defensive overlap drop: only one hairpin is ever open.
+            // Only one hairpin is ever open, so a second start finds no stop of its own.
             if (start != null || (open != null && !hasStop)) {
-                LOG.warn("Dropping overlapping <wedge> start; a hairpin is already open");
+                dropDamaged(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, Damage.NO_END, at(noteSite.element()));
                 continue;
             }
 
-            start = new WedgeStart(kind,
+            start = new WedgeStart(
+                kind,
                 MusicXmlUnits.tenthsToExactSs(wedge.getRelativeX()),
                 MusicXmlUnits.tenthsToExactSs(wedge.getRelativeY()));
         }
 
         if (open == null && start != null) {
-            return closeHairpin(new OpenHairpin(noteSite.element(), start), noteSite, hasStop, stopX2ShiftSs);
+            return closeHairpin(new OpenHairpin(noteSite, start), noteSite, hasStop);
         }
 
-        var stillOpen = closeHairpin(open, noteSite, hasStop, stopX2ShiftSs);
+        var stillOpen = closeHairpin(open, noteSite, hasStop);
 
         // The overlap drop above guarantees a start reaching here found nothing open.
-        return start == null ? stillOpen : new OpenHairpin(noteSite.element(), start);
+        return start == null ? stillOpen : new OpenHairpin(noteSite, start);
     }
 
     @Nullable
-    private OpenHairpin closeHairpin(
-        @Nullable OpenHairpin open,
-        NoteSite noteSite,
-        boolean hasStop,
-        double x2ShiftSs
-    ) {
+    private OpenHairpin closeHairpin(@Nullable OpenHairpin open, NoteSite noteSite, boolean hasStop) {
         if (!hasStop) {
             return open;
         }
 
         if (open == null) {
-            LOG.warn("Ignoring <wedge type=\"stop\"> with no open hairpin");
+            dropDamaged(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, Damage.NO_START, at(noteSite.element()));
             return null;
         }
 
-        buildHairpin(open, noteSite.element(), x2ShiftSs);
+        buildHairpin(open, noteSite.element());
         return null;
     }
 
     /**
      * Records a {@link PendingHairpin} over [{@code anchor}, {@code end}] carrying the
-     * user-adjustable offsets of both of its wedges. It builds no {@link Hairpin}: the
-     * hairpin load pass judges each record once the song is complete, and it merges two
-     * same-kind wedges that overlap or merely touch into the one hairpin a file so written
-     * musically is.
+     * offsets of its start wedge. It builds no {@link Hairpin}: the span load pass judges each
+     * record once the song is complete, and it merges two same-kind wedges that overlap or
+     * merely touch into the one hairpin a file so written musically is.
      */
-    private void buildHairpin(OpenHairpin open, StaffElement end, double x2ShiftSs) {
+    private void buildHairpin(OpenHairpin open, StaffElement end) {
         var start = open.start();
 
         pendingHairpins.add(new PendingHairpin(
-            start.kind(), open.anchor(), end, start.x1ShiftSs(), x2ShiftSs, start.yShiftSs()));
+            start.kind(), open.opener().element(), end, start.xOffsetSs(), start.yOffsetSs()));
     }
 
     // -------------------------------------------------------------------------
@@ -1207,106 +1273,148 @@ final class MeasureMapper {
     // -------------------------------------------------------------------------
     //
     // Each runs over the part's whole note list in document order rather than line by
-    // line, and adds the span it builds to the line of its closing note — which is what
-    // lets a tie cross a line boundary.
+    // line, which is what lets a tie or a glissando cross a line boundary, and what lets
+    // a beam, tuplet or trill pair split across one be seen as one damaged mark.
     // -------------------------------------------------------------------------
 
     /**
      * Pairs each {@code <slide type="start">} with the following {@code type="stop"}:
      * the start note is the glissando. A glissando needs two notes, so a start is never
-     * itself marked on read.
+     * itself marked on read. A start no stop pairs with, a stop no start pairs with, and a
+     * pair either of whose marks sits on an element that is not a note are damaged, and each
+     * is dropped and reported.
      */
-    private static void resolveSlides(List<NoteSite> notes) {
-        NoteElement start = null;
+    private void resolveSlides(List<NoteSite> notes) {
+        OpenSlide open = null;
 
         for (var note : notes) {
             var slideType = NoteMapper.slideType(note.pmNote());
 
             if (MusicXmlTags.SLIDE_STOP.equals(slideType)) {
-                if (start != null) {
-                    start.setSlide(Slide.GLISSANDO);
-                    start = null;
+                if (open == null) {
+                    dropOrphanStop(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, note);
+                    continue;
                 }
-                // A stop with no open start is stray; ignore it.
+
+                var glissando = markedNote(open.opener());
+
+                if (glissando == null || markedNote(note) == null) {
+                    dropDamaged(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, Damage.WRONG_ELEMENT, through(open, note));
+                } else {
+                    glissando.setSlide(Slide.GLISSANDO);
+                }
+
+                open = null;
             } else if (MusicXmlTags.SLIDE_START.equals(slideType)) {
-                warnDanglingStart(start, SLIDE_START_MARKER);
-                start = markedNote(note, SLIDE_START_MARKER);
+                dropDangling(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, open);
+                open = new OpenSlide(note);
             }
         }
 
-        warnDanglingStart(start, SLIDE_START_MARKER);
+        dropDangling(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, open);
     }
 
     /**
-     * Collapses each note's primary {@code <beam number="1">} marker into a
-     * {@link Beam}: {@code begin} opens the run, {@code continue} keeps it open, and
-     * {@code end} builds the span.
+     * Collapses each note's primary {@code <beam number="1">} marker into a {@link Beam}:
+     * {@code begin} opens the run, {@code continue} keeps it open, and {@code end} closes it.
+     * A {@code begin} no {@code end} pairs with and an {@code end} no {@code begin} pairs with
+     * are damaged, and each is dropped and reported; {@link #closeBeam} judges a closed run.
      */
-    private static void resolveBeams(List<NoteSite> notes) throws SAXException {
+    private void resolveBeams(List<NoteSite> notes) {
         OpenBeam open = null;
 
         for (var note : notes) {
             var beamType = NoteMapper.primaryBeamType(note.pmNote());
 
             if (MusicXmlTags.BEAM_BEGIN.equals(beamType)) {
-                warnDanglingStart(open, BEAM_BEGIN_MARKER);
-                var begin = markedNote(note, BEAM_BEGIN_MARKER);
-                open = begin == null ? null : new OpenBeam(begin, note.line());
+                dropDangling(Strings.DIALOG_REPORT_BEAMS_REMOVED, open);
+                open = new OpenBeam(note);
             } else if (MusicXmlTags.BEAM_END.equals(beamType)) {
-                var end = markedNote(note, BEAM_END_MARKER);
-
-                if (end == null) {
-                    // The marker closed the run; there is just no span to build from it.
-                    open = null;
-                } else if (open == null) {
-                    warnOrphanStop(BEAM_END_MARKER);
+                if (open == null) {
+                    dropOrphanStop(Strings.DIALOG_REPORT_BEAMS_REMOVED, note);
                 } else {
-                    if (endsOnStartLine(open.line(), note, BEAM_BEGIN_MARKER)) {
-                        new Beam(open.begin(), end).addTo(note.line());
-                    }
-
+                    closeBeam(open, note);
                     open = null;
                 }
             }
             // BEAM_CONTINUE keeps the run open — no action.
         }
 
-        warnDanglingStart(open, BEAM_BEGIN_MARKER);
+        dropDangling(Strings.DIALOG_REPORT_BEAMS_REMOVED, open);
     }
 
     /**
-     * Ties each {@link ElementType.Kind#NOTE} note whose {@code <tied>} marker carries a start.
-     * The end is derived, not read from the file: {@link Line#addTie} anchors the tie and
-     * {@link NoteElement#tie()} finds where it lands.
+     * Adds the beam a closed run states, as {@link Beam#spanning} judges the range from its
+     * {@code begin} to its {@code end}. A run whose two marks land on different lines, or whose
+     * either mark sits on an element that is not a note, is damaged; so is a run the beam rule
+     * refuses. Each is dropped and reported.
+     *
+     * @param open the run its {@code begin} opened
+     * @param end  the site its {@code end} was read from
+     * @effects adds the beam to {@code end}'s line, or adds one entry to the reader's entries
      */
-    private static void resolveTies(List<NoteSite> notes) {
-        for (var note : notes) {
-            if (!NoteMapper.tieMarker(note.pmNote()).start()) {
-                continue;
-            }
+    private void closeBeam(OpenBeam open, NoteSite end) {
+        if (!pairsOnOneLine(Strings.DIALOG_REPORT_BEAMS_REMOVED, open, end)) {
+            return;
+        }
 
-            var anchor = markedNote(note, TIED_START_MARKER);
+        var begin = open.opener();
 
-            if (anchor != null && anchor.getType().isPitchedNote()) {
-                note.line().addTie(anchor);
-            }
+        if (markedNote(begin) == null || markedNote(end) == null) {
+            dropDamaged(Strings.DIALOG_REPORT_BEAMS_REMOVED, Damage.WRONG_ELEMENT, through(open, end));
+            return;
+        }
+
+        var line = end.line();
+        var range = new ElementRange(line.getElementIndex(begin.element()), line.getElementIndex(end.element()));
+
+        switch (Beam.spanning(line, range)) {
+            case Spanning.Spanned<Beam>(var beam, _) -> beam.addTo();
+            case Spanning.Refused<Beam> refused -> drop(refused.reportedAt(through(open, end)));
         }
     }
 
     /**
-     * Collapses each note's {@code <tuplet>} bracket markers into {@link PendingTuplet}s.
-     * Unlike the other per-note spans, a tuplet is not a legitimate document state
-     * without both brackets spanning at least two non-rest notes (see #518), so a
-     * dangling start or an orphan stop is rejected as a corrupt document rather than
-     * silently dropped; whether the span holds enough notes is left to the post-load pass,
-     * which is where every other pending tuplet is judged too.
+     * Ties each note whose {@code <tied>} markers carry a start and that {@link Tie#canAnchor}
+     * accepts. The end is derived, not read from the file: {@link Line#addTie} anchors the tie
+     * and {@link NoteElement#tie()} finds where it lands. A start on any other element — a rest
+     * or a grace note — is damaged, and is dropped and reported.
+     */
+    private void resolveTies(List<NoteSite> notes) {
+        for (var note : notes) {
+            if (!NoteMapper.startsTie(note.pmNote())) {
+                continue;
+            }
+
+            var anchor = markedNote(note);
+
+            if (anchor == null || !Tie.canAnchor(anchor)) {
+                dropDamaged(Strings.DIALOG_REPORT_TIES_REMOVED, Damage.WRONG_ELEMENT, at(note.element()));
+                continue;
+            }
+
+            note.line().addTie(anchor);
+        }
+    }
+
+    /**
+     * Collapses each note's {@code <tuplet>} bracket markers into {@link PendingTuplet}s. The
+     * reader judges only the pairing and the ratio's form; whether the span holds enough notes,
+     * and whether its ratio fits the beat, the tuplet load pass judges once the song is
+     * complete, as it does every pending tuplet.
+     *
+     * <p>A start no stop pairs with, a stop no start pairs with, a pair whose two ends land on
+     * different lines, and a pair whose ratio cannot be read are damaged, and each is dropped and
+     * reported. The ratio cannot be read when {@code <actual-notes>} names no
+     * {@link TupletGrade}, or when a {@code <normal-type>} comes without a positive
+     * {@code <normal-notes>}.
      *
      * <p>{@code <normal-type>} is the trust discriminator. A file that carries it states
      * a complete {@code <time-modification>}, so its {@code <normal-notes>} is taken at
      * face value and the pending tuplet carries that stated ratio. A file without it
      * predates this format, or states a token this reader does not recognise; either way
-     * the ratio is unknown rather than corrupt, so the pending tuplet carries none and the
-     * post-load pass derives the ratio from the beat in effect.
+     * the ratio is unknown rather than damaged, so the pending tuplet carries none and the
+     * tuplet load pass derives the ratio from the beat in effect.
      */
     private void resolveTuplets(List<NoteSite> notes) throws SAXException {
         OpenTuplet open = null;
@@ -1315,8 +1423,8 @@ final class MeasureMapper {
             var marker = NoteMapper.tupletMarker(note.pmNote());
 
             if (marker.start()) {
-                requireNoOpenTuplet(open);
-                open = new OpenTuplet(note.element(), note.line(), marker);
+                dropDangling(Strings.DIALOG_REPORT_TUPLETS_REMOVED, open);
+                open = new OpenTuplet(note, marker);
             }
 
             if (!marker.stop()) {
@@ -1324,92 +1432,86 @@ final class MeasureMapper {
             }
 
             if (open == null) {
-                throw DocumentValidation.corrupt(
-                    LOG, "Corrupt document: <tuplet type=\"stop\"> with no matching start");
+                dropOrphanStop(Strings.DIALOG_REPORT_TUPLETS_REMOVED, note);
+                continue;
             }
 
             buildTuplet(open, note);
             open = null;
         }
 
-        requireNoOpenTuplet(open);
+        dropDangling(Strings.DIALOG_REPORT_TUPLETS_REMOVED, open);
     }
 
-    private static void requireNoOpenTuplet(@Nullable OpenTuplet open) throws SAXException {
-        if (open != null) {
-            throw DocumentValidation.corrupt(
-                LOG, "Corrupt document: dangling <tuplet type=\"start\"> with no matching stop");
-        }
-    }
-
-    private void buildTuplet(OpenTuplet open, NoteSite end) throws SAXException {
-        if (!endsOnStartLine(open.line(), end, TUPLET_START_MARKER)) {
+    /**
+     * Records the pending tuplet a closed bracket states, or drops and reports the bracket when
+     * its two ends land on different lines or its ratio cannot be read.
+     *
+     * @param open the bracket its start opened
+     * @param end  the site its stop was read from
+     * @effects adds one pending tuplet, or one entry to the reader's entries
+     */
+    private void buildTuplet(OpenTuplet open, NoteSite end) {
+        if (!pairsOnOneLine(Strings.DIALOG_REPORT_TUPLETS_REMOVED, open, end)) {
             return;
         }
 
         var marker = open.marker();
         var noteValue = statedNoteValue(marker);
-        TupletRatio statedRatio = null;
+        TupletNormalTime statedRatio = null;
 
         if (noteValue != null) {
             var normalNotes = marker.normalNotes();
 
             // SongScribe writes <normal-notes> beside every <normal-type> that states a ratio, so
-            // a stated ratio without a positive count is a damaged document.
+            // a stated ratio without a positive count is damaged.
             if (normalNotes <= 0) {
-                throw DocumentValidation.corrupt(LOG,
-                    "Corrupt document: <time-modification> states a <normal-type> without a positive"
-                        + " <normal-notes>");
+                dropDamaged(Strings.DIALOG_REPORT_TUPLETS_REMOVED, Damage.NORMAL_NOTES, through(open, end));
+                return;
             }
 
-            statedRatio = new TupletRatio(normalNotes, new NotatableValue(noteValue, marker.normalDots()));
+            statedRatio = new TupletNormalTime(normalNotes, new NotatableValue(noteValue, marker.normalDots()));
         }
 
         var grade = TupletGrade.of(marker.actualNotes());
 
         if (grade == null) {
-            throw DocumentValidation.corrupt(LOG,
-                "Corrupt document: <actual-notes> {} is outside 2..7", marker.actualNotes());
+            dropDamaged(Strings.DIALOG_REPORT_TUPLETS_REMOVED, Damage.TUPLET_NUMBER, through(open, end));
+            return;
         }
 
         pendingTuplets.add(new PendingTuplet(
-            open.anchor(), end.element(), grade, statedRatio, marker.verticalPositionSs()));
+            open.opener().element(), end.element(), grade, statedRatio, marker.yOffsetSs()));
     }
 
     /**
      * The written note value the anchor note's {@code <time-modification>} states,
      * or {@code null} when the file states no {@code <normal-type>} or names a token
      * this reader does not know. Either leaves the ratio to be derived rather than
-     * trusted, so neither is an error.
+     * trusted, so neither is damage.
      */
     @Nullable
     private static NoteValue statedNoteValue(NoteMapper.TupletMarker marker) {
         var token = marker.normalTypeToken();
 
-        if (token == null) {
-            return null;
-        }
-
-        // <normal-type> names a written value, so it always maps to the pitched
-        // ElementType: rest-ness and grace-ness belong to the note, not the ratio.
-        var elementType = NoteTypeMapping.forTypeToken(token.trim(), false, false);
-
-        return elementType == null ? null : elementType.noteValue();
+        return token == null ? null : NoteTypeMapping.noteValueForTypeToken(token.trim());
     }
 
     /**
      * Collapses each note's {@code <wavy-line>} markers into {@link Trill}s. Start is
-     * processed before stop so a note carrying both builds the single-note trill.
+     * processed before stop so a note carrying both builds the single-note trill. A start no
+     * stop pairs with, a stop no start pairs with, and a pair whose two ends land on different
+     * lines are damaged, and each is dropped and reported.
      */
-    private static void resolveTrills(List<NoteSite> notes) throws SAXException {
+    private void resolveTrills(List<NoteSite> notes) {
         OpenTrill open = null;
 
         for (var note : notes) {
             var marker = NoteMapper.trillMarker(note.pmNote());
 
             if (marker.start()) {
-                warnDanglingStart(open, WAVY_LINE_START_MARKER);
-                open = new OpenTrill(note.element(), note.line(), marker.yPositionSs());
+                dropDangling(Strings.DIALOG_REPORT_TRILLS_REMOVED, open);
+                open = new OpenTrill(note, marker.yOffsetSs());
             }
 
             if (!marker.stop()) {
@@ -1417,85 +1519,142 @@ final class MeasureMapper {
             }
 
             if (open == null) {
-                warnOrphanStop(WAVY_LINE_STOP_MARKER);
+                dropOrphanStop(Strings.DIALOG_REPORT_TRILLS_REMOVED, note);
                 continue;
             }
 
-            if (!endsOnStartLine(open.line(), note, WAVY_LINE_START_MARKER)) {
-                open = null;
-                continue;
+            if (pairsOnOneLine(Strings.DIALOG_REPORT_TRILLS_REMOVED, open, note)) {
+                var anchor = open.opener().element();
+                var element = note.element();
+                var trill = anchor == element ? new Trill(anchor) : new Trill(anchor, element);
+
+                if (open.yOffsetSs() != 0) {
+                    trill.setUserYOffsetSs(open.yOffsetSs());
+                }
+
+                trill.addTo();
             }
 
-            var anchor = open.anchor();
-            var element = note.element();
-            var trill = anchor == element ? new Trill(anchor) : new Trill(anchor, element);
-
-            if (open.yPositionSs() != 0) {
-                trill.setUserYOffsetSs(open.yPositionSs());
-            }
-
-            trill.addTo(note.line());
             open = null;
         }
 
-        warnDanglingStart(open, WAVY_LINE_START_MARKER);
+        dropDangling(Strings.DIALOG_REPORT_TRILLS_REMOVED, open);
     }
 
     // -------------------------------------------------------------------------
-    // Pairing diagnostics
+    // Damaged marks
     // -------------------------------------------------------------------------
 
     /**
-     * Answers whether a span's two ends landed on one line. A line holds its own spans, so a
-     * span whose ends are on different lines has no line to live on and is dropped.
+     * Answers whether a span's two marks landed on one line, and drops and reports the span when
+     * they did not. A line holds its own spans, so a span whose ends are on different lines has
+     * no line to live on.
      *
-     * @param startLine   the line the span's opening marker landed on
-     * @param end         the site the closing marker was read from
-     * @param startMarker what opened the span, for the diagnostic
-     * @return {@code true} if {@code end} is on {@code startLine}
-     * @log WARN when the ends are on different lines
+     * @param headingKey the {@code Strings} key of the report heading of the span's kind
+     * @param open       the span's start
+     * @param end        the site the stop mark was read from
+     * @return {@code true} if {@code end} is on the line {@code open} started on
+     * @effects when the lines differ, adds one entry to the reader's entries, over the range
+     *     from the start to the stop
      */
-    private static boolean endsOnStartLine(Line startLine, NoteSite end, String startMarker) {
-        if (end.line() == startLine) {
+    private boolean pairsOnOneLine(String headingKey, OpenMark open, NoteSite end) {
+        if (end.line() == open.opener().line()) {
             return true;
         }
 
-        LOG.warn("Ignoring {} that starts on one line and stops on another", startMarker);
+        dropDamaged(headingKey, Damage.LINE_BREAK, through(open, end));
         return false;
     }
 
     /**
-     * Warns that a run never received its closing marker, so it builds nothing.
+     * Drops a start mark that no stop pairs with, and reports it at the element it sits on.
      *
-     * @param open   the still-open anchor or run, or null when nothing is open
-     * @param marker what the missing closing marker would have closed
+     * @param headingKey the {@code Strings} key of the report heading of the span's kind
+     * @param open       the still-open start, or {@code null} when nothing is open
+     * @effects when {@code open} is not {@code null}, adds one entry to the reader's entries
      */
-    private static void warnDanglingStart(@Nullable Object open, String marker) {
+    private void dropDangling(String headingKey, @Nullable OpenMark open) {
         if (open != null) {
-            LOG.warn("Dropping dangling {} with no matching stop", marker);
+            dropDamaged(headingKey, Damage.NO_END, at(open.opener().element()));
         }
-    }
-
-    /** Warns that a closing marker arrived with no run open for it to close. */
-    private static void warnOrphanStop(String marker) {
-        LOG.warn("Ignoring {} with no matching start", marker);
     }
 
     /**
-     * Narrows the note a beam, tie or slide marker sits on. Each of those spans joins notes, so a
-     * marker on a rest or a barline describes a span the document model cannot hold, and whatever
-     * it would have formed is dropped.
+     * Drops a stop mark that no start pairs with, and reports it at the element it sits on.
      *
-     * @param note   the site the marker was read from
-     * @param marker what the marker would have opened or closed, for the diagnostic
-     * @return the site's element as a note, or null when the element is not a note
+     * @param headingKey the {@code Strings} key of the report heading of the span's kind
+     * @param stop       the site the stop mark was read from
+     * @effects adds one entry to the reader's entries
      */
-    private static @Nullable NoteElement markedNote(NoteSite note, String marker) {
-        if (note.element() instanceof NoteElement markedNote) {
-            return markedNote;
+    private void dropOrphanStop(String headingKey, NoteSite stop) {
+        dropDamaged(headingKey, Damage.NO_START, at(stop.element()));
+    }
+
+    /**
+     * Drops a damaged mark and reports it for the reason {@code damage} gives.
+     *
+     * @param headingKey the {@code Strings} key of the report heading of the kind the mark would
+     *                   have made
+     * @param damage     how the mark is damaged
+     * @param where      the elements the mark sat on, or {@code null} when it sat on none
+     * @effects adds one entry to the reader's entries
+     */
+    private void dropDamaged(String headingKey, Damage damage, @Nullable ElementLocationRange where) {
+        drop(new ReportedChange(headingKey, Strings.get(damage.reasonKey), where));
+    }
+
+    /**
+     * Records the report entry for a mark this reader dropped.
+     *
+     * @effects adds {@code entry} to the reader's entries
+     * @log WARN naming the entry
+     */
+    private void drop(ReportedChange entry) {
+        LOG.warn("Dropping a damaged mark: {}", entry);
+        readerEntries.add(entry);
+    }
+
+    /**
+     * The elements from the one a span's start mark sits on to the one its stop mark sits on,
+     * which may be on different lines.
+     */
+    private static ElementLocationRange through(OpenMark open, NoteSite end) {
+        return new ElementLocationRange(locationOf(open.opener().element()), locationOf(end.element()));
+    }
+
+    /**
+     * The location of {@code element} alone.
+     *
+     * @return the range naming only {@code element}, or {@code null} when {@code element} is
+     *     {@code null}
+     */
+    private static @Nullable ElementLocationRange at(@Nullable StaffElement element) {
+        return element == null ? null : ElementLocationRange.single(locationOf(element));
+    }
+
+    /**
+     * Where {@code element} sits in the song. The passes run once the walk has committed every
+     * line, so every element they read sits on a line of the song.
+     */
+    private static ElementLocation locationOf(StaffElement element) {
+        var line = element.getParentLine();
+
+        if (line == null) {
+            throw RuntimeError.exit("A mapped element sits on no line: " + element);
         }
 
-        LOG.warn("Ignoring {} on {}, which is not a note", marker, note.element());
-        return null;
+        return new ElementLocation(line.index(), line.getElementIndex(element));
+    }
+
+    /**
+     * Narrows the element a beam, tie or slide mark sits on to a note. Each of those marks joins
+     * notes, so a mark on any other element is damaged; the caller drops and reports it.
+     *
+     * @param note the site the mark was read from
+     * @return the site's element when it is a {@link NoteElement} — any note, grace notes
+     *     included — or {@code null} when it is not, as for a rest
+     */
+    private static @Nullable NoteElement markedNote(NoteSite note) {
+        return note.element() instanceof NoteElement noteElement ? noteElement : null;
     }
 }

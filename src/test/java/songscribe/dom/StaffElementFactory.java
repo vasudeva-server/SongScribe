@@ -101,6 +101,10 @@ public final class StaffElementFactory {
         return note;
     }
 
+    public static NoteElement semibreve() {
+        return (NoteElement) ElementType.SEMIBREVE.newInstance();
+    }
+
     public static NoteElement crotchet() {
         return (NoteElement) ElementType.CROTCHET.newInstance();
     }

@@ -26,16 +26,21 @@ package songscribe.dom;
  * <p>
  * "Same kind" is {@link Span#isSameKindAs}: the same concrete class, which a subclass may narrow.
  * {@link Hairpin} narrows it to the same {@link Hairpin.Kind}, so a crescendo never displaces a
- * diminuendo. Every displaced span leaves
- * through its own {@link Span#removeFrom}, recorded before the new span's addition so undo
- * restores the displaced spans after removing the new one.
+ * diminuendo. Every displaced span leaves through its own recorded removal, before the new span's
+ * addition so undo restores the displaced spans after removing the new one. A span displaced under
+ * {@link #REPLACE_OVERLAPPING} leaves through {@link Span#removeReported}, since it is lost rather than
+ * merged into the new one; a span absorbed under {@link #ABSORB_OVERLAPPING} or
+ * {@link #ABSORB_ADJACENT} leaves through {@link Span#removeFrom}, since the widened span covers it.
  */
 enum Displacement {
 
     /** Leaves every existing span in place: two spans of the kind may overlap freely. */
     COEXIST,
 
-    /** Removes every same-kind span overlapping the new one before it is added. */
+    /**
+     * Removes every same-kind span overlapping the new one before it is added, and reports each
+     * removal with {@link songscribe.Strings#DIALOG_REPORT_REASON_REPLACED}.
+     */
     REPLACE_OVERLAPPING,
 
     /**

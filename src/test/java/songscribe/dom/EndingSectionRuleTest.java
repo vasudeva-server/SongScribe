@@ -34,11 +34,12 @@ import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.BatchReplay.redo;
-import static songscribe.dom.BatchReplay.undo;
+import static songscribe.dom.BatchReplay.NO_FONT_CHANGES;
 import static songscribe.dom.SongFactory.compactSong;
+import static songscribe.dom.SpanFactory.addWithoutTracking;
 import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
@@ -93,12 +94,7 @@ class EndingSectionRuleTest extends UnitTest {
         var song = compactSong(Key.NO_ACCIDENTALS, lines);
         var line = song.getLine(song.lineCount() - 1);
         var range = new ElementRange(anchorIndex, anchorIndex + END_OFFSET_FROM_ANCHOR);
-        var ending = song.withoutMutationTrackingResult(() -> {
-            var built = endingOver(line, range);
-            built.addTo(line);
-
-            return built;
-        });
+        var ending = addWithoutTracking(song, () -> endingOver(line, range));
 
         return new Fixture(song, ending);
     }
@@ -138,9 +134,8 @@ class EndingSectionRuleTest extends UnitTest {
     void testAnEditThatLeavesTheSplitNoOpenSectionRemovesAndReportsTheEnding(SectionCase testCase) {
         var fixture = fixtureOf(testCase.anchorIndex(), testCase.lines());
         var song = fixture.song();
-        var reports = new ReportRecorder();
 
-        try {
+        ReportRecorder.whileRecording(reports -> {
             song.withModification(() -> testCase.edit().accept(song));
 
             var endingsAfter = fixture.endingLine().spanRegistry().findEndings();
@@ -155,9 +150,7 @@ class EndingSectionRuleTest extends UnitTest {
                 assertThat(endingsAfter).singleElement().isSameAs(fixture.ending());
                 assertThat(reports.reports()).isEmpty();
             }
-        } finally {
-            reports.dispose();
-        }
+        });
     }
 
     static Stream<SectionCase> sectionCases() {
@@ -209,13 +202,13 @@ class EndingSectionRuleTest extends UnitTest {
                 .as("the fixture reaches the case only if the edit removes the ending")
                 .isEmpty();
 
-            undo(song, batch);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
 
             assertThat(line.getElement(OPENER_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT);
             assertThat(line.spanRegistry().findEndings()).singleElement()
                 .satisfies(restored -> assertThat(restored.range()).isEqualTo(range));
 
-            redo(song, batch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
 
             assertThat(line.spanRegistry().findEndings()).isEmpty();
         } finally {

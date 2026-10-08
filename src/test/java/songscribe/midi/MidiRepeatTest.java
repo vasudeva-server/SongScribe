@@ -23,6 +23,7 @@ package songscribe.midi;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -32,20 +33,26 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.SongFactory;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.note;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.midi.MidiSequences.PLAIN_PLAYBACK;
+import static songscribe.midi.MidiSequences.REPEATED_PLAYBACK;
 import static songscribe.midi.MidiSequences.noteOnPitches;
+import static songscribe.midi.MidiSequences.playbackOf;
 
 /**
  * {@code MidiSequenceBuilder.buildSequenceWithRepeats}: a {@code :|} or {@code :|:} replays the
  * section {@link songscribe.dom.Song#repeatSectionStart} names once, then plays on; a {@code :|}
  * with no open section plays on as an ordinary bar; a jump to an earlier line continues on that
- * line.
+ * line. With repeats taken the replay skips a first ending for the second; with repeats off the
+ * first ending is skipped and the section plays once.
  */
 class MidiRepeatTest extends UnitTest {
 
@@ -56,11 +63,10 @@ class MidiRepeatTest extends UnitTest {
     private static final int B_POSITION = 2;
     private static final int C_POSITION = 4;
 
-    private static final int PIANO = 0;
-    private static final int FULL_PERCENT = 100;
-
-    /** Every written note sounds for its full length, at the written tempo, with repeats taken. */
-    private static final PlaybackSettings REPEATED_PLAYBACK = new PlaybackSettings(PIANO, FULL_PERCENT, FULL_PERCENT, true);
+    /** The ending over the notes B and C of {@link #endingLines}: from index 2 to index 4. */
+    private static final int ENDING_ANCHOR_INDEX = 2;
+    private static final int ENDING_END_INDEX = 4;
+    private static final ElementRange ENDING_OVER_B_AND_C = new ElementRange(ENDING_ANCHOR_INDEX, ENDING_END_INDEX);
 
     private int pitchA;
     private int pitchB;
@@ -89,14 +95,39 @@ class MidiRepeatTest extends UnitTest {
      * @param lines         the song's lines, in song order
      * @param expectedOrder the letters {@link #pitchA}, {@link #pitchB} and {@link #pitchC} name,
      *                      in the order their note-ons must appear
+     * @param settings      how the playback sounds the song, repeats taken or not
+     * @param ending        the range of the first line's elements an ending covers, or
+     *                      {@code null} when the song has none
      */
-    private record RepeatCase(String description, SongFactory.LineBuilder[] lines, String expectedOrder) {}
+    private record RepeatCase(
+        String description,
+        SongFactory.LineBuilder[] lines,
+        String expectedOrder,
+        PlaybackSettings settings,
+        @Nullable ElementRange ending
+    ) {
+
+        /** A song with no ending, played with repeats taken. */
+        RepeatCase(String description, SongFactory.LineBuilder[] lines, String expectedOrder) {
+            this(description, lines, expectedOrder, REPEATED_PLAYBACK, null);
+        }
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("repeatCases")
     void testPlaybackFollowsTheRepeatMarkers(RepeatCase testCase) throws Exception {
         var song = SongFactory.buildSong(testCase.lines());
-        var sequence = new MidiSequenceBuilder(song, REPEATED_PLAYBACK).buildFullSequence();
+        var ending = testCase.ending();
+
+        if (ending != null) {
+            // An ending is judged against the song's repeat sections, so it is placed once the
+            // line is in the song.
+            var placed = endingOver(song.getLine(FIRST_LINE), ending);
+
+            song.withoutMutationTracking(() -> placed.addTo());
+        }
+
+        var sequence = playbackOf(song, testCase.settings());
         var order = new StringBuilder();
 
         noteOnPitches(sequence).forEach(pitch -> order.append(letterOf(pitch)));
@@ -197,7 +228,29 @@ class MidiRepeatTest extends UnitTest {
                         line.addElement(note(C_POSITION));
                     }
                 },
-                "ABABC")
+                "ABABC"),
+
+            new RepeatCase("|: A [B :| [C with repeats taken plays A B A C, the first ending skipped on the replay",
+                endingLines(), "ABAC", REPEATED_PLAYBACK, ENDING_OVER_B_AND_C),
+
+            new RepeatCase("|: A [B :| [C with repeats off plays A C, the first ending skipped",
+                endingLines(), "AC", PLAIN_PLAYBACK, ENDING_OVER_B_AND_C)
         );
+    }
+
+    /**
+     * {@code |: A B :| C}: a repeated section whose closing {@code :|} is the split of the ending
+     * {@link #ENDING_OVER_B_AND_C} covers, B being the first bracket and C the second.
+     */
+    private static SongFactory.LineBuilder[] endingLines() {
+        return new SongFactory.LineBuilder[] {
+            firstLine(line -> {
+                line.addElement(repeatLeft());
+                line.addElement(note(A_POSITION));
+                line.addElement(note(B_POSITION));
+                line.addElement(repeatRight());
+                line.addElement(note(C_POSITION));
+            })
+        };
     }
 }

@@ -189,18 +189,12 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     private static ElementColumn column(int index, StaffElement element, @Nullable Lyric lyric) {
-        var column = new ElementColumn(
-            element,
-            List.of(),
-            0.0,
-            COLUMN_WIDTH_SS,
-            COLUMN_WIDTH_SS,
-            0.0,
-            0.0,
-            lyric,
-            // A carrier — a lyric with no text — is a melisma marker, not a drawn syllable.
-            lyric != null && !lyric.text().isEmpty() ? SYLLABLE_WIDTH_SS : 0.0,
-            false);
+        var extents = new ElementColumn.Extents(0.0, COLUMN_WIDTH_SS, COLUMN_WIDTH_SS, 0.0, 0.0);
+        // A carrier — a lyric with no text — is a melisma marker, not a drawn syllable.
+        var measured = lyric == null
+            ? null
+            : new ElementColumn.MeasuredLyric(lyric, lyric.text().isEmpty() ? 0.0 : SYLLABLE_WIDTH_SS);
+        var column = new ElementColumn(element, extents, measured, null);
 
         column.setXSs(index * COLUMN_PITCH_SS);
 

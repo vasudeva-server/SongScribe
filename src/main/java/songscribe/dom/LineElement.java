@@ -94,14 +94,14 @@ public abstract class LineElement {
      * Every route that copies one element's state onto another ends up here, so a field added
      * to this class is carried by all of them at once and no route can omit it. The routes are
      * {@link StaffElement#copyStateFrom}, {@link StaffElement#convertedFrom},
-     * {@link Span#copyUserStateFrom}, {@link Span#copy}, {@link Attachment#copy} and
-     * {@link Articulation#copy}.
+     * {@link Span#copy}, {@link Attachment#copy}, {@link Articulation#copy} and the paste
+     * reconciliation in {@code PasteSpanReconciliation}.
      *
      * @param source the element whose base state to take
      * @effects replaces this element's base state; leaves its identity and its place in the
      *          document alone
      */
-    protected final void copyBaseStateFrom(LineElement source) {
+    public final void copyBaseStateFrom(LineElement source) {
         userXOffsetSs = source.userXOffsetSs;
         userYOffsetSs = source.userYOffsetSs;
     }

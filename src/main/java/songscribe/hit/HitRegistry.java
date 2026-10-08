@@ -28,8 +28,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Every clickable area of one staff line, built once per line at layout time and
- * immutable thereafter. Replaces the cascade of separate hit testers each kind of
- * notation used to carry.
+ * immutable thereafter. It is the one structure that answers hits for every kind of
+ * notation, in place of a separate hit tester per kind.
  *
  * <p>Coordinates are layout space: X in line-local staff spaces, Y in staff spaces
  * relative to the staff midline, positive downward. A click point is converted into
@@ -85,9 +85,8 @@ public final class HitRegistry {
      * with the same priority and area rules as {@link #hitTest}.
      *
      * <p>This exists so the mouse-move path stays cheap. Pointer motion fires this on
-     * every pixel, and the only thing hovering needs to know about is lyrics — which is
-     * exactly what the old mouse-move code asked for, instead of running the whole
-     * cascade. Filtering a full {@link #hitTest} afterwards would give the same answer
+     * every pixel, and the only thing hovering needs to know about is lyrics, so this asks
+     * for lyrics alone instead of running the whole cascade. Filtering a full {@link #hitTest} afterwards would give the same answer
      * while doing all the work this method exists to avoid.
      *
      * @param xSs       X in line-local staff spaces

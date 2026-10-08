@@ -98,7 +98,7 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
     }
 
     @Override
-    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
+    public void applyToElement(Line line, int index, NoteElement element, Toggle toggle) {
         var existing = element.findAttachment(DynamicAttachment.class);
 
         if (existing != null) {
@@ -110,7 +110,7 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
             }
         }
 
-        if (selected) {
+        if (toggle == Toggle.APPLY) {
             element.addAttachment(new DynamicAttachment(dynamicType));
         }
     }

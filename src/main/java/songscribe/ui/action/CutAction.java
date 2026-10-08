@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -35,7 +36,7 @@ public final class CutAction extends PasteboardAction {
     private CutAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Operation.CUT,
+            PasteboardOpCommand.Operation.CUT,
             Strings.get(Strings.ACTION_EDIT_CUT),
             "edit-cut",
             KeyEvent.VK_X,

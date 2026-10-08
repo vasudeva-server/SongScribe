@@ -20,6 +20,7 @@
 
 package songscribe.shape;
 
+import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 
 /**
@@ -29,10 +30,10 @@ import java.awt.geom.Point2D;
  * <p>
  * A sloped bracket gives each corner its own Y, so the horizontal segments tilt with the note
  * contour. The verticals still hang straight down from their (sloped) corners by a fixed arm
- * height. The four corner Ys are supplied by the caller; this class only orders the points.
- * Each arm therefore runs from {@code (x, armBottomYSs)} up to its corner {@code (x, cornerYSs)}
- * and in across the sloped bracket line to the gap edge at {@code gapYSs}. See
- * {@code docs/layout-geometry.md} for the annotated diagram.
+ * height. Each arm's stretch of the sloped bracket line is supplied by the caller as a segment;
+ * this class only orders the points. Each arm therefore runs from its corner's X at the arm bottom
+ * up to the corner, and in along the segment to the gap edge. See {@code docs/layout-geometry.md}
+ * for the annotated diagram.
  * <p>
  * All coordinates are plain staff-space values; the caller derives the number gap from the shaped
  * glyph and does the font drawing. This class holds no layout or renderer dependency.
@@ -44,48 +45,36 @@ public final class TupletBracketShape {
     /**
      * Builds the left bracket arm: down the vertical, up to the sloped corner, across to the gap.
      *
-     * @param leftXSs      left edge of the bracket, in staff spaces
-     * @param gapLeftXSs   left edge of the number gap, in staff spaces
-     * @param leftYSs      y of the left corner (sloped bracket line), in staff spaces
-     * @param gapLeftYSs   y of the bracket line at the gap's left edge, in staff spaces
+     * @param lineSs       the bracket line's left stretch, in staff spaces: from the left corner
+     *                     ({@code P1}) to the number gap's left edge ({@code P2})
      * @param armBottomYSs y of the vertical arm's lower end, in staff spaces
      * @return the left arm corner points, in draw order
      */
-    public static Point2D[] leftArm(
-        double leftXSs,
-        double gapLeftXSs,
-        double leftYSs,
-        double gapLeftYSs,
-        double armBottomYSs
-    ) {
+    public static Point2D[] leftArm(Line2D lineSs, double armBottomYSs) {
+        var cornerSs = lineSs.getP1();
+
         return new Point2D[]{
-            new Point2D.Double(leftXSs, armBottomYSs),
-            new Point2D.Double(leftXSs, leftYSs),
-            new Point2D.Double(gapLeftXSs, gapLeftYSs)
+            new Point2D.Double(cornerSs.getX(), armBottomYSs),
+            cornerSs,
+            lineSs.getP2()
         };
     }
 
     /**
      * Builds the right bracket arm: from the gap across to the sloped corner, then down the vertical.
      *
-     * @param gapRightXSs  right edge of the number gap, in staff spaces
-     * @param rightXSs     right edge of the bracket, in staff spaces
-     * @param gapRightYSs  y of the bracket line at the gap's right edge, in staff spaces
-     * @param rightYSs     y of the right corner (sloped bracket line), in staff spaces
+     * @param lineSs       the bracket line's right stretch, in staff spaces: from the number gap's
+     *                     right edge ({@code P1}) to the right corner ({@code P2})
      * @param armBottomYSs y of the vertical arm's lower end, in staff spaces
      * @return the right arm corner points, in draw order
      */
-    public static Point2D[] rightArm(
-        double gapRightXSs,
-        double rightXSs,
-        double gapRightYSs,
-        double rightYSs,
-        double armBottomYSs
-    ) {
+    public static Point2D[] rightArm(Line2D lineSs, double armBottomYSs) {
+        var cornerSs = lineSs.getP2();
+
         return new Point2D[]{
-            new Point2D.Double(gapRightXSs, gapRightYSs),
-            new Point2D.Double(rightXSs, rightYSs),
-            new Point2D.Double(rightXSs, armBottomYSs)
+            lineSs.getP1(),
+            cornerSs,
+            new Point2D.Double(cornerSs.getX(), armBottomYSs)
         };
     }
 }

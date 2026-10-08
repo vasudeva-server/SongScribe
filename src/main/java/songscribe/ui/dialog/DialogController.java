@@ -37,7 +37,7 @@ import songscribe.util.Copyable;
  * controllers need that; the rest are constructed around what they edit and would only be handed a
  * window to ignore.
  *
- * <p><strong>The dialog never sees an instance of this.</strong> It sees the four function
+ * <p><strong>The dialog never sees an instance of this.</strong> It sees the five function
  * references {@link #ops()} assembles, and cannot reach the receiver behind them — see
  * {@link DialogOps} for why those are function references rather than one narrow interface.
  *

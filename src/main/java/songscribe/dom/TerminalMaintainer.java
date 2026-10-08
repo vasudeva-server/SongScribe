@@ -79,7 +79,7 @@ public final class TerminalMaintainer {
      * <p>
      * Used wherever the terminal takes over the slot of an element that already existed, so an
      * annotation on that element is not silently dropped — the terminal is selectable and can
-     * therefore carry one (issue #713). Appending a terminal into a free slot has nothing to
+     * therefore carry one. Appending a terminal into a free slot has nothing to
      * copy and uses {@link #newTerminalElement} instead.
      */
     private static StaffElement terminalElementReplacing(ElementType type, StaffElement displaced) {

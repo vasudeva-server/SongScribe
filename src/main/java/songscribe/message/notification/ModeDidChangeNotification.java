@@ -23,22 +23,17 @@ package songscribe.message.notification;
 
 import songscribe.message.Message;
 import songscribe.ui.Mode;
-import songscribe.ui.action.ModeAction;
 
 public class ModeDidChangeNotification extends Message {
 
-    private final ModeAction action;
+    private final Mode mode;
 
-    public ModeDidChangeNotification(ModeAction action) {
-        this.action = action;
-    }
-
-    public ModeAction getAction() {
-        return action;
+    public ModeDidChangeNotification(Mode mode) {
+        this.mode = mode;
     }
 
     public Mode getMode() {
-        return action.getMode();
+        return mode;
     }
 
     @Override

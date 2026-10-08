@@ -40,7 +40,7 @@ public final class DynamicAttachment extends Attachment implements IntrinsicHeig
      * Every type here is one the editor can create and the renderer can draw. A dynamic with no
      * glyph would be invisible yet still reserve its footprint, silently pushing everything above
      * it outward, so the set is deliberately limited to those with one — {@code sfz} and
-     * {@code fp} were declared without a glyph and are not supported (refs #510).
+     * {@code fp} were declared without a glyph and are not supported.
      */
     public enum DynamicType {
         /** Pianissimo - very soft (pp) */

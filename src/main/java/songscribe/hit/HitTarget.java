@@ -20,10 +20,9 @@
 
 package songscribe.hit;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.dom.LineContent;
+import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 
 /**
@@ -70,21 +69,35 @@ public sealed interface HitTarget {
      * The kinds a press can make the selection.
      *
      * <p>A kind outside this interface is addressable but never selected, which is what makes
-     * the selection layer's liveness rule total: it holds only a {@code Selectable}, so
-     * {@link #owner()} is answerable for whatever it holds.
+     * the selection layer's liveness check total: it holds only a {@code Selectable}, so
+     * {@link #isLiveOn} is answerable for whatever it holds.
      */
     sealed interface Selectable extends HitTarget {
 
         /**
-         * The element this target hangs off, used by the selection layer's single liveness
-         * rule — check that the element is still on its line. Every variant answers this in one
-         * line, so revalidation needs no per-variant switch.
+         * Whether this target still names something live on {@code line}: whether a selection
+         * of it, made on {@code line}, still addresses notation that exists there. The selection
+         * layer asks this after an edit, an undo or a redo, and clears a selection that is no
+         * longer live.
+         * <p>
+         * Each kind answers from what records its presence. A staff element, an attachment and
+         * an articulation answer from the line they are on. A span answers from the line's span
+         * registry, because removing a span leaves its endpoints where they were. A tie answers
+         * from both of its notes. The staff line itself is always live.
          *
-         * @return the owning element — a staff element, an attachment, an articulation or a
-         *         span — or {@code null} for {@link StaffLine}, which addresses the staff line
-         *         itself rather than anything on it
+         * @param line the line the selection is on
+         * @return {@code true} when the target is live on {@code line}
          */
-        @Nullable LineContent owner();
+        boolean isLiveOn(Line line);
+    }
+
+    /**
+     * Whether {@code line}'s span registry holds {@code span}: the liveness rule every span
+     * target shares. The registry is the only record of a span having been removed, since a
+     * removal leaves the span's endpoints where they were.
+     */
+    private static boolean isRegisteredOn(Span<?> span, Line line) {
+        return line.spanRegistry().getSpans().contains(span);
     }
 
     /**
@@ -118,8 +131,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public StaffElement owner() {
-            return element;
+        public boolean isLiveOn(Line line) {
+            return element.getParentLine() == line;
         }
     }
 
@@ -129,6 +142,11 @@ public sealed interface HitTarget {
         @Override
         public HitPriority priority() {
             return HitPriority.SLIDE;
+        }
+
+        @Override
+        public boolean isLiveOn(Line line) {
+            return owner.getParentLine() == line;
         }
     }
 
@@ -154,8 +172,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return hairpin;
+        public boolean isLiveOn(Line line) {
+            return isRegisteredOn(hairpin, line);
         }
     }
 
@@ -168,8 +186,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return ending;
+        public boolean isLiveOn(Line line) {
+            return isRegisteredOn(ending, line);
         }
     }
 
@@ -181,9 +199,10 @@ public sealed interface HitTarget {
             return HitPriority.STAFF_LINE;
         }
 
+        /** Always live: it addresses the staff line itself, not anything on it. */
         @Override
-        public @Nullable LineContent owner() {
-            return null;
+        public boolean isLiveOn(Line line) {
+            return true;
         }
     }
 
@@ -196,8 +215,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return articulation;
+        public boolean isLiveOn(Line line) {
+            return articulation.getParentLine() == line;
         }
     }
 
@@ -210,20 +229,12 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return attachment;
+        public boolean isLiveOn(Line line) {
+            return attachment.getParentLine() == line;
         }
     }
 
-    /**
-     * A tie curve, or the half of one a line draws when the tie crosses a line break.
-     *
-     * <p>A tie is owned by its anchor note: the anchor stores the tie and the end is derived
-     * from it (see {@link NoteElement#tie()}), so {@link #owner()} answers the anchor. The
-     * anchor is on only the first of a line-crossing tie's two lines, so the selection layer
-     * asks whether a tie target is live from both of its notes rather than from the owner
-     * alone.
-     */
+    /** A tie curve, or the half of one a line draws when the tie crosses a line break. */
     record Tie(songscribe.dom.Tie tie) implements Selectable {
 
         @Override
@@ -231,9 +242,26 @@ public sealed interface HitTarget {
             return HitPriority.TIE;
         }
 
+        /**
+         * Live while its anchor still derives this tie ({@link NoteElement#tie()}) and
+         * {@code line} holds either of its notes. The anchor alone cannot answer: it stays on
+         * its line when the tie is removed, and a tie across a line break can be selected from
+         * either of its two lines while the anchor is on only the first.
+         */
         @Override
-        public NoteElement owner() {
-            return tie.anchor();
+        public boolean isLiveOn(Line line) {
+            return tie.equals(tie.anchor().tie()) && isDrawnOn(line);
+        }
+
+        /**
+         * Whether {@code line} draws this tie or a half of it: whether it holds either of the
+         * tie's two notes.
+         *
+         * @param line any line of the song
+         * @return {@code true} when {@code line} holds the tie's anchor or its end
+         */
+        public boolean isDrawnOn(Line line) {
+            return line.placementOf(tie) != null;
         }
     }
 
@@ -246,8 +274,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return beam;
+        public boolean isLiveOn(Line line) {
+            return isRegisteredOn(beam, line);
         }
     }
 
@@ -260,8 +288,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return trill;
+        public boolean isLiveOn(Line line) {
+            return isRegisteredOn(trill, line);
         }
     }
 
@@ -274,8 +302,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineContent owner() {
-            return tuplet;
+        public boolean isLiveOn(Line line) {
+            return isRegisteredOn(tuplet, line);
         }
     }
 

@@ -35,15 +35,16 @@ import songscribe.message.mutation.Mutation;
  */
 final class ModificationRules {
 
-    private final List<ModificationRule> rules =
-        List.of(new TieRule(), new EndingSectionRule(), new TupletBeatRule());
+    private final List<ModificationRule> rules = List.of(new TieRule(), new EndingSectionRule());
 
     /**
      * Runs every rule over {@code batch}, in order.
      *
      * @param song   the song the edit changed
-     * @param batch  the mutations the edit recorded; every change in it has landed
-     * @param report the report of the edit, into which each rule records its removals
+     * @param batch  the mutations the edit recorded; every change in it has landed; never empty
+     * @param report the report of the open edit: the tie rule records its removals into it, and
+     *               the ending rule reports its removals through {@link Song#report}, which
+     *               records into the same report
      * @effects whatever each rule's {@link ModificationRule#apply} does
      */
     void apply(Song song, List<Mutation> batch, ChangeReport report) {

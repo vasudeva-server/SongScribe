@@ -21,8 +21,12 @@
 package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.TreeMap;
+import java.util.function.ObjIntConsumer;
 import javax.swing.AbstractAction;
 import javax.swing.Icon;
 import javax.swing.JRootPane;
@@ -34,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.dom.ElementChange;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -61,6 +66,7 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.undo.UndoController;
 import songscribe.util.GraphicUtils;
@@ -212,18 +218,61 @@ public class UIAction extends AbstractAction implements Disposable {
         String getNativeMenuTitle();
     }
 
+    /** Whether an action's attribute is put on the elements it acts on or taken off them. */
+    public enum Toggle {
+        APPLY,
+        REMOVE;
+
+        /**
+         * @param selected an action's selected state
+         * @return {@link #APPLY} for a selected action, {@link #REMOVE} for one that is not
+         */
+        public static Toggle of(boolean selected) {
+            return selected ? APPLY : REMOVE;
+        }
+    }
+
+    /**
+     * A reflectable action that can be applied across a selection. It decides what it does to
+     * each element the selection holds, and hands the decision to {@link SelectionActionApplier}
+     * as a plan to gate and run.
+     */
+    public interface SelectionApplicable<E extends StaffElement> extends Reflectable<E> {
+        /**
+         * Decides what this action does to {@code selection}. Mutates nothing: every change the
+         * plan holds is measured on a detached stand-in, and the line changes only when the
+         * plan's mutation runs.
+         *
+         * @param selection the elements to act on
+         * @param toggle    whether to put this action's attribute on or take it off
+         * @return the plan, or {@code null} when the action changes no element of
+         *     {@code selection}
+         */
+        SelectionActionApplier.@Nullable Plan plan(ElementSelection selection, Toggle toggle);
+
+        /**
+         * Whether this action's change can make the column it touches wider, so applying it to
+         * a selection must be refused when the line no longer fits.
+         *
+         * @return {@code false}; a {@link WidensColumn} answers {@code true}
+         */
+        default boolean widensColumn() {
+            return false;
+        }
+    }
+
     /**
      * A reflectable action that modifies an element's attributes in place.
      */
-    public interface ElementModifiable<E extends StaffElement> extends Reflectable<E> {
+    public interface ElementModifiable<E extends StaffElement> extends SelectionApplicable<E> {
         /**
          * Apply or remove this action's attribute on the given element. {@code line} and
          * {@code index} locate the element the call acts on or stands in for.
          *
-         * @param element  the element to modify, an element {@link #admit} returned
-         * @param selected true to apply the attribute, false to remove it
+         * @param element the element to modify, an element {@link #admit} returned
+         * @param toggle  whether to put the attribute on or take it off
          */
-        void applyToElement(Line line, int index, E element, boolean selected);
+        void applyToElement(Line line, int index, E element, Toggle toggle);
 
         /**
          * The set of {@link ElementField} tags identifying which element fields
@@ -232,13 +281,71 @@ public class UIAction extends AbstractAction implements Disposable {
          * to specific field changes without inspecting the before/after element.
          */
         EnumSet<ElementField> modifiedFields();
+
+        /**
+         * Plans one {@link Line#modifyElement} for each admitted element. Each element's
+         * stand-in is a detached clone with the modification applied.
+         */
+        @Override
+        default SelectionActionApplier.@Nullable Plan plan(ElementSelection selection, Toggle toggle) {
+            var line = selection.line();
+            var changes = new ArrayList<SelectionActionApplier.PendingChange>();
+
+            forEachAdmitted(this, selection, (admitted, index) -> {
+                // Safe on a detached clone: applyToElement takes the element as a parameter and
+                // touches nothing else. admit() narrows it back to E: a clone shares its
+                // source's class, so it is admitted by the same rule the source was.
+                var standIn = admitted.clone();
+                var admittedStandIn = admit(standIn);
+
+                if (admittedStandIn != null) {
+                    applyToElement(line, index, admittedStandIn, toggle);
+                    changes.add(new SelectionActionApplier.PendingChange(index, standIn));
+                }
+            });
+
+            if (changes.isEmpty()) {
+                return null;
+            }
+
+            var refusal = (toggle == Toggle.APPLY)
+                ? SelectionActionApplier.Refusal.INSERTION
+                : SelectionActionApplier.Refusal.REMOVAL;
+
+            return new SelectionActionApplier.Plan(
+                changes, () -> modifyAll(line, changes, toggle), widensColumn(), refusal);
+        }
+
+        /**
+         * Lands each planned change on the live element at its index, as one
+         * {@link Line#modifyElement} apiece.
+         */
+        private void modifyAll(
+            Line line, List<SelectionActionApplier.PendingChange> changes, Toggle toggle) {
+
+            for (var change : changes) {
+                var index = change.index();
+
+                line.modifyElement(
+                    index,
+                    modifiedFields(),
+                    () -> {
+                        var admitted = admit(line.getElement(index));
+
+                        if (admitted != null) {
+                            applyToElement(line, index, admitted, toggle);
+                        }
+                    }
+                );
+            }
+        }
     }
 
     /**
      * A reflectable action whose change can make the column it touches wider — an accidental
      * glyph appearing to the left of the notehead, a dot to its right, a different notehead
      * altogether. Applying one to a selection must be refused when the line no longer fits, so
-     * {@code SelectionCoordinator} measures the projected line before committing.
+     * {@link SelectionActionApplier} measures the projected line before committing.
      *
      * <p>Actions that stack <em>vertically</em> above or below the note — a fermata, a dynamic
      * marking, an articulation — do not implement this: they cannot widen anything, and gating
@@ -248,7 +355,11 @@ public class UIAction extends AbstractAction implements Disposable {
      * site, so a new width-changing action states that fact where it is defined instead of
      * silently skipping the check.
      */
-    public interface WidensColumn<E extends StaffElement> extends Reflectable<E> {
+    public interface WidensColumn<E extends StaffElement> extends SelectionApplicable<E> {
+        @Override
+        default boolean widensColumn() {
+            return true;
+        }
     }
 
     /**
@@ -261,12 +372,64 @@ public class UIAction extends AbstractAction implements Disposable {
     public interface ElementReplaceable<E extends StaffElement> extends WidensColumn<E> {
         /**
          * Create a replacement element with this action's attribute applied.
-         * @param element  the source element to base the replacement on, an element
-         *                 {@link #admit} returned
-         * @param selected true to apply the attribute, false to skip
+         *
+         * @param element the source element to base the replacement on, an element
+         *                {@link #admit} returned
          * @return the replacement element
          */
-        StaffElement createReplacement(E element, boolean selected);
+        StaffElement createReplacement(E element);
+
+        /**
+         * Plans one {@link Line#replace} of a replacement over every admitted element. The
+         * stand-in for each element is the new element of its pair. A replacement only ever
+         * puts this action's attribute on, so {@link Toggle#REMOVE} plans nothing.
+         */
+        @Override
+        default SelectionActionApplier.@Nullable Plan plan(ElementSelection selection, Toggle toggle) {
+            if (toggle == Toggle.REMOVE) {
+                return null;
+            }
+
+            var newElements = new TreeMap<Integer, StaffElement>();
+
+            forEachAdmitted(
+                this, selection, (admitted, index) -> newElements.put(index, createReplacement(admitted)));
+
+            if (newElements.isEmpty()) {
+                return null;
+            }
+
+            var line = selection.line();
+            var replacement = new ElementChange.Replacement(line, newElements);
+            var changes = newElements.entrySet().stream()
+                .map(pair -> new SelectionActionApplier.PendingChange(pair.getKey(), pair.getValue()))
+                .toList();
+
+            return new SelectionActionApplier.Plan(
+                changes,
+                () -> line.replace(replacement),
+                widensColumn(),
+                SelectionActionApplier.Refusal.INSERTION);
+        }
+    }
+
+    /**
+     * Visits each element of {@code selection} that {@code action} admits, with its index, in
+     * index order.
+     */
+    private static <E extends StaffElement> void forEachAdmitted(
+        Reflectable<E> action, ElementSelection selection, ObjIntConsumer<E> visit) {
+
+        var line = selection.line();
+        var bounds = selection.range();
+
+        for (var i = bounds.begin(); i <= bounds.end(); i++) {
+            var admitted = action.admit(line.getElement(i));
+
+            if (admitted != null) {
+                visit.accept(admitted, i);
+            }
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UIAction.class);
@@ -371,8 +534,7 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     protected @Nullable ScoreViewController getScoreViewController() {
-        var scoreView = getScoreView();
-        return scoreView != null ? scoreView.getController() : null;
+        return mainFrame.getScoreViewController();
     }
 
     protected ScoreView requireScoreView() {
@@ -770,24 +932,24 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * If a selection is active and this action is Reflectable, apply the action
-     * to all applicable notes in the selection.
+     * If a selection is active and this action is {@link SelectionApplicable}, apply the action
+     * to all applicable elements in the selection: put its attribute on when the action is
+     * selected, take it off when it is not.
      * @return true if the action was applied to the selection (caller should skip normal flow)
      */
     protected boolean applyToSelectionIfActive() {
-        if (!(this instanceof Reflectable<?> reflectable)) {
+        if (!(this instanceof SelectionApplicable<?> applicable)) {
             return false;
         }
 
         var score = requireScoreView();
-        var coordinator = score.getSelectionCoordinator();
-        var selection = coordinator.getSelection();
+        var selection = score.getSelectionCoordinator().getSelection();
 
         if (selection == null) {
             return false;
         }
 
-        SelectionActionApplier.apply(coordinator, reflectable, reflectable.isSelected(), score);
+        SelectionActionApplier.apply(score, selection, applicable, Toggle.of(applicable.isSelected()));
         return true;
     }
 

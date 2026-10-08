@@ -42,6 +42,7 @@ import songscribe.dom.Ss;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SongFactory.notesAroundKeyChange;
+import static songscribe.dom.SongFactory.setLineWidth;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
@@ -179,10 +180,6 @@ class KeyEditFitCalculatorTest extends UnitTest {
             NARROWEST_LINE_WIDTH_SS,
             lineWidthSs -> lineWidthSs <= WIDEST_LINE_WIDTH_SS,
             lineWidthSs -> lineWidthSs + LINE_WIDTH_STEP_SS);
-    }
-
-    private static void setLineWidth(Song song, double lineWidthSs) {
-        song.withoutMutationTracking(() -> song.setLineWidthSs(new Ss(lineWidthSs)));
     }
 
     private static boolean lineKeyChangeFitsAt(Song song, double lineWidthSs) {

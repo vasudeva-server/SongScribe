@@ -29,7 +29,6 @@ import songscribe.dom.PartialDate;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.Tempo;
-import songscribe.ui.component.ScoreView;
 
 /**
  * Immutable snapshot of all song-level fields, built by
@@ -37,14 +36,14 @@ import songscribe.ui.component.ScoreView;
  * <p>
  * Passed to {@link Song#loadFrom(SongData)} so that
  * Song can apply all fields atomically. After installation,
- * {@link ScoreView#setSong(Song)} posts
+ * {@code ScoreView.setSong} posts
  * a {@link songscribe.message.notification.DocumentDidLoadNotification}.
  * <p>
  * The {@code tempo} field is {@code @Nullable}; a null value means the song
  * file contained no {@code <tempo>} element and the song has no explicit tempo.
  * Fonts are not stored on {@code SongData}; they are built directly into a
  * {@link songscribe.font.DocumentFonts} by the reader and installed on
- * {@link ScoreView} separately.
+ * the score view separately.
  * <p>
  * No key is carried here either. A song has no key of its own — its key is line 0's — so a
  * reader establishes the key its file named on the {@link Line} it belongs to, and the lines

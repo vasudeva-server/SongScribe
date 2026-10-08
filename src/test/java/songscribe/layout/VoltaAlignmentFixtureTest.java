@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
@@ -52,13 +53,16 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
  * Checks that the song built here — one line per way a volta bracket can be aligned — still
- * writes as {@code src/test/resources/fixtures/volta-alignments.musicxml}. The fixture is the
- * approved output: it was opened in the application and looked at, because where a bracket's
- * arms land against the barline beside them is a judgement only a person makes, and this test
- * holds that judgement against later changes to layout and to the writer.
+ * writes as {@code src/test/resources/fixtures/volta-alignments.musicxml}. What it pins is the
+ * markup {@code MusicXmlWriter} emits for an ending, not where a bracket is drawn: the
+ * fixture holds no coordinates a bracket's geometry decides. Bracket geometry is pinned by
+ * {@code EndingBracketGeometryTest}. The fixture is the approved output, opened in the
+ * application and looked at, and this test holds it against later changes to the writer. The
+ * {@code <software>} version string is left out of the comparison, so a version change does not
+ * fail it.
  *
- * <p>{@code EndingBracketGeometry} positions a bracket from two independent inputs — what the
- * bracket opens on, and what it closes on — so the lines below vary exactly one of the two at a
+ * <p>The ending's two ends are independent inputs — what the bracket opens on, and what it
+ * closes on — so the lines below vary exactly one of the two at a
  * time, and each line writes its own case name under its first note. An ending's split is always
  * a right repeat, and that repeat closes the section the ending sits in. Every line after the
  * first therefore starts with a left repeat, which opens the section its own split closes: the
@@ -79,6 +83,9 @@ class VoltaAlignmentFixtureTest extends UnitTest {
     private static final String UPDATE_FIXTURES_PROPERTY = "songscribe.updateFixtures";
 
     private static final String SONG_TITLE = "Volta bracket alignments";
+
+    /** The writer's {@code <software>} element, whose text is the application version. */
+    private static final Pattern SOFTWARE_ELEMENT = Pattern.compile("<software>[^<]*</software>");
 
     /**
      * Hands out the fixture's notes, walking one staff position further along a repeating
@@ -125,12 +132,17 @@ class VoltaAlignmentFixtureTest extends UnitTest {
 
         var expected = Files.readString(FIXTURE_PATH, StandardCharsets.UTF_8);
 
-        assertThat(written)
+        assertThat(withoutSoftwareVersion(written))
             .as("the volta alignments as written now, against %s — if the change is intended, "
                 + "regenerate with ./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest "
                 + "and look at the result in the application",
                 FIXTURE_PATH)
-            .isEqualTo(expected);
+            .isEqualTo(withoutSoftwareVersion(expected));
+    }
+
+    /** {@code xml} with the {@code <software>} element's text blanked, whatever the version. */
+    private static String withoutSoftwareVersion(String xml) {
+        return SOFTWARE_ELEMENT.matcher(xml).replaceAll("<software></software>");
     }
 
     /** The volta-alignment song as the application saves it, dated from the fixed clock. */
@@ -153,7 +165,7 @@ class VoltaAlignmentFixtureTest extends UnitTest {
                 var range = new ElementRange(
                     line.getElementIndex(voltaCase.anchor()), line.getElementIndex(voltaCase.end()));
 
-                endingOver(line, range).addTo(line);
+                endingOver(line, range).addTo();
             }
         });
 
@@ -197,7 +209,9 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             // What the bracket opens on: the single barline behind the anchor, otherwise the
             // anchor itself. A note or rest anchor behind any other bar is not an ending.
             noteOpeningCase(notes),
-            standardCase(notes, "open=SINGLE", singleBarline(), repeatRight(), singleBarline()),
+            // The standard shape with a single barline at both ends, which is also the case for
+            // what the bracket closes on being a single barline.
+            standardCase(notes, "open=SINGLE close=SINGLE", singleBarline(), repeatRight(), singleBarline()),
             noteAfterNoteOpeningCase(notes),
             restOpeningCase(notes),
             restAfterNoteOpeningCase(notes),
@@ -205,7 +219,6 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             // What the bracket closes on: the end element, or the bar or repeat immediately
             // after it when the end element is neither. A right repeat cannot close it: as the
             // split it already closes the section, so it cannot also be the bracket's boundary.
-            standardCase(notes, "close=SINGLE", singleBarline(), repeatRight(), singleBarline()),
             standardCase(notes, "close=DOUBLE", singleBarline(), repeatRight(), doubleBarline()),
             standardCase(notes, "close=REPEAT_LEFT", singleBarline(), repeatRight(), repeatLeft()),
             noteClosingCase(notes),

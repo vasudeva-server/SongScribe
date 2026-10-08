@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Beam;
+import songscribe.dom.Direction;
 import songscribe.dom.Dots;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -83,6 +84,11 @@ public class LayoutEngine {
     // Not the drawn beam thickness (that is BeamMetrics.BEAM_THICKNESS_SS) — only
     // the base the raster-thickening factor scales.
     static final double BEAM_DEPTH_SS = 0.4;
+
+    // The raster-thickening factor's bounds: an angled beam's depth grows by 3.3% to 8.8%.
+    private static final double MIN_BEAM_THICKENING_FACTOR = 1.033;
+    private static final double MAX_BEAM_THICKENING_FACTOR = 1.088;
+
     private static final double MIN_STEM_SS = StemMetrics.STEM_LENGTH_SS;
 
     /** Decimal format for the staff-space values in this class's beam debug output. */
@@ -182,7 +188,9 @@ public class LayoutEngine {
 
         // Initialize calculators
         columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
-        verticalCalculator = new VerticalStackingCalculator();
+        // The song's staff width, not a line's content width, which varies with column count:
+        // every line's extents then clamp alike.
+        verticalCalculator = new VerticalStackingCalculator(staffRightMarginSs, fonts);
     }
 
     /**
@@ -218,10 +226,16 @@ public class LayoutEngine {
      * @throws IllegalStateException if {@code line} is not in a song
      */
     public LayoutResult layout(Line line, boolean hasLeadingLyricContinuation, TempoMark tempoMark) {
-        // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
-        // so layout never precedes initialisation, regardless of paint/layout ordering.
-        NoteGeometry.initializeAccidentalWidths();
+        // Every pass below asks each beamed note for its stem direction, and each answer is its
+        // beam's; holding the directions computes each beam's once for the whole layout.
+        try (var _ = Beam.holdDirections(line.spanRegistry().findSpans(Beam.class))) {
+            return layoutHoldingBeamDirections(line, hasLeadingLyricContinuation, tempoMark);
+        }
+    }
 
+    /** The passes of {@link #layout}, run while every beam on {@code line} holds its direction. */
+    private LayoutResult layoutHoldingBeamDirections(
+        Line line, boolean hasLeadingLyricContinuation, TempoMark tempoMark) {
         // Step 1: Build note columns
         var columns = columnBuilder.buildColumns(line);
 
@@ -229,7 +243,7 @@ public class LayoutEngine {
         // falls straight through to the shared passes below, which all resolve to no-ops or
         // natural zeros on empty columns. It deliberately gets no special-cased result: the
         // extents below feed inter-line spacing, so a line that invents content extents it does
-        // not have spaces itself as if it held that content (refs #630).
+        // not have spaces itself as if it held that content.
         var fitsStaffWidth = placeColumnsHorizontally(columns, line, line.isLast());
 
         // Step 3c: The notator's horizontal nudges land on the solved columns, before anything
@@ -245,7 +259,7 @@ public class LayoutEngine {
         calculateBeams(line, columns, builder);
 
         // Step 5b: Calculate stem layouts for unbeamed notes
-        calculateUnbeamedStems(line, columns, builder);
+        calculateUnbeamedStems(columns, builder);
 
         // Step 6: Calculate tie geometry for every tie and tie half the line owns
         calculateTies(line, columns, builder);
@@ -254,9 +268,7 @@ public class LayoutEngine {
         calculateSlides(line, columns, builder);
 
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
-        // Use the song's staff width for consistent StaffExtents clamping,
-        // not the content width which varies with column count.
-        verticalCalculator.calculate(columns, line, builder, staffRightMarginSs, fonts, tempoMark);
+        verticalCalculator.calculate(columns, line, builder, tempoMark);
 
         // Step 7b: Compute lyric box and connector geometry, for the same verse step 1 built the
         // columns for — what makes their cached syllable widths reusable there.
@@ -306,7 +318,7 @@ public class LayoutEngine {
      * Those floors are the tightest legal spacing there is, so the placement is the closest the
      * line can come to fitting; what will not fit runs past the end of the staff, where the line
      * component's bounds clip it. Placing it is what lets the score show an over-full line at all
-     * (refs #696) — the alternative was to abandon the layout, and the line then did not draw.
+     * — the alternative was to abandon the layout, and the line then did not draw.
      *
      * @return true when the line fits the staff width; false when it overflowed and was placed on
      *         its collision floors
@@ -346,7 +358,7 @@ public class LayoutEngine {
         // is no room to snap into and pulling it back toward the margin would land it on top of the
         // content it follows. Skipping is not merely the same answer by another route — the snap
         // recomputes the floor without the pair's outer neighbours, which understates it when the
-        // column before the terminal hosts a grace note carrying a syllable (refs #696).
+        // column before the terminal hosts a grace note carrying a syllable.
         if (isLastLine && fitsStaffWidth) {
             positionTerminalFlushRight(columns, lineRestSs);
         }
@@ -552,10 +564,12 @@ public class LayoutEngine {
 
             // Beam thickening: angled beams appear thinner due to raster aliasing.
             // Compensate by increasing BEAM_DEPTH proportionally to 1/cos(angle),
-            // clamped to a 3.3–8.8% increase over the nominal beam depth.
+            // clamped to the thickening factor's bounds.
             var angle = Math.atan(slope);
-            var factor = Math.clamp(1.0 / Math.cos(angle), 1.033, 1.088);
+            var factor = Math.clamp(
+                1.0 / Math.cos(angle), MIN_BEAM_THICKENING_FACTOR, MAX_BEAM_THICKENING_FACTOR);
             var thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
+            var beamLine = new LayoutResult.BeamLine(firstColumnXSs, startYSs, slope);
 
             // Build StemLayout for each element in the beam group and accumulate into a map
             // for the BeamLayout.  All Y values are in staff-space with Y-down positive.
@@ -569,7 +583,7 @@ public class LayoutEngine {
                 for (var i = 0; i < memberCount; i++) {
                     var member = members.get(i);
                     var element = member.note();
-                    var geometry = computeBeamElementGeometry(element, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
+                    var geometry = computeBeamElementGeometry(element, elementToColumn, stemDirection, beamLine);
 
                     if (geometry == null) {
                         continue;
@@ -588,13 +602,8 @@ public class LayoutEngine {
                     var topYSs = stemDirection.isUp() ? beamYSs : elementYSs;
                     var bottomYSs = stemDirection.isUp() ? elementYSs : beamYSs;
 
-                    // Determine stub direction for partial-beam elements. The member owns the
-                    // rule so the writer can use the same one.
-                    var stubRight = member.stubRight();
-
                     // How far back French beaming pulls the drawn stem. Resolved here rather
-                    // than in StaffElementRenderer so the per-paint path stays a field read, matching
-                    // stubRight above.
+                    // than in StaffElementRenderer so the per-paint path stays a field read.
                     var frenchShorteningLevels = member.frenchShortening();
 
                     if (LogUtils.isTracingBeams(LOG)) {
@@ -617,11 +626,11 @@ public class LayoutEngine {
                     stemLayouts.put(
                         element,
                         new LayoutResult.StemLayout(
-                            topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, stubRight, frenchShorteningLevels));
+                            topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, frenchShorteningLevels));
                 }
             }
 
-            var beamLayout = new LayoutResult.BeamLayout(slope, startYSs, stemDirection.isUp(), thickeningSs, stemLayouts);
+            var beamLayout = new LayoutResult.BeamLayout(beamLine, stemDirection, thickeningSs, stemLayouts);
             builder.putBeamLayout(beam, beamLayout);
         }
     }
@@ -629,7 +638,7 @@ public class LayoutEngine {
     @Nullable
     private BeamElementGeometry computeBeamElementGeometry(
         NoteElement element, Map<StaffElement, ElementColumn> elementToColumn,
-        boolean stemsUp, double slope, double firstXSs, double startYSs) {
+        Direction stemDirection, LayoutResult.BeamLine beamLine) {
         var column = elementToColumn.get(element);
 
         if (column == null) {
@@ -637,8 +646,8 @@ public class LayoutEngine {
         }
 
         var elementYSs = element.getStaffPosition().toSs();
-        var beamYSs = slope * (column.getXSs() - firstXSs) + startYSs;
-        var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
+        var beamYSs = beamLine.yAtSs(column.getXSs());
+        var stemLenSs = stemDirection.isUp() ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
         return new BeamElementGeometry(elementYSs, beamYSs, stemLenSs);
     }
 
@@ -646,18 +655,14 @@ public class LayoutEngine {
      * Calculates stem geometry for all elements whose stems are not drawn to a beam.
      * Populates {@code builder} with a {@link LayoutResult.StemLayout} for each such element.
      * <p>
-     * A grace note sitting inside a beam's span belongs here too. Its column is flagged
-     * beamed — {@link Line#findBeamAt} answers by index range — but its stem stops at the
-     * grace length rather than running to the beam, so {@code calculateBeams} leaves it to
-     * this pass.
+     * A grace note sitting inside a beam's span belongs here too: its column is never beamed
+     * ({@link ElementColumnBuilder#buildColumn}), and its stem stops at the grace length rather
+     * than running to the beam.
      */
-    private void calculateUnbeamedStems(
-        Line line,
-        List<ElementColumn> columns,
-        LayoutResultBuilder builder) {
+    private void calculateUnbeamedStems(List<ElementColumn> columns, LayoutResultBuilder builder) {
         for (var col : columns) {
             if (!(col.getElement() instanceof NoteElement element)
-                || (col.isBeamed() && !element.getType().isGraceNote())
+                || col.beaming() == Beaming.BEAMED
                 || !element.getType().isNoteWithStem()) {
                 continue;
             }
@@ -689,7 +694,7 @@ public class LayoutEngine {
 
             builder.putStemLayout(
                 element,
-                new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, false, 0));
+                new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, 0));
         }
     }
 
@@ -725,35 +730,12 @@ public class LayoutEngine {
             HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line),
             lineEndTieLimitXSs(line, elementToColumn));
 
-        for (var tie : ties) {
-            var tieColumns = ElementColumn.resolveTie(tie, line, elementToColumn);
+        for (var placement : ties) {
+            var tieColumns = ElementColumn.resolveTie(placement, elementToColumn);
 
-            if (tieColumns == null) {
-                continue;
+            if (tieColumns != null) {
+                builder.addTieLayout(tieLayout(placement, tieColumns, openLimits));
             }
-
-            var layout = switch (tieColumns) {
-                case TieColumns.Whole whole -> {
-                    var spanColumns = whole.columns();
-
-                    yield tieLayout(
-                        tie,
-                        spanColumns.anchorColumn(),
-                        spanColumns.endColumn(),
-                        OpenSide.NONE,
-                        openLimits);
-                }
-
-                // The half this line owns keeps the column of the note that is in it; the other
-                // side gets no column, which is what makes it terminate at the line's edge.
-                case TieColumns.Half half when half.openSide() == OpenSide.END -> tieLayout(
-                    tie, half.attachedColumn(), null, OpenSide.END, openLimits);
-
-                case TieColumns.Half half -> tieLayout(
-                    tie, null, half.attachedColumn(), OpenSide.START, openLimits);
-            };
-
-            builder.putTieLayout(tie, layout);
         }
     }
 
@@ -819,27 +801,23 @@ public class LayoutEngine {
      * Builds one tie's geometry: the whole arc when both of its notes are in the line being laid
      * out, or the half of it this line draws when they are not.
      * <p>
-     * A half is described by the same twelve numbers as a whole tie, and {@code openSide} records
-     * which of its ends is a staff edge rather than a notehead. The half is a complete arc in its
+     * A half is described by the same twelve numbers as a whole tie: it is a complete arc in its
      * own right, so nothing downstream has to reconstruct the side that is missing.
      *
-     * @param tie          the tie being laid out; the arc is seated against its anchor note, and
-     *                     a tie joins two same-pitch notes, so either endpoint would yield the
-     *                     same staff position
-     * @param anchorColumn the anchor (left) note's column, or {@code null} when that note is in an
-     *                     earlier line and this half enters from where the music starts
-     * @param endColumn    the end (right) note's column, or {@code null} when that note is in a
-     *                     later line and this half exits through the staff's right edge
-     * @param openSide     which end of the arc terminates at a staff edge, if either
-     * @param openLimits   where this line's edges stop an open end; the side that attaches to a
-     *                     notehead ignores its half of this
+     * @param placement  the tie being laid out and its place in the line; the arc is seated
+     *                   against the tie's anchor note, and a tie joins two same-pitch notes, so
+     *                   either endpoint would yield the same staff position
+     * @param columns    the columns of the tie's notes in this line: both for a whole tie, and
+     *                   for a half the one note's, whose open edge terminates at the line's edge
+     * @param openLimits where this line's edges stop an open end; the side that attaches to a
+     *                   notehead ignores its half of this
      */
     private LayoutResult.TieLayout tieLayout(
-        Tie tie,
-        @Nullable ElementColumn anchorColumn,
-        @Nullable ElementColumn endColumn,
-        OpenSide openSide,
+        Line.TiePlacement placement,
+        TieColumns columns,
         OpenTieLimits openLimits) {
+
+        var tie = placement.tie();
 
         // Tie arc sign from Tie.arcSign() (LilyPond's both-stem fallthrough tree, shared with
         // the skyline seeder and MusicXML export). Y increases downward, so +1 → arc bulges
@@ -849,7 +827,7 @@ public class LayoutEngine {
         // notehead elements rather than this line's columns. LilyPond arrives at the same answer
         // the long way round, reaching across the break for the head a half does not have
         // (tie.cc get_default_dir: `if (!one_head) one_head = head (me->broken_neighbor (d), d)`).
-        var arcSignSs = tie.arcSign();
+        var arcSign = tie.arcSign();
 
         // Seat the tie in the staff space adjacent to the note (in the arc direction), placed so
         // both the endpoints and the apex clear the staff lines bounding that space (LilyPond
@@ -867,10 +845,10 @@ public class LayoutEngine {
         // where that note is in this line: a half entering from the left edge passes over no dot.
         var anchorNote = tie.anchor();
         var notePosition = anchorNote.getStaffPosition();
-        var dotRowCoincides = anchorColumn != null
-            && tieSeatRowHasDot(anchorNote, notePosition, arcSignSs);
-        var seatSs = tieSeatSs(notePosition, arcSignSs, dotRowCoincides);
-        var endpointYSs = notePosition.toSs() + arcSignSs * seatSs;
+        var dotRowCoincides = placement.holdsAnchor()
+            && tieSeatRowHasDot(anchorNote, notePosition, arcSign);
+        var seatSs = tieSeatSs(notePosition, arcSign, dotRowCoincides);
+        var endpointYSs = notePosition.toSs() + arcSign * seatSs;
 
         // Facing edge while the seat stays within the half-space-tall head box; notehead center
         // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
@@ -905,14 +883,20 @@ public class LayoutEngine {
         // test for whether an end is a notehead or a break column, so the arc stands off the
         // header and the barline by exactly what it stands off a notehead.
         var centerAttach = seatSs > Staff.HALF_SPACE_SS;
-        var startXSs = anchorColumn == null
-            ? openLimits.startXSs() + NOTE_HEAD_GAP_SS
-            : tieEndpointXSs(
-                anchorColumn.getXSs(), 1, centerAttach, anchorColumn.getElement().getType());
-        var endXSs = endColumn == null
-            ? openLimits.endXSs() - NOTE_HEAD_GAP_SS
-            : tieEndpointXSs(
-                endColumn.getXSs(), -1, centerAttach, endColumn.getElement().getType());
+        var startXSs = switch (columns) {
+            case TieColumns.Whole whole -> tieStartXSs(whole.columns().anchorColumn(), centerAttach);
+            case TieColumns.Half half -> switch (half.openEdge()) {
+                case START -> openLimits.startXSs() + NOTE_HEAD_GAP_SS;
+                case END -> tieStartXSs(half.attachedColumn(), centerAttach);
+            };
+        };
+        var endXSs = switch (columns) {
+            case TieColumns.Whole whole -> tieEndXSs(whole.columns().endColumn(), centerAttach);
+            case TieColumns.Half half -> switch (half.openEdge()) {
+                case START -> tieEndXSs(half.attachedColumn(), centerAttach);
+                case END -> openLimits.endXSs() - NOTE_HEAD_GAP_SS;
+            };
+        };
 
         var tieWidthSs = endXSs - startXSs;
 
@@ -934,33 +918,43 @@ public class LayoutEngine {
         // the open end meets the staff edge flat, not mid-arc with a slope left hanging. Nothing in
         // tie-column.cc handles breaks at all; the halves are independent formatting problems.
         var heightSs = tieLineAvoidedHeightSs(
-            endpointYSs, arcSignSs, BezierBow.height(tieWidthSs, TIE_RATIO, TIE_HEIGHT_LIMIT_SS));
-        var shoulderYSs = endpointYSs + arcSignSs * heightSs;
+            endpointYSs, arcSign, BezierBow.height(tieWidthSs, TIE_RATIO, TIE_HEIGHT_LIMIT_SS));
+        var shoulderYSs = endpointYSs + arcSign * heightSs;
 
         // Outer/inner lens taper: outer control points offset away from the notes by the midpoint
         // half-thickness, inner control points offset toward the notes.
-        var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
-        var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
+        var outerCpYSs = shoulderYSs + arcSign * TIE_MID_THICKNESS_SS;
+        var innerCpYSs = shoulderYSs - arcSign * TIE_MID_THICKNESS_SS;
 
         if (LogUtils.isTracingTies(LOG)) {
             // LilyPond position convention (positive = up) for direct ground-truth comparison:
             // LilyPond ss is positive-up, SongScribe ss is positive-down, so negate and ×2.
             LOG.debug(
                 "tie notePos={} arcSign={} seatSs={} width={} endpointPos={} apexPos={} heightSs={}"
-                    + " openSide={}",
-                notePosition, arcSignSs, seatSs, tieWidthSs,
-                -2 * endpointYSs, -2 * shoulderYSs, heightSs, openSide);
+                    + " openEdge={}",
+                notePosition, arcSign, seatSs, tieWidthSs,
+                -2 * endpointYSs, -2 * shoulderYSs, heightSs, placement.openEdge());
         }
 
         return new LayoutResult.TieLayout(
+            placement,
             startXSs, endpointYSs,
             endXSs, endpointYSs,
             cp1XSs, outerCpYSs,
             cp2XSs, outerCpYSs,
             cp1XSs, innerCpYSs,
-            cp2XSs, innerCpYSs,
-            openSide
+            cp2XSs, innerCpYSs
         );
+    }
+
+    /** X of a tie's left end, attached to the anchor note's {@code column}. */
+    private static double tieStartXSs(ElementColumn column, boolean centerAttach) {
+        return tieEndpointXSs(column.getXSs(), 1, centerAttach, column.getElement().getType());
+    }
+
+    /** X of a tie's right end, attached to the end note's {@code column}. */
+    private static double tieEndXSs(ElementColumn column, boolean centerAttach) {
+        return tieEndpointXSs(column.getXSs(), -1, centerAttach, column.getElement().getType());
     }
 
     /**
@@ -1050,7 +1044,7 @@ public class LayoutEngine {
         var elementXSs = column != null ? column.getXSs() : 0;
 
         return SlideGeometry.noteContextAt(
-            note, elementXSs, line.spanRegistry().findBeamAt(noteIndex) != null, 0);
+            note, elementXSs, Beaming.of(line.spanRegistry().findBeamJoining(noteIndex)), 0);
     }
 
     /**
@@ -1122,10 +1116,10 @@ public class LayoutEngine {
      * the tie and the note's scripts are positioned independently.
      *
      * @param notePosition    the tied notes' shared staff position
-     * @param arcSignSs       +1 when the arc bulges downward, -1 upward
+     * @param arcSign       +1 when the arc bulges downward, -1 upward
      * @param dotRowCoincides whether the seat row coincides with the left note's dot row
      */
-    static double tieSeatSs(StaffPosition notePosition, int arcSignSs, boolean dotRowCoincides) {
+    static double tieSeatSs(StaffPosition notePosition, int arcSign, boolean dotRowCoincides) {
         if (dotRowCoincides) {
             return Staff.HALF_SPACE_SS + TIE_DOT_ROW_NUDGE_SS;
         }
@@ -1141,7 +1135,7 @@ public class LayoutEngine {
         // A space note seats at the head-box edge; push past the edge row when it is a staff line.
         // notePosition is off-line, so it is never MIN or MAX (both are on-line), and the
         // adjacent row stays on the grid.
-        var edgeRow = new StaffPosition(notePosition.value() + arcSignSs);
+        var edgeRow = new StaffPosition(notePosition.value() + arcSign);
 
         if (isRealStaffLinePosition(edgeRow)) {
             return Staff.HALF_SPACE_SS + STAFF_LINE_TIE_CLEARANCE_GAP_SS;
@@ -1182,9 +1176,9 @@ public class LayoutEngine {
      *
      * @param note         the left (anchor) note of the tie
      * @param notePosition the note's staff position
-     * @param arcSignSs    +1 when the arc bulges downward, -1 upward
+     * @param arcSign    +1 when the arc bulges downward, -1 upward
      */
-    static boolean tieSeatRowHasDot(NoteElement note, StaffPosition notePosition, int arcSignSs) {
+    static boolean tieSeatRowHasDot(NoteElement note, StaffPosition notePosition, int arcSign) {
         if (note.dots() == Dots.NONE || !notePosition.isOnLine()) {
             return false;
         }
@@ -1192,7 +1186,7 @@ public class LayoutEngine {
         // Dot row = note row displaced up (Y-down); seat row = note row + one half-space in the arc
         // direction (LilyPond position_ += dir). They meet only for an upward arc into the dot's space.
         var dotRowSp = notePosition.value() + Staff.ssToHalfSpaces(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
-        var seatRowSp = notePosition.value() + arcSignSs;
+        var seatRowSp = notePosition.value() + arcSign;
 
         return dotRowSp == seatRowSp;
     }
@@ -1213,15 +1207,15 @@ public class LayoutEngine {
      * result are in staff spaces.
      *
      * @param baseYSs         the endpoint baseline Y (midpoint of the two endpoints)
-     * @param arcSignSs       +1 when the arc bulges downward, -1 upward
+     * @param arcSign       +1 when the arc bulges downward, -1 upward
      * @param naturalHeightSs the unadjusted slur_shape arc height
      */
-    static double tieLineAvoidedHeightSs(double baseYSs, int arcSignSs, double naturalHeightSs) {
+    static double tieLineAvoidedHeightSs(double baseYSs, int arcSign, double naturalHeightSs) {
         var halfStrokeSs = TIE_OUTLINE_THICKNESS_SS / 2;
 
         // The staff line nearest the natural apex centerline; only a real (in-staff) line constrains.
         var apexOutwardSs = TIE_APEX_CONTROL_REACH * naturalHeightSs;
-        var apexMidYSs = baseYSs + arcSignSs * apexOutwardSs;
+        var apexMidYSs = baseYSs + arcSign * apexOutwardSs;
         var nearestLineYSs = (double) Math.round(apexMidYSs);
 
         if (Math.abs(nearestLineYSs) > Staff.STAFF_HALF_SS) {
@@ -1229,7 +1223,7 @@ public class LayoutEngine {
         }
 
         // Distance from the baseline out to the line, positive in the arc direction.
-        var lineDistSs = arcSignSs * (nearestLineYSs - baseYSs);
+        var lineDistSs = arcSign * (nearestLineYSs - baseYSs);
 
         // Natural apex sits below the line: keep the arc under it, flattening only when its outer edge
         // would intrude on the small edge trigger. If even a flat arc cannot clear below, fall through

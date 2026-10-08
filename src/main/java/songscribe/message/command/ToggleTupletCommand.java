@@ -20,25 +20,20 @@
 
 package songscribe.message.command;
 
-
 import songscribe.dom.TupletGrade;
 import songscribe.message.Message;
-import songscribe.ui.action.TupletAction;
 
+/** Asks for the selection to become a tuplet of a grade. */
 public class ToggleTupletCommand extends Message {
 
-    private final TupletAction action;
+    private final TupletGrade grade;
 
-    public ToggleTupletCommand(TupletAction action) {
-        this.action = action;
-    }
-
-    public TupletAction getAction() {
-        return action;
+    public ToggleTupletCommand(TupletGrade grade) {
+        this.grade = grade;
     }
 
     public TupletGrade getGrade() {
-        return action.getGrade();
+        return grade;
     }
 
     @Override

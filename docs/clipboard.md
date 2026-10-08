@@ -12,7 +12,8 @@ together with the spans wholly inside it. Four roles act on it:
 - **instantiation** produces a fresh, independent copy for each paste, so the
   held fragment is never itself inserted and pasting twice yields two results
   sharing nothing;
-- **reconciliation** decides what happens to spans the paste lands inside;
+- **reconciliation** decides which spans survive the paste: the destination's
+  spans the paste lands inside, and the fragment's spans where they land;
 - **placement** picks the spot when there is no selection to replace.
 
 A fragment carries what the music *is*, never how it was placed: horizontal
@@ -44,50 +45,29 @@ otherwise stretch silently over material the user never put under it. One place
 decides that case, and it runs on the line as it stands *before* any mutation,
 while the positions it reads still mean something.
 
-The decision is per span kind, and the two sides can be dropped independently:
-
-| Kind | Destination span | Fragment's own |
-| --- | --- | --- |
-| tuplet | removed | dropped |
-| beam | removed | dropped |
-| trill | removed | kept |
-| hairpin | kept, unless contradicted | same-type dropped |
-| ending | kept | dropped |
-
-The shape of that table follows from what each kind means. Tuplets and beams are
-rhythmic groupings: one that no longer covers the notes it was written for is
-wrong, and a pasted group dropped into the wreckage of a broken one is equally
-wrong, so both sides go — per kind, so a straddled beam does not cost a pasted
-tuplet. A trill binds particular notes, so the straddling one is wrong while the
-fragment's own still binds the fragment's own notes.
-
-A hairpin reads correctly over any stretch of notes, so a straddled one is kept
-and simply widened, and the fragment's — necessarily a shorter one of the same
-type inside it — is redundant. A fragment hairpin of the *opposite* type is a
-contradiction no widening can fix, so there the destination's goes instead. An
-ending is the same reasoning in reverse: a bracket covering a few extra notes is
-still valid notation, but one nested inside another never is.
+The decision is per span kind, and the two sides can be dropped independently: a
+straddled beam does not cost a pasted tuplet. Each kind's answer follows from what
+the kind means — a rhythmic grouping that no longer covers the notes it was
+written for is wrong, while a hairpin or an ending reads correctly over a few
+extra notes but never nested inside another of its kind. The per-kind table and
+the reasoning behind each row are stated once, on `PasteSpanReconciliation`.
 
 **The pasted spans are judged last.** Once the fragment's elements are in, every
-pasted tuplet, ending and hairpin is judged by its kind's own rule against the line
-as the paste leaves it. A span the rule refuses is not pasted and is reported,
-though it was never in the song. The table above decides only what happens to the
-destination's spans and which fragment spans are dropped for landing inside one of
-the same kind; it does not promise that a surviving fragment span is valid where it
-lands.
-
-A paste that merely clips a group at its edge is deliberately not treated as a
-straddle: that group dies anyway when it loses an endpoint, and the pasted group
-lands contiguous at the boundary rather than interleaved with orphaned remains.
+pasted tuplet, beam, ending and hairpin is judged by its kind's own rule against
+the line as the paste leaves it, so the straddle decision never has to promise
+that a surviving fragment span is valid where it lands. A span the rule refuses
+is not pasted and is reported, though it was never in the song.
+`PasteSpanReconciliation.settle` states the rule.
 
 **A tie is not in the table because it is not a span.** It is state on its anchor
-note, so it travels with the notes: a copied note that was tied is pasted tied,
-even when the capture clipped the note it was tied to. None of this decides
-whether a tie survives the paste. The tie rule does, once, when the paste's
-bracket closes, over every line the paste touched — a pasted tie, a tie on the
-destination that the paste point splits, and a tie on the note just before the
-paste alike. Each survives only while it still reaches a note of the same pitch.
-See [span-invalidation.md](span-invalidation.md#ties-are-note-state-judged-when-the-edit-is-over).
+note, so it travels with the notes. Capture keeps a tie only when it copies both
+of its notes, so a paste never ties a note to whatever it lands in front of
+(`Fragment.capture`). A paste-replace that deletes the note a destination tie ends
+on unties that tie's anchor, as any deletion does. Every other tie in a line the
+paste touched — a pasted tie, a tie on the destination that the paste point
+splits, and a tie on the note just before the paste alike — is left to the tie
+rule when the paste's bracket closes. See
+[span-invalidation.md](span-invalidation.md#ties-are-note-state-judged-when-the-edit-is-over).
 
 **Abutment is somebody else's problem.** Two same-type hairpins nose to tail are
 one hairpin — the same rule that applies when the user *draws* one flush against

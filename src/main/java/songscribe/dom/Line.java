@@ -29,7 +29,6 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.Strings;
 import songscribe.error.RuntimeError;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
@@ -66,8 +65,8 @@ import songscribe.message.mutation.TieRemoval;
  *
  * <p><b>Ties.</b> A tie is not a span: it is a note's own state, and its end is derived (see
  * {@link NoteElement}). The line is where a tie is recorded — {@link #addTie} and
- * {@link #removeTie} — and where the tie rule judges its ties, {@link #applyTieRule}, which
- * {@link TieRule} runs when the outermost modification bracket closes.
+ * {@link #removeTie}. How a tie stays right across edits is in
+ * {@code docs/span-invalidation.md}.
  *
  * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
  * actually takes effect at the start of the line; null means the line inherits the key in effect
@@ -632,8 +631,9 @@ public final class Line implements EditableRun {
      * and repairs nothing around them. An edit deletes through {@code deleteRange}, which runs
      * the repairs.
      * <p>
-     * The deletion and its companion span changes post through {@link #applyChange}, under
-     * {@link Song#applyChange}'s bracket rule.
+     * The deletion and its companion tie and span changes post through {@link #applyChange},
+     * under {@link Song#applyChange}'s bracket rule. A tie that ends on an element of
+     * {@code range} is untied first ({@link #untieEndingIn}).
      *
      * @param range the elements to remove
      * @throws IllegalStateException if the range covers the song's auto-maintained terminal —
@@ -648,8 +648,10 @@ public final class Line implements EditableRun {
         var to = range.end();
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
 
-        // Companion span changes precede the primary deletion so reverse-order undo re-inserts
-        // the elements before re-adding the spans anchored to them.
+        // Companion tie and span changes precede the primary deletion so reverse-order undo
+        // re-inserts the elements before re-tying the anchor and re-adding the spans anchored
+        // to them.
+        untieEndingIn(range);
         spans.sweep(new ElementChange.Deletion(this, range));
 
         applyChange(
@@ -671,19 +673,23 @@ public final class Line implements EditableRun {
      * anchor.
      * <p>
      * Nothing here judges the tie: a caller ties a note where the user or a file placed a tie,
-     * and the tie rule (see {@link NoteElement}) judges it when the outermost modification
-     * bracket closes, like any other tie in a line the bracket touched.
+     * and the tie rule ({@link TieRule}) judges it like any other tie in a line the edit
+     * touched.
      *
-     * @param anchor a note of this line whose {@link ElementType#kind()} is
-     *     {@link ElementType.Kind#NOTE}, which is not checked here: a caller converts at its
-     *     boundary, so that only such a note is ever tied; while the song is replaying, the note
-     *     the replayed record names, whichever line holds it at that point of the replay
+     * @param anchor a note of this line that can carry a tie ({@link Tie#canAnchor}); a file
+     *     reader asks that first and drops a tie on any other note; while the song is replaying,
+     *     the note the replayed record names, whichever line holds it at that point of the replay
+     * @throws IllegalArgumentException when {@code anchor} cannot carry a tie
      * @effects when {@code anchor} is not already tied, posts the {@link TieAddition} through
      *     {@link #applyChange}, under {@link Song#applyChange}'s bracket rule, and leaves
      *     {@link NoteElement#isTiedToNext()} {@code true}; when it is already tied, records
      *     nothing
      */
     public void addTie(NoteElement anchor) {
+        if (!Tie.canAnchor(anchor)) {
+            throw new IllegalArgumentException("only a note of kind NOTE can carry a tie: " + anchor);
+        }
+
         if (anchor.isTiedToNext()) {
             return;
         }
@@ -709,67 +715,43 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Runs the tie rule (see {@link NoteElement}) over every tied note of this line: each one is
-     * judged by {@link Tie#holds} against the element its walk reaches, in this line or at the
-     * start of the next, and each tie that does not hold is reported and removed through
-     * {@link #removeTie}. {@link TieRule} calls it when the outermost modification bracket
-     * closes, once every change in the bracket has landed.
+     * Unties the tie that ends on an element of {@code range}, when one does, because deleting
+     * {@code range} takes that tie's end. Only the first element of {@code range} that is not
+     * a legal separator ({@link Tie#isLegalSeparator}) can be such an end, and its tie's anchor
+     * sits before {@code range}, in this line or at the end of the line before. A tie whose
+     * anchor is in {@code range} goes with its anchor and needs nothing here.
      *
-     * @param report the report of the edit being closed
-     * @effects for each tie that does not hold, records into {@code report} a change headed
-     *     {@link Strings#DIALOG_REPORT_TIES_REMOVED}, located from the anchor to the element the
-     *     walk reaches, or at the anchor alone when it reaches none, then posts a
-     *     {@link TieRemoval}; nothing else
+     * <p>The untie is not reported: the user deleted the note the tie ended on. Without it the
+     * anchor would stay tied to whatever its walk reaches once {@code range} is gone.
+     *
+     * <p>Does nothing while the song is replaying: the replayed batch already holds the
+     * removal.
+     *
+     * @param range elements of this line about to be deleted
+     * @effects posts at most one {@link TieRemoval}, through {@link #removeTie} on the anchor's
+     *     line
      */
-    void applyTieRule(ChangeReport report) {
-        var next = nextLine();
+    void untieEndingIn(ElementRange range) {
+        if (song.isReplaying()) {
+            return;
+        }
 
-        for (var i = 0; i < elements.size(); i++) {
-            if (!(elements.get(i) instanceof NoteElement anchor) || !anchor.isTiedToNext()) {
-                continue;
-            }
+        var endIndex = Tie.firstNonSeparatorIndexFrom(elements, range.begin());
 
-            var end = Tie.endAfter(elements, i, next);
+        if (endIndex == null || endIndex > range.end() || !(elements.get(endIndex) instanceof NoteElement end)) {
+            return;
+        }
 
-            if (!Tie.holds(anchor, end)) {
-                report.record(new ReportedChange(
-                    Strings.DIALOG_REPORT_TIES_REMOVED,
-                    Strings.get(Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
-                    tieLocation(i, end)));
-                removeTie(anchor);
-            }
+        var incoming = end.incomingTie();
+
+        if (incoming != null) {
+            var anchor = incoming.anchor();
+            anchor.requireParentLine().removeTie(anchor);
         }
     }
 
     /**
-     * The elements a tie from this line's element at {@code anchorIndex} to {@code end} covers.
-     *
-     * @param anchorIndex the anchor's index in this line, which is one of its song's lines
-     * @param end         the element the tie's walk reaches, in this line or the next, or
-     *                    {@code null} when it reaches none
-     * @return the range from the anchor's location to {@code end}'s, or the anchor's location
-     *     alone when {@code end} is {@code null}
-     */
-    private ElementLocationRange tieLocation(int anchorIndex, @Nullable StaffElement end) {
-        var start = new ElementLocation(index(), anchorIndex);
-
-        if (end == null) {
-            return ElementLocationRange.single(start);
-        }
-
-        var endLine = end.getParentLine();
-
-        // Tie.endAfter reads the end from this line's elements or the next line's.
-        if (endLine == null) {
-            throw RuntimeError.exit("a tie's end is in no line");
-        }
-
-        return new ElementLocationRange(
-            start, new ElementLocation(endLine.index(), endLine.getElementIndex(end)));
-    }
-
-    /**
-     * The ties this line draws, one entry per tie or tie half it owns.
+     * The ties this line draws, each with its place in this line.
      * <p>
      * A line owns the tie that starts on each of its notes: whole when the end is in this line,
      * and as the half running off the right edge when the end is in the next line. It also owns
@@ -777,34 +759,160 @@ public final class Line implements EditableRun {
      * ends on this line's first note. So an intra-line tie is listed once, from its anchor, and
      * a tie across a line break is listed once in each of its two lines.
      * <p>
-     * The one statement of that ownership rule: layout builds a
-     * {@code LayoutResult.TieLayout} for each entry, and the renderer iterates the same list to
-     * draw them.
+     * The one statement of that ownership rule. Layout calls it once per line and lays out each
+     * entry; everything downstream reads the laid-out ties rather than asking again.
      *
-     * @return the ties, in the order of the notes they were found on
+     * @return the ties, in the order of the notes they were found on: the half entering from the
+     *     left edge first, when there is one
      */
-    public List<Tie> ownedTies() {
-        var ties = new ArrayList<Tie>();
+    public List<TiePlacement> ownedTies() {
+        var ties = new ArrayList<TiePlacement>();
+        var entering = enteringTie();
+
+        if (entering != null) {
+            ties.add(placement(entering));
+        }
 
         for (var element : elements) {
-            if (!(element instanceof NoteElement note)) {
-                continue;
-            }
+            if (element instanceof NoteElement note) {
+                var outgoing = note.tie();
 
-            var incoming = note.incomingTie();
-
-            if (incoming != null && !contains(incoming.anchor())) {
-                ties.add(incoming);
-            }
-
-            var outgoing = note.tie();
-
-            if (outgoing != null) {
-                ties.add(outgoing);
+                if (outgoing != null) {
+                    ties.add(placement(outgoing));
+                }
             }
         }
 
         return ties;
+    }
+
+    /**
+     * Returns {@code tie}'s place in this line, for a caller that starts from one tie rather
+     * than from the line's {@link #ownedTies}.
+     *
+     * @param tie any tie of the song
+     * @return the tie's place here, or {@code null} when this line holds neither of its notes
+     *     and so draws no part of it
+     */
+    public @Nullable TiePlacement placementOf(Tie tie) {
+        return contains(tie.anchor()) || contains(tie.end()) ? placement(tie) : null;
+    }
+
+    /**
+     * The tie whose anchor is in the previous line and whose end is this line's first note. Only
+     * the first element that is not a legal separator can be such an end, so the previous line
+     * is consulted once, from that note alone.
+     */
+    private @Nullable Tie enteringTie() {
+        var firstIndex = Tie.firstNonSeparatorIndexFrom(elements, 0);
+
+        if (firstIndex == null || !(elements.get(firstIndex) instanceof NoteElement first)) {
+            return null;
+        }
+
+        var incoming = first.incomingTie();
+
+        return incoming != null && !contains(incoming.anchor()) ? incoming : null;
+    }
+
+    /** {@code tie}'s place in this line, which holds at least one of its notes. */
+    private TiePlacement placement(Tie tie) {
+        var anchor = tie.anchor();
+        var end = tie.end();
+        var holdsAnchor = contains(anchor);
+        var holdsEnd = contains(end);
+        var begin = holdsAnchor ? getElementIndex(anchor) : 0;
+        var last = holdsEnd ? getElementIndex(end) : elementCount() - 1;
+        @Nullable Edge openEdge = null;
+
+        if (!holdsAnchor) {
+            openEdge = Edge.START;
+        } else if (!holdsEnd) {
+            openEdge = Edge.END;
+        }
+
+        return new TiePlacement(tie, new ElementRange(begin, last), openEdge);
+    }
+
+    /**
+     * An edge of a line that a tie half runs off, because the tie's other note is in the
+     * neighboring line.
+     */
+    public enum Edge {
+
+        /** The left edge: the half enters from it, and the tie's anchor is in the line before. */
+        START,
+
+        /** The right edge: the half runs off it, and the tie's end is in the line after. */
+        END
+    }
+
+    /**
+     * A tie's place in one line that holds at least one of its notes: the elements it is drawn
+     * over, and the edge it runs off when only one of its notes is here. Made only by
+     * {@link #ownedTies} and {@link #placementOf}, so its range and open edge always agree with
+     * where the tie's notes are.
+     * <p>
+     * A value read off the line at the moment it was made; an edit to the line does not update
+     * it.
+     *
+     * @invariant {@code range().begin()} is the anchor's index unless {@code openEdge()} is
+     *     {@link Edge#START}, when it is {@code 0}; {@code range().end()} is the end's index
+     *     unless {@code openEdge()} is {@link Edge#END}, when it is the line's last index
+     */
+    public static final class TiePlacement {
+
+        private final Tie tie;
+        private final ElementRange range;
+        private final @Nullable Edge openEdge;
+
+        private TiePlacement(Tie tie, ElementRange range, @Nullable Edge openEdge) {
+            this.tie = tie;
+            this.range = range;
+            this.openEdge = openEdge;
+        }
+
+        /**
+         * @return the tie
+         */
+        public Tie tie() {
+            return tie;
+        }
+
+        /**
+         * @return the elements of the line the tie is drawn over, both of its notes here
+         *     included; an open side runs to that edge's element
+         */
+        public ElementRange range() {
+            return range;
+        }
+
+        /**
+         * @return the edge of the line the tie runs off, or {@code null} when both of its notes
+         *     are in the line and it is drawn whole
+         */
+        public @Nullable Edge openEdge() {
+            return openEdge;
+        }
+
+        /**
+         * @return {@code true} when the tie's anchor is in the line, at {@code range().begin()}
+         */
+        public boolean holdsAnchor() {
+            return openEdge != Edge.START;
+        }
+
+        /**
+         * @return {@code true} when the tie's end is in the line, at {@code range().end()}
+         */
+        public boolean holdsEnd() {
+            return openEdge != Edge.END;
+        }
+
+        @Override
+        public String toString() {
+            return "TiePlacement{" + tie + ", " + range + ", openEdge=" + openEdge + '}';
+        }
     }
 
     @Override

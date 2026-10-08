@@ -17,23 +17,29 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 package songscribe.dom;
 
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
- * An ending as a reader found it in a file, before the load pass has judged it.
- * <p>
- * A reader does not build an {@link Ending}: every ending is well formed, and whether a range
- * holds a well-formed ending is {@link Ending#spanning}'s question, not the reader's. So a
- * reader records what the file said here, and {@link EndingLoadPass#run} — once the song is
- * complete — turns each pending ending into an {@code Ending} on its anchor's line or drops it.
- * <p>
- * A pending ending is not a span. It sits in no registry, is never drawn or recorded for undo,
- * and nothing outside the load path sees one.
+ * An ending as a reader found it in a file, judged by {@link Ending#spanning}.
  *
  * @param anchor    the ending's first element, in a line of the song being read
  * @param end       the ending's last element, in the anchor's line at or after the anchor
- * @param yOffsetSs the user's vertical offset of the bracket in staff spaces, positive
- *                  downward; it becomes the ending's {@link LineElement#getUserYOffsetSs()}
+ * @param xOffsetSs the user's horizontal offset of the bracket in staff spaces, positive
+ *                  rightward
+ * @param yOffsetSs the user's vertical offset of the bracket in staff spaces, positive downward
  */
-public record PendingEnding(StaffElement anchor, StaffElement end, double yOffsetSs) {
+public record PendingEnding(
+    StaffElement anchor,
+    StaffElement end,
+    double xOffsetSs,
+    double yOffsetSs
+) implements PendingSpan<Ending> {
+
+    @Override
+    public Spanning<Ending> spanning(Line line, ElementRange range) {
+        return Ending.spanning(line, range);
+    }
 }

@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Attribution;
 import songscribe.dom.CollisionRegion;
+import songscribe.dom.Direction;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
@@ -36,6 +37,7 @@ import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.DecorationLayouts;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.Footprint;
 import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
@@ -71,6 +73,20 @@ import songscribe.layout.StaffExtents;
  */
 public class VerticalStackingCalculator {
 
+    private final double lineWidthSs;
+    private final DocumentFontsHolder fonts;
+
+    /**
+     * Makes the calculator for lines of one song.
+     *
+     * @param lineWidthSs total width of the staff line in staff-space units
+     * @param fonts       font holder for measuring elements
+     */
+    public VerticalStackingCalculator(double lineWidthSs, DocumentFontsHolder fonts) {
+        this.lineWidthSs = lineWidthSs;
+        this.fonts = fonts;
+    }
+
     /**
      * Calculates vertical positions for all elements in the given columns.
      * <p>
@@ -90,16 +106,12 @@ public class VerticalStackingCalculator {
      * @param columns      list of element columns with X positions already set
      * @param line         the line being laid out; must be in its song
      * @param builder      the LayoutResult builder to write decoration positions into
-     * @param lineWidthSs  total width of the staff line in staff-space units
-     * @param fonts        font holder for measuring elements
      * @param tempoMark    whether the song's tempo mark is stacked on the first line
      */
     public void calculate(
         List<ElementColumn> columns,
         Line line,
         LayoutResultBuilder builder,
-        double lineWidthSs,
-        DocumentFontsHolder fonts,
         TempoMark tempoMark) {
 
         var noteAttachedExtents = new StaffExtents(lineWidthSs);
@@ -124,7 +136,7 @@ public class VerticalStackingCalculator {
 
         // Tier 2: the outside-priority scripts (fermata, trill). They stack into the structural
         // layer rather than their own so that a tuplet bracket, already reserved above, pushes them
-        // outside it instead of colliding with them (issue #520).
+        // outside it instead of colliding with them.
         noteAttachedStacker.stackOuterScripts(structuralExtents);
 
         // Must run after every script has been stacked so they all ignore accidentals, and before
@@ -137,7 +149,7 @@ public class VerticalStackingCalculator {
         // Tiers 4-5: system-level stacking (the song's tempo mark, tempo changes, beat changes,
         // annotations), then, on the first line, the attribution block topmost
         systemExtents.copyTopFrom(structuralExtents);
-        new SystemStacker(context, systemExtents, fonts, tempoMark, lineWidthSs).stack();
+        new SystemStacker(context, systemExtents, fonts, lineWidthSs).stack(tempoMark);
 
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);
@@ -166,7 +178,7 @@ public class VerticalStackingCalculator {
      * y=-{@link Staff#STAFF_HALF_SS} and the signed extent has that subtracted from it.
      * The result is the line's true content reach, unfloored — the inter-line gap is owned
      * by the layout manager that positions the lines, so a floor here would only inflate
-     * the gap (refs #591).
+     * the gap.
      * <p>
      * An upward (negative) user Y offset can raise the attribution above the stacked
      * extents, which only track its natural position. The attribution's final layout is
@@ -190,7 +202,7 @@ public class VerticalStackingCalculator {
         Line line,
         LayoutResultBuilder builder) {
 
-        var topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
+        var topExtentSs = systemExtents.yGet(Direction.UP, new Footprint(0, lineWidthSs));
         var contentAboveStaffSs = Math.max(0.0, -topExtentSs - Staff.STAFF_HALF_SS);
 
         if (!line.isFirst()) {
@@ -247,8 +259,10 @@ public class VerticalStackingCalculator {
             // bounds Y values are relative to the note center; shift to staff coordinates.
             var centerYSs = note.getStaffPosition().toSs();
 
-            structuralExtents.ySet(true, accXSs, bounds.widthSs(), bounds.topSs() + centerYSs);
-            structuralExtents.ySet(false, accXSs, bounds.widthSs(), bounds.bottomSs() + centerYSs);
+            var accidentalFootprint = new Footprint(accXSs, bounds.widthSs());
+            structuralExtents.ySet(Direction.UP, accidentalFootprint, bounds.topSs() + centerYSs);
+            structuralExtents.ySet(
+                Direction.DOWN, accidentalFootprint, bounds.bottomSs() + centerYSs);
         }
     }
 
@@ -262,53 +276,12 @@ public class VerticalStackingCalculator {
      * The user takes responsibility for any resulting overlaps — no collision
      * re-run occurs.
      * <p>
-     * Offset sources:
-     * <ul>
-     *   <li>{@link LineElement#getUserXOffsetSs()} /
-     *       {@link LineElement#getUserYOffsetSs()}:
-     *       base offsets for all decoration elements</li>
-     *   <li>{@link Hairpin}: crescendo / diminuendo horizontal endpoint shifts in
-     *       staff-space units</li>
-     * </ul>
+     * The offsets are each decoration element's {@link LineElement#getUserXOffsetSs()} and
+     * {@link LineElement#getUserYOffsetSs()}, applied to each typed entry through its own type by
+     * {@link DecorationLayouts.Builder#applyUserOffsets}.
      */
     private void applyManualOffsets(LayoutResultBuilder builder) {
-        applyDecorationOffsets(builder.decorationLayouts());
-    }
-
-    /**
-     * Applies manual offsets to all {@link LayoutResult.DecorationLayout} entries.
-     */
-    void applyDecorationOffsets(DecorationLayouts.Builder decorationLayouts) {
-        // Collect entries to avoid ConcurrentModificationException during iteration
-        var entries = List.copyOf(decorationLayouts.getDecorationLayouts().entrySet());
-
-        for (var entry : entries) {
-            var element = entry.getKey();
-            var layout = entry.getValue();
-
-            var xOffsetSs = element.getUserXOffsetSs();
-            var yOffsetSs = element.getUserYOffsetSs();
-
-            // Element-specific additional offsets
-            var x1ExtraSs = 0.0;
-            var x2ExtraSs = 0.0;
-
-            switch (element) {
-                case Hairpin hairpin -> {
-                    x1ExtraSs = hairpin.getX1ShiftSs();
-                    x2ExtraSs = hairpin.getX2ShiftSs();
-                }
-                default -> {
-                }
-            }
-
-            if (xOffsetSs != 0 || yOffsetSs != 0 || x1ExtraSs != 0 || x2ExtraSs != 0) {
-                // For hairpins, x1ExtraSs shifts the left edge and x2ExtraSs shifts the right edge
-                // independently. Translate that into (xSs + x1, widthSs + x2 - x1).
-                decorationLayouts.putDecorationLayout(element, layout.shiftedBy(
-                    xOffsetSs + x1ExtraSs, yOffsetSs, x2ExtraSs - x1ExtraSs));
-            }
-        }
+        builder.decorationLayouts().applyUserOffsets();
     }
 
 }

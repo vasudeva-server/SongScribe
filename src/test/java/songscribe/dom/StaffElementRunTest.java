@@ -58,15 +58,13 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 class StaffElementRunTest extends UnitTest {
 
     /**
-     * One neighbor lookup and the index it must answer.
+     * One {@link StaffElementRun#previousNonGraceIndex} lookup and the index it must answer.
      *
      * @param description the case, as the test's display name
-     * @param query       the lookup, bound to the index it asks from
+     * @param from        the index the lookup asks from
      * @param expected    the neighbor's index, or {@code null} when the run offers none
      */
-    private record NeighborCase(
-        String description, Function<StaffElementRun, @Nullable Integer> query, @Nullable Integer expected
-    ) {}
+    private record NeighborCase(String description, int from, @Nullable Integer expected) {}
 
     /** The fixture line, by position: a grace note, a note, two grace notes, a note, a grace note. */
     private static final int LEADING_GRACE = 0;
@@ -157,19 +155,15 @@ class StaffElementRunTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("neighborCases")
     void testTheNearestNonGraceNeighborStepsOverGraceNotesAndIsAbsentPastTheEnds(NeighborCase testCase) {
-        assertThat(testCase.query().apply(line)).isEqualTo(testCase.expected());
+        assertThat(line.previousNonGraceIndex(testCase.from())).isEqualTo(testCase.expected());
     }
 
     static Stream<NeighborCase> neighborCases() {
         return Stream.of(
-            new NeighborCase("a run of grace notes before is stepped over",
-                run -> run.previousNonGraceIndex(LAST_NOTE), FIRST_NOTE),
-            new NeighborCase("a single grace note before is stepped over",
-                run -> run.previousNonGraceIndex(SECOND_INNER_GRACE), FIRST_NOTE),
-            new NeighborCase("only a grace note before leaves no predecessor",
-                run -> run.previousNonGraceIndex(FIRST_NOTE), null),
-            new NeighborCase("nothing before leaves no predecessor",
-                run -> run.previousNonGraceIndex(LEADING_GRACE), null)
+            new NeighborCase("a run of grace notes before is stepped over", LAST_NOTE, FIRST_NOTE),
+            new NeighborCase("a single grace note before is stepped over", SECOND_INNER_GRACE, FIRST_NOTE),
+            new NeighborCase("only a grace note before leaves no predecessor", FIRST_NOTE, null),
+            new NeighborCase("nothing before leaves no predecessor", LEADING_GRACE, null)
         );
     }
 

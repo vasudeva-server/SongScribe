@@ -37,7 +37,7 @@ import static songscribe.ui.action.Actions.FINAL_DOUBLE_BARLINE_ACTION;
  * auto-maintained terminal is {@code Flag.REQUIRES_SINGLE_SELECTION} plus its {@code appliesTo}
  * override ({@code Song.isTerminalOfItsSong}). The right repeat that is its
  * counterpart for the terminal lives in {@link RepeatsMenu}, where it doubles as an ordinary
- * drawable repeat — see {@code FinalDoubleBarlineAction} (issue #713).
+ * drawable repeat — see {@code FinalDoubleBarlineAction}.
  */
 public class BarlineMenu extends JMenu {
 

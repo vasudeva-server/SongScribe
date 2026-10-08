@@ -33,15 +33,15 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.AttributionContent;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.ElementSeat;
+import songscribe.layout.Footprint;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutEngine.TempoMark;
+import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.MetronomeContent;
 import songscribe.layout.StaffExtents;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-
-import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
 
 /**
  * Stacks system-tier decorations (tier 4): tempo markings, beat changes,
@@ -67,26 +67,28 @@ public class SystemStacker {
     public static final double ANNOTATION_MARGIN_SS = 1.0;  // 8px
 
     private final StackingContext context;
-    private final StaffExtents systemExtents;
+    private final StackingLayer systemLayer;
     private final DocumentFontsHolder fonts;
-    private final TempoMark tempoMark;
     private final double lineWidthSs;
 
     /**
-     * @param tempoMark   whether the song's tempo mark is stacked when the line is the first
-     * @param lineWidthSs total width of the staff line in staff-space units, which the
-     *                    attribution block is right-aligned to
+     * Makes the stacker for the line in {@code context}, reserving in {@code systemExtents}.
+     *
+     * @param context       the line being stacked and the builder layouts are recorded in
+     * @param systemExtents the system extents layer this stacker owns
+     * @param fonts         the document fonts the tempo marks, annotations and attribution are
+     *                      typeset in
+     * @param lineWidthSs   total width of the staff line in staff-space units, which the
+     *                      attribution block is right-aligned to
      */
     public SystemStacker(
         StackingContext context,
         StaffExtents systemExtents,
         DocumentFontsHolder fonts,
-        TempoMark tempoMark,
         double lineWidthSs) {
         this.context = context;
-        this.systemExtents = systemExtents;
+        systemLayer = new StackingLayer(systemExtents, context.getBuilder().decorationLayouts());
         this.fonts = fonts;
-        this.tempoMark = tempoMark;
         this.lineWidthSs = lineWidthSs;
     }
 
@@ -94,8 +96,10 @@ public class SystemStacker {
      * Stacks all system-tier decorations in order: the song's own tempo mark, then per-column
      * tempo changes, beat changes and annotations, then the attribution block topmost. The
      * tempo mark and the attribution are stacked only when the line is its song's first.
+     *
+     * @param tempoMark whether the song's tempo mark is stacked when the line is the first
      */
-    public void stack() {
+    public void stack(TempoMark tempoMark) {
         var columns = context.getColumns();
         var builder = context.getBuilder();
         var line = context.getLine();
@@ -120,7 +124,7 @@ public class SystemStacker {
      * Stacks the song's tempo mark at the right edge of the first line's staff header.
      * <p>
      * Deliberately stacked before the column loop: everything a note owns is already in
-     * {@code systemExtents}, so ledger lines and high notes push the mark up, while a beat change
+     * the system layer, so ledger lines and high notes push the mark up, while a beat change
      * or annotation on the first column stacks above it — the same relationship
      * {@link #stackTempo} already has with {@link #stackBeatChange} within a column.
      * <p>
@@ -132,17 +136,17 @@ public class SystemStacker {
         var song = line.getSong();
         var content = MetronomeContent.forTempo(song.getTempo(), fonts.getAnnotationFont());
 
-        stackAboveWithRegions(
-            systemExtents,
-            song.getTempoMarkElement(),
+        var xSs = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line)
+            + SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs();
+
+        var placed = systemLayer.stackAboveWithRegions(
             content.regions(),
-            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line)
-                + SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs(),
-            content.widthSs(),
+            new Footprint(xSs, content.widthSs()),
             TEMPO_MARGIN_SS,
-            StackingUtils.TOP_STAFF_LINE_POSITION,
-            builder.decorationLayouts(),
-            content);
+            StackingUtils.TOP_STAFF_LINE_POSITION);
+
+        builder.decorationLayouts().putTypeset(
+            song.getTempoMarkElement(), LayoutResult.DecorationLayout.Typeset.of(placed, content));
     }
 
     /**
@@ -166,16 +170,14 @@ public class SystemStacker {
         // Right-align with a small inset from the staff right edge
         var xSs = lineWidthSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS;
 
-        stackAboveWithRegions(
-            systemExtents,
-            song.getAttributionElement(),
+        var placed = systemLayer.stackAboveWithRegions(
             List.of(new CollisionRegion(0, 0, widthSs, heightSs)),
-            xSs,
-            widthSs,
+            new Footprint(xSs, widthSs),
             Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS,
-            StackingUtils.TOP_STAFF_LINE_POSITION,
-            builder.decorationLayouts(),
-            content);
+            StackingUtils.TOP_STAFF_LINE_POSITION);
+
+        builder.decorationLayouts().putTypeset(
+            song.getAttributionElement(), LayoutResult.DecorationLayout.Typeset.of(placed, content));
     }
 
     /**
@@ -246,11 +248,9 @@ public class SystemStacker {
         };
 
         // An annotation's height is the annotation font's line height, so it cannot be an
-        // IntrinsicHeight and does not go through stackAbove. This is the explicit-height door.
-        StackingUtils.stackAtAnchor(Direction.UP, systemExtents, annotation, xSs,
-            widthSs, heightSs,
-            ANNOTATION_MARGIN_SS,
-            staffPosition, builder.decorationLayouts());
+        // IntrinsicHeight. This is the explicit-height door.
+        systemLayer.stackAtAnchor(annotation, heightSs, new Footprint(xSs, widthSs),
+            new StaffAnchor(Direction.UP, staffPosition, ANNOTATION_MARGIN_SS));
     }
 
     private void stackMetronomeAttachment(
@@ -275,7 +275,10 @@ public class SystemStacker {
             return;
         }
 
-        stackAboveWithRegions(systemExtents, attachment, content.regions(), xSs,
-            content.widthSs(), marginSs, staffPosition, builder.decorationLayouts(), content);
+        var placed = systemLayer.stackAboveWithRegions(
+            content.regions(), new Footprint(xSs, content.widthSs()), marginSs, staffPosition);
+
+        builder.decorationLayouts().putTypeset(
+            attachment, LayoutResult.DecorationLayout.Typeset.of(placed, content));
     }
 }

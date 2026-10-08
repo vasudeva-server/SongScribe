@@ -52,8 +52,7 @@ import org.xml.sax.SAXNotSupportedException;
  * never emits a {@code DOCTYPE}, but every mainstream notation program does.
  * Rejecting it aborted the parse before the root element was seen, and the
  * checks that tell a foreign file from a damaged one all run from the element
- * callbacks. A user opening a perfectly good Finale export was told the file was
- * damaged. Letting the declaration through — with nothing it names acted upon —
+ * callbacks. Letting the declaration through — with nothing it names acted upon —
  * lets those checks run and produce the right diagnosis.
  *
  * <p><b>Why the settings carry the weight, not the checks.</b> The parser reads

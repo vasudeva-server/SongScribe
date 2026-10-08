@@ -24,45 +24,25 @@ import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Tuplet;
 import songscribe.dom.TupletGrade;
 
 /**
- * Result of {@link RangeQueries#canToggleTuplet}.
+ * What the tuplet menu shows for a selection: {@link RangeQueries#canToggleTuplet}'s answer.
+ * It enables and checks the menu items only; the edit asks its own question when it runs.
  *
- * @param canToggle      true if the selection can carry a tuplet decision at all: it holds at
- *                       least two non-grace elements, they all belong to the same tuplet (or to
- *                       none), and the selection is not a strict sub-range of a tuplet
- * @param validGrades    the tuplet numbers the span could actually be turned into, as judged by
- *                       {@link songscribe.dom.TupletValidator} under
- *                       {@link songscribe.dom.TupletValidator.Strictness#STRICT}. Empty whenever
- *                       {@code canToggle} is false.
- * @param existing       the tuplet at the selection start, or {@code null} if there is none.
- *                       Reported even when {@code canToggle} is false, because removal stays
- *                       available for a sub-range selection.
- * @param coversExisting true iff {@code existing != null} and the selection exactly spans
- *                       {@code [existing.anchorIndex, existing.endIndex]}. Always {@code false} when
- *                       {@code existing} is {@code null}.
+ * @param validGrades   the grades a tuplet over the selection may take, as
+ *                      {@link songscribe.dom.Tuplet#spanning} judges them under
+ *                      {@link songscribe.dom.TupletValidator.Strictness#STRICT}; empty when the
+ *                      selection holds part of a tuplet
+ * @param existingGrade the grade of the tuplet the selection covers or reaches into, or
+ *                      {@code null} when it holds no element of a tuplet
  */
-public record TupletToggleInfo(
-    boolean canToggle,
-    Set<TupletGrade> validGrades,
-    @Nullable Tuplet existing,
-    boolean coversExisting
-) {
+public record TupletToggleInfo(Set<TupletGrade> validGrades, @Nullable TupletGrade existingGrade) {
+
+    /** The answer for a selection a tuplet cannot group, and that holds no tuplet. */
+    public static final TupletToggleInfo NONE = new TupletToggleInfo(Set.of(), null);
+
     public TupletToggleInfo {
-        if (coversExisting && (existing == null)) {
-            throw new IllegalArgumentException("coversExisting cannot be true when existing is null");
-        }
-
         validGrades = Set.copyOf(validGrades);
-    }
-
-    /**
-     * Convenience for a span that offers no creatable grade, which is every span whose
-     * decision is already settled by {@code canToggle} and {@code existing} alone.
-     */
-    public TupletToggleInfo(boolean canToggle, @Nullable Tuplet existing, boolean coversExisting) {
-        this(canToggle, Set.of(), existing, coversExisting);
     }
 }

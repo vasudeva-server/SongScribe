@@ -22,8 +22,8 @@ package songscribe.io;
 import songscribe.dom.DocumentScale;
 
 /**
- * Load-time carrier for the three line-level Y position fields that exist only in pre-Phase 11
- * (format v1) documents. Populated by {@link LineIO.LineReader} during XML parsing and consumed
+ * Load-time carrier for the three line-level Y position fields that exist only in format v1
+ * documents. Populated by {@link LineIO.LineReader} during XML parsing and consumed
  * by {@link FormatMigrator#migrateLineLevelOffsets} to redistribute the offsets onto per-instance
  * attachment and span objects. Discarded after migration completes.
  */

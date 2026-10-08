@@ -62,23 +62,7 @@ public final class SongLoader {
                 warnings.add(new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate));
             }
 
-            var song = reader.getSong();
-
-            // Both readers own the passes rather than the UI: the headless MIDI-export route
-            // comes through here, and leaving it to ScoreView would have it play tuplets the
-            // UI had dropped — two different MIDI files from one document, with no error on
-            // either.
-            var report = LoadPasses.run(song, new LoadPasses.Input(
-                reader.pendingTuplets(),
-                reader.pendingEndings(),
-                reader.pendingHairpins(),
-                reader.accidentalsConverted()));
-
-            return new SongLoadResult.Success(
-                song,
-                reader.getDocumentFonts(),
-                warnings,
-                report);
+            return SongLoadResult.Success.settled(reader.getSong(), reader.getDocumentFonts(), warnings);
         } catch (SongIO.NewerVersionException e) {
             return new SongLoadResult.NewerVersion(file, e);
         } catch (SAXException e) {

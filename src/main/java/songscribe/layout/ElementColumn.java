@@ -34,7 +34,6 @@ import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Tie;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -42,35 +41,30 @@ import songscribe.dom.Tie;
  * An ElementColumn represents a vertical slice of the staff containing:
  * <ul>
  *   <li>A primary element (note, rest, or barline)</li>
- *   <li>Optional grace notes (which borrow space from the left)</li>
- *   <li>Horizontal extents (left edge including accidentals/grace notes; right edge including augmentation for minimum spacing, excluding augmentation for comfortable spacing)</li>
+ *   <li>Horizontal extents (left edge including accidentals; right edge including augmentation for minimum spacing, excluding augmentation for comfortable spacing)</li>
  *   <li>Stem information (top/bottom for beam group coordination)</li>
  *   <li>Associated lyric syllable (which drives horizontal spacing per Gould/Ross)</li>
- *   <li>Beam membership flag (for internal spacing coordination)</li>
+ *   <li>The beam it belongs to (for internal spacing coordination)</li>
  * </ul>
  * <p>
  * Construction is two-phase: {@link ElementColumnBuilder} creates the column and immediately sets
- * {@link #minGapToNextSyllableSs}, {@link #minCollisionGapToNextSyllableSs},
- * {@link #noteheadWidthSs} (note columns only) and {@link #beam}, then
+ * {@link #minGapToNextSyllableSs}, {@link #minCollisionGapToNextSyllableSs} and
+ * {@link #noteheadWidthSs} (note columns only), then
  * {@link HorizontalSpacingCalculator} sets {@link #xSs} once positions are computed.
  * Every other field is immutable. Use {@link ElementColumnBuilder} to create instances.
  */
 public final class ElementColumn {
 
     private final StaffElement element;
-    private final List<StaffElement> graceNotes;
-    private final double leftExtentSs;
-    private final double rightExtentSs;
-    private final double rightExtentExcludingAugmentationSs;
-    private final double stemTopSs;
-    private final double stemBottomSs;
+    private final Extents extents;
     // The element's lyric for the verse this column was built for — the song's active verse, and
-    // the one syllableWidthSs measures. Null when the element carries no lyric in that verse.
-    // The syllable text is read off this rather than stored alongside it, so the text and the
+    // the one its width measures. Null when the element carries no lyric in that verse. The
+    // syllable text is read off the lyric rather than stored alongside it, so the text and the
     // verse it came from cannot drift apart.
-    private final @Nullable Lyric lyric;
-    private final double syllableWidthSs;
-    private final boolean beamed;
+    private final @Nullable MeasuredLyric lyric;
+    // The beam this column belongs to, or null when not beamed. Kept so the spacing calculator
+    // can keep adjacent beam groups separate rather than merging them.
+    private final @Nullable Beam beam;
     // Width of the syllable's first grapheme cluster — what a grace note centers on its notehead.
     // Measured by ElementColumnBuilder; falls back to the whole syllable width.
     private double syllableFirstGraphemeWidthSs;
@@ -84,9 +78,6 @@ public final class ElementColumn {
     // the bare hyphen glyph width for hyphenated ones. Distinct from minGapToNextSyllableSs, which
     // is the wider comfortable/preferred gap the rest aims for.
     private double minCollisionGapToNextSyllableSs;
-    // The beam this column belongs to, or null when not beamed. Set by ElementColumnBuilder so
-    // the spacing calculator can keep adjacent beam groups separate rather than merging them.
-    private @Nullable Beam beam;
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
     // Notehead-only width (grace-reduced or standard head) in staff spaces, excluding stem, flag,
@@ -101,62 +92,53 @@ public final class ElementColumn {
      * <p>
      * Use {@link ElementColumnBuilder} rather than calling this constructor directly.
      *
-     * @param element                    The primary element (note, rest, barline, etc.)
-     * @param graceNotes                 Grace notes anchored to this element (empty list if none)
-     * @param leftExtentSs               Left extent relative to element head left edge; 0.0 without accidental, negative with one
-     * @param rightExtentSs                    Right extent relative to element head left edge; equals element head width, plus augmentation if any
-     * @param rightExtentExcludingAugmentationSs Right extent excluding augmentation (dots and fall); used for comfortable spacing
-     * @param stemTopSs                  Top of stem (if stem up), or element head top if no stem
-     * @param stemBottomSs               Bottom of stem (if stem down), or element head bottom if no stem
-     * @param lyric                      The element's lyric for the verse being laid out (null if none)
-     * @param syllableWidthSs            Measured width of syllable text in staff spaces (0 if no syllable)
-     * @param beamed                     Whether this element is part of a beam group
+     * @param element The primary element (note, rest, barline, etc.)
+     * @param extents The element's geometry extents
+     * @param lyric   The element's lyric for the verse being laid out and its measured width, or
+     *                null when it carries none there
+     * @param beam    The beam this element belongs to, or null when it is unbeamed
      */
     public ElementColumn(
         StaffElement element,
-        List<StaffElement> graceNotes,
-        double leftExtentSs,
-        double rightExtentSs,
-        double rightExtentExcludingAugmentationSs,
-        double stemTopSs,
-        double stemBottomSs,
-        @Nullable Lyric lyric,
-        double syllableWidthSs,
-        boolean beamed) {
+        Extents extents,
+        @Nullable MeasuredLyric lyric,
+        @Nullable Beam beam) {
         this.element = element;
-        this.graceNotes = List.copyOf(graceNotes);
-        this.leftExtentSs = leftExtentSs;
-        this.rightExtentSs = rightExtentSs;
-        this.rightExtentExcludingAugmentationSs = rightExtentExcludingAugmentationSs;
-        noteheadWidthSs = rightExtentExcludingAugmentationSs;
-        this.stemTopSs = stemTopSs;
-        this.stemBottomSs = stemBottomSs;
+        this.extents = extents;
+        noteheadWidthSs = extents.rightExcludingAugmentationSs();
         this.lyric = lyric;
-        this.syllableWidthSs = syllableWidthSs;
-        syllableFirstGraphemeWidthSs = syllableWidthSs;
-        this.beamed = beamed;
+        syllableFirstGraphemeWidthSs = getSyllableWidthSs();
+        this.beam = beam;
     }
 
     /**
-     * Creates a new ElementColumn where the right extent excluding augmentation equals the right extent.
-     * <p>
-     * Package-private so it is reachable only from tests that do not care about augmentation-driven
-     * spacing. Production callers must use the full constructor and pass the correct
-     * {@code rightExtentExcludingAugmentationSs}.
+     * The geometry extents of a column's element, all relative to the element head's left edge
+     * (the glyph origin) horizontally and to the element's staff position vertically.
+     *
+     * @param leftSs                       left extent; 0.0 without an accidental, negative with one
+     * @param rightSs                      right extent; the element head width, plus augmentation
+     *                                     (dots and fall) and an unbeamed flag where present
+     * @param rightExcludingAugmentationSs right extent without augmentation; used for comfortable
+     *                                     spacing
+     * @param stemTopSs                    top of the stem when it points up, or the element head
+     *                                     top when it has none
+     * @param stemBottomSs                 bottom of the stem when it points down, or the element
+     *                                     head bottom when it has none
      */
-    ElementColumn(
-        StaffElement element,
-        List<StaffElement> graceNotes,
-        double leftExtentSs,
-        double rightExtentSs,
+    public record Extents(
+        double leftSs,
+        double rightSs,
+        double rightExcludingAugmentationSs,
         double stemTopSs,
-        double stemBottomSs,
-        @Nullable Lyric lyric,
-        double syllableWidthSs,
-        boolean beamed) {
-        this(element, graceNotes, leftExtentSs, rightExtentSs, rightExtentSs,
-            stemTopSs, stemBottomSs, lyric, syllableWidthSs, beamed);
-    }
+        double stemBottomSs) {}
+
+    /**
+     * An element's lyric for the verse being laid out, with the width its syllable measures.
+     *
+     * @param lyric   the lyric
+     * @param widthSs the syllable text's measured width in staff spaces; 0 when the text is empty
+     */
+    public record MeasuredLyric(Lyric lyric, double widthSs) {}
 
     // ==========================================================================
     // Primary Element
@@ -217,27 +199,6 @@ public final class ElementColumn {
     }
 
     // ==========================================================================
-    // Grace Notes
-    // ==========================================================================
-
-    /**
-     * Returns the grace notes anchored to this column.
-     * Grace notes borrow space from the main element's left side.
-     *
-     * @return Unmodifiable list of grace notes (empty if none)
-     */
-    public List<StaffElement> getGraceNotes() {
-        return graceNotes;
-    }
-
-    /**
-     * Returns whether this column has grace notes.
-     */
-    public boolean hasGraceNotes() {
-        return !graceNotes.isEmpty();
-    }
-
-    // ==========================================================================
     // Horizontal Extents
     // ==========================================================================
 
@@ -246,7 +207,7 @@ public final class ElementColumn {
      * 0.0 with no accidental; negative when an accidental is present (extends further left).
      */
     public double getLeftExtentSs() {
-        return leftExtentSs;
+        return extents.leftSs();
     }
 
     /**
@@ -254,7 +215,7 @@ public final class ElementColumn {
      * Equal to the element head width with no dots or fall; larger when dots or a fall are present.
      */
     public double getRightExtentSs() {
-        return rightExtentSs;
+        return extents.rightSs();
     }
 
     /**
@@ -263,7 +224,7 @@ public final class ElementColumn {
      * unless the minimum gap would otherwise be violated.
      */
     public double getRightExtentExcludingAugmentationSs() {
-        return rightExtentExcludingAugmentationSs;
+        return extents.rightExcludingAugmentationSs();
     }
 
     /**
@@ -276,10 +237,10 @@ public final class ElementColumn {
      * (which measures from the notehead, see {@link #getNoteheadWidthSs()}), so callers that judge
      * whether a gap needs widening <em>for lyrics</em> must subtract this out of the comfortable rest
      * first — otherwise a stem flip, which changes only the flag's side and footprint, would silently
-     * change how much lyric-driven lift the rest of the line receives (refs #629).
+     * change how much lyric-driven lift the rest of the line receives.
      */
     public double getFlagExtentSs() {
-        return rightExtentExcludingAugmentationSs - noteheadWidthSs;
+        return getRightExtentExcludingAugmentationSs() - noteheadWidthSs;
     }
 
     /**
@@ -304,15 +265,16 @@ public final class ElementColumn {
      */
     public double getRightExtentFacingSs(double neighbourTopYSs, double neighbourBottomYSs) {
         var direction = stemDirection();
+        var rightExtentSs = getRightExtentSs();
 
         if (getFlagExtentSs() <= 0
-            || rightExtentSs > rightExtentExcludingAugmentationSs
+            || rightExtentSs > getRightExtentExcludingAugmentationSs()
             || !(element instanceof NoteElement note)
             || direction == null) {
             return rightExtentSs;
         }
 
-        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(note, direction, beamed);
+        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(note, direction, beaming());
 
         if (flagBoundsSs == null) {
             return rightExtentSs;
@@ -334,7 +296,7 @@ public final class ElementColumn {
      * Returns the total width of this column (leftExtent + rightExtent).
      */
     public double getWidthSs() {
-        return Math.abs(leftExtentSs) + rightExtentSs;
+        return Math.abs(getLeftExtentSs()) + getRightExtentSs();
     }
 
     /**
@@ -348,7 +310,7 @@ public final class ElementColumn {
      *         the spacing calculator has assigned this column its X
      */
     public double getLeftEdgeXSs() {
-        return xSs + leftExtentSs;
+        return xSs + getLeftExtentSs();
     }
 
     /**
@@ -359,7 +321,7 @@ public final class ElementColumn {
      *         the spacing calculator has assigned this column its X
      */
     public double getRightEdgeXSs() {
-        return xSs + rightExtentSs;
+        return xSs + getRightExtentSs();
     }
 
     /**
@@ -412,7 +374,7 @@ public final class ElementColumn {
      * For elements without stems, returns the element head top.
      */
     public double getStemTopSs() {
-        return stemTopSs;
+        return extents.stemTopSs();
     }
 
     /**
@@ -420,7 +382,7 @@ public final class ElementColumn {
      * For elements without stems, returns the element head bottom.
      */
     public double getStemBottomSs() {
-        return stemBottomSs;
+        return extents.stemBottomSs();
     }
 
     /**
@@ -439,7 +401,7 @@ public final class ElementColumn {
      * when building skyline contours.
      */
     public double getAbsoluteTopYSs() {
-        return getPositionSs() + stemTopSs;
+        return getPositionSs() + getStemTopSs();
     }
 
     /**
@@ -479,7 +441,7 @@ public final class ElementColumn {
      * numerically larger (lower) of the column's two vertical extremes.
      */
     public double getAbsoluteBottomYSs() {
-        return getPositionSs() + stemBottomSs;
+        return getPositionSs() + getStemBottomSs();
     }
 
     // ==========================================================================
@@ -493,7 +455,7 @@ public final class ElementColumn {
      * @return Syllable text, or null if no syllable
      */
     public @Nullable String getSyllable() {
-        return lyric != null ? lyric.text() : null;
+        return lyric != null ? lyric.lyric().text() : null;
     }
 
     /**
@@ -505,12 +467,12 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the measured width of the syllable text in pixels.
+     * Returns the measured width of the syllable text in staff spaces.
      *
      * @return Syllable width, or 0 if no syllable
      */
     public double getSyllableWidthSs() {
-        return syllableWidthSs;
+        return lyric != null ? lyric.widthSs() : 0;
     }
 
     /**
@@ -537,7 +499,7 @@ public final class ElementColumn {
      * every verse and cannot say which one is being laid out.
      */
     public @Nullable Lyric getLyric() {
-        return lyric;
+        return lyric != null ? lyric.lyric() : null;
     }
 
     /**
@@ -576,9 +538,12 @@ public final class ElementColumn {
 
     /**
      * Returns whether this element is part of a beam group.
+     *
+     * @return {@link Beaming#BEAMED} when the column was built with a beam, otherwise
+     *     {@link Beaming#UNBEAMED}
      */
-    public boolean isBeamed() {
-        return beamed;
+    public Beaming beaming() {
+        return Beaming.of(beam);
     }
 
     /**
@@ -589,10 +554,6 @@ public final class ElementColumn {
      */
     public boolean sharesBeamGroupWith(ElementColumn other) {
         return beam != null && beam == other.beam;
-    }
-
-    void setBeam(@Nullable Beam beam) {
-        this.beam = beam;
     }
 
     /**
@@ -634,18 +595,14 @@ public final class ElementColumn {
         sb.append("ElementColumn{");
         sb.append("element=").append(element.getType());
 
-        if (hasGraceNotes()) {
-            sb.append(", graceNotes=").append(graceNotes.size());
-        }
-
-        sb.append(", extent=[").append(leftExtentSs).append(", ").append(rightExtentSs).append(']');
+        sb.append(", extent=[").append(getLeftExtentSs()).append(", ").append(getRightExtentSs()).append(']');
 
         if (hasSyllable()) {
             sb.append(", syllable='").append(getSyllable()).append('\'');
-            sb.append(", syllableWidth=").append(syllableWidthSs);
+            sb.append(", syllableWidth=").append(getSyllableWidthSs());
         }
 
-        if (beamed) {
+        if (beaming() == Beaming.BEAMED) {
             sb.append(", beamed");
         }
 
@@ -697,55 +654,42 @@ public final class ElementColumn {
         StaffElement anchor, StaffElement end, ElementColumn anchorColumn, ElementColumn endColumn) {}
 
     /**
-     * Resolves a tie against the line being laid out, telling a tie that runs off one edge of
-     * that line apart from one the line cannot draw at all.
+     * Pairs a tie's place in the line being laid out with the columns of the notes it holds.
      * <p>
      * A tie's end may be in the line after its anchor's (see {@link NoteElement#tie()}), so a
      * tie is laid out once in each line that holds one of its notes, and each line draws the
-     * part next to the note it holds. Which side is open follows from which of the two notes
-     * {@code line} holds: an anchor here with its end elsewhere runs off the right edge toward
-     * the next line, and an end here with its anchor elsewhere enters from the left edge.
+     * part next to the note it holds. Which part that is, {@code placement} already says.
      *
-     * @param tie              the tie to resolve
-     * @param line             the line being laid out
+     * @param placement        the tie's place in the line being laid out
      * @param columnsByElement element-to-column lookup for that line
-     * @return the whole tie when both notes are in {@code line}, the half next to the one note
-     *     that is, or {@code null} when {@code line} holds neither or a note it holds has no
-     *     column
+     * @return the whole tie when {@code placement} has no open edge, the half next to the one
+     *     note the line holds otherwise, or {@code null} when a note the line holds has no column
      */
     @Nullable
     public static TieColumns resolveTie(
-        Tie tie, Line line, Map<StaffElement, ElementColumn> columnsByElement) {
-        var anchor = tie.anchor();
-        var end = tie.end();
-        var anchorInLine = line.contains(anchor);
-        var endInLine = line.contains(end);
+        Line.TiePlacement placement, Map<StaffElement, ElementColumn> columnsByElement) {
+        var tie = placement.tie();
+        var openEdge = placement.openEdge();
 
-        if (anchorInLine && endInLine) {
-            var columns = resolveEndpoints(anchor, end, columnsByElement);
+        if (openEdge == null) {
+            var columns = resolveEndpoints(tie.anchor(), tie.end(), columnsByElement);
 
             return columns == null ? null : new TieColumns.Whole(columns);
         }
 
-        if (anchorInLine) {
-            var anchorColumn = columnsByElement.get(anchor);
+        var attached = switch (openEdge) {
+            case START -> tie.end();
+            case END -> tie.anchor();
+        };
+        var attachedColumn = columnsByElement.get(attached);
 
-            return anchorColumn == null ? null : new TieColumns.Half(anchor, anchorColumn, OpenSide.END);
-        }
-
-        if (endInLine) {
-            var endColumn = columnsByElement.get(end);
-
-            return endColumn == null ? null : new TieColumns.Half(end, endColumn, OpenSide.START);
-        }
-
-        return null;
+        return attachedColumn == null ? null : new TieColumns.Half(attached, attachedColumn, openEdge);
     }
 
     /**
      * What {@link #resolveTie} found: either the whole tie or the half of it this line draws.
-     * A tie the line draws no part of is not a case here — {@link #resolveTie} returns
-     * {@code null} for that, as {@link #resolveSpan} does.
+     * A note with no column is not a case here — {@link #resolveTie} returns {@code null} for
+     * that, as {@link #resolveSpan} does.
      */
     public sealed interface TieColumns {
 
@@ -754,30 +698,15 @@ public final class ElementColumn {
 
         /**
          * One note is in this line and the other is in another line of the song, so this half
-         * runs from {@code attachedColumn} off the edge named by {@code openSide}. There is
+         * runs from {@code attachedColumn} off the edge named by {@code openEdge}. There is
          * deliberately no column for the far note: it belongs to another line's layout, and
          * fabricating one here would put a notehead where the staff edge belongs.
          *
          * @param attached       the note of the tie that is in this line
          * @param attachedColumn that note's column
-         * @param openSide       the edge this half runs off — never {@link OpenSide#NONE}
+         * @param openEdge       the edge this half runs off
          */
-        record Half(StaffElement attached, ElementColumn attachedColumn, OpenSide openSide)
-            implements TieColumns {
-
-            /**
-             * Rejects {@link OpenSide#NONE}, which would describe a half with no open edge —
-             * a whole tie, which is {@link Whole}'s case. Enforced here rather than left to
-             * the doc above because {@code LayoutEngine.calculateTies} reads this by testing
-             * for {@link OpenSide#END} and treating everything else as {@link OpenSide#START},
-             * so a {@code NONE} would not fail there: it would silently draw the arc opening
-             * off the wrong edge.
-             */
-            public Half {
-                if (openSide == OpenSide.NONE) {
-                    throw new IllegalArgumentException("a tie half must run off one of the line's edges");
-                }
-            }
-        }
+        record Half(StaffElement attached, ElementColumn attachedColumn, Line.Edge openEdge)
+            implements TieColumns {}
     }
 }

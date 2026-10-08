@@ -28,11 +28,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
-import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.SongFactory.buildSong;
-import static songscribe.dom.SpanFactory.beamOver;
+import static songscribe.dom.SpanFactory.beamOverAll;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 
@@ -43,14 +41,18 @@ import static songscribe.dom.StaffElementFactory.quaver;
  */
 class BeamDirectionTest extends UnitTest {
 
-    private static final int FIRST_LINE = 0;
-
     /** Staff positions count down from the middle line: negative is above it. */
     private static final int MIDDLE_LINE = 0;
     private static final int LOW_POSITION = 4;
     private static final int LOWER_POSITION = 6;
     private static final int HIGH_POSITION = -4;
     private static final int HIGHER_POSITION = -6;
+
+    /** Nearer the middle line than {@link #HIGH_POSITION}, above it. */
+    private static final int NEAR_HIGH_POSITION = -2;
+
+    /** Nearer the middle line than {@link #LOW_POSITION}, below it. */
+    private static final int NEAR_LOW_POSITION = 2;
 
     /**
      * One group of notes, in line order, and the direction its beam gives.
@@ -64,15 +66,7 @@ class BeamDirectionTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("directionCases")
     void testTheGroupDirectionFollowsTheForcedStemElseTheContour(DirectionCase testCase) {
-        var notes = testCase.notes().get();
-        var song = buildSong(line -> notes.forEach(line::addElement));
-        var line = song.getLine(FIRST_LINE);
-        var beam = song.withoutMutationTrackingResult(() -> {
-            var built = beamOver(line, new ElementRange(0, notes.size() - 1));
-            built.addTo(line);
-
-            return built;
-        });
+        var beam = beamOverAll(testCase.notes().get());
 
         assertThat(beam.direction()).isEqualTo(testCase.expected());
     }
@@ -88,6 +82,24 @@ class BeamDirectionTest extends UnitTest {
             new DirectionCase("members on the middle line point down",
                 () -> List.of(quaver(MIDDLE_LINE, Stem.AUTO), quaver(MIDDLE_LINE, Stem.AUTO)),
                 Direction.DOWN),
+            new DirectionCase("a high note and a lower one further from the middle line point up",
+                () -> List.of(quaver(NEAR_HIGH_POSITION, Stem.AUTO), quaver(LOWER_POSITION, Stem.AUTO)),
+                Direction.UP),
+            new DirectionCase("a low note and a higher one further from the middle line point down",
+                () -> List.of(quaver(NEAR_LOW_POSITION, Stem.AUTO), quaver(HIGHER_POSITION, Stem.AUTO)),
+                Direction.DOWN),
+            new DirectionCase("the extremes decide when the mean disagrees: a high note and two low ones",
+                () -> List.of(
+                    quaver(HIGHER_POSITION, Stem.AUTO),
+                    quaver(LOW_POSITION, Stem.AUTO),
+                    quaver(LOW_POSITION, Stem.AUTO)),
+                Direction.DOWN),
+            new DirectionCase("the extremes decide when the mean disagrees: a low note and two high ones",
+                () -> List.of(
+                    quaver(LOWER_POSITION, Stem.AUTO),
+                    quaver(HIGH_POSITION, Stem.AUTO),
+                    quaver(HIGH_POSITION, Stem.AUTO)),
+                Direction.UP),
             new DirectionCase("the first forced stem decides, against an upward contour",
                 () -> List.of(
                     quaver(LOW_POSITION, Stem.AUTO),

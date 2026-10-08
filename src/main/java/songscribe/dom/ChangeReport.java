@@ -62,6 +62,7 @@ public final class ChangeReport implements Copyable<ChangeReport> {
     /**
      * Appends {@code change} to this report.
      *
+     * @param change the change to record
      * @effects {@code change} becomes the last entry of {@link #changes()}; an entry equal to one
      *     already recorded is appended again, not merged
      */

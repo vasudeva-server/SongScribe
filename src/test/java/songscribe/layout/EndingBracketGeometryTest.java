@@ -36,11 +36,13 @@ import songscribe.dom.Line;
 import songscribe.dom.SongFactory;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.engraving.EngravingConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.SpanFactory.addWithoutTracking;
 import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.StaffElementFactory.bar;
 import static songscribe.dom.StaffElementFactory.crotchet;
@@ -54,11 +56,6 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * column index paired with the anchor the engraving rule names — never by running the
  * production formula a second time. The anchor offsets themselves are pinned independently
  * by {@code BarAppearanceTest}; what is under test is the selection.
- *
- * <p>{@code testDeclaredBarTypesKeepTheirKnownGeometry} is the exception, and deliberately so:
- * it states four X values as literals, so that a change in what a bar is drawn from — a stroke
- * added, a separation widened — shows up as a number that moved rather than as two formulas
- * agreeing with each other.
  */
 class EndingBracketGeometryTest extends UnitTest {
 
@@ -87,32 +84,16 @@ class EndingBracketGeometryTest extends UnitTest {
 
     private static final int RUN_ON_BAR_INDEX = END_INDEX;
 
-    /**
-     * The four X values a {@code SINGLE_BARLINE} / {@code REPEAT_RIGHT} / {@code DOUBLE_BARLINE}
-     * ending has on the standard fixture, hand-derived from the strokes each of those bars is
-     * drawn from and the pitch of the stub columns.
-     */
-    private static final double KNOWN_FIRST_X1_SS = 0.095;
-
-    private static final double KNOWN_FIRST_X2_SS = 6.795;
-
-    private static final double KNOWN_SECOND_X1_SS = 7.7095;
-
-    private static final double KNOWN_SECOND_X2_SS = 12.095;
-
-    /**
-     * What may stand in front of the anchor note. {@link Ending} refuses a note anchor behind
-     * any other bar, so only these two build an ending.
-     */
-    private static final List<ElementType> OPENING_TYPES = List.of(
-        ElementType.SINGLE_BARLINE,
-        ElementType.CROTCHET);
-
     /** What splits the two brackets: an ending's split is always a right repeat. */
     private static final ElementType SPLIT_TYPE = ElementType.REPEAT_RIGHT;
 
     /** Every bar and repeat: what a bracket may run on to. */
-    private static final List<ElementType> BAR_TYPES = List.of(
+    private static final List<ElementType> BAR_TYPES = Stream.of(ElementType.values())
+        .filter(ElementType::isBar)
+        .toList();
+
+    /** The bars the engraving recognizes; a new bar type fails the coverage test until listed. */
+    private static final List<ElementType> EXPECTED_BAR_TYPES = List.of(
         ElementType.SINGLE_BARLINE,
         ElementType.DOUBLE_BARLINE,
         ElementType.FINAL_DOUBLE_BARLINE,
@@ -120,26 +101,91 @@ class EndingBracketGeometryTest extends UnitTest {
         ElementType.REPEAT_RIGHT,
         ElementType.REPEAT_LEFT_RIGHT);
 
-    /**
-     * What the bracket may close on: a note, or a bar that ends an ending. {@code EndingTest}
-     * states the accepted set; a right repeat and a left-right repeat are not in it.
-     */
-    private static final List<ElementType> CLOSING_TYPES = List.of(
-        ElementType.SINGLE_BARLINE,
-        ElementType.DOUBLE_BARLINE,
-        ElementType.FINAL_DOUBLE_BARLINE,
-        ElementType.REPEAT_LEFT,
-        ElementType.CROTCHET);
-
     /** A run-on row varies only what it runs on to, so it opens on a plain barline throughout. */
     private static final ElementType RUN_ON_OPENING_TYPE = ElementType.SINGLE_BARLINE;
 
+    /** The stroke width of a bracket's path; its ink reaches half of this past the path. */
+    private static final double STROKE_SS = EngravingConstants.VOLTA_BRACKET_SS;
+
+    private static final double REGION_X_BASE_SS = 5.0;
+
+    private static final double REGION_BRACKET_X1_SS = 10.0;
+
+    private static final double REGION_BRACKET_LENGTH_SS = 6.0;
+
+    /** The regions of a bracket without a closing stroke: arm, left leg, label. */
+    private static final int OPEN_REGION_COUNT = 3;
+
+    /** The regions of a bracket with a closing stroke: arm, both legs, label. */
+    private static final int CLOSED_REGION_COUNT = 4;
+
+    private static final int ARM_REGION = 0;
+
+    /**
+     * Checks where a bracket end lies against the column of the element it lands on, by the
+     * engraving rule for that kind of element, stated as a difference from the column.
+     */
+    @FunctionalInterface
+    private interface EndRule {
+
+        void verify(double xSs, ElementColumn column, ElementType type);
+    }
+
+    /** A bar opens a bracket at its opening anchor, measured from the bar's column X. */
+    private static final EndRule OPENS_ON_BAR = (xSs, column, type) ->
+        assertThat(xSs - column.getXSs())
+            .as("a bracket opening on a %s sits at the bar's opening anchor", type)
+            .isCloseTo(barOf(type).openingAnchorSs(), within(TOLERANCE_SS));
+
+    /** A bar closes a bracket at its closing anchor, measured from the bar's column X. */
+    private static final EndRule CLOSES_ON_BAR = (xSs, column, type) ->
+        assertThat(xSs - column.getXSs())
+            .as("a bracket closing on a %s sits at the bar's closing anchor", type)
+            .isCloseTo(barOf(type).closingAnchorSs(), within(TOLERANCE_SS));
+
+    /** A note opens a bracket one accidental padding left of the column's left edge. */
+    private static final EndRule OPENS_ON_NOTE = (xSs, column, type) ->
+        assertThat(column.getLeftEdgeXSs() - xSs)
+            .as("a bracket opening on a note sits one accidental padding left of its left edge")
+            .isCloseTo(NoteGeometry.ACCIDENTAL_PADDING_SS, within(TOLERANCE_SS));
+
+    /** A note closes a bracket one augmentation-dot advance right of the column's right edge. */
+    private static final EndRule CLOSES_ON_NOTE = (xSs, column, type) ->
+        assertThat(xSs - column.getRightEdgeXSs())
+            .as("a bracket closing on a note sits one augmentation-dot advance right of its right edge")
+            .isCloseTo(SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT), within(TOLERANCE_SS));
+
+    /**
+     * What may stand in front of the anchor note ({@link Ending} refuses a note anchor behind any
+     * other bar), the column the bracket opens on, and the rule for it: a single barline pulls the
+     * bracket back to itself, a note is opened on directly.
+     */
+    private record OpeningEnd(ElementType type, int columnIndex, EndRule rule) {
+    }
+
+    /**
+     * What the bracket may close on, the rule for it, and whether the bracket is struck through
+     * there. {@code EndingTest} states the accepted set; a right repeat and a left-right repeat
+     * are not in it.
+     */
+    private record ClosingEnd(ElementType type, EndRule rule, boolean struckThrough) {
+    }
+
     /** One way a bracket can be aligned: what it opens on and what it closes on. */
-    private record Alignment(ElementType opening, ElementType closing) {
+    private record Alignment(OpeningEnd opening, ClosingEnd closing) {
 
         @Override
         public String toString() {
-            return "open=%s close=%s".formatted(opening, closing);
+            return "open=%s close=%s".formatted(opening.type(), closing.type());
+        }
+    }
+
+    /** One way a bracket can be collided with: whether it has a closing stroke. */
+    private record RegionCase(String description, boolean closed, int expectedRegionCount) {
+
+        @Override
+        public String toString() {
+            return description;
         }
     }
 
@@ -155,7 +201,7 @@ class EndingBracketGeometryTest extends UnitTest {
     /** A line carrying one ending, with a stub column per element. */
     private record Fixture(Line line, Ending ending, List<ElementColumn> columns) {
 
-        List<BracketRange> bracketRanges() {
+        BracketRange.Pair bracketRanges() {
             return EndingBracketGeometry.computeBracketRanges(
                 ending, line, element -> columns.get(line.getElementIndex(element)));
         }
@@ -166,57 +212,22 @@ class EndingBracketGeometryTest extends UnitTest {
     void testEachReachableAlignmentAnchorsToTheRuleElement(Alignment alignment) {
         var opening = alignment.opening();
         var closing = alignment.closing();
-        var ranges = standardFixture(opening, SPLIT_TYPE, closing).bracketRanges();
+        var fixture = standardFixture(opening.type(), SPLIT_TYPE, closing.type());
+        var ranges = fixture.bracketRanges();
+        var columns = fixture.columns();
 
-        assertThat(ranges).as("an ending always has both of its brackets").hasSize(2);
+        var firstBracket = ranges.first();
+        var secondBracket = ranges.second();
 
-        var firstBracket = ranges.getFirst();
-        var secondBracket = ranges.getLast();
-
-        assertThat(firstBracket.bracket()).as("the first bracket is numbered 1")
-            .isEqualTo(BracketRange.Bracket.FIRST);
-        assertThat(secondBracket.bracket()).as("the second bracket is numbered 2")
-            .isEqualTo(BracketRange.Bracket.SECOND);
-
-        double expectedFirstX1Ss;
-
-        if (opening == ElementType.SINGLE_BARLINE) {
-            expectedFirstX1Ss = openingAnchorXSs(OPENING_INDEX, opening);
-        }
-        else {
-            expectedFirstX1Ss = noteOpeningXSs(ANCHOR_INDEX);
-        }
-
-        assertThat(firstBracket.x1Ss())
-            .as("the first bracket opens on the element in front of the anchor when that is a "
-                + "single barline, otherwise on the anchor note itself")
-            .isCloseTo(expectedFirstX1Ss, within(TOLERANCE_SS));
-
-        assertThat(firstBracket.x2Ss())
-            .as("the first bracket closes on the split repeat")
-            .isCloseTo(closingAnchorXSs(SPLIT_INDEX, SPLIT_TYPE), within(TOLERANCE_SS));
-
-        assertThat(secondBracket.x1Ss())
-            .as("the second bracket opens on the same split repeat, from its other side")
-            .isCloseTo(openingAnchorXSs(SPLIT_INDEX, SPLIT_TYPE), within(TOLERANCE_SS));
-
-        double expectedSecondX2Ss;
-
-        if (closing.isBar()) {
-            expectedSecondX2Ss = closingAnchorXSs(END_INDEX, closing);
-        }
-        else {
-            expectedSecondX2Ss = noteClosingXSs(END_INDEX);
-        }
-
-        assertThat(secondBracket.x2Ss())
-            .as("the second bracket closes on the end element")
-            .isCloseTo(expectedSecondX2Ss, within(TOLERANCE_SS));
+        opening.rule().verify(firstBracket.x1Ss(), columns.get(opening.columnIndex()), opening.type());
+        CLOSES_ON_BAR.verify(firstBracket.x2Ss(), columns.get(SPLIT_INDEX), SPLIT_TYPE);
+        OPENS_ON_BAR.verify(secondBracket.x1Ss(), columns.get(SPLIT_INDEX), SPLIT_TYPE);
+        closing.rule().verify(secondBracket.x2Ss(), columns.get(END_INDEX), closing.type());
 
         assertThat(secondBracket.hasClosingStroke())
             .as("a bracket ending on a bar other than a single barline is struck through there; "
                 + "one ending on a single barline, or on a note with nothing after it, stays open")
-            .isEqualTo(closing.isBar() && closing != ElementType.SINGLE_BARLINE);
+            .isEqualTo(closing.struckThrough());
 
         assertThat(firstBracket.hasClosingStroke())
             .as("the first bracket is always struck through, since the repeat loops back there")
@@ -237,64 +248,71 @@ class EndingBracketGeometryTest extends UnitTest {
     @MethodSource("runOnAlignments")
     void testABracketClosingOnANoteRunsOnToTheFollowingBar(RunOn runOn) {
         var following = runOn.following();
-        var ranges = runOnFixture(SPLIT_TYPE, following).bracketRanges();
+        var fixture = runOnFixture(SPLIT_TYPE, following);
+        var ranges = fixture.bracketRanges();
+        var columns = fixture.columns();
 
-        assertThat(ranges).as("an ending always has both of its brackets").hasSize(2);
+        var secondBracket = ranges.second();
 
-        var secondBracket = ranges.getLast();
-
-        assertThat(secondBracket.x2Ss())
-            .as("the second bracket passes over its end note and closes on the bar beyond it")
-            .isNotCloseTo(noteClosingXSs(RUN_ON_END_INDEX), within(TOLERANCE_SS))
-            .isCloseTo(closingAnchorXSs(RUN_ON_BAR_INDEX, following), within(TOLERANCE_SS));
+        assertThat(secondBracket.x2Ss() - columns.get(RUN_ON_END_INDEX).getRightEdgeXSs())
+            .as("the second bracket passes over its end note")
+            .isNotCloseTo(SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT), within(TOLERANCE_SS));
+        CLOSES_ON_BAR.verify(secondBracket.x2Ss(), columns.get(RUN_ON_BAR_INDEX), following);
 
         assertThat(secondBracket.hasClosingStroke())
             .as("the bar run on to closes the bracket unless it is a single barline")
             .isEqualTo(following != ElementType.SINGLE_BARLINE);
     }
 
-    /**
-     * A known-correct corpus for one ending: a single barline opening it, a right repeat
-     * splitting it, a double barline closing it, over columns two staff spaces apart.
-     */
     @Test
-    void testDeclaredBarTypesKeepTheirKnownGeometry() {
-        var ranges = standardFixture(
-            ElementType.SINGLE_BARLINE,
-            SPLIT_TYPE,
-            ElementType.DOUBLE_BARLINE).bracketRanges();
-
-        assertThat(ranges).hasSize(2);
-
-        var firstBracket = ranges.getFirst();
-        var secondBracket = ranges.getLast();
-
-        assertThat(firstBracket.x1Ss())
-            .as("centered on the single barline's thin stroke")
-            .isCloseTo(KNOWN_FIRST_X1_SS, within(TOLERANCE_SS));
-
-        assertThat(firstBracket.x2Ss())
-            .as("half a thin barline into the split repeat's first drawn line, its leading dots "
-                + "passed over")
-            .isCloseTo(KNOWN_FIRST_X2_SS, within(TOLERANCE_SS));
-
-        assertThat(secondBracket.x1Ss())
-            .as("aligned on the right edge of the split repeat's thick line")
-            .isCloseTo(KNOWN_SECOND_X1_SS, within(TOLERANCE_SS));
-
-        assertThat(secondBracket.x2Ss())
-            .as("half a thin barline into the closing double barline's first line")
-            .isCloseTo(KNOWN_SECOND_X2_SS, within(TOLERANCE_SS));
-
-        assertThat(secondBracket.hasClosingStroke())
-            .as("a bracket ending on a double barline is struck through there")
-            .isTrue();
+    void testBarTypesCoverEveryBarAndRepeat() {
+        assertThat(BAR_TYPES).containsExactlyInAnyOrderElementsOf(EXPECTED_BAR_TYPES);
     }
 
-    /** The cross product of the two axes: every opening with every closing type. */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("regionCases")
+    void testCollisionRegionsCoverTheBracketInk(RegionCase regionCase) {
+        var bracket = new BracketRange(
+            REGION_BRACKET_X1_SS, REGION_BRACKET_X1_SS + REGION_BRACKET_LENGTH_SS, regionCase.closed());
+
+        var regions = EndingBracketGeometry.computeCollisionRegions(
+            bracket, BracketRange.Bracket.FIRST, REGION_X_BASE_SS);
+
+        assertThat(regions).hasSize(regionCase.expectedRegionCount());
+
+        var arm = regions.get(ARM_REGION);
+        var halfStrokeSs = STROKE_SS / 2;
+
+        assertThat(arm.xOffsetSs())
+            .as("the arm reaches half a stroke left of the bracket's left path")
+            .isCloseTo(REGION_X_BASE_SS - halfStrokeSs, within(TOLERANCE_SS));
+        assertThat(arm.xOffsetSs() + arm.widthSs())
+            .as("the arm reaches half a stroke right of the bracket's right path")
+            .isCloseTo(REGION_X_BASE_SS + REGION_BRACKET_LENGTH_SS + halfStrokeSs, within(TOLERANCE_SS));
+        assertThat(arm.heightSs()).as("the arm is one stroke high").isCloseTo(STROKE_SS, within(TOLERANCE_SS));
+    }
+
+    /** An open bracket has no right leg; a closed one does. */
+    static Stream<RegionCase> regionCases() {
+        return Stream.of(
+            new RegionCase("open bracket", false, OPEN_REGION_COUNT),
+            new RegionCase("closed bracket", true, CLOSED_REGION_COUNT));
+    }
+
+    /** Every opening paired with every closing: the cross product of the two axes. */
     static Stream<Alignment> reachableAlignments() {
-        return OPENING_TYPES.stream().flatMap(opening ->
-            CLOSING_TYPES.stream().map(closing -> new Alignment(opening, closing)));
+        var openings = List.of(
+            new OpeningEnd(ElementType.SINGLE_BARLINE, OPENING_INDEX, OPENS_ON_BAR),
+            new OpeningEnd(ElementType.CROTCHET, ANCHOR_INDEX, OPENS_ON_NOTE));
+        var closings = List.of(
+            new ClosingEnd(ElementType.SINGLE_BARLINE, CLOSES_ON_BAR, false),
+            new ClosingEnd(ElementType.DOUBLE_BARLINE, CLOSES_ON_BAR, true),
+            new ClosingEnd(ElementType.FINAL_DOUBLE_BARLINE, CLOSES_ON_BAR, true),
+            new ClosingEnd(ElementType.REPEAT_LEFT, CLOSES_ON_BAR, true),
+            new ClosingEnd(ElementType.CROTCHET, CLOSES_ON_NOTE, false));
+
+        return openings.stream().flatMap(opening ->
+            closings.stream().map(closing -> new Alignment(opening, closing)));
     }
 
     /**
@@ -378,13 +396,7 @@ class EndingBracketGeometryTest extends UnitTest {
             }
         });
         var line = song.getLine(0);
-        var ending = song.withoutMutationTrackingResult(() -> {
-            var placed = endingOver(line, new ElementRange(anchorIndex, endIndex));
-
-            placed.addTo(line);
-
-            return placed;
-        });
+        var ending = addWithoutTracking(song, () -> endingOver(line, new ElementRange(anchorIndex, endIndex)));
         var columns = new ArrayList<ElementColumn>(elements.size());
 
         for (var index = 0; index < elements.size(); index++) {
@@ -395,17 +407,9 @@ class EndingBracketGeometryTest extends UnitTest {
     }
 
     private static ElementColumn column(int index, StaffElement element) {
-        var column = new ElementColumn(
-            element,
-            List.of(),
-            COLUMN_LEFT_EXTENT_SS,
-            COLUMN_RIGHT_EXTENT_SS,
-            COLUMN_RIGHT_EXTENT_SS,
-            0.0,
-            0.0,
-            null,
-            0.0,
-            false);
+        var extents = new ElementColumn.Extents(
+            COLUMN_LEFT_EXTENT_SS, COLUMN_RIGHT_EXTENT_SS, COLUMN_RIGHT_EXTENT_SS, 0.0, 0.0);
+        var column = new ElementColumn(element, extents, null, null);
 
         column.setXSs(columnXSs(index));
 
@@ -416,28 +420,7 @@ class EndingBracketGeometryTest extends UnitTest {
         return index * COLUMN_PITCH_SS;
     }
 
-    /** Where a bracket opening on the bar in column {@code index} puts its left stroke. */
-    private static double openingAnchorXSs(int index, ElementType type) {
-        return columnXSs(index) + barOf(type).openingAnchorSs();
-    }
-
-    /** Where a bracket closing on the bar in column {@code index} puts its right end. */
-    private static double closingAnchorXSs(int index, ElementType type) {
-        return columnXSs(index) + barOf(type).closingAnchorSs();
-    }
-
     private static BarAppearance barOf(ElementType type) {
         return (BarAppearance) type.appearance();
-    }
-
-    /** Where a bracket opening on the note in column {@code index} puts its left stroke. */
-    private static double noteOpeningXSs(int index) {
-        return columnXSs(index) + COLUMN_LEFT_EXTENT_SS - NoteGeometry.ACCIDENTAL_PADDING_SS;
-    }
-
-    /** Where a bracket closing on the note in column {@code index} puts its right end. */
-    private static double noteClosingXSs(int index) {
-        return columnXSs(index) + COLUMN_RIGHT_EXTENT_SS
-            + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
     }
 }

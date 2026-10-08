@@ -100,7 +100,7 @@ public final class TempoResolver {
      *
      * <p>When one element carries both kinds of marking the metric modulation wins, because
      * it is the more specific statement about the beat than a tempo marking's note value.
-     * This is the single definition of that precedence: {@link #splitsBeat} reads the element
+     * This is the single definition of that precedence: {@link #isBeatChange} reads the element
      * through it too, so the beat walk and the beat-barrier test cannot answer differently for
      * the same element.
      */
@@ -132,7 +132,7 @@ public final class TempoResolver {
      * @param runningBeat the beat in effect before {@code element}
      * @return {@code true} when a span containing {@code element} past its anchor is split there
      */
-    static boolean splitsBeat(StaffElement element, BeatUnit runningBeat) {
+    static boolean isBeatChange(StaffElement element, BeatUnit runningBeat) {
         if (element.findAttachment(BeatChangeAttachment.class) != null) {
             return true;
         }

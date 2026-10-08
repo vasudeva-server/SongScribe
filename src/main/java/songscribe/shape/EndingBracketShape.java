@@ -21,46 +21,59 @@
 package songscribe.shape;
 
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 
-import songscribe.layout.BracketRange;
-
 /**
  * The corner points of a first/second ending bracket: up the left leg, across the top, and (when
- * present) down the right leg. The caller strokes the returned polyline; this class holds the
- * geometry and reads the bracket's range as layout computed it, with no renderer dependency.
+ * the bracket is closed) down the right leg. The caller strokes the returned polyline.
+ * <p>
+ * All coordinates are plain staff-space values; the caller resolves them from layout before
+ * calling. This class holds no layout or renderer dependency.
  */
 public final class EndingBracketShape {
 
     private EndingBracketShape() {}
 
+    /** Whether an ending bracket ends in a right leg. */
+    public enum Closure {
+        /** The top arm ends free on the right. */
+        OPEN,
+
+        /** The top arm turns down into a right leg. */
+        CLOSED
+    }
+
     /**
      * Builds the ending bracket corner points as a single polyline, so the top corners join
      * cleanly when stroked.
+     * <p>
+     * The left leg runs along the outline's left edge from its bottom to its top, and the top arm
+     * along its top edge to its right edge. A closed bracket's right leg then runs down the
+     * outline's right edge to its bottom: the caller sizes a closed outline so that its right edge
+     * is the leg's X, and an open one so that its right edge is where the free arm ends.
      *
-     * <p>The horizontal arm ends where the bracket's ink reaches on the right, which is
-     * {@link BracketRange#inkRightXSs()}. A closed bracket's arm ends at an interior corner,
-     * where a stroker leaves a join, so its ink reaches the bracket's own right edge. An open
-     * arm ends at a terminal cap, which {@code GraphicUtils.drawPath} pulls in half a stroke
-     * width; pushing the endpoint out by that same half puts the open arm's ink at the X a
-     * closed bracket's right leg would reach.
-     *
-     * @param bracket   the bracket range being drawn
-     * @param yTopSs    top of the bracket, in staff spaces
-     * @param yBottomSs bottom of the legs, in staff spaces
-     * @return the bracket corner points, in draw order
+     * @param outlineSs the rectangle the path's corners lie on, in staff spaces: from the left
+     *                  leg's X to the top arm's right end, and from the top arm's Y to the legs'
+     *                  bottom
+     * @param closure   whether the bracket ends in a right leg
+     * @return the bracket corner points, in draw order: three for an open bracket, four for a
+     *     closed one
      */
-    public static Point2D[] points(BracketRange bracket, double yTopSs, double yBottomSs) {
-        var armEndXSs = bracket.inkRightXSs();
+    public static Point2D[] points(Rectangle2D outlineSs, Closure closure) {
+        var leftXSs = outlineSs.getMinX();
+        var rightXSs = outlineSs.getMaxX();
+        var topYSs = outlineSs.getMinY();
+        var bottomYSs = outlineSs.getMaxY();
 
         var bracketPoints = new ArrayList<Point2D>(List.of(
-            new Point2D.Double(bracket.x1Ss(), yBottomSs),
-            new Point2D.Double(bracket.x1Ss(), yTopSs),
-            new Point2D.Double(armEndXSs, yTopSs)));
+            new Point2D.Double(leftXSs, bottomYSs),
+            new Point2D.Double(leftXSs, topYSs),
+            new Point2D.Double(rightXSs, topYSs)));
 
-        if (bracket.hasClosingStroke()) {
-            bracketPoints.add(new Point2D.Double(bracket.x2Ss(), yBottomSs));
+        if (closure == Closure.CLOSED) {
+            bracketPoints.add(new Point2D.Double(rightXSs, bottomYSs));
         }
 
         return bracketPoints.toArray(new Point2D[0]);

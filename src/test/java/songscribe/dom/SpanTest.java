@@ -27,14 +27,16 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.message.mutation.SpanRemoval;
+import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static songscribe.dom.BatchReplay.redo;
-import static songscribe.dom.BatchReplay.undo;
+import static songscribe.dom.BatchReplay.NO_FONT_CHANGES;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
+import static songscribe.dom.SongFactory.songOfQuavers;
 import static songscribe.dom.SpanFactory.hairpinOver;
-import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.quaverRest;
 
 /**
  * What {@link Span#addTo} and {@link Span#removeFrom} promise across more than one call: a
@@ -52,51 +54,92 @@ class SpanTest extends UnitTest {
     private static final ElementRange FLUSH =
         new ElementRange(EXISTING.end() + SPAN_ADJACENCY_REACH, LINE_LENGTH - 1);
 
-    private static final ElementRange MERGED = new ElementRange(EXISTING.begin(), FLUSH.end());
+    /** The diminuendo that separates two crescendos the deletion leaves touching. */
+    private static final ElementRange BRIDGING_DIMINUENDO = new ElementRange(EXISTING.end(), EXISTING.end() + 3);
+
+    /** The crescendo after {@link #BRIDGING_DIMINUENDO}, before the deletion. */
+    private static final ElementRange LAST_CRESCENDO =
+        new ElementRange(BRIDGING_DIMINUENDO.end(), BRIDGING_DIMINUENDO.end() + 2);
+
+    /** How many elements the deletion between the two crescendos takes. */
+    private static final int DELETED_COUNT = 2;
+
+    /** The elements inside {@link #BRIDGING_DIMINUENDO}, which the deletion takes. */
+    private static final ElementRange DELETED_BETWEEN =
+        new ElementRange(EXISTING.end() + 1, EXISTING.end() + DELETED_COUNT);
+
+    private static final int CHAIN_LINE_LENGTH = LAST_CRESCENDO.end() + 1;
+
+    /** {@link #LAST_CRESCENDO} once {@link #DELETED_BETWEEN} is gone: it touches {@link #EXISTING}. */
+    private static final ElementRange LAST_CRESCENDO_LEFT = LAST_CRESCENDO.shiftedBy(-DELETED_COUNT);
 
     @Test
     void testRemovingASpanASecondTimeChangesNothingAndThrowsNothing() {
-        var line = lineOfQuavers(LINE_LENGTH);
-
-        var removed = crescendoOver(line, EXISTING);
-        var bystander = hairpinOver(line, Hairpin.Kind.DIMINUENDO, FLUSH);
-        removed.addTo(line);
-        bystander.addTo(line);
-
-        removed.removeFrom(line);
-
-        assertThatCode(() -> removed.removeFrom(line)).doesNotThrowAnyException();
-        assertThat(line.spanRegistry().getSpans())
-            .as("the second removal finds nothing of its own and leaves the other span standing")
-            .containsExactly(bystander);
-    }
-
-    @Test
-    void testAnAdditionsDisplacementsAreAppliedOnceAcrossUndoAndRedo() {
-        var song = songOfQuavers();
+        var song = songOfQuavers(LINE_LENGTH);
         var line = song.getLine(0);
-        song.withModification(() -> crescendoOver(line, EXISTING).addTo(line));
+        var removed = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
+        var bystander = hairpinOver(line, Hairpin.Kind.DIMINUENDO, FLUSH);
+        song.withModification(() -> {
+            removed.addTo();
+            bystander.addTo();
+        });
 
         var recorder = new BatchRecorder();
 
         try {
-            song.withModification(() -> crescendoOver(line, FLUSH).addTo(line));
+            song.withModification(() -> removed.removeFrom());
 
-            var batch = recorder.batches().getFirst();
+            var firstRemovalBatches = recorder.batches().size();
 
-            assertThat(crescendoRanges(line)).containsExactly(MERGED);
+            assertThatCode(() -> song.withModification(() -> removed.removeFrom())).doesNotThrowAnyException();
 
-            undo(song, batch);
+            assertThat(recorder.batches().stream().skip(firstRemovalBatches).flatMap(List::stream))
+                .as("the second removal records nothing")
+                .isEmpty();
+            assertThat(line.spanRegistry().getSpans())
+                .as("the second removal finds nothing of its own and leaves the other span standing")
+                .containsExactly(bystander);
+        } finally {
+            recorder.dispose();
+        }
+    }
+
+    @Test
+    void testAnAdditionsDisplacementsAreAppliedOnceAcrossUndoAndRedo() {
+        var song = songOfQuavers(CHAIN_LINE_LENGTH);
+        var line = song.getLine(0);
+        song.withModification(() -> {
+            hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING).addTo();
+            hairpinOver(line, Hairpin.Kind.DIMINUENDO, BRIDGING_DIMINUENDO).addTo();
+            hairpinOver(line, Hairpin.Kind.CRESCENDO, LAST_CRESCENDO).addTo();
+            line.deleteRange(line.effectiveRange(DELETED_BETWEEN));
+        });
+
+        assertThat(crescendoRanges(line))
+            .as("the arrangement leaves both crescendos touching and apart")
+            .containsExactlyInAnyOrder(EXISTING, LAST_CRESCENDO_LEFT);
+
+        var recorder = new BatchRecorder();
+
+        try {
+            song.withModification(() -> line.setElement(LAST_CRESCENDO_LEFT.end(), quaverRest()));
+
+            var editBatch = recorder.batches().getFirst();
+
+            assertThat(crescendoRanges(line)).as("the edit removes the crescendo it ends").containsExactly(EXISTING);
+
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, editBatch);
+
+            var replayBatch = recorder.batches().getLast();
 
             assertThat(crescendoRanges(line))
-                .as("undo takes the merged crescendo out and puts the absorbed one back")
-                .containsExactly(EXISTING);
+                .as("undo puts the removed crescendo back without absorbing the one it touches")
+                .containsExactlyInAnyOrder(EXISTING, LAST_CRESCENDO_LEFT);
+            assertThat(replayBatch).as("the replay records no removal").noneMatch(SpanRemoval.class::isInstance);
 
-            redo(song, batch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, editBatch);
 
-            assertThat(crescendoRanges(line))
-                .as("redo reproduces the batch as recorded, so the absorption is not derived again")
-                .containsExactly(MERGED);
+            assertThat(crescendoRanges(line)).containsExactly(EXISTING);
         } finally {
             recorder.dispose();
         }
@@ -104,11 +147,11 @@ class SpanTest extends UnitTest {
 
     @Test
     void testADeletionAndTheSpanItRemovesAreUndoneAndRedoneTogether() {
-        var song = songOfQuavers();
+        var song = songOfQuavers(LINE_LENGTH);
         var line = song.getLine(0);
         var elements = List.copyOf(line.effectiveElements());
-        var crescendo = crescendoOver(line, EXISTING);
-        song.withModification(() -> crescendo.addTo(line));
+        var crescendo = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
+        song.withModification(() -> crescendo.addTo());
 
         var recorder = new BatchRecorder();
 
@@ -121,31 +164,20 @@ class SpanTest extends UnitTest {
             assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
             assertThat(line.spanRegistry().getSpans()).isEmpty();
 
-            undo(song, batch);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
 
             assertThat(line.effectiveElements())
                 .as("undo puts every deleted element back where it stood")
                 .containsExactlyElementsOf(elements);
             assertThat(line.spanRegistry().getSpans()).containsExactly(crescendo);
 
-            redo(song, batch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
 
             assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
             assertThat(line.spanRegistry().getSpans()).isEmpty();
         } finally {
             recorder.dispose();
         }
-    }
-
-    /** A song of one line of {@link #LINE_LENGTH} quavers. */
-    private static Song songOfQuavers() {
-        return SongFactory.buildSong(line -> {
-            line.setKey(Key.NO_ACCIDENTALS);
-
-            for (var i = 0; i < LINE_LENGTH; i++) {
-                line.addElement(quaver());
-            }
-        });
     }
 
     private static List<ElementRange> crescendoRanges(Line line) {

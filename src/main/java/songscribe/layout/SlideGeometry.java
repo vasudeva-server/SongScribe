@@ -56,8 +56,7 @@ public final class SlideGeometry {
 
     /**
      * Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn.
-     * 0.75 ss stays clearly visible at tight spacing (notably a target carrying an accidental)
-     * (refs #443).
+     * 0.75 ss stays clearly visible at tight spacing (notably a target carrying an accidental).
      */
     public static final double MIN_RECT_LENGTH_SS = 0.75;
 
@@ -114,17 +113,17 @@ public final class SlideGeometry {
      *
      * @param note          the note whose geometry to resolve
      * @param elementXSs    the note column's origin X in the line's staff spaces
-     * @param beamed        whether the note belongs to a beam group (affects dot placement)
+     * @param beaming       whether the note belongs to a beam group (affects dot placement)
      * @param middleLineYSs Y position of the middle staff line; pass 0 for layout space
      */
     public static NoteContext noteContextAt(
-        NoteElement note, double elementXSs, boolean beamed, double middleLineYSs
+        NoteElement note, double elementXSs, Beaming beaming, double middleLineYSs
     ) {
         var cy = NoteGeometry.noteStaffPositionToCoordinateSs(note.getStaffPosition().value(), middleLineYSs);
 
         // Compute the stem-free attach extent once and widen it to the stem-full extent for the
         // fall anchor, rather than recomputing the notehead/dots/accidental geometry twice.
-        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, beamed);
+        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, beaming);
         var columnRightXSs = elementXSs + NoteColumnGeometry.extentSs(note, attachExtent).rightSs();
         var glissLeftXSs = elementXSs + attachExtent.leftSs();
         var glissRightXSs = elementXSs + attachExtent.rightSs();

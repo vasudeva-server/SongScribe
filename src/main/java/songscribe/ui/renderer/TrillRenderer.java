@@ -75,42 +75,22 @@ public final class TrillRenderer {
     // ==========================================================================
 
     /**
-     * Resolves the trill X position and end X position, then delegates to
-     * {@link #renderTrill(Graphics2D, double, double, double, Color)}.
-     */
-    void renderTrillAtPosition(
-        Graphics2D g2,
-        StaffElement anchor,
-        @Nullable StaffElement endNote,
-        double layoutXSs,
-        double trillTopYSs,
-        Color color,
-        LayoutResult layoutResult
-    ) {
-        var trillXSs = TrillGeometry.glyphLeftXSs(layoutXSs, NoteGeometry.getNoteheadCenterXSs(anchor));
-
-        if (endNote != null && endNote != anchor) {
-            var endXSs = layoutResult.getElementXSs(endNote) + endNote.getType().getElementWidthSs();
-            renderTrill(g2, trillXSs, endXSs, trillTopYSs, color);
-        } else {
-            renderTrill(g2, trillXSs, Double.NaN, trillTopYSs, color);
-        }
-    }
-
-    /**
-     * Renders a trill glyph plus optional wavy line extension.
-     * All coordinates in staff-space units (Graphics2D has scale transform applied).
+     * Renders a trill glyph, plus the wavy line out to the ink's right edge when the trill spans
+     * a range. All coordinates in staff-space units (Graphics2D has scale transform applied).
+     * <p>
+     * The layout's bounds are the trill's ink extent ({@link TrillGeometry#inkExtentSs}): the
+     * glyph starts at its left edge and the wavy line ends at its right edge.
      *
      * @param g2          Graphics context with scale transform
-     * @param xSs         X position of the trill glyph in staff-space units
-     * @param endXSs      Right edge of the wavy line extension, or {@code NaN} for single-note trills
+     * @param trill       the trill being drawn
+     * @param layout      the trill's layout, with offsets already applied
      * @param trillTopYSs Y position of the trill top edge in component staff-space coordinates
      * @param color       Color to use for the trill glyph and wavy line
      */
     private void renderTrill(
         Graphics2D g2,
-        double xSs,
-        double endXSs,
+        Trill trill,
+        LayoutResult.DecorationLayout layout,
         double trillTopYSs,
         Color color
     ) {
@@ -118,16 +98,14 @@ public final class TrillRenderer {
         // trillTopYSs is the top, so offset down by the glyph height.
         var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.ORNAMENT_TRILL);
         var y = trillTopYSs + bbox.heightSs();
+        var xSs = layout.xSs();
 
         try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
             RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
-            // Draw wavy line extension for multi-note trills
-            if (!Double.isNaN(endXSs)) {
-                var wavyStartX = xSs + TRILL_ADVANCE_WIDTH_SS;
-                var wavyEndX = endXSs;
-                drawWavyLine(g2, wavyStartX, y, wavyEndX, color);
+            if (!TrillGeometry.isSingleNote(trill)) {
+                drawWavyLine(g2, xSs + TRILL_ADVANCE_WIDTH_SS, y, xSs + layout.widthSs(), color);
             }
         }
     }
@@ -145,20 +123,12 @@ public final class TrillRenderer {
         for (var entry : layoutResult.decorationLayouts().getDecorationLayoutsByType(Trill.class)) {
             var trill = entry.getKey();
             var layout = entry.getValue();
-            var anchor = trill.getAnchorElement();
-
-            if (anchor == null) {
-                continue;
-            }
 
             var color = RenderingUtils.decorationColor(
-                new HitTarget.Trill(trill), anchor, invariants, frame);
-            var layoutXSs = layout.xSs();
+                new HitTarget.Trill(trill), trill.getAnchorElement(), invariants, frame);
             var trillTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
 
-            renderTrillAtPosition(
-                g2, anchor, trill.getEndElement(),
-                layoutXSs, trillTopYSs, color, layoutResult);
+            renderTrill(g2, trill, layout, trillTopYSs, color);
         }
     }
 

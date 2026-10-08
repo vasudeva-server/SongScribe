@@ -85,7 +85,7 @@ public final class StaffElementIO {
     private static final String XML_BEAT_CHANGE_DURATION = "duration";
     private static final String XML_BEAT_CHANGE_BEAT = "beat";
     // Both translate tags are retained for legacy-read compatibility only —
-    // recognized on read but no longer written (issue #455).
+    // recognized on read, never written.
     private static final String XML_GLISSANDO_X1_TRANSLATE =
         "glissandox1translate";
     private static final String XML_GLISSANDO_X2_TRANSLATE =
@@ -104,9 +104,8 @@ public final class StaffElementIO {
     private static final String XML_LYRIC_TEXT = "text";
     private static final String XML_EXTEND_TAG = "extend";
 
-    // Maps every legacy element-type spelling — the underscore-less aliases phase 1
-    // deleted from ElementType, plus the retired names the v1.0/v1.1 if-chains used to
-    // rewrite — to the canonical ElementType constant. Shared by startElement10 and
+    // Maps every legacy element-type spelling — the underscore-less aliases and the retired
+    // names the v1.0/v1.1 formats used — to the canonical ElementType constant. Shared by startElement10 and
     // startElement11 via resolveElementType so an unknown token is rejected identically
     // on both.
     private static final Map<String, ElementType> LEGACY_ELEMENT_TYPE_NAMES = Map.ofEntries(
@@ -145,7 +144,7 @@ public final class StaffElementIO {
         }
 
         // Retired accidentals (NATURAL_FLAT, NATURAL_SHARP, DOUBLE_NATURAL)
-        // no longer exist as enum constants, but old files still serialize
+        // do not exist as enum constants, but old files still serialize
         // them by name. Route their canonical legacy names through the same
         // alias-synthesis loop so the underscore-less variants they were
         // ever written as (e.g. NATURALFLAT) still resolve.
@@ -480,7 +479,7 @@ public final class StaffElementIO {
                         // write one on an element that is not a note; it has nowhere to go.
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)
                         || lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        // Legacy manual-adjustment offsets — no longer supported; ignore (issue #455).
+                        // Legacy manual-adjustment offsets — not supported; ignored.
                     } else if (lastTag.equals(XML_UPPER)) {
                         stemUp = true;
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)

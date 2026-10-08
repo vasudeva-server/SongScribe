@@ -98,7 +98,8 @@ class SongAccidentalWalkTest extends UnitTest {
         return Stream.of(
             new WalkCase("a note insertion", SongAccidentalWalkTest::noteInsertionCase),
             new WalkCase("a range deletion", SongAccidentalWalkTest::rangeDeletionCase),
-            new WalkCase("a pitch change to adopting", SongAccidentalWalkTest::pitchChangeToAdoptingCase),
+            new WalkCase("a note adopting the chain's accidental", SongAccidentalWalkTest::accidentalAdoptionCase),
+            new WalkCase("a note moved to another staff position", SongAccidentalWalkTest::noteMoveCase),
             new WalkCase("a key change insertion", SongAccidentalWalkTest::keyChangeInsertionCase),
             new WalkCase("a line deletion", SongAccidentalWalkTest::lineDeletionCase),
             new WalkCase("a line's own key changed", SongAccidentalWalkTest::lineKeyChangeCase),
@@ -131,7 +132,7 @@ class SongAccidentalWalkTest extends UnitTest {
             () -> line.addElement(1, removed));
     }
 
-    private static Fixture pitchChangeToAdoptingCase() {
+    private static Fixture accidentalAdoptionCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
         var line = song.getLine(0);
         var note = (NoteElement) line.getElement(1);
@@ -140,6 +141,16 @@ class SongAccidentalWalkTest extends UnitTest {
         return new Fixture(song,
             () -> line.modifyElement(1, ElementField.ACCIDENTAL, note::adopt),
             () -> line.modifyElement(1, ElementField.ACCIDENTAL, () -> note.copyStateFrom(beforeState)));
+    }
+
+    /** The note's accidental is the chain's, so moving it off the chained pitch changes what it sounds. */
+    private static Fixture noteMoveCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
+        var line = song.getLine(0);
+
+        return new Fixture(song,
+            () -> LineEdits.move(line, 1, OTHER),
+            () -> LineEdits.move(line, 1, F));
     }
 
     private static Fixture keyChangeInsertionCase() {

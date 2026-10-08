@@ -69,8 +69,8 @@ public class SongDidChangeNotification extends Message {
     /**
      * Constructs a notification that takes ownership of an already-immutable
      * mutation list. The caller must not retain or mutate the list after
-     * construction — {@code Song.endModification} uses this to avoid
-     * defensively copying the accumulated list a second time.
+     * construction — {@code ModificationSession}, when it closes the outermost modification
+     * bracket, uses this to avoid defensively copying the accumulated list a second time.
      *
      * @param opName the declared op-name for this edit, or {@code null} to let
      *               {@code UndoController} derive a type-based fallback label

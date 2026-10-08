@@ -34,7 +34,6 @@ import songscribe.prefs.PrefsKey;
  * <p>
  * This interface decouples EditModeManager from ScoreView, allowing it to request
  * ScoreView to perform UI-related actions without creating a circular dependency.
- * Created as part of Phase 6 of the ScoreView Cleanup refactoring.
  */
 public interface ScoreActions {
 

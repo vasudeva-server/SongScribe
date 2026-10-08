@@ -105,6 +105,7 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.undo.FontTarget;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
@@ -136,6 +137,7 @@ public final class ScoreView
     implements
     ComponentHierarchyProvider,
     DocumentFontsHolder,
+    FontTarget,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
     LineLayoutProvider,
@@ -218,7 +220,7 @@ public final class ScoreView
     // Manages clipboard state for copy/paste operations
     private final ClipboardManager clipboardManager;
 
-    // New JComponent-based score panel (Phase 2 hierarchy)
+    // JComponent-based score panel
     @Nullable
     private MainPanel mainPanel = null;
 
@@ -326,7 +328,7 @@ public final class ScoreView
         song.setModified(false);
 
         // Create operations and message coordinator (requires mainPanel to be set)
-        operations = new MusicEditOperations(song, selectionCoordinator);
+        operations = new MusicEditOperations(selectionCoordinator);
         controller = new ScoreViewController(
             this,
             operations,
@@ -397,7 +399,7 @@ public final class ScoreView
     /**
      * Returns the MainPanel for the new component hierarchy.
      * <p>
-     * This is the top-level panel for the Phase 2 JComponent-based rendering.
+     * This is the top-level panel for the JComponent-based rendering.
      */
     @Override
     public @Nullable MainPanel getMainPanel() {
@@ -455,16 +457,13 @@ public final class ScoreView
                 // defaults-from-prefs attribution font, and the first edit shifts
                 // attachments (tempo, etc.) once layout reruns with the doc font.
                 installDocumentFonts(success.fonts());
-                setSong(success.song());
 
                 var report = success.report();
+                // A change made on load must prompt the user to save the changed version; the
+                // undo engine marks the song modified from this.
+                setSong(success.song(), DocumentDidLoadNotification.LoadChange.of(report));
 
                 if (!report.isEmpty()) {
-                    // setSong clears the modified flag internally; a change made
-                    // on load must still prompt the user to save the changed
-                    // version, so re-mark modified after installing the song.
-                    success.song().setModified(true);
-
                     // Deferred so the rest of the open, which follows, is not held until
                     // the user dismisses the modal dialog.
                     SwingUtilities.invokeLater(
@@ -630,8 +629,8 @@ public final class ScoreView
      * The consequence is that Swing cannot resolve a repaint to a single child: this view
      * repaints <b>every</b> child intersecting the damaged rectangle, including the
      * {@link LineComponent} beneath an overlay, which runs the full line render pipeline.
-     * Sizing overlays to exact ink <b>shrinks</b> that rectangle — it used to be inflated by
-     * 1.5 staff spaces of slop — but it does not remove the underlying repaint. The win is
+     * Sizing overlays to exact ink <b>shrinks</b> that rectangle, but it does not remove the
+     * underlying repaint. The win is
      * correctness (no stale ink, no clipped glyphs), not a reduction in repaint cost.
      */
     @Override
@@ -696,7 +695,7 @@ public final class ScoreView
      * <p>
      * Every {@link HitTarget} kind but one is drawn wholly by the line component the user
      * clicked, so that component repainting itself is enough. A tie can cross a line break
-     * (#493), with half drawn by each of its two lines, and
+     *, with half drawn by each of its two lines, and
      * {@link SelectionCoordinator#isSelected} answers "selected" for both. Without this the far
      * half keeps painting the stale color until something unrelated happens to repaint it.
      * <p>
@@ -710,8 +709,8 @@ public final class ScoreView
             return;
         }
 
-        repaintLine(tie.anchor().getParentLine());
-        repaintLine(tie.end().getParentLine());
+        repaintLine(tie.anchor().requireParentLine());
+        repaintLine(tie.end().requireParentLine());
     }
 
     /**
@@ -755,7 +754,8 @@ public final class ScoreView
 
     @Override
     public void selectionChanged() {
-        MessageCenter.post(new MusicSelectionDidChangeNotification(this));
+        MessageCenter.post(new MusicSelectionDidChangeNotification(
+            getSelectionSize(), selectionCoordinator.getSelectedTarget()));
     }
 
     @Override
@@ -884,7 +884,17 @@ public final class ScoreView
         return stringBuilder.toString();
     }
 
-    public void setSong(Song song) {
+    /**
+     * Installs {@code song} as the document this view edits, replacing and disposing the
+     * outgoing one.
+     *
+     * @param song       the document to install
+     * @param loadChange whether loading {@code song} changed it from its file; once the view is
+     *                   initialized it travels on the {@link DocumentDidLoadNotification}, from
+     *                   which the undo engine decides whether the song starts out modified
+     * @effects posts {@link DocumentDidLoadNotification} once the view is initialized
+     */
+    public void setSong(Song song, DocumentDidLoadNotification.LoadChange loadChange) {
         // MBassador holds Song subscribers by weak reference, so the outgoing Song
         // keeps handling broadcast commands — spawning spurious undo steps against
         // the dead document — until GC clears it. Detach it deterministically here.
@@ -895,7 +905,7 @@ public final class ScoreView
         this.song = song;
 
         // A new document gets its own chance to warn that a line does not fit; the alert is shown
-        // once per document (refs #696).
+        // once per document.
         LineComponent.resetOverflowWarning();
 
         // Reset zoom to 100% for the new/opened song before laying out at the old zoom.
@@ -914,9 +924,7 @@ public final class ScoreView
         // Interactive-only setup below
 
         if (operations == null) {
-            operations = new MusicEditOperations(song, selectionCoordinator);
-        } else {
-            operations.setSong(song);
+            operations = new MusicEditOperations(selectionCoordinator);
         }
 
         if (controller == null) {
@@ -943,7 +951,7 @@ public final class ScoreView
         // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
         // that the song has been fully replaced. This must happen after all
         // ScoreView state is consistent.
-        MessageCenter.post(new DocumentDidLoadNotification(song));
+        MessageCenter.post(new DocumentDidLoadNotification(song, loadChange));
 
         // Reset scroll position to top-left for the new/opened song
         if (scrollPane != null) {
@@ -1148,7 +1156,7 @@ public final class ScoreView
      * previous zoom's cached preferred size, was therefore never resized, was therefore
      * never invalidated, and {@code StaffLinesLayout} never ran again — leaving every line
      * painting at the new zoom inside bounds measured at the old one, so the lines
-     * overlapped and clipped (issue #591).
+     * overlapped and clipped.
      */
     private static void invalidateTree(Component component) {
         component.invalidate();
@@ -1302,7 +1310,6 @@ public final class ScoreView
      * the per-step delta is tiny, as during a pinch or slider drag.
      * {@code SIMPLE_SCROLL_MODE} paints from scratch instead, so no stale pixels ever reach
      * the screen; the previous mode is restored so ordinary scrolling keeps the blit.
-     * Refs #651.
      */
     private void runWithoutViewportBlit(Consumer<? super JScrollPane> body) {
         if (scrollPane == null) {
@@ -1476,6 +1483,7 @@ public final class ScoreView
     }
 
     /** @see DocumentFontManager#setFonts(DocumentFonts) */
+    @Override
     public void setFonts(DocumentFonts newFonts) {
         documentFontManager.setFonts(newFonts);
     }

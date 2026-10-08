@@ -24,19 +24,22 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.hit.HitTarget;
 import songscribe.message.Message;
-import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.ScoreViewController;
 
 public class MusicSelectionDidChangeNotification extends Message {
 
     private final int selectionSize;
     private final HitTarget.@Nullable Selectable selectedTarget;
-    private final ScoreView scoreView;
 
-    public MusicSelectionDidChangeNotification(ScoreView scoreView) {
-        selectionSize = scoreView.getSelectionSize();
-        selectedTarget = scoreView.getSelectionCoordinator().getSelectedTarget();
-        this.scoreView = scoreView;
+    /**
+     * @param selectionSize  the number of elements the score has selected
+     * @param selectedTarget the score's single selected target, or {@code null} when nothing is
+     *                       selected by identity
+     */
+    public MusicSelectionDidChangeNotification(
+        int selectionSize, HitTarget.@Nullable Selectable selectedTarget
+    ) {
+        this.selectionSize = selectionSize;
+        this.selectedTarget = selectedTarget;
     }
 
     public int getSelectionSize() {
@@ -53,13 +56,5 @@ public class MusicSelectionDidChangeNotification extends Message {
      */
     public HitTarget.@Nullable Selectable getSelectedTarget() {
         return selectedTarget;
-    }
-
-    public ScoreView getScoreView() {
-        return scoreView;
-    }
-
-    public @Nullable ScoreViewController getScoreViewController() {
-        return scoreView.getController();
     }
 }

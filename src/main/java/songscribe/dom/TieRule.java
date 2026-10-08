@@ -22,39 +22,49 @@ package songscribe.dom;
 import java.util.LinkedHashSet;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.Strings;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.Mutation;
 
 /**
- * The tie rule (see {@link NoteElement}), run over the lines an edit touched and over the line
- * before each of them, since a tie from that line can end in the touched one.
+ * The tie rule: a tie stays only while, first, the element its walk reaches is a note it can end
+ * on ({@link Tie#between}), and second, the tie {@link Tie#holds() holds}. A tie that stays also
+ * removes any beam that holds both of its notes ({@link Tie#beamHoldingBoth}), since tied notes
+ * are never beamed together: an insertion
+ * or a paste can put a tied note inside a beam, and the tie wins. It judges every tied note of the
+ * lines an edit touched and of the line before each of them, since a tie from that line can end
+ * in the touched one. {@code docs/span-invalidation.md} gives the arrangement it sits in.
  * <p>
  * A touched line is a line a {@link LineScopedMutation} in the batch names, the line of a
  * {@link LineInsertion}, and, for a {@link LineDeletion}, the line that now sits at its
- * {@link LineDeletion#lineIndex()}, when there is one ({@link Song#touchedLine}); a named line
- * that is no longer one of the song's lines is not judged. Each line is judged once, through
- * {@link Line#applyTieRule}.
- * <p>
- * Its removals land after the changes that broke the ties. Reverse-order undo restores those
- * ties first, against the final state, where every anchor is still in its line.
+ * {@link LineDeletion#lineIndex()}, when there is one ({@link #touchedLine}); a named line
+ * that is no longer one of the song's lines is not judged. Each line is judged once.
  */
 final class TieRule implements ModificationRule {
 
     /**
      * {@inheritDoc}
      *
-     * @effects for each tie in the judged lines that does not hold, records a
-     *     {@link songscribe.Strings#DIALOG_REPORT_TIES_REMOVED} change into {@code report} and posts a
-     *     {@link songscribe.message.mutation.TieRemoval}
+     * @effects applies the rule the class Javadoc states to every tie of the judged lines. For
+     *     each tie the rule removes, records into {@code report} a change headed
+     *     {@link Strings#DIALOG_REPORT_TIES_REMOVED}, located from the anchor to the element the
+     *     walk reaches, or at the anchor alone when it reaches none, then posts a
+     *     {@link songscribe.message.mutation.TieRemoval} through {@link Line#removeTie}; the
+     *     change's reason is {@link Strings#DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE} when the
+     *     tie fails the rule's first condition and {@link Strings#DIALOG_REPORT_REASON_TIE_NOT_HELD}
+     *     when it fails the second. Each beam the rule removes goes through
+     *     {@link Span#removeReported} with {@link Strings#DIALOG_REPORT_REASON_BEAM_TIED_NOTES}
      */
     @Override
     public void apply(Song song, List<Mutation> batch, ChangeReport report) {
         var judged = new LinkedHashSet<Line>();
 
         for (var mutation : batch) {
-            var touched = song.touchedLine(mutation);
+            var touched = touchedLine(song, mutation);
             var touchedIndex = touched == null ? null : song.indexOfLine(touched);
 
             if (touched == null || touchedIndex == null) {
@@ -69,7 +79,86 @@ final class TieRule implements ModificationRule {
         }
 
         for (var line : judged) {
-            line.applyTieRule(report);
+            judge(line, report);
         }
+    }
+
+    /**
+     * The line {@code mutation} touches: the line a {@link LineScopedMutation} names, the line of
+     * a {@link LineInsertion}, or the line that now sits at a {@link LineDeletion}'s index.
+     *
+     * @param song     the song the batch was recorded on
+     * @param mutation a mutation of that batch
+     * @return the line, which need not still be one of {@code song}'s lines, or {@code null} for
+     *     a song-wide mutation, or for a {@link LineDeletion} whose index no line now sits at
+     */
+    private static @Nullable Line touchedLine(Song song, Mutation mutation) {
+        if (mutation instanceof LineScopedMutation scoped) {
+            return scoped.getLine();
+        }
+
+        if (mutation instanceof LineInsertion insertion) {
+            return insertion.line();
+        }
+
+        if (mutation instanceof LineDeletion deletion && deletion.lineIndex() < song.lineCount()) {
+            return song.getLine(deletion.lineIndex());
+        }
+
+        return null;
+    }
+
+    /**
+     * Judges every tied note of {@code line}, one of its song's lines, and removes and reports
+     * each tie that does not hold, as {@link #apply} states.
+     */
+    private static void judge(Line line, ChangeReport report) {
+        var elements = line.getElements();
+
+        // Removing a tie or a beam changes no element, so the walk over the live list is safe.
+        for (var i = 0; i < elements.size(); i++) {
+            if (!(elements.get(i) instanceof NoteElement anchor) || !anchor.isTiedToNext()) {
+                continue;
+            }
+
+            var reached = Tie.endAfter(line, i);
+            var tie = reached == null ? null : Tie.between(anchor, reached.element());
+
+            if (tie != null && tie.holds()) {
+                // The tie wins over a beam: tied notes are never beamed together.
+                var beam = Tie.beamHoldingBoth(line, i);
+
+                if (beam != null) {
+                    beam.removeReported(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES);
+                }
+
+                continue;
+            }
+
+            var reasonKey = tie == null
+                ? Strings.DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE
+                : Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD;
+
+            report.record(new ReportedChange(
+                Strings.DIALOG_REPORT_TIES_REMOVED, Strings.get(reasonKey), location(line, i, reached)));
+            line.removeTie(anchor);
+        }
+    }
+
+    /**
+     * The elements a tie from {@code line}'s element at {@code anchorIndex} covers.
+     *
+     * @param reached where the tie's walk stopped, or {@code null} when it reaches no element
+     * @return the range from the anchor's location to {@code reached}, or the anchor's location
+     *     alone when {@code reached} is {@code null}
+     */
+    private static ElementLocationRange location(Line line, int anchorIndex, Tie.@Nullable Reached reached) {
+        var start = new ElementLocation(line.index(), anchorIndex);
+
+        if (reached == null) {
+            return ElementLocationRange.single(start);
+        }
+
+        return new ElementLocationRange(start, new ElementLocation(reached.line().index(), reached.index()));
     }
 }

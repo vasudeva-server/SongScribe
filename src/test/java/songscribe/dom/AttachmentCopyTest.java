@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * That copying an attachment carries the state {@link Attachment} itself holds — where the notator
@@ -93,7 +94,7 @@ class AttachmentCopyTest extends UnitTest {
      */
     private static Attachment placedAttachment(AttachmentCase testCase) {
         var attachment = testCase.builder().get();
-        lineWith(ElementType.CROTCHET).getElement(0).addAttachment(attachment);
+        lineOf(crotchet()).getElement(0).addAttachment(attachment);
 
         attachment.setUserXOffsetSs(USER_X_OFFSET_SS);
         attachment.setUserYOffsetSs(USER_Y_OFFSET_SS);

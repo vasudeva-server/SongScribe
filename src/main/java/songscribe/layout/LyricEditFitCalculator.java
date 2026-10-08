@@ -28,12 +28,12 @@ import songscribe.dom.StaffElement;
 
 /**
  * Answers "will this lyric still fit?" for the in-place lyric editor, so a widening edit can be
- * refused <em>before</em> it is written to the model (issue #449).
+ * refused <em>before</em> it is written to the model.
  * <p>
  * A wider syllable forces wider minimum spacing between columns (via {@link LyricLift}), which can
  * push the line past the staff margin. The committed layout only discovers this at paint time, and
  * by then it can only place the line on its collision floors and draw the tail clipped, in red
- * (refs #696) — the syllable the user just typed may be the part that is cut off. Refusing the edit
+ * — the syllable the user just typed may be the part that is cut off. Refusing the edit
  * up front keeps a fitting line fitting; an already-overflowing line is deliberately not blocked,
  * so the user can still shorten a syllable to recover. This calculator runs
  * the identical horizontal solve ({@link ElementColumnBuilder} + {@link HorizontalSpacingCalculator#solveLine})

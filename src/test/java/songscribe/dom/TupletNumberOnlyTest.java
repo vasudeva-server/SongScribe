@@ -32,16 +32,15 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.addWithoutTracking;
 import static songscribe.dom.SpanFactory.beamOver;
-import static songscribe.dom.SpanFactory.ratioOf;
 import static songscribe.dom.SpanFactory.tripletOver;
-import static songscribe.dom.SpanFactory.TRIPLET_NORMAL_NOTES;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
  * The two facts the drawn bracket depends on: whether the tuplet's anchor draws an upward stem
  * ({@link Tuplet#anchorStemUp()}), and whether only the number is drawn, which needs the tuplet
- * beamed at both ends with that stem ({@link Tuplet#isNumberOnly()}).
+ * under one beam with that stem ({@link Tuplet#isNumberOnly()}).
  */
 class TupletNumberOnlyTest extends UnitTest {
 
@@ -53,23 +52,41 @@ class TupletNumberOnlyTest extends UnitTest {
 
     private static final ElementRange TRIPLET = new ElementRange(1, 3);
 
+    /** The three elements of the anchor case: the anchor, then two alike that end the triplet. */
+    private static final ElementRange ANCHOR_RANGE = new ElementRange(0, 2);
+
     private static final Stem.Forced UP = new Stem.Forced(Direction.UP);
     private static final Stem.Forced DOWN = new Stem.Forced(Direction.DOWN);
 
     /**
-     * A tuplet anchor and whether it draws an upward stem.
+     * A tuplet anchor and whether it draws an upward stem. The two elements after the anchor
+     * are alike, and the triplet's share of the whole group is the value that makes the three a
+     * triplet.
      *
      * @param description the anchor, as the test's display name
      * @param anchor      makes the anchor element
+     * @param follower    makes each of the two elements after the anchor
+     * @param share       the written value of one normal note of the triplet
      * @param expected    whether the anchor draws an upward stem
      */
-    private record AnchorCase(String description, Supplier<StaffElement> anchor, boolean expected) {}
+    private record AnchorCase(
+        String description,
+        Supplier<StaffElement> anchor,
+        Supplier<StaffElement> follower,
+        NoteValue share,
+        boolean expected
+    ) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("anchorCases")
     void testOnlyAStemmedNoteWithAnUpwardStemDrawsAnUpwardStem(AnchorCase testCase) {
-        var tuplet = new Tuplet(testCase.anchor().get(), quaver(), TupletGrade.TRIPLET,
-            ratioOf(TRIPLET_NORMAL_NOTES, NoteValue.EIGHTH));
+        var song = buildSong(line -> {
+            line.addElement(testCase.anchor().get());
+            line.addElement(testCase.follower().get());
+            line.addElement(testCase.follower().get());
+        });
+        var line = song.getLine(FIRST_LINE);
+        var tuplet = addWithoutTracking(song, () -> tripletOver(line, ANCHOR_RANGE, testCase.share()));
 
         assertThat(tuplet.anchorStemUp()).isEqualTo(testCase.expected());
     }
@@ -77,12 +94,21 @@ class TupletNumberOnlyTest extends UnitTest {
     static Stream<AnchorCase> anchorCases() {
         return Stream.of(
             new AnchorCase("a note with a forced upward stem does",
-                () -> quaver(NOTE_POSITION, UP), true),
+                () -> quaver(NOTE_POSITION, UP), StaffElementFactory::quaver, NoteValue.EIGHTH, true),
             new AnchorCase("a note with a forced downward stem does not",
-                () -> quaver(NOTE_POSITION, DOWN), false),
+                () -> quaver(NOTE_POSITION, DOWN), StaffElementFactory::quaver, NoteValue.EIGHTH, false),
             new AnchorCase("a rest has no stem to draw",
-                StaffElementFactory::crotchetRest, false)
+                StaffElementFactory::quaverRest, StaffElementFactory::quaver, NoteValue.EIGHTH, false),
+            new AnchorCase("a semibreve has no stem to draw, whichever way it is forced",
+                TupletNumberOnlyTest::semibreveForcedUp, StaffElementFactory::crotchet, NoteValue.HALF, false)
         );
+    }
+
+    private static NoteElement semibreveForcedUp() {
+        var semibreve = StaffElementFactory.semibreve();
+        semibreve.setStem(UP);
+
+        return semibreve;
     }
 
     /**
@@ -98,7 +124,7 @@ class TupletNumberOnlyTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("numberOnlyCases")
-    void testOnlyTheNumberIsDrawnWhenBeamedAtBothEndsWithAnUpwardAnchorStem(NumberOnlyCase testCase) {
+    void testOnlyTheNumberIsDrawnWhenOneBeamCoversTheTupletWithAnUpwardAnchorStem(NumberOnlyCase testCase) {
         var song = buildSong(line -> {
             for (var i = 0; i < LINE_LENGTH; i++) {
                 line.addElement(i == TRIPLET.begin()
@@ -107,16 +133,12 @@ class TupletNumberOnlyTest extends UnitTest {
             }
         });
         var line = song.getLine(FIRST_LINE);
-        var tuplet = song.withoutMutationTrackingResult(() -> {
-            for (var range : testCase.beams()) {
-                beamOver(line, range).addTo(line);
-            }
 
-            var built = tripletOver(line, TRIPLET, NoteValue.EIGHTH);
-            built.addTo(line);
+        for (var range : testCase.beams()) {
+            addWithoutTracking(song, () -> beamOver(line, range));
+        }
 
-            return built;
-        });
+        var tuplet = addWithoutTracking(song, () -> tripletOver(line, TRIPLET, NoteValue.EIGHTH));
 
         assertThat(tuplet.isNumberOnly()).isEqualTo(testCase.expected());
     }
@@ -131,6 +153,12 @@ class TupletNumberOnlyTest extends UnitTest {
                 UP, List.of(new ElementRange(TRIPLET.begin(), TRIPLET.end() - 1)), false),
             new NumberOnlyCase("beamed at the end but not at the anchor",
                 UP, List.of(new ElementRange(TRIPLET.begin() + 1, TRIPLET.end())), false),
+            new NumberOnlyCase("under two beams, one at each end, so the bracket is drawn",
+                UP,
+                List.of(
+                    new ElementRange(TRIPLET.begin(), TRIPLET.begin() + 1),
+                    new ElementRange(TRIPLET.end(), TRIPLET.end() + 1)),
+                false),
             new NumberOnlyCase("not beamed at all",
                 UP, List.of(), false)
         );

@@ -31,9 +31,7 @@ public final class AttachmentRemoval {
     private AttachmentRemoval() {}
 
     /**
-     * Removing a tempo change redefines the beat from that point on just as adding one does;
-     * the tuplet beat rule finds any tuplet the removal costs when the modification bracket
-     * closes.
+     * Removing a tempo change redefines the beat from that point on just as adding one does.
      */
     public static void removeTempoChange(StaffElement element) {
         var attachment = element.findAttachment(TempoChangeAttachment.class);
@@ -44,9 +42,7 @@ public final class AttachmentRemoval {
     }
 
     /**
-     * Removing a beat change redefines the beat from that point on just as adding one does;
-     * the tuplet beat rule finds any tuplet the removal costs when the modification bracket
-     * closes.
+     * Removing a beat change redefines the beat from that point on just as adding one does.
      */
     public static void removeBeatChange(StaffElement element) {
         var attachment = element.findAttachment(BeatChangeAttachment.class);

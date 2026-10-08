@@ -39,7 +39,7 @@ import songscribe.Strings;
  * it stood so the user can be told. Nothing is moved or repaired into a place the file did not
  * say.
  */
-public final class BreathMarkLoadPass {
+final class BreathMarkLoadPass {
 
     private static final Logger LOG = LoggerFactory.getLogger(BreathMarkLoadPass.class);
 
@@ -54,24 +54,19 @@ public final class BreathMarkLoadPass {
      * settled everything before it, so a run of consecutive breath marks keeps at most its
      * first: the second follows a breath mark, never a duration element.
      *
-     * <p>The whole pass runs with mutation tracking suspended, so it emits no mutations:
-     * outside suspension the removals would land in the undo history and a freshly opened
-     * song could be undone back to its invalid state. The song's modified flag is left alone
-     * — {@code ScoreView.setSong} clears it when the song is installed, so the caller re-marks
-     * it afterwards from the report.
-     *
      * @param song   the song to settle, immediately after parsing and before it is installed
      * @param report the report the pass records into
      * @invariant afterwards every breath mark in {@code song} stands immediately after a
      *     pitched note or a rest, the invariant {@link StaffElementRun#canInsertRunAt} states
-     * @effects each removal goes through {@link Line#removeElement}, which drops the element
-     *     and repairs nothing around it; a breath mark carries no lyric, so there is nothing
-     *     to repair; records to {@code report}, in document order, each breath mark removed, at
-     *     the index it stood at before removal
+     * @effects each removal goes through {@link Line#removeElement}, which runs the span sweep:
+     *     a tuplet that holds the removed mark is removed with it, and that removal is not
+     *     recorded to {@code report}, because the load runs with mutation tracking suspended
+     *     and the sweep's report is silent then; records to {@code report}, in document order,
+     *     each breath mark removed, at the index it stood at before removal
      * @log one {@code INFO} line stating how many breath marks were removed, when any were
      */
-    public static void run(Song song, ChangeReport report) {
-        var removedCount = song.withoutMutationTrackingResult(() -> removeUnhostedBreathMarks(song, report));
+    static void run(Song song, ChangeReport report) {
+        var removedCount = removeUnhostedBreathMarks(song, report);
 
         if (removedCount > 0) {
             LOG.info("Breath mark load pass: {} removed", removedCount);

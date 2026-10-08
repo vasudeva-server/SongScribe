@@ -24,6 +24,7 @@ import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
+import songscribe.dom.Direction;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Ss;
@@ -68,7 +70,7 @@ public final class LayoutResult {
      * of O(beam-count).
      */
     private final Map<StaffElement, StemLayout> allStemLayouts;
-    private final Map<Tie, TieLayout> tieLayouts;
+    private final List<TieLayout> tieLayouts;
     private final DecorationLayouts decorationLayouts;
     private final Map<StaffElement, SlideLayout> slideLayouts;
     private final StaffHeader staffHeader;
@@ -89,7 +91,7 @@ public final class LayoutResult {
      * @param elementColumns   Map of elements to their columns with positions
      * @param beamLayouts      Map of beam spans to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
-     * @param tieLayouts       Map of tie spans to their computed tie geometry
+     * @param tieLayouts       The computed geometry of each tie this line draws, in any order
      * @param decorationLayouts The decoration table the stacking pass filled for this line
      * @param slideLayouts     Map of slide-owning notes to their computed slide geometry
      * @param staffHeader      The clef and key signature this line opens with
@@ -109,7 +111,7 @@ public final class LayoutResult {
         Map<StaffElement, ElementColumn> elementColumns,
         Map<Beam, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
-        Map<Tie, TieLayout> tieLayouts,
+        List<TieLayout> tieLayouts,
         DecorationLayouts decorationLayouts,
         Map<StaffElement, SlideLayout> slideLayouts,
         StaffHeader staffHeader,
@@ -130,7 +132,7 @@ public final class LayoutResult {
         }
 
         allStemLayouts = Map.copyOf(mergedStems);
-        this.tieLayouts = Map.copyOf(tieLayouts);
+        this.tieLayouts = tieLayouts.stream().sorted(TieLayout.LINE_ORDER).toList();
         this.decorationLayouts = decorationLayouts;
         this.slideLayouts = Map.copyOf(slideLayouts);
         this.staffHeader = staffHeader;
@@ -201,6 +203,24 @@ public final class LayoutResult {
     }
 
     /**
+     * Returns the element column of an element this line laid out, for a caller holding a
+     * decoration the stacking pass placed from that column.
+     *
+     * @param element an element of this line
+     * @return the element's column
+     * @throws IllegalStateException if {@code element} was not laid out on this line
+     */
+    public ElementColumn requireElementColumn(StaffElement element) {
+        var column = elementColumns.get(element);
+
+        if (column == null) {
+            throw new IllegalStateException("no column laid out for " + element);
+        }
+
+        return column;
+    }
+
+    /**
      * Returns the X position of an element's head left edge (glyph origin).
      *
      * @param element The element to look up
@@ -209,25 +229,6 @@ public final class LayoutResult {
     public double getElementXSs(StaffElement element) {
         var column = elementColumns.get(element);
         return column != null ? column.getXSs() : 0;
-    }
-
-    /**
-     * Returns an unmodifiable view of all element columns.
-     *
-     * @return Map of elements to their columns
-     */
-    public Map<StaffElement, ElementColumn> getElementColumns() {
-        return elementColumns;
-    }
-
-    /**
-     * Returns whether an element was laid out.
-     *
-     * @param element The element to check
-     * @return true if the element has a column
-     */
-    public boolean hasElement(StaffElement element) {
-        return elementColumns.containsKey(element);
     }
 
     // ==========================================================================
@@ -262,18 +263,13 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the tie geometry for a tie, if it was computed during layout.
-     * <p>
-     * Returns null when the tie was not laid out (e.g., degenerate
-     * tie spanning notes that could not be positioned). Callers should skip rendering
-     * if the result is null.
+     * Returns the laid-out ties of this line: one per tie or tie half the line owns
+     * ({@link Line#ownedTies}) whose notes here have columns.
      *
-     * @param tie The tie to look up
-     * @return the tie layout, or null if not computed
+     * @return the tie layouts, in {@link TieLayout#LINE_ORDER}; unmodifiable
      */
-    @Nullable
-    public TieLayout getTieLayout(Tie tie) {
-        return tieLayouts.get(tie);
+    public List<TieLayout> tieLayouts() {
+        return tieLayouts;
     }
 
     // ==========================================================================
@@ -691,12 +687,6 @@ public final class LayoutResult {
     // Statistics
     // ==========================================================================
 
-    /**
-     * Returns the number of element columns in this result.
-     */
-    public int getElementColumnCount() {
-        return elementColumns.size();
-    }
 
     // ==========================================================================
     // Builder
@@ -744,8 +734,6 @@ public final class LayoutResult {
      *                   shortening applied because the stem points in its forced (unnatural)
      *                   direction; 0 for every natural, auto-direction, and grace stem.
      *                   Bracket-independent — not a tuplet trim.
-     * @param stubRight  For partial-beam notes: true if the stub extends to the right, false to the left.
-     *                   Meaningless for full-beam and unbeamed notes.
      * @param frenchShorteningLevels Number of beam levels (not staff spaces) the <em>drawn</em> stem stops
      *                   short of the outer beam under French beaming; 0 for unbeamed notes and for every
      *                   stem that runs out to the outer beam. See {@link BeamMath#frenchBeamShortening}.
@@ -756,7 +744,6 @@ public final class LayoutResult {
         double bottomYSs,
         double lengtheningSs,
         double forcedShorteningSs,
-        boolean stubRight,
         int frenchShorteningLevels) {}
 
     /**
@@ -764,19 +751,39 @@ public final class LayoutResult {
      * <p>
      * All values are in staff-space units unless noted.
      *
-     * @param slope      Beam slope in staff-space units per staff-space unit (dimensionless)
-     * @param startYSs     Beam Y position at the first element's X coordinate
-     * @param stemsUp    True if stems point upward (beam below noteheads)
+     * @param line       The outer edge of the outermost beam
+     * @param direction  The direction every stem of the group points ({@link Beam#direction()}),
+     *                   computed once for the layout
      * @param thickeningSs Extra beam thickness from the {@code 1/cos(angle)} raster correction (ss);
      *                   added symmetrically to the nominal {@code BEAM_DEPTH}
      * @param stems      Stem geometry keyed by element, for every element in this beam group
      */
     public record BeamLayout(
-        double slope,
-        double startYSs,
-        boolean stemsUp,
+        BeamLine line,
+        Direction direction,
         double thickeningSs,
         Map<StaffElement, StemLayout> stems) {}
+
+    /**
+     * The outer edge of a beam group's outermost beam: a straight line in layout space, Y-down
+     * positive, measured from the first member's column.
+     *
+     * @param originXSs the X the line is measured from: the first member's column X
+     * @param originYSs the line's Y at {@code originXSs}
+     * @param slope     the line's Y-down rise per unit of X (dimensionless)
+     */
+    public record BeamLine(double originXSs, double originYSs, double slope) {
+
+        /**
+         * Returns the line's Y at {@code xSs}.
+         *
+         * @param xSs an X in layout space
+         * @return the Y of the beam's outer edge at {@code xSs}
+         */
+        public double yAtSs(double xSs) {
+            return originYSs + slope * (xSs - originXSs);
+        }
+    }
 
     /**
      * Immutable tie geometry, computed during layout.
@@ -785,7 +792,12 @@ public final class LayoutResult {
      * lens shape when rendered as a closed path: draw the outer cubic Bezier from
      * start to end, then draw the inner cubic Bezier in reverse (end back to start),
      * then close and fill.
+     * <p>
+     * A half running off an edge of the line is described by the same twelve numbers as a whole
+     * tie: it is a complete arc over its own width that returns to the baseline at the edge, so
+     * nothing downstream reconstructs the side that is missing.
      *
+     * @param placement   The tie this geometry draws and its place in the line
      * @param startXSs    Tie start X position
      * @param startYSs    Tie start Y position
      * @param endXSs      Tie end X position
@@ -798,59 +810,24 @@ public final class LayoutResult {
      * @param innerCp1YSs Inner curve control point 1 Y
      * @param innerCp2XSs Inner curve control point 2 X
      * @param innerCp2YSs Inner curve control point 2 Y
-     * @param openSide    Which end of the arc runs off this line's edge rather than meeting a note
      */
     public record TieLayout(
+        Line.TiePlacement placement,
         double startXSs, double startYSs,
         double endXSs, double endYSs,
         double cp1XSs, double cp1YSs,
         double cp2XSs, double cp2YSs,
         double innerCp1XSs, double innerCp1YSs,
-        double innerCp2XSs, double innerCp2YSs,
-        OpenSide openSide) {
+        double innerCp2XSs, double innerCp2YSs) {
 
         /**
-         * Creates a whole tie, both of whose ends meet a notehead in the line being laid out.
-         *
-         * @see OpenSide#NONE
+         * The order of the notes the ties of one line were found on, as {@link Line#ownedTies}
+         * lists them: by the first element each is drawn over, and the half entering from the
+         * left edge before a tie starting on the line's first element.
          */
-        public TieLayout(
-            double startXSs, double startYSs,
-            double endXSs, double endYSs,
-            double cp1XSs, double cp1YSs,
-            double cp2XSs, double cp2YSs,
-            double innerCp1XSs, double innerCp1YSs,
-            double innerCp2XSs, double innerCp2YSs) {
-            this(
-                startXSs, startYSs,
-                endXSs, endYSs,
-                cp1XSs, cp1YSs,
-                cp2XSs, cp2YSs,
-                innerCp1XSs, innerCp1YSs,
-                innerCp2XSs, innerCp2YSs,
-                OpenSide.NONE);
-        }
-
-        /**
-         * Returns a copy of this tie rigidly shifted vertically by {@code delta} staff spaces.
-         * <p>
-         * Every Y — both endpoints and all four control points — moves by {@code delta}; the X
-         * positions are unchanged, so the arc's shape is preserved and only its vertical position
-         * changes. Used to slide a tie outward until it clears a staccato tucked under its arc.
-         *
-         * @param delta vertical shift in staff spaces (positive = downward)
-         * @return the translated tie
-         */
-        public TieLayout translateY(double delta) {
-            return new TieLayout(
-                startXSs, startYSs + delta,
-                endXSs, endYSs + delta,
-                cp1XSs, cp1YSs + delta,
-                cp2XSs, cp2YSs + delta,
-                innerCp1XSs, innerCp1YSs + delta,
-                innerCp2XSs, innerCp2YSs + delta,
-                openSide);
-        }
+        public static final Comparator<TieLayout> LINE_ORDER = Comparator
+            .<TieLayout>comparingInt(layout -> layout.placement().range().begin())
+            .thenComparing(layout -> layout.placement().holdsAnchor());
     }
 
     /**
@@ -894,10 +871,13 @@ public final class LayoutResult {
      * {@link DecorationContent} the layout pass typeset for it. The tuplet bracket is the one
      * decoration whose line tilts, so it carries its own member with the extra {@code dySs} rise
      * rather than every other kind carrying an always-zero field. An ending likewise carries its
-     * own member with the {@link BracketRange}s layout computed for it, so the renderer draws
-     * the brackets the stacking pass measured. A decoration layout without content is not a
-     * runtime possibility for the kinds that have content, and a reader of
-     * {@link Typeset#content()} or {@link Volta#brackets()} never has to ask whether it is there.
+     * own member with the {@link BracketRange.Pair} layout computed for it, so the renderer draws
+     * the brackets the stacking pass measured.
+     * <p>
+     * Each kind of decoration is recorded as its own member, through the typed entries of
+     * {@link DecorationLayouts.Builder}, and read back through the same types: a reader of
+     * {@link Typeset#content()}, {@link Sloped#dySs()} or {@link Volta#brackets()} never has to
+     * ask which member it holds.
      */
     public sealed interface DecorationLayout
         permits DecorationLayout.Plain, DecorationLayout.Typeset, DecorationLayout.Sloped,
@@ -929,40 +909,8 @@ public final class LayoutResult {
          *
          * @param dxSs      shift applied to the left edge
          * @param dySsShift shift applied to the top edge
-         * @param dWidthSs  change in width
          */
-        DecorationLayout shiftedBy(double dxSs, double dySsShift, double dWidthSs);
-
-        /**
-         * Returns the layout for a decoration placed at these bounds, carrying {@code content}
-         * when it has any.
-         * <p>
-         * The one place nullability of the content is resolved: the stackers share a placement
-         * core that serves both kinds, and this is where "no content" becomes {@link Plain}
-         * rather than a null a reader could meet. Never produces a {@link Sloped} or a
-         * {@link Volta}: the tuplet stacker builds the one and the ending stacker the other,
-         * each being the only producer of its member.
-         *
-         * @param xSs        X position (left edge) of the decoration
-         * @param ySs        Y position (top edge) of the decoration
-         * @param widthSs    width of the decoration
-         * @param heightSs   height of the decoration
-         * @param marginSs   bottom margin between the element's bottom and the tier below
-         * @param content    the typeset content to carry, or {@code null} for a self-drawing
-         *                   decoration
-         * @return a {@link Plain} when {@code content} is {@code null}, otherwise a
-         *         {@link Typeset}
-         */
-        static DecorationLayout of(
-            double xSs, double ySs, double widthSs, double heightSs, double marginSs,
-            @Nullable DecorationContent content) {
-
-            if (content == null) {
-                return new Plain(xSs, ySs, widthSs, heightSs, marginSs);
-            }
-
-            return new Typeset(xSs, ySs, widthSs, heightSs, marginSs, content);
-        }
+        DecorationLayout shiftedBy(double dxSs, double dySsShift);
 
         /**
          * The layout of a decoration that draws itself, such as a hairpin or an articulation. It
@@ -976,9 +924,8 @@ public final class LayoutResult {
             double marginSs) implements DecorationLayout {
 
             @Override
-            public Plain shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
-                return new Plain(
-                    xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs);
+            public Plain shiftedBy(double dxSs, double dySsShift) {
+                return new Plain(xSs + dxSs, ySs + dySsShift, widthSs, heightSs, marginSs);
             }
         }
 
@@ -997,10 +944,23 @@ public final class LayoutResult {
             double marginSs,
             DecorationContent content) implements DecorationLayout {
 
-            @Override
-            public Typeset shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
+            /**
+             * Returns the layout of a decoration placed at {@code placed}'s bounds drawing
+             * {@code content}.
+             *
+             * @param placed  the bounds the stacking pass placed the content's box at
+             * @param content the typeset content drawn into those bounds
+             * @return a layout with {@code placed}'s bounds carrying {@code content}
+             */
+            public static Typeset of(Plain placed, DecorationContent content) {
                 return new Typeset(
-                    xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs, content);
+                    placed.xSs(), placed.ySs(), placed.widthSs(), placed.heightSs(),
+                    placed.marginSs(), content);
+            }
+
+            @Override
+            public Typeset shiftedBy(double dxSs, double dySsShift) {
+                return new Typeset(xSs + dxSs, ySs + dySsShift, widthSs, heightSs, marginSs, content);
             }
         }
 
@@ -1017,77 +977,88 @@ public final class LayoutResult {
             double heightSs,
             double marginSs) implements DecorationLayout {
 
+            /**
+             * Returns the Y of the sloped top edge at {@code xSs}: the line through
+             * ({@code xSs()}, {@code ySs}) that rises {@code dySs} over {@code widthSs}. The
+             * slope holds past both ends, so an X outside the run extrapolates it.
+             *
+             * @param xSs an X in layout space
+             * @return the top edge's Y at {@code xSs}
+             */
+            public double topYAtSs(double xSs) {
+                // widthSs is always positive: the stacker floors it at TupletGeometry.MIN_SPAN_WIDTH_SS.
+                return ySs + dySs / widthSs * (xSs - this.xSs);
+            }
+
             @Override
-            public Sloped shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
-                return new Sloped(
-                    xSs + dxSs, ySs + dySsShift, dySs, widthSs + dWidthSs, heightSs, marginSs);
+            public Sloped shiftedBy(double dxSs, double dySsShift) {
+                return new Sloped(xSs + dxSs, ySs + dySsShift, dySs, widthSs, heightSs, marginSs);
             }
         }
 
         /**
-         * The layout of an ending: its placed bounds and the {@link BracketRange} of each of its
-         * visual brackets, which the renderer draws at the bounds' Y.
+         * The layout of an ending: its two visual brackets, which the renderer draws at the
+         * layout's Y, and the vertical bounds the stacking pass placed them at.
          * <p>
          * The brackets are layout output, derived from the columns of the line they were laid out
          * on, so they live here rather than on the ending: a reader holding this layout holds the
-         * brackets that were measured when these bounds were placed.
+         * brackets that were measured when these bounds were placed. The horizontal bounds are the
+         * brackets' own, so they are derived from the pair rather than stored beside it.
          *
-         * @param xSs      X position (left edge) of the ending: the first bracket's left edge
          * @param ySs      Y position (top edge) of the ending
-         * @param widthSs  width of the ending, from the first bracket's left edge to the last
-         *                 bracket's right edge
          * @param heightSs height of the ending
          * @param marginSs bottom margin between the ending's bottom and the tier below
-         * @param brackets the ending's brackets in bracket order, in the line's layout space
-         * @invariant {@code brackets} is unmodifiable
-         * @invariant {@code brackets} is never empty: the ending stacker places no layout for an
-         *            ending it could compute no bracket for
+         * @param brackets the ending's two brackets, in the line's layout space
          */
         record Volta(
-            double xSs,
             double ySs,
-            double widthSs,
             double heightSs,
             double marginSs,
-            List<BracketRange> brackets) implements DecorationLayout {
+            BracketRange.Pair brackets) implements DecorationLayout {
 
-            public Volta {
-                brackets = List.copyOf(brackets);
+            /**
+             * Returns the layout of an ending whose brackets were placed at {@code placed}'s
+             * vertical bounds.
+             *
+             * @param placed   the bounds the stacking pass placed the ending at; its horizontal
+             *                 bounds are the brackets' own, so only its Y, height and margin are
+             *                 carried
+             * @param brackets the ending's two brackets
+             * @return a layout at {@code placed}'s Y carrying {@code brackets}
+             */
+            public static Volta of(Plain placed, BracketRange.Pair brackets) {
+                return new Volta(placed.ySs(), placed.heightSs(), placed.marginSs(), brackets);
             }
 
             /**
-             * Returns the layout of an ending placed at {@code placed}'s bounds with
-             * {@code brackets}.
+             * Returns the left edge of the ending: the first bracket's {@link BracketRange#x1Ss}.
              *
-             * @param placed   the bounds the stacking pass placed the ending at
-             * @param brackets the ending's brackets in bracket order
-             * @return a layout with {@code placed}'s bounds carrying {@code brackets}
+             * @return the ending's left edge, in staff spaces
              */
-            public static Volta of(DecorationLayout placed, List<BracketRange> brackets) {
-                return new Volta(
-                    placed.xSs(), placed.ySs(), placed.widthSs(), placed.heightSs(),
-                    placed.marginSs(), brackets);
+            @Override
+            public double xSs() {
+                return brackets.first().x1Ss();
+            }
+
+            /**
+             * Returns the width of the ending, from the first bracket's {@link BracketRange#x1Ss}
+             * to the second bracket's {@link BracketRange#x2Ss}.
+             *
+             * @return the ending's width, in staff spaces
+             */
+            @Override
+            public double widthSs() {
+                return brackets.second().x2Ss() - brackets.first().x1Ss();
             }
 
             /**
              * {@inheritDoc}
              * <p>
-             * The brackets move with the bounds: every bracket shifts by {@code dxSs}, and the
-             * change in width moves the last bracket's right edge, which is where the bounds'
-             * right edge lies.
+             * The brackets move with the bounds: both shift by {@code dxSs}.
              */
             @Override
-            public Volta shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
-                var shifted = new ArrayList<BracketRange>(brackets.size());
-                var lastIndex = brackets.size() - 1;
-
-                for (var i = 0; i < brackets.size(); i++) {
-                    var dx2Ss = i == lastIndex ? dxSs + dWidthSs : dxSs;
-                    shifted.add(brackets.get(i).shiftedBy(dxSs, dx2Ss));
-                }
-
-                return new Volta(
-                    xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs, shifted);
+            public Volta shiftedBy(double dxSs, double dySsShift) {
+                return new Volta(ySs + dySsShift, heightSs, marginSs, brackets.shiftedBy(dxSs));
             }
         }
     }

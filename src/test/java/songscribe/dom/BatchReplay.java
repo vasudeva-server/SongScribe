@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -29,17 +30,21 @@ import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.ui.component.ScoreView;
-import songscribe.undo.MutationReplayer;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import songscribe.undo.FontTarget;
 
 /**
- * Records the batches a song delivers and replays them the way the undo engine does: replay mode
- * entered first, with the modification bracket opened and closed inside it.
+ * Records what a test's edits deliver on the class's bus, for replaying them through
+ * {@link songscribe.undo.MutationReplayer}.
  */
 final class BatchReplay {
+
+    /**
+     * The font target of a replay whose batch holds no font change. A test batch that does hold
+     * one fails here, rather than being replayed into nothing.
+     */
+    static final FontTarget NO_FONT_CHANGES = fonts -> {
+        throw new AssertionError("a replayed test batch set the document fonts");
+    };
 
     private BatchReplay() {
     }
@@ -88,34 +93,23 @@ final class BatchReplay {
         void dispose() {
             subscription.dispose();
         }
-    }
 
-    /** Replays {@code batch} backwards, as the undo engine does. */
-    static void undo(Song song, List<Mutation> batch) {
-        var scoreView = scoreViewOf(song);
+        /**
+         * Runs {@code body} with a recorder made for it, and disposes the recorder when the body
+         * returns or throws.
+         *
+         * @param body the edit and its assertions; reads the reports through the recorder it is
+         *             handed
+         */
+        static void whileRecording(Consumer<ReportRecorder> body) {
+            var recorder = new ReportRecorder();
 
-        song.withReplay(() -> song.withModification(() -> {
-            for (var i = batch.size() - 1; i >= 0; i--) {
-                MutationReplayer.applyUndo(scoreView, batch.get(i));
+            try {
+                body.accept(recorder);
+            } finally {
+                recorder.dispose();
             }
-        }));
+        }
     }
 
-    /** Replays {@code batch} forwards, as the undo engine does. */
-    static void redo(Song song, List<Mutation> batch) {
-        var scoreView = scoreViewOf(song);
-
-        song.withReplay(() -> song.withModification(() -> {
-            for (var mutation : batch) {
-                MutationReplayer.applyRedo(scoreView, mutation);
-            }
-        }));
-    }
-
-    private static ScoreView scoreViewOf(Song song) {
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getSong()).thenReturn(song);
-
-        return scoreView;
-    }
 }

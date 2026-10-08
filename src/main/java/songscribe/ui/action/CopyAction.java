@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -35,7 +36,7 @@ public final class CopyAction extends PasteboardAction {
     private CopyAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Operation.COPY,
+            PasteboardOpCommand.Operation.COPY,
             Strings.get(Strings.ACTION_EDIT_COPY),
             "edit-copy",
             KeyEvent.VK_C,

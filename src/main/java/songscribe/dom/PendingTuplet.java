@@ -45,7 +45,7 @@ public record PendingTuplet(
     StaffElement anchor,
     StaffElement end,
     TupletGrade grade,
-    @Nullable TupletRatio statedRatio,
+    @Nullable TupletNormalTime statedRatio,
     double yOffsetSs
 ) {
 }

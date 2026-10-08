@@ -957,7 +957,7 @@ public final class LyricEditor extends MyJTextField {
      * Returns whether committing the current text as {@code kind}/{@code extend} keeps the line
      * layout feasible. A wider syllable can force spacing past the staff margin, and committing it
      * anyway leaves the line laid out on its collision floors with its tail clipped at the end of
-     * the staff (refs #696) — quite possibly cutting off the syllable just typed. When that would
+     * the staff — quite possibly cutting off the syllable just typed. When that would
      * happen this warns the user, leaves the model untouched, and returns false so the caller aborts
      * the commit and keeps the editor open for the user to shorten the lyric.
      *

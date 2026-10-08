@@ -20,14 +20,27 @@
 
 package songscribe.dom;
 
+import java.util.List;
+
+import songscribe.Strings;
+
 /**
  * The answer a span kind's factory gives for a range of a line: the span over it, or the reason
- * there is none. {@link Ending#spanning} and {@link Hairpin#spanning} answer with it.
+ * there is none. {@link Beam#spanning}, {@link Tuplet#spanning}, {@link Tuplet#spanningStated},
+ * {@link Ending#spanning} and {@link Hairpin#spanning} answer with it.
  * <p>
  * A refusal names its {@link Cause} as well as its reason, because a caller acts on the two
  * differently: the hairpin menu shows an item as "ineligible" for {@link Cause#RANGE}, where the
  * selected music cannot carry a hairpin, and as "blocked" for {@link Cause#OTHER_SPAN}, where a
- * hairpin already on the line is in the way.
+ * hairpin already on the line is in the way. A refusal also carries the report heading of the
+ * kind it refuses, so a caller that drops the span reports the drop through
+ * {@link Refused#reportedAt} without naming the kind itself.
+ * <p>
+ * Every kind answers with this one type. A span is built over the range it will hold once added,
+ * which for an absorbing kind is wider than the range asked about, so {@link Spanned} names the
+ * same-kind spans that range absorbs alongside the span. A kind that absorbs nothing names none:
+ * an {@link Ending} coexists with every other ending, and a {@link Tuplet} replaces the tuplets
+ * it overlaps when it is added rather than absorbing them.
  *
  * @param <S> the kind of span the range would hold
  */
@@ -36,19 +49,38 @@ public sealed interface Spanning<S extends Span<?>> permits Spanning.Spanned, Sp
     /**
      * The range holds the span.
      *
-     * @param span the span over the range, built but not added to its line
-     * @param <S>  the kind of span
+     * @param span     the span over the range it will hold once added, built but not added to its
+     *                 line
+     * @param absorbed every same-kind span already on the line that adding {@code span} absorbs,
+     *                 in no defined order; empty when it absorbs none
+     * @param <S>      the kind of span
      */
-    record Spanned<S extends Span<?>>(S span) implements Spanning<S> {}
+    record Spanned<S extends Span<?>>(S span, List<S> absorbed) implements Spanning<S> {}
 
     /**
      * The range holds no span.
      *
-     * @param reasonKey the {@code Strings} key of the reason, as the user reads it
-     * @param cause     what stands in the way: the range itself, or a span already on the line
-     * @param <S>       the kind of span the range would have held
+     * @param reasonKey  the {@code Strings} key of the reason, whose value is plain text the user
+     *                   reads
+     * @param cause      what stands in the way: the range itself, or a span already on the line
+     * @param headingKey the {@code Strings} key of the report heading of the refused kind, the
+     *                   one its {@link Span#reportHeadingKey} returns; its value is a
+     *                   MessageFormat pattern taking a count as {@code {0}}
+     * @param <S>        the kind of span the range would have held
      */
-    record Refused<S extends Span<?>>(String reasonKey, Cause cause) implements Spanning<S> {}
+    record Refused<S extends Span<?>>(String reasonKey, Cause cause, String headingKey) implements Spanning<S> {
+
+        /**
+         * The report entry for dropping the span this refusal refused, at {@code where}.
+         *
+         * @param where the elements the refused span would have covered
+         * @return an entry under {@link #headingKey}, whose description is the text of
+         *     {@link #reasonKey} and whose location is {@code where}
+         */
+        public ReportedChange reportedAt(ElementLocationRange where) {
+            return new ReportedChange(headingKey, Strings.get(reasonKey), where);
+        }
+    }
 
     /** What a {@link Refused} range is refused for. */
     enum Cause {

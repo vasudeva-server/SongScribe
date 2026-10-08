@@ -503,8 +503,8 @@ public abstract class BaseDialog implements Disposable {
      *
      * INVARIANT (append-only): tabs-list index  ==  list-model index  ==  CardLayout card name (String.valueOf(index)).
      *   addTab only appends, keeping all three in lockstep. Removing/reordering a tab would break card lookup silently.
-     * NOTE: selectTab(0) at initial show now fires tabWillHide on the non-selected tabs (unified show+hide path); the
-     *   old code fired show-only at initial show. Hides are idempotent for the current tabs. Covered by test H (Phase 4).
+     * NOTE: selectTab(0) at initial show fires tabWillHide on the non-selected tabs (unified show+hide path).
+     *   Hides are idempotent for the current tabs.
      */
     private void selectTab(int index) {
         if (index < 0) {

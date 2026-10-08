@@ -34,8 +34,7 @@ import songscribe.ui.component.MainFrame;
  * Reads and writes the tempo change on one element, for {@link TempoChangeDialog}.
  *
  * <p>A tempo change carries the beat, so it redefines the beat from its element onwards exactly
- * as a beat change does; the tuplet beat rule revalidates the tuplets after it when the
- * modification bracket closes.
+ * as a beat change does.
  *
  * <p>The value crossing the dialog interface is a {@link Tempo}, not the
  * {@link TempoChangeAttachment} that holds it: the attachment is a node in the document graph and

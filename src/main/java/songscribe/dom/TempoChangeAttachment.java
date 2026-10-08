@@ -52,8 +52,7 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     /**
      * Replaces the tempo this attachment marks.
      *
-     * <p>Stays public because the tempo dialog lives in the UI package. A change of beat can
-     * invalidate tuplets; the tuplet beat rule finds them when the modification bracket closes.
+     * <p>Stays public because the tempo dialog lives in the UI package.
      */
     public void setTempo(Tempo tempo) {
         this.tempo = tempo;

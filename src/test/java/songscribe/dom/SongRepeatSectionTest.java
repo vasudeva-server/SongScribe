@@ -45,6 +45,7 @@ class SongRepeatSectionTest extends UnitTest {
 
     private static final int FIRST_LINE = 0;
     private static final int SECOND_LINE = 1;
+    private static final int THIRD_LINE = 2;
 
     /** The element index right after an opener, in a line built {@code <opener> <note> <note>}. */
     private static final int AFTER_OPENER_INDEX = 1;
@@ -165,6 +166,69 @@ class SongRepeatSectionTest extends UnitTest {
                     line.addElement(crotchet());
                     line.addElement(finalDoubleBarline());
                     line.addElement(crotchet());
+                }),
+                new ElementLocation(FIRST_LINE, FOURTH_ELEMENT_INDEX), null),
+
+            new RepeatSectionCase("a query on a :| asks about the section that :| ends",
+                oneLineSong(line -> {
+                    line.addElement(repeatLeft());
+                    line.addElement(crotchet());
+                    line.addElement(repeatRight());
+                }),
+                new ElementLocation(FIRST_LINE, THIRD_ELEMENT_INDEX), new ElementLocation(FIRST_LINE, AFTER_OPENER_INDEX)),
+
+            new RepeatSectionCase("a query on a |: does not count that opener",
+                oneLineSong(line -> {
+                    line.addElement(crotchet());
+                    line.addElement(repeatLeft());
+                    line.addElement(crotchet());
+                }),
+                new ElementLocation(FIRST_LINE, AFTER_OPENER_INDEX), new ElementLocation(FIRST_LINE, 0)),
+
+            new RepeatSectionCase("a query directly after an opener answers its own location",
+                oneLineSong(line -> {
+                    line.addElement(repeatLeft());
+                    line.addElement(crotchet());
+                    line.addElement(crotchet());
+                }),
+                new ElementLocation(FIRST_LINE, AFTER_OPENER_INDEX), new ElementLocation(FIRST_LINE, AFTER_OPENER_INDEX)),
+
+            new RepeatSectionCase("a query at the first element answers the song start",
+                oneLineSong(line -> {
+                    line.addElement(crotchet());
+                    line.addElement(crotchet());
+                }),
+                new ElementLocation(FIRST_LINE, 0), new ElementLocation(FIRST_LINE, 0)),
+
+            new RepeatSectionCase("an opener across an empty middle line",
+                SongFactory.buildSong(
+                    line -> {
+                        line.setKey(Key.NO_ACCIDENTALS);
+                        line.addElement(repeatLeft());
+                        line.addElement(crotchet());
+                    },
+                    line -> {},
+                    line -> {
+                        line.addElement(crotchet());
+                        line.addElement(crotchet());
+                    }),
+                new ElementLocation(THIRD_LINE, 1), new ElementLocation(FIRST_LINE, 1)),
+
+            new RepeatSectionCase("a :| after a || has no open section and plays on",
+                oneLineSong(line -> {
+                    line.addElement(crotchet());
+                    line.addElement(doubleBarline());
+                    line.addElement(crotchet());
+                    line.addElement(repeatRight());
+                }),
+                new ElementLocation(FIRST_LINE, FOURTH_ELEMENT_INDEX), null),
+
+            new RepeatSectionCase("a :| after a closed section has no open section and plays on",
+                oneLineSong(line -> {
+                    line.addElement(crotchet());
+                    line.addElement(repeatRight());
+                    line.addElement(crotchet());
+                    line.addElement(repeatRight());
                 }),
                 new ElementLocation(FIRST_LINE, FOURTH_ELEMENT_INDEX), null)
         );

@@ -24,71 +24,64 @@ import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
-import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.SongFactory.buildSong;
-import static songscribe.dom.SpanFactory.beamOver;
+import static songscribe.dom.SpanFactory.beamOverAll;
 import static songscribe.dom.StaffElementFactory.demiSemiquaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.semiquaver;
 
 /**
- * The side a member's partial-beam stub is drawn on, {@link Beam.Member#stubRight()}: right for
- * the first member, left for the last, and for any other toward the neighbour with more beams,
- * right when both have the same number. A member whose beams are all shared has no stub.
+ * The side a member's partial-beam stub is drawn on, {@link Beam.Member#stub()}: right for the
+ * first member, left for the last, and for any other toward the neighbour with more beams, right
+ * when both have the same number. A member whose beams are all shared has no stub.
  */
 class BeamStubTest extends UnitTest {
 
-    private static final int FIRST_LINE = 0;
-
     /**
-     * A beamed group and the side one member's stub is drawn on.
+     * A beamed group and the stub one member draws.
      *
      * @param description the case, as the test's display name
      * @param notes       makes the notes of the group, all of them beamed
      * @param member      the position of the member asked about
-     * @param stubRight   {@code true} for a stub drawn to the right; {@code false} for one drawn
-     *                    to the left or for no stub
+     * @param expected    the stub the member draws
      */
-    private record StubCase(String description, Supplier<List<NoteElement>> notes, int member, boolean stubRight) {}
+    private record StubCase(String description, Supplier<List<NoteElement>> notes, int member, Beam.Stub expected) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("stubCases")
     void testAStubIsDrawnTowardTheNeighbourWithMoreBeams(StubCase testCase) {
-        var notes = testCase.notes().get();
-        var song = buildSong(line -> notes.forEach(line::addElement));
-        var line = song.getLine(FIRST_LINE);
-        var beam = song.withoutMutationTrackingResult(() -> {
-            var built = beamOver(line, new ElementRange(0, notes.size() - 1));
-            built.addTo(line);
+        var beam = beamOverAll(testCase.notes().get());
 
-            return built;
-        });
+        assertThat(beam.members().get(testCase.member()).stub()).isEqualTo(testCase.expected());
+    }
 
-        assertThat(beam.members().get(testCase.member()).stubRight()).isEqualTo(testCase.stubRight());
+    @Test
+    void testCasesCoverEveryStub() {
+        assertThat(stubCases().map(StubCase::expected).distinct()).containsExactlyInAnyOrder(Beam.Stub.values());
     }
 
     static Stream<StubCase> stubCases() {
         return Stream.of(
             new StubCase("the first member's stub is drawn right",
-                () -> List.of(semiquaver(), quaver(), quaver()), 0, true),
+                () -> List.of(semiquaver(), quaver(), quaver()), 0, Beam.Stub.RIGHT),
             new StubCase("the last member's stub is drawn left",
-                () -> List.of(quaver(), quaver(), semiquaver()), 2, false),
+                () -> List.of(quaver(), quaver(), semiquaver()), 2, Beam.Stub.LEFT),
             new StubCase("an interior stub is drawn toward the neighbour on the right with more beams",
-                () -> List.of(quaver(), demiSemiquaver(), semiquaver()), 1, true),
+                () -> List.of(quaver(), demiSemiquaver(), semiquaver()), 1, Beam.Stub.RIGHT),
             new StubCase("an interior stub is drawn toward the neighbour on the left with more beams",
-                () -> List.of(semiquaver(), demiSemiquaver(), quaver()), 1, false),
+                () -> List.of(semiquaver(), demiSemiquaver(), quaver()), 1, Beam.Stub.LEFT),
             new StubCase("an interior stub between neighbours with the same number of beams is drawn right",
-                () -> List.of(quaver(), semiquaver(), quaver()), 1, true),
+                () -> List.of(quaver(), semiquaver(), quaver()), 1, Beam.Stub.RIGHT),
             new StubCase("a member whose beams are all shared has no stub",
-                () -> List.of(semiquaver(), semiquaver(), quaver()), 1, false),
+                () -> List.of(semiquaver(), semiquaver(), quaver()), 1, Beam.Stub.NONE),
             new StubCase("a member with only the primary beam has no stub",
-                () -> List.of(quaver(), quaver(), quaver()), 1, false)
+                () -> List.of(quaver(), quaver(), quaver()), 1, Beam.Stub.NONE)
         );
     }
 }

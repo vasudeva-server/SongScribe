@@ -41,10 +41,18 @@ import songscribe.dom.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 /**
- * Coordinates MIDI sequence building for a song.
- * Delegates note-level MIDI generation to Line objects.
- * <p>
- * Phase 1 of the ScoreView Cleanup refactoring (Step 5).
+ * Builds the MIDI sequence that plays a song, whole or from a given note to its end. The
+ * sequence holds one track at {@value #PPQ} ticks per quarter note: the instrument and starting
+ * tempo the {@link PlaybackSettings} select, then every element in playing order, each line's
+ * note events written by a {@link LineTrackBuilder}.
+ *
+ * <p>Which elements play, and in what order, follows
+ * {@link PlaybackSettings#playWithRepeats()}.
+ *
+ * <p>A tie chain sounds as one note. Its first note strikes, the notes tied into it strike
+ * nothing, and the chain releases once, where its last note releases: at the end of that note's
+ * sounding duration, after its articulation and {@link PlaybackSettings#noteDurationPercent()}
+ * shorten it. Every note of the chain still advances time by its own written duration.
  */
 public class MidiSequenceBuilder {
 
@@ -73,10 +81,12 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * Builds a MIDI sequence for the entire song.
+     * Builds the sequence that plays the whole song, from its first element, at the song's own
+     * starting tempo scaled by {@link PlaybackSettings#tempoChangePercent()}.
      *
-     * @return The complete MIDI sequence
-     * @throws InvalidMidiDataException if MIDI data is invalid
+     * @return the sequence, ending at the end of the last played element's written duration
+     * @throws InvalidMidiDataException if an element yields an event value outside the range
+     *     MIDI allows for it
      */
     public Sequence buildFullSequence() throws InvalidMidiDataException {
         return buildSequence(0, 0, song.getTempo());
@@ -176,6 +186,11 @@ public class MidiSequenceBuilder {
      * Returns the first ending in {@code endings} covering {@code elementIndex}, or null when
      * none does — a list already narrowed to one line's endings, so a per-note call does not
      * re-walk that line's every span.
+     *
+     * @param endings      the endings of the line {@code elementIndex} is on
+     * @param elementIndex the element's index on that line
+     * @return the first ending in {@code endings} whose range contains {@code elementIndex}, or
+     *     null when no ending in it does
      */
     private static @Nullable Ending endingCovering(List<Ending> endings, int elementIndex) {
         for (var ending : endings) {

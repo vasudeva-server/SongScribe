@@ -30,8 +30,7 @@ import songscribe.layout.LineLayoutProvider;
  *
  * <p>Every builder method takes a {@code BuildContext} as its first parameter, plus only the
  * arguments that genuinely vary between calls ({@code Line}, {@code StaffElement}). Without it
- * each builder would grow its own five- or six-argument signature carrying these same values —
- * the shape that produced {@code NoteWriteContext} in the streaming writer.
+ * each builder would grow its own five- or six-argument signature carrying these same values.
  *
  * <p>{@code ObjectFactory} is stateless, so one instance is shared for the whole build.
  *

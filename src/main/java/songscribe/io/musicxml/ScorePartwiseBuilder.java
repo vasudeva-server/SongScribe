@@ -21,7 +21,7 @@ package songscribe.io.musicxml;
 
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -38,6 +38,7 @@ import org.audiveris.proxymusic.ScorePartwise.Part.Measure;
 import org.audiveris.proxymusic.StartStop;
 import org.audiveris.proxymusic.StartStopContinue;
 import org.audiveris.proxymusic.TiedType;
+import org.audiveris.proxymusic.WavyLine;
 import org.jspecify.annotations.Nullable;
 
 // The Song-model span types, not their ProxyMusic namesakes. org.audiveris.proxymusic
@@ -50,9 +51,7 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
-import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -65,19 +64,13 @@ import songscribe.layout.LineLayoutProvider;
  * part, its measures, and then the adjustment passes that attach everything spanning more
  * than one node.
  *
- * <p><b>This class is the reason for the object-model rewrite.</b> The streaming writer had
- * to decide, at the moment it passed each element, everything that element would ever carry —
- * so a span whose far end had not been reached yet became loop state
- * ({@code pendingGlissandoNote}, {@code lastNoteEndingMarkers}), and a span whose near end had
- * already been flushed became a precompute pass ({@code MusicXmlSpanIndex}) that bucketed six
- * span types onto element indices purely so the loop could read one array slot per element.
- * Here the graph is finished before any span is looked at: each span is walked once and
- * attached to the nodes it touches, through the handles {@link BuildIndex} recorded as the
- * builders emitted them.
+ * <p>The graph is finished before any span is looked at: each span is walked once and attached
+ * to the nodes it touches, through the handles {@link BuildIndex} recorded as the builders
+ * emitted them.
  *
  * <p>Nothing here knows about files, streams or containers — it takes a {@code Song} and
  * returns a {@code ScorePartwise}. {@link MusicXmlSerializer} owns the transition to text, so
- * compressed {@code .mxl} output (issue #765) can reuse this class untouched.
+ * compressed {@code .mxl} output can reuse this class untouched.
  */
 final class ScorePartwiseBuilder {
 
@@ -99,7 +92,7 @@ final class ScorePartwiseBuilder {
     /**
      * Builds the complete {@code <score-partwise>} graph for {@code song}.
      *
-     * <p>The emitted sequence mirrors the streaming writer's: movement info, identification,
+     * <p>The emitted sequence is: movement info, identification,
      * defaults, credits, a {@code <part-list>} holding one {@code <score-part id="P1">}, then
      * the part itself.
      *
@@ -281,114 +274,88 @@ final class ScorePartwiseBuilder {
      * Attaches one {@code <beam number="N">} per active beam level to every note in each beam
      * group.
      *
-     * <p>A degenerate single-note beam produces nothing — one note cannot be beamed — and a
-     * grace note inside the span is not a member, so it gets no {@code <beam>}: the beam passes
-     * over it (refs #592).
+     * <p>A grace note inside the span is not a member, so it gets no {@code <beam>}: the beam
+     * passes over it.
      */
     private static void applyBeams(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Beam.class, (_, beam, _) -> {
-            var members = beam.members();
-
-            if (members.size() == 1) {
-                return;
+        for (var entry : lines) {
+            for (var beam : entry.line().spanRegistry().findSpans(Beam.class)) {
+                for (var member : beam.members()) {
+                    addBeams(context, member.note(), beamValues(member));
+                }
             }
-
-            for (var position = 0; position < members.size(); position++) {
-                addBeams(context, members.get(position).note(), beamValues(members, position));
-            }
-        });
+        }
     }
 
-    /** Adds one {@code <beam>} per level whose value is not the "no beam here" sentinel. */
-    private static void addBeams(BuildContext context, StaffElement element, String[] levelValues) {
+    /** Adds one {@code <beam>} per level in {@code levelValues}, numbered by its level. */
+    private static void addBeams(
+        BuildContext context, StaffElement element, EnumMap<BeamLevel, BeamValue> levelValues) {
         var pmNote = context.index().notes().get(element);
 
         if (pmNote == null) {
             return;
         }
 
-        for (var level = 0; level < levelValues.length; level++) {
-            var value = levelValues[level];
-
-            if (value.isEmpty()) {
-                continue;
-            }
-
+        for (var levelValue : levelValues.entrySet()) {
             var beam = context.factory().createBeam();
-            beam.setValue(BeamValue.fromValue(value));
-            beam.setNumber(level + 1);
+            beam.setValue(levelValue.getValue());
+            beam.setNumber(levelValue.getKey().number());
             pmNote.getBeam().add(beam);
         }
     }
 
     /**
-     * The {@code <beam>} text-content values for the member at {@code position} in
-     * {@code members}, indexed by {@code level.number() - 1}. An empty entry means no
-     * {@code <beam>} at that level.
+     * The {@code <beam>} value at each level {@code member} carries. The run of members at that
+     * level that {@code member} belongs to ({@link Beam.Member#runAt}) decides: a run of two or
+     * more gives {@code begin}/{@code continue}/{@code end} by the member's place in it, and a
+     * run of one is a partial-beam hook pointing the way {@link Beam.Member#stub} says.
      *
-     * <p>{@link BeamLevel#EIGHTH} (the primary beam) is always
-     * {@code begin}/{@code continue}/{@code end}, never a hook. For each level further in, the
-     * maximal contiguous run of members at that level containing {@code position} decides: a
-     * run of two or more emits {@code begin}/{@code continue}/{@code end}, and a run of one is
-     * a partial-beam hook whose direction {@link Beam.Member#stubRight} owns.
-     *
-     * @param members {@code beam}'s {@link Beam#members}
+     * @param member a member of the beam being written
+     * @return a value for every level {@code member} carries, and none for a level it does not
      */
-    private static String[] beamValues(List<Beam.Member> members, int position) {
-        var values = new String[BeamLevel.values().length];
-        var lastPosition = members.size() - 1;
-        var member = members.get(position);
-        Arrays.fill(values, MusicXmlUnits.NO_BEAM_AT_LEVEL);
-        values[BeamLevel.EIGHTH.number() - 1] = runValue(position, 0, lastPosition);
+    private static EnumMap<BeamLevel, BeamValue> beamValues(Beam.Member member) {
+        var values = new EnumMap<BeamLevel, BeamValue>(BeamLevel.class);
 
-        for (var level = BeamLevel.EIGHTH.next(); level != null; level = level.next()) {
-            if (!member.carries(level)) {
+        for (@Nullable BeamLevel level = BeamLevel.EIGHTH; level != null; level = level.next()) {
+            var run = member.runAt(level);
+
+            if (run == null) {
                 continue;
             }
 
-            var runStart = position;
-
-            while (runStart > 0 && members.get(runStart - 1).carries(level)) {
-                runStart--;
-            }
-
-            var runEnd = position;
-
-            while (runEnd < lastPosition && members.get(runEnd + 1).carries(level)) {
-                runEnd++;
-            }
-
-            if (runStart == runEnd) {
-                values[level.number() - 1] = member.stubRight()
-                    ? MusicXmlTags.BEAM_FORWARD_HOOK
-                    : MusicXmlTags.BEAM_BACKWARD_HOOK;
-            } else {
-                values[level.number() - 1] = runValue(position, runStart, runEnd);
-            }
+            values.put(level, run.isSingle() ? hookValue(member.stub()) : runValue(member.position(), run));
         }
 
         return values;
     }
 
-    /** The {@code begin}/{@code continue}/{@code end} value for a position within a beam run. */
-    private static String runValue(int position, int runStart, int runEnd) {
-        if (position == runStart) {
-            return MusicXmlTags.BEAM_BEGIN;
+    /** The hook value for a member whose stub points the way {@code stub} says. */
+    private static BeamValue hookValue(Beam.Stub stub) {
+        return switch (stub) {
+            case LEFT -> BeamValue.BACKWARD_HOOK;
+            case RIGHT -> BeamValue.FORWARD_HOOK;
+            case NONE -> throw new IllegalStateException("a member alone in a run always has a stub");
+        };
+    }
+
+    /** The {@code begin}/{@code continue}/{@code end} value for {@code position} within {@code run}. */
+    private static BeamValue runValue(int position, Beam.MemberRun run) {
+        if (position == run.first()) {
+            return BeamValue.BEGIN;
         }
 
-        if (position == runEnd) {
-            return MusicXmlTags.BEAM_END;
+        if (position == run.last()) {
+            return BeamValue.END;
         }
 
-        return MusicXmlTags.BEAM_CONTINUE;
+        return BeamValue.CONTINUE;
     }
 
     /**
      * Attaches the sound {@code <tie>} and the notation {@code <tied>} for every tie.
      *
      * <p>Each note is visited once and emits its stop before its start, so an interior note of
-     * a chain — the end of one tie and the anchor of the next — closes the loop the way the
-     * streaming writer did.
+     * a chain — the end of one tie and the anchor of the next — closes the loop.
      */
     private static void applyTies(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
@@ -451,27 +418,40 @@ final class ScorePartwiseBuilder {
      * it while building the note.
      */
     private static void applyTuplets(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Tuplet.class, (line, tuplet, range) -> {
-            addTupletBracket(context, line.getElement(range.begin()), StartStop.START,
-                tuplet.getUserYOffsetSs());
-            addTupletBracket(context, line.getElement(range.end()), StartStop.STOP, 0);
-        });
+        for (var entry : lines) {
+            var line = entry.line();
+
+            for (var tuplet : line.spanRegistry().findSpans(Tuplet.class)) {
+                var range = tuplet.range();
+                var start = addTupletBracket(context, line.getElement(range.begin()), StartStop.START);
+
+                if (start != null) {
+                    start.setRelativeY(MusicXmlUnits.shiftTenths(tuplet.getUserYOffsetSs()));
+                }
+
+                addTupletBracket(context, line.getElement(range.end()), StartStop.STOP);
+            }
+        }
     }
 
-    /** Attaches one {@code <tuplet>} bracket marker to {@code element}'s note, if it has one. */
-    private static void addTupletBracket(
-            BuildContext context, StaffElement element, StartStop type, double verticalShiftSs) {
+    /**
+     * Attaches one {@code <tuplet>} bracket marker to {@code element}'s note and returns it, or
+     * returns null when the element has no note.
+     */
+    private static org.audiveris.proxymusic.@Nullable Tuplet addTupletBracket(
+            BuildContext context, StaffElement element, StartStop type) {
         var pmNote = context.index().notes().get(element);
 
         if (pmNote == null) {
-            return;
+            return null;
         }
 
         var pmTuplet = context.factory().createTuplet();
         pmTuplet.setType(type);
         pmTuplet.setNumber(SINGLE_SPAN_NUMBER);
-        pmTuplet.setRelativeY(MusicXmlUnits.shiftTenths(verticalShiftSs));
         NoteBuilder.addNotation(context, pmNote, pmTuplet);
+
+        return pmTuplet;
     }
 
     /**
@@ -484,10 +464,15 @@ final class ScorePartwiseBuilder {
      * creating a second. Rests carry no trill.
      */
     private static void applyTrills(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Trill.class, (line, trill, range) -> {
-            addTrillStart(context, line.getElement(range.begin()), trill);
-            addWavyLine(context, line.getElement(range.end()), StartStopContinue.STOP, 0);
-        });
+        for (var entry : lines) {
+            var line = entry.line();
+
+            for (var trill : line.spanRegistry().findSpans(Trill.class)) {
+                var range = trill.range();
+                addTrillStart(context, line.getElement(range.begin()), trill);
+                addWavyLine(context, line.getElement(range.end()), StartStopContinue.STOP);
+            }
+        }
     }
 
     /** Attaches {@code <trill-mark/>} and the opening {@code <wavy-line>} to the anchor note. */
@@ -502,25 +487,33 @@ final class ScorePartwiseBuilder {
         ornamentsOf(context, pmNote).getTrillMarkOrTurnOrDelayedTurn()
             .add(factory.createOrnamentsTrillMark(factory.createEmptyTrillSound()));
 
-        addWavyLine(context, element, StartStopContinue.START, trill.getUserYOffsetSs());
+        var start = addWavyLine(context, element, StartStopContinue.START);
+
+        if (start != null) {
+            start.setRelativeY(MusicXmlUnits.shiftTenths(trill.getUserYOffsetSs()));
+        }
     }
 
-    /** Attaches one {@code <wavy-line>} marker to {@code element}'s note, if it takes one. */
-    private static void addWavyLine(
-            BuildContext context, StaffElement element, StartStopContinue type, double verticalShiftSs) {
+    /**
+     * Attaches one {@code <wavy-line>} marker to {@code element}'s note and returns it, or
+     * returns null when the note does not take one.
+     */
+    private static @Nullable WavyLine addWavyLine(
+            BuildContext context, StaffElement element, StartStopContinue type) {
         var pmNote = trilledNote(context, element);
 
         if (pmNote == null) {
-            return;
+            return null;
         }
 
         var factory = context.factory();
         var wavyLine = factory.createWavyLine();
         wavyLine.setType(type);
         wavyLine.setNumber(SINGLE_SPAN_NUMBER);
-        wavyLine.setRelativeY(MusicXmlUnits.shiftTenths(verticalShiftSs));
         ornamentsOf(context, pmNote).getTrillMarkOrTurnOrDelayedTurn()
             .add(factory.createOrnamentsWavyLine(wavyLine));
+
+        return wavyLine;
     }
 
     /** {@code element}'s note when it can carry a trill, else null — a rest never can. */
@@ -556,15 +549,15 @@ final class ScorePartwiseBuilder {
      * <p><b>This pass iterates glissandos, never lines, and the difference is not stylistic.</b>
      * Slide endpoints are the only geometry the writer emits, so a line with no glissando is
      * deliberately never laid out: a layout costs real work <em>and</em> resolves the line's
-     * automatic stem directions as a side effect, so laying out a line the old path never
-     * touched would change that line's output. Walking lines and asking {@code layoutProvider}
+     * automatic stem directions as a side effect, so laying out a line no glissando touches
+     * would change that line's output. Walking lines and asking {@code layoutProvider}
      * for each would lay out the whole song on every save. Each site reaches its line through
      * the glissando that needs it, so a line with none is never reached; the cache keeps a line
      * carrying several glissandos to one layout.
      *
      * <p>Glissandos are intra-line and cannot span a system break — the sites are recorded per
      * line as the notes are emitted, so a dangling glissando on the last note of a line finds
-     * no target and simply emits no stop, exactly as the streaming writer's per-line reset did.
+     * no target and simply emits no stop.
      */
     private static void applyGlissandos(BuildContext context, List<GlissandoSite> glissandos) {
         var layouts = new IdentityHashMap<Line, LayoutResult>();
@@ -644,17 +637,16 @@ final class ScorePartwiseBuilder {
         for (var entry : lines) {
             var line = entry.line();
 
-            // Crescendos and diminuendos share one pair of buckets; the wedge type is
-            // recovered from the Hairpin subtype when the direction is built. Only the
-            // indices that actually carry a hairpin get an entry — a long line with one
+            // Only the indices that actually carry a hairpin get an entry — a long line with one
             // crescendo should not allocate a list per element.
             var starting = new HashMap<Integer, List<Hairpin>>();
             var ending = new HashMap<Integer, List<Hairpin>>();
 
-            forEachSpanInRange(line, Hairpin.class, (unusedLine, hairpin, range) -> {
+            for (var hairpin : line.spanRegistry().findSpans(Hairpin.class)) {
+                var range = hairpin.range();
                 starting.computeIfAbsent(range.begin(), unusedKey -> new ArrayList<>()).add(hairpin);
                 ending.computeIfAbsent(range.end(), unusedKey -> new ArrayList<>()).add(hairpin);
-            });
+            }
 
             if (starting.isEmpty()) {
                 continue;
@@ -677,8 +669,7 @@ final class ScorePartwiseBuilder {
 
     /**
      * Inserts {@code wedge} immediately before everything the element contributed apart from
-     * its tempo and metric-modulation directions, so it lands before the annotation direction —
-     * the streaming writer's order.
+     * its tempo and metric-modulation directions, so it lands before the annotation direction.
      *
      * <p>An element that produced no note has no anchor, and a wedge bound to it has nothing to
      * bind to, so it is dropped rather than emitted loose.
@@ -707,37 +698,4 @@ final class ScorePartwiseBuilder {
      * rather than a pair.
      */
     private record GlissandoSite(MeasureBuilder.LineOutput owner, int emittedIndex) {}
-
-
-    // -------------------------------------------------------------------------
-    // The span-pass skeleton
-    // -------------------------------------------------------------------------
-
-    /**
-     * What one span pass does to a single span of {@code line}. The range is passed in because
-     * {@link #forEachSpanInRange} has already read it; re-reading it from the span would be
-     * asking the same question twice.
-     */
-    @FunctionalInterface
-    private interface SpanAction<T extends Span<?>> {
-        void apply(Line line, T span, ElementRange range);
-    }
-
-    /**
-     * Runs {@code action} for every {@code spanType} span in {@code line}.
-     */
-    private static <T extends Span<?>> void forEachSpanInRange(
-            Line line, Class<T> spanType, SpanAction<T> action) {
-        for (var span : line.spanRegistry().findSpans(spanType)) {
-            action.apply(line, span, span.range());
-        }
-    }
-
-    /** {@link #forEachSpanInRange(Line, Class, SpanAction)} over every line in document order. */
-    private static <T extends Span<?>> void forEachSpanInRange(
-            List<MeasureBuilder.LineOutput> lines, Class<T> spanType, SpanAction<T> action) {
-        for (var entry : lines) {
-            forEachSpanInRange(entry.line(), spanType, action);
-        }
-    }
 }

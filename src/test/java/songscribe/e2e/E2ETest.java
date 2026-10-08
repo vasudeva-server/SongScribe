@@ -79,6 +79,7 @@ import songscribe.engraving.Staff;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.PageModel;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -183,7 +184,7 @@ public abstract class E2ETest {
 
         GuiActionRunner.execute(() -> {
             var song = new Song();
-            scoreView().setSong(song);
+            scoreView().setSong(song, DocumentDidLoadNotification.LoadChange.UNCHANGED);
             scoreView().installDocumentFonts(DocumentFonts.defaultFonts());
         });
     }
@@ -851,7 +852,7 @@ public abstract class E2ETest {
     protected void loadFixture(String fixtureName) throws UnexpectedException {
         var song = GuiActionRunner.execute(() -> {
             var result = UnitTest.loadFixtureResult(fixtureName);
-            scoreView().setSong(result.song());
+            scoreView().setSong(result.song(), DocumentDidLoadNotification.LoadChange.of(result.report()));
             scoreView().installDocumentFonts(result.fonts());
             return result.song();
         });

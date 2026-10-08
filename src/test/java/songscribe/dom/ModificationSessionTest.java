@@ -24,20 +24,20 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
+import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.TieRemoval;
+import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static songscribe.dom.BatchReplay.redo;
-import static songscribe.dom.BatchReplay.undo;
+import static songscribe.dom.BatchReplay.NO_FONT_CHANGES;
 import static songscribe.dom.LineEdits.move;
 import static songscribe.dom.SongFactory.compactSong;
 
 /**
- * The gate {@link ModificationSession} puts on every modification rule: no rule runs while
- * mutation tracking is suspended or a batch is replayed, and none judges an edit that throws,
- * whose batch is still delivered.
+ * The gate {@link ModificationSession} puts on every modification rule: no rule runs while a
+ * batch is replayed, and none judges an edit that throws, whose batch is still delivered.
  *
  * <p>The tie rule is the probe: moving one note of a tied pair to another pitch is an edit it
  * removes the tie for.
@@ -58,17 +58,6 @@ class ModificationSessionTest extends UnitTest {
     private static final String TIED_PAIR = TIED + " ~ " + TIED + " " + OTHER;
 
     @Test
-    void testNoRuleRunsWhileMutationTrackingIsSuspended() {
-        var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
-        var line = song.getLine(FIRST_LINE);
-        var anchor = (NoteElement) line.getElement(ANCHOR);
-
-        song.withoutMutationTracking(() -> move(line, END, OTHER));
-
-        assertThat(anchor.isTiedToNext()).isTrue();
-    }
-
-    @Test
     void testNoRuleRunsWhileABatchIsReplayed() {
         var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
         var line = song.getLine(FIRST_LINE);
@@ -83,12 +72,38 @@ class ModificationSessionTest extends UnitTest {
                 .as("the fixture reaches the case only if the edit removes the tie")
                 .anyMatch(TieRemoval.class::isInstance);
 
-            undo(song, batch);
-            redo(song, batch.stream().filter(ElementModification.class::isInstance).toList());
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES,
+                batch.stream().filter(ElementModification.class::isInstance).toList());
 
             assertThat(anchor.isTiedToNext())
                 .as("the replay moves the note without the removal, and nothing removes the tie for it")
                 .isTrue();
+        } finally {
+            recorder.dispose();
+        }
+    }
+
+    @Test
+    void testUndoAndRedoDeliverNoReportEvenWhenARuleWouldRemoveSomething() {
+        var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
+        var line = song.getLine(FIRST_LINE);
+        var recorder = new BatchRecorder();
+
+        try {
+            song.withModification(() -> move(line, END, OTHER));
+
+            var batch = recorder.batches().getFirst();
+            var moveOnly = batch.stream().filter(ElementModification.class::isInstance).toList();
+
+            ReportRecorder.whileRecording(reports -> {
+                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, moveOnly);
+
+                assertThat(reports.reports())
+                    .as("the redo leaves a tie a rule would remove, and no rule runs to report it")
+                    .isEmpty();
+            });
         } finally {
             recorder.dispose();
         }

@@ -21,17 +21,23 @@
 package songscribe.message.command;
 
 import songscribe.message.Message;
-import songscribe.ui.action.InsertLineAction;
 
 public class InsertLineCommand extends Message {
 
-    private final InsertLineAction.Type type;
+    private final Type type;
 
-    public InsertLineCommand(InsertLineAction.Type type) {
+    public InsertLineCommand(Type type) {
         this.type = type;
     }
 
-    public InsertLineAction.Type getType() {
+    public Type getType() {
         return type;
+    }
+
+    /** Where the new line goes. The two relative variants need a selected line; the first does not. */
+    public enum Type {
+        ADD_AT_END,
+        INSERT_BEFORE,
+        INSERT_AFTER,
     }
 }

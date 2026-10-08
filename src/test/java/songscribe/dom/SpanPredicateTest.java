@@ -29,9 +29,10 @@ import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.lineOfQuavers;
 
 /**
- * What each {@link Span.IndexPredicate} factory on {@link Span} answers for a span's own
+ * What each {@link Span.RangePredicate} factory on {@link Span} answers for a span's own
  * anchor-to-end range.
  */
 class SpanPredicateTest extends UnitTest {
@@ -53,7 +54,7 @@ class SpanPredicateTest extends UnitTest {
      */
     private record PredicateCase(
         String description,
-        Span.IndexPredicate predicate,
+        Span.RangePredicate predicate,
         ElementRange spanRange,
         boolean expected
     ) {}
@@ -75,6 +76,8 @@ class SpanPredicateTest extends UnitTest {
                 Span.containing(ELEMENT), RANGE, true),
             new PredicateCase("containing: an element on an endpoint",
                 Span.containing(RANGE.begin()), RANGE, true),
+            new PredicateCase("containing: an element on the end endpoint",
+                Span.containing(RANGE.end()), RANGE, true),
             new PredicateCase("containing: an element past the end",
                 Span.containing(AFTER_RANGE), RANGE, false),
 
@@ -121,6 +124,10 @@ class SpanPredicateTest extends UnitTest {
 
             new PredicateCase("straddling a replacement: a span from before the deleted range to past it",
                 replacement, new ElementRange(BEFORE_RANGE, AFTER_RANGE), true),
+            new PredicateCase("straddling a replacement: a span ending on the deleted range's last element",
+                replacement, new ElementRange(BEFORE_RANGE, RANGE.end()), false),
+            new PredicateCase("straddling a replacement: a span ending on the first element after the deleted range",
+                replacement, new ElementRange(BEFORE_RANGE, RANGE.end() + 1), true),
             new PredicateCase("straddling a replacement: a span ending inside the deleted range",
                 replacement, new ElementRange(BEFORE_RANGE, ELEMENT), false),
             new PredicateCase("straddling a replacement: a span wholly inside the deleted range",

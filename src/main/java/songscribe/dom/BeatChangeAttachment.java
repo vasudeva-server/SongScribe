@@ -62,9 +62,7 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
     /**
      * Replaces the beat change data.
      *
-     * <p>Stays public because the beat-change dialog lives in the UI package. A change of beat
-     * can invalidate tuplets; the tuplet beat rule finds them when the modification bracket
-     * closes.
+     * <p>Stays public because the beat-change dialog lives in the UI package.
      */
     public void setBeatChange(BeatChange beatChange) {
         this.beatChange = beatChange;

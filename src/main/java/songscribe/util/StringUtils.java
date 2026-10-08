@@ -70,7 +70,7 @@ public final class StringUtils {
     // added to, only compared against, so it needs no headroom.
     private static final long UNREACHABLE = Long.MAX_VALUE;
 
-    // -- Typographic substitution (issue #436) --
+    // -- Typographic substitution --
 
     // Smart double quotes. Opening after whitespace / line start / a quote;
     // closing before whitespace / line end / closing punctuation; fallback = closing.

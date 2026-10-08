@@ -842,6 +842,16 @@ public class MainFrame extends JFrame {
     }
 
     /**
+     * The controller of the document on screen.
+     *
+     * @return the score view's controller, or {@code null} before the score view or its
+     *     controller exists
+     */
+    public @Nullable ScoreViewController getScoreViewController() {
+        return scoreView != null ? scoreView.getController() : null;
+    }
+
+    /**
      * Returns the scoreView, exiting fatally if it is null.
      * Use this in code that runs after initialization, where a null scoreView
      * indicates corrupted application state.
@@ -883,7 +893,7 @@ public class MainFrame extends JFrame {
         setCurrentFile(null);
 
         if (scoreView != null) {
-            scoreView.setSong(new Song());
+            scoreView.setSong(new Song(), DocumentDidLoadNotification.LoadChange.UNCHANGED);
             scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
             scoreView.requestFocusInWindow();
         }

@@ -40,7 +40,10 @@ import songscribe.dom.Trill;
  * Migrates song data from legacy format (version 1) to new format (version 2).
  * <p>
  * Legacy format stores range data as inline properties (ties, tuplets, crescendo, etc.);
- * the new format stores it as Span objects in Line.spans. Note attachments
+ * the new format stores it as Span objects in Line.spans. The legacy reader turns most ranges
+ * (tuplets, endings, hairpins) into pending records that the load passes place; beams and
+ * trills it adds directly. A tie is not a {@code Span}: it is a flag on its first note, so the
+ * reader ties that note. Note attachments
  * (tempoChange, fermata, etc.) are read directly into Attachment objects by StaffElementIO
  * and need no separate migration step.
  *
@@ -144,12 +147,7 @@ public final class FormatMigrator {
 
         ctx.pendingHairpins = ctx.pendingHairpins.stream()
             .map(pending -> new PendingHairpin(
-                pending.kind(),
-                pending.anchor(),
-                pending.end(),
-                pending.x1ShiftSs() / pps,
-                pending.x2ShiftSs() / pps,
-                pending.yOffsetSs() / pps))
+                pending.kind(), pending.anchor(), pending.end(), pending.xOffsetSs() / pps, pending.yOffsetSs() / pps))
             .toList();
     }
 
@@ -172,7 +170,7 @@ public final class FormatMigrator {
      * with an appropriate userYOffset.
      *
      * @param line    The line whose elements are updated
-     * @param offsets The legacy Y position values read from the pre-Phase 11 XML for this line
+     * @param offsets The legacy Y position values read from the format v1 XML for this line
      */
     private static void migrateLineLevelOffsets(Line line, LegacyLineOffsets offsets) {
         var spans = line.spanRegistry();

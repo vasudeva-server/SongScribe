@@ -116,7 +116,7 @@ public final class HorizontalSpacingCalculator {
      * Reducing factor applied to the line rest for a gap internal to a beam group whose two notes
      * are both shorter than an eighth note (sixteenths and faster). A pair touching an eighth note
      * (or longer) instead packs at the full line rest, the same gap as unbeamed notes; the longer
-     * note of the pair governs (refs #418). At the {@code 2.5} default line rest this yields
+     * note of the pair governs. At the {@code 2.5} default line rest this yields
      * {@code 0.8 × 2.5 = 2.0}. Beam groups still widen if lyrics require it.
      */
     public static final double BEAM_GROUP_INTERNAL_REST_FACTOR = 0.8;
@@ -269,7 +269,7 @@ public final class HorizontalSpacingCalculator {
         /**
          * A grace note and the note it decorates. A fixed absolute gap that never varies with the
          * song's line rest — the grace always packs against its host at the same distance
-         * (refs #418) — and it takes no lyric lift, since that fixed ideal must not grow with the
+         * — and it takes no lyric lift, since that fixed ideal must not grow with the
          * line's syllables. It still compresses, bounded by {@link #graceCompressionFloorSs}.
          */
         GRACE_TO_HOST,
@@ -390,7 +390,7 @@ public final class HorizontalSpacingCalculator {
      * over a third of its right extent, and it packs against its host at a fixed
      * {@link #GRACE_HOST_REST_SS} where that inflation is the difference between a grace that reads
      * as attached and one that floats. Charging the flag when it hangs well above the host is what
-     * made a high grace sit visibly further from its host than a low one (refs #560).
+     * made a high grace sit visibly further from its host than a low one.
      *
      * <p>Every other column is charged its full {@link ElementColumn#getRightExtentSs()}. An ordinary
      * flagged note has the same two-level ink profile, but its gap is a full line rest that dwarfs the
@@ -586,11 +586,11 @@ public final class HorizontalSpacingCalculator {
      * column's reference point, which is the notehead's left edge, and lets the accidental hang
      * left of it into the gap; the accidental reaches the spacing only through
      * {@code Paper_column::minimum_distance}, a collision floor that cannot bind at the gaps
-     * {@link StaffHeaderMetrics} leaves here (refs #684, reverses #121).
+     * {@link StaffHeaderMetrics} leaves here.
      * <p>
      * A wide first syllable does still push the origin right, so the lyric does not crowd the
      * clef or key signature. Lyrics center on the notehead center, so the syllable's left edge
-     * sits at {@code origin + rightExtentExclAug/2 − syllableWidth/2} (refs #330).
+     * sits at {@code origin + rightExtentExclAug/2 − syllableWidth/2}.
      */
     public static double calculateAnchorXSs(ElementColumn firstColumn, Line line) {
         return calculateAnchorXSs(firstColumn, line.getRunningKey());
@@ -660,7 +660,7 @@ public final class HorizontalSpacingCalculator {
      * auto-maintained terminal barline — a terminal is pinned flush-right by
      * {@code LayoutEngine.positionTerminalFlushRight}, so its own extent already ends the line —
      * and otherwise a full line rest, so any other last element stops one line rest short of the
-     * margin instead of sitting flush against it (refs #617).
+     * margin instead of sitting flush against it.
      *
      * <p>A line that leads into a {@link CautionaryKeySignature} takes that cautionary's
      * {@link CautionaryKeySignature#reservationSs() run} as its whole trailing gap, in place of the
@@ -995,7 +995,7 @@ public final class HorizontalSpacingCalculator {
      * gap is measured to the host note head, so the host's accidental does not widen it; for any
      * other gap, augmentation is excluded so dots and falls never push the next column beyond the
      * comfortable gap — in both cases the note-collision strut, which does use the full extents,
-     * keeps the glyphs apart (refs #418, #441, #496). A grace's extent is the one {@code curr} faces
+     * keeps the glyphs apart. A grace's extent is the one {@code curr} faces
      * ({@link #rightExtentFacingSs}), so the ideal gap and the strut discount the grace's flag on the
      * same terms.
      */
@@ -1024,7 +1024,7 @@ public final class HorizontalSpacingCalculator {
 
     /**
      * Returns whether the gap between two columns is internal to a single beam group. Adjacent
-     * beam groups have distinct ids, so the gap between them is a normal gap (refs #418).
+     * beam groups have distinct ids, so the gap between them is a normal gap.
      */
     private static boolean isBeamInternalGap(ElementColumn prev, ElementColumn curr) {
         return prev.sharesBeamGroupWith(curr);
@@ -1187,7 +1187,7 @@ public final class HorizontalSpacingCalculator {
      * (accidental included) and still keep its minimum visible length, or 0 when the previous
      * column has no glissando. Inverts the retired greedy path's
      * {@code gap = spacingSs + currLeft - prevRight} so the reservation is a hard floor on the
-     * spring's strut rather than a post-applied widening (refs #443).
+     * spring's strut rather than a post-applied widening.
      */
     private static double glissandoReservationFloorSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.hasGlissando()) {
@@ -1224,11 +1224,11 @@ public final class HorizontalSpacingCalculator {
      * is not a meaningful gap — 69% of corpus hairpins span exactly two adjacent notes, and every
      * longer one is already wider than {@code MINIMUM_LENGTH_SS}.
      * <p>
-     * Three of {@code HairpinEndpoints}' tip rules are deliberately <em>not</em> reserved for. A
-     * dynamic on the element <em>outside</em> the span pulls a tip by an amount that depends on a
-     * neighbouring pair's spring, which a per-pair strut cannot see. The back-to-back and rest
-     * rules both move a tip <em>inward</em> as well, and both went unreserved before dynamics on
-     * bounds existed; they stay that way rather than widening this method's remit unasked.
+     * Two of {@code HairpinEndpoints}' tip rules are not reserved for. A dynamic on the element
+     * <em>outside</em> the span pulls a tip by an amount that depends on a neighbouring pair's
+     * spring, which a per-pair strut cannot see. The back-to-back rule, which stops both tips
+     * short of the shared notehead's center, moves a tip inward too, and this method does not
+     * reserve for it.
      */
     private static double hairpinReservationFloorSs(
         @Nullable Line line, ElementColumn prev, ElementColumn curr) {
@@ -1294,7 +1294,7 @@ public final class HorizontalSpacingCalculator {
      * Returns whether both beamed columns are shorter than an eighth note (sixteenths or faster),
      * the condition for the tight beam-internal gap. {@link ElementType#beamCount} returns 1 for
      * an eighth note (quaver), a larger value for shorter notes, and 0 for a type that is not
-     * beamable (refs #418).
+     * beamable.
      */
     private static boolean bothShorterThanEighth(ElementColumn prev, ElementColumn curr) {
         return prev.getElement().getType().beamCount() > 1

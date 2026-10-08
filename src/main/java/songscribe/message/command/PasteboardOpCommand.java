@@ -21,17 +21,23 @@
 package songscribe.message.command;
 
 import songscribe.message.Message;
-import songscribe.ui.action.PasteboardAction;
 
 public class PasteboardOpCommand extends Message {
 
-    private final PasteboardAction.Operation operation;
+    private final Operation operation;
 
-    public PasteboardOpCommand(PasteboardAction.Operation operation) {
+    public PasteboardOpCommand(Operation operation) {
         this.operation = operation;
     }
 
-    public PasteboardAction.Operation getOperation() {
+    public Operation getOperation() {
         return operation;
+    }
+
+    public enum Operation {
+        COPY,
+        CUT,
+        DELETE,
+        PASTE,
     }
 }

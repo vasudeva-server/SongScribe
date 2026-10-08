@@ -46,7 +46,7 @@ public final class AnnotationIO {
     private static final float LEGACY_CENTER = 0.5f;
     private static final float LEGACY_RIGHT = 1.0f;
 
-    // version 2.1 (Phase 11)
+    // version 2.1
     private static final String XML_USER_Y_OFFSET = "useryoffset";
 
     // version 2.5 (annotation-placement-refactor)
@@ -97,7 +97,7 @@ public final class AnnotationIO {
 
         private static final Logger LOG = LoggerFactory.getLogger(AnnotationReader.class);
 
-        // Staff-space coordinate of the legacy Annotation.ABOVE pixel constant (before Phase 1 refactor)
+        // Staff-space coordinate of the legacy Annotation.ABOVE pixel constant
         private static final double LEGACY_ABOVE_SS = -2.0;
         private static final double LEGACY_ABOVE_PX = DocumentScale.PIXELS_PER_STAFF_SPACE * LEGACY_ABOVE_SS;
 
@@ -162,7 +162,7 @@ public final class AnnotationIO {
                         // Note: ypos and LEGACY_ABOVE_PX are both pixels; the pixel delta is
                         // intentionally stored into the staff-space userYOffsetSs field to
                         // reproduce the old migrator's behavior exactly (changing the units here
-                        // would shift legacy documents that previously ran through that migrator).
+                        // would shift legacy documents that run through that migrator).
                         try {
                             var ypos = Integer.parseInt(str);
 

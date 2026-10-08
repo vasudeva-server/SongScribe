@@ -21,6 +21,7 @@
 package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
+import java.util.Locale;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -34,11 +35,8 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.util.StringUtils;
 
 public final class TupletAction extends UIAction {
-
-    private static final String TOOLTIP = "Create tuplet from selection";
 
     private final TupletGrade grade;
 
@@ -72,8 +70,8 @@ public final class TupletAction extends UIAction {
             getName(grade),
             "@\uF376",
             18,
-            getName(grade).toLowerCase(),
-            TOOLTIP,
+            grade.name().toLowerCase(Locale.ROOT),
+            Strings.get(Strings.ACTION_TUPLET_TOOLTIP),
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
@@ -87,7 +85,14 @@ public final class TupletAction extends UIAction {
     }
 
     private static String getName(TupletGrade grade) {
-        return StringUtils.capitalizeSentence(grade.name());
+        return Strings.get(switch (grade) {
+            case DUPLET -> Strings.ACTION_TUPLET_DUPLET;
+            case TRIPLET -> Strings.ACTION_TUPLET_TRIPLET;
+            case QUADRUPLET -> Strings.ACTION_TUPLET_QUADRUPLET;
+            case QUINTUPLET -> Strings.ACTION_TUPLET_QUINTUPLET;
+            case SEXTUPLET -> Strings.ACTION_TUPLET_SEXTUPLET;
+            case SEPTUPLET -> Strings.ACTION_TUPLET_SEPTUPLET;
+        });
     }
 
     // Set priority to HIGH so that the action is updated before
@@ -97,7 +102,7 @@ public final class TupletAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        var ctrl = message.getScoreViewController();
+        var ctrl = getScoreViewController();
 
         if (ctrl != null) {
             handleChange(ctrl);
@@ -130,13 +135,12 @@ public final class TupletAction extends UIAction {
         }
 
         var info = ctrl.canToggleTuplet();
-        var existing = info.existing();
 
         // Availability and selection are separate properties of the same shared action, so
         // the menu and the toolbar popup both pick them up with no rebuild. The existing
         // grade stays checked even when the span could not be turned into that grade again
         // — otherwise a selection that visibly is a tuplet would show nothing checked.
-        putValue(SELECTED_KEY, (existing != null) && (existing.getGrade() == grade));
+        putValue(SELECTED_KEY, info.existingGrade() == grade);
         setEnabled(info.validGrades().contains(grade));
     }
 
@@ -160,9 +164,7 @@ public final class TupletAction extends UIAction {
             return Strings.get(baseAddKey);
         }
 
-        var existing = ctrl.canToggleTuplet().existing();
-
-        if (existing != null) {
+        if (ctrl.canToggleTuplet().existingGrade() != null) {
             return Strings.get(Strings.ACTION_EDIT_OP_CHANGE_TUPLET_GRADE);
         }
 
@@ -182,6 +184,6 @@ public final class TupletAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        MessageCenter.post(new ToggleTupletCommand(this));
+        MessageCenter.post(new ToggleTupletCommand(grade));
     }
 }
