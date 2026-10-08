@@ -126,7 +126,7 @@ table, never up the numbers.
 | 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ✅ | Everything except key state, which pass 0 settled. |
 | 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ✅ | Everything except key state, which pass 0 settled. |
 | 6b | Accidentals | `dom`: `Accidental`, `AccidentalChain`, `AccidentalScanView`, `AccidentalState`, `ChainedAccidental`, `ChainEdit`, `Cursor`, `ProjectedEdit` | ✅ | The chain walk: which accidental each note sounds and draws, decided again after every edit. It reads lines and the mutations an edit records, and `Song` runs it, so it comes after row 6 and before row 12. `ChainedAccidental` is the walk's decision and one of the three `AccidentalState`s; its package-private constructor, and `NoteElement`'s package-private `stamp`, make every decision on a note the walk's own. A note otherwise takes an intent (`choose`, `adopt`, `pitchAs`) or puts back its own earlier state (`NoteElement.SavedAccidental`). `ChainEdit` is a final class whose range is a `Cursor` and a length, and whose reach is a `Reach` enum, so a transposed line and element index does not compile. A key change inside an edited range rekeys the walk instead of stopping it. `Line.keyAt` is deleted, and `Line.keyBefore` is the one key query. The design it arrived at is `docs/accidentals.md`. |
-| 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `LineSpans`, `NoteSpan`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletRatio`, `TupletValidator`, `TupletLoadPass` | 🔄 | One framework with many members; anchored to elements, owned by `Line`. Pass 6 moved the registry into `LineSpans` and added `addTo`/`removeFrom` to `Span` and every subclass, each carrying its own merge policy and mutation record, so the per-kind add/remove methods no longer exist on `Line`. |
+| 7  | Spans | `dom`: `Span`, `SpanOutcome`, `LineSpans`, `Spanning`, `Displacement`, `Beam`, `Hairpin`, `Ending`, `Trill`, `Tuplet`, `TupletNormalTime`, `TupletValidator`, `SpanLoadPass`, `TupletLoadPass`, `PendingSpan`, `PendingHairpin`, `PendingEnding`, `PendingTuplet`, `ParsedSong`, `LoadPasses` | ✅ | One framework with many members; anchored to elements, owned by `Line`. Each kind carries `displacement()` as its merge policy and `SpanAddition`/`SpanRemoval` as mutation records. The design it arrived at is in `docs/span-invalidation.md`, `docs/hairpin-editing.md`, `docs/tie-rendering-placement.md` and `docs/change-report.md`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
 | 9  | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
 | 10 | Attachments | `dom`: `Attachment`, `AttachmentRemoval`, `Annotation`, `AnnotationAttachment`, `BeatChangeAttachment`, `DynamicAttachment`, `FermataAttachment`, `MetronomeAttachment`, `TempoChangeAttachment` | ⏳ | |
@@ -351,6 +351,14 @@ the reason for it is still in hand.
   write to a live element is recorded, and the form those two sites take for a change
   that is deliberately not recorded. A fix for accidental intent alone is a special case
   of this rule, not a fix.
+- **→ Pass 12.** `ModificationSessionTest` (`dom`) holds the three tests of the gate that
+  `ModificationSession.endModification` puts on every rule, through the tie rule. Row 12
+  owns `ModificationSession` and may rewrite them.
+- **→ Pass 6b.** `LoadPassesTest.testABareNoteAfterABarlineSoundsWhatIsInForce…` and
+  `testAParenthesizedAccidentalReadsAsAPlainOne` test the accidental stamp on
+  `accidental-load.musicxml`. Their subject is not a span.
+- **→ Pass 12.** `TupletValidator.validateFrom` has no direct test; `TupletBeatRuleTest`
+  reaches it.
 
 ## Blockers
 
