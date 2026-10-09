@@ -96,8 +96,8 @@ class BreathMarkLoadPassTest extends UnitTest {
     /** The entry the pass records for the breath mark that stood at {@code index} of line {@code lineIndex}. */
     private static ReportedChange removedAt(int lineIndex, int index) {
         return new ReportedChange(
-            Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
-            Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),
+            Strings.REPORT_BREATH_MARKS_REMOVED,
+            Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
             ElementLocationRange.single(new ElementLocation(lineIndex, index)));
     }
 }

@@ -36,6 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.dom.Beam;
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
@@ -67,7 +68,6 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.UndoStateDidChangeNotification;
-import songscribe.ui.component.MainFrame;
 
 /**
  * Application-level undo/redo engine. Each {@link SongDidChangeNotification} (one
@@ -102,12 +102,14 @@ import songscribe.ui.component.MainFrame;
  * or the pending op-name.
  *
  * <h2>Lifecycle</h2>
- * {@link #initialize()} attaches the singleton to the message bus and is
- * idempotent — subscription is deliberately not a constructor side effect, since
- * the singleton is also constructed lazily the first time an outermost modification
- * bracket ({@link Song#withModification(Runnable)}) reads the pending op-name.
+ * {@link #initialize(Supplier)} attaches the singleton to the message bus and tells it where
+ * to find the open document. It is idempotent in its subscription — subscription is
+ * deliberately not a constructor side effect, since the singleton is also constructed
+ * lazily the first time an outermost modification bracket
+ * ({@link Song#withModification(Runnable)}) reads the pending op-name. Until it runs, no
+ * document is open as far as the engine can tell, so undo and redo do nothing.
  *
- * <p>Once {@link #initialize()} has run, the controller is attached for the process. A
+ * <p>Once {@link #initialize(Supplier)} has run, the controller is attached for the process. A
  * document load empties the stacks and places the clean marker at the start of the new
  * history (see {@link #documentDidLoad}) while leaving the controller attached and
  * recording.
@@ -125,11 +127,12 @@ public final class UndoController {
 
     /**
      * One undo step: the recorded mutation batch from a single outermost modification
-     * bracket, plus the op-name its initiator declared (or {@code null} for the
-     * type-based fallback label). Each instance has a distinct identity, so it doubles
-     * as the reference-compared clean marker.
+     * bracket, the report of what the song changed on its own during it, which a redo posts
+     * again, and the op-name its initiator declared (or {@code null} for the type-based
+     * fallback label). Each instance has a distinct identity, so it doubles as the
+     * reference-compared clean marker.
      */
-    private record UndoStep(List<Mutation> mutations, @Nullable String opName) {
+    private record UndoStep(List<Mutation> mutations, ChangeReport report, @Nullable String opName) {
     }
 
     /**
@@ -137,7 +140,8 @@ public final class UndoController {
      * time. A freshly allocated {@link UndoStep} so reference comparison against
      * pushed steps is unambiguous.
      */
-    private static final UndoStep BASELINE = new UndoStep(Collections.unmodifiableList(new ArrayList<>()), null);
+    private static final UndoStep BASELINE =
+        new UndoStep(Collections.unmodifiableList(new ArrayList<>()), ChangeReport.EMPTY, null);
 
     private static final UndoController INSTANCE = new UndoController();
 
@@ -164,11 +168,23 @@ public final class UndoController {
     @Nullable
     private String pendingOpName;
 
+    // The open document as the engine sees it, or null when none is open.
+    private Supplier<@Nullable ReplayTarget> target = () -> null;
+
     private UndoController() {
     }
 
     /**
-     * Subscribes the singleton to the bus in force, attaching it for the rest of the process.
+     * Makes a controller that finds the open document through {@code target}, for a test that
+     * drives the engine without the main window. The caller subscribes it to the bus.
+     */
+    UndoController(Supplier<@Nullable ReplayTarget> target) {
+        this.target = target;
+    }
+
+    /**
+     * Subscribes the singleton to the bus in force, attaching it for the rest of the process,
+     * and sets where it finds the open document.
      * Registers on every call, unguarded: the bus ignores a listener it already holds, and a
      * call made after the bus in force has changed must reach the new bus.
      *
@@ -179,9 +195,12 @@ public final class UndoController {
      * explicit means only a call to this method ever attaches the controller, at a point
      * startup chooses.
      *
+     * @param target gives the open document, or {@code null} when none is open; read at each
+     *     undo, redo and save
      * @effects the controller begins recording mutations posted on the bus in force
      */
-    public static void initialize() {
+    public static void initialize(Supplier<@Nullable ReplayTarget> target) {
+        INSTANCE.target = target;
         MessageSubscription.addProcessListener(INSTANCE);
     }
 
@@ -212,7 +231,7 @@ public final class UndoController {
             return;
         }
 
-        undoStack.push(new UndoStep(message.getMutations(), message.getOpName()));
+        undoStack.push(new UndoStep(message.getMutations(), message.getReport(), message.getOpName()));
         redoStack.clear();
 
         if (undoStack.size() > UNDO_STACK_MAX_DEPTH) {
@@ -240,7 +259,9 @@ public final class UndoController {
      * Otherwise the document's modified flag is recomputed against the save point (see
      * {@link #documentWasSaved}) and {@link UndoStateDidChangeNotification} is posted. The
      * replay itself posts a {@link SongDidChangeNotification} describing the inverse
-     * mutations — which is how the score repaints — without recording a new step.
+     * mutations — which is how the score repaints — without recording a new step. Its report
+     * is empty: the undo reverses the changes the edit made on its own along with the rest, so
+     * none of them remains to be told about.
      *
      * <p>Never throws. A replay that fails is an engine bug, not a caller error: the model
      * is then mid-step and matches neither stack, so both stacks are cleared and the
@@ -252,8 +273,9 @@ public final class UndoController {
         INSTANCE.performUndo();
     }
 
-    private void performUndo() {
-        replayTop(undoStack, MutationReplayer::undoBatch, redoStack::push);
+    void performUndo() {
+        replayTop(undoStack, (song, fonts, step) ->
+            MutationReplayer.undoBatch(song, fonts, step.mutations(), ChangeReport.EMPTY), redoStack::push);
     }
 
     /**
@@ -265,7 +287,10 @@ public final class UndoController {
      *
      * <p>A no-op, posting nothing, when {@link #canRedo()} is false or no document is open.
      * In every other respect — in-place restoration, the recomputed modified flag, the posted
-     * notifications, and the never-throws fail-safe — it matches {@link #undo()}.
+     * notifications, and the never-throws fail-safe — it matches {@link #undo()}, except that
+     * the replay's {@link SongDidChangeNotification} carries the report of the edit the redo
+     * applies again: the redo makes the changes that edit made on its own a second time, so the
+     * user is told about them again.
      *
      * <p>EDT only.
      */
@@ -273,14 +298,15 @@ public final class UndoController {
         INSTANCE.performRedo();
     }
 
-    private void performRedo() {
-        replayTop(redoStack, MutationReplayer::redoBatch, undoStack::push);
+    void performRedo() {
+        replayTop(redoStack, (song, fonts, step) ->
+            MutationReplayer.redoBatch(song, fonts, step.mutations(), step.report()), undoStack::push);
     }
 
-    /** One of {@link MutationReplayer}'s two batch replays. */
+    /** Replays one step with one of {@link MutationReplayer}'s two batch replays. */
     @FunctionalInterface
     private interface StepReplay {
-        void replay(Song song, FontTarget fonts, List<Mutation> mutations);
+        void replay(Song song, FontTarget fonts, UndoStep step);
     }
 
     /**
@@ -290,19 +316,19 @@ public final class UndoController {
      * Either way, recomputes the modified flag and posts {@link UndoStateDidChangeNotification}.
      */
     private void replayTop(Deque<UndoStep> source, StepReplay replay, Consumer<UndoStep> destination) {
-        var scoreView = MainFrame.getInstance().getScoreView();
+        var replayTarget = target.get();
 
-        if (scoreView == null || source.isEmpty()) {
+        if (replayTarget == null || source.isEmpty()) {
             return;
         }
 
-        var song = scoreView.getSong();
+        var song = replayTarget.getSong();
         var step = source.peek();
 
         applyingReplay = true;
 
         try {
-            replay.replay(song, scoreView, step.mutations());
+            replay.replay(song, replayTarget, step);
 
             source.pop();
             destination.accept(step);
@@ -347,15 +373,15 @@ public final class UndoController {
      */
     @Handler
     public void documentWasSaved(DocumentWasSavedNotification message) {
-        var scoreView = MainFrame.getInstance().getScoreView();
+        var replayTarget = target.get();
 
-        if (scoreView == null) {
+        if (replayTarget == null) {
             return;
         }
 
         cleanStep = undoStack.isEmpty() ? BASELINE : undoStack.peek();
         cleanValid = true;
-        recomputeModified(scoreView.getSong());
+        recomputeModified(replayTarget.getSong());
     }
 
     /**

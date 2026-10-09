@@ -107,8 +107,8 @@ class TupletLoadPassTest extends UnitTest {
                 TWO_CROTCHETS, List.of()),
             new AddedCase("an absent ratio is derived from the beat and reported as updated", null,
                 List.of(new ReportedChange(
-                    Strings.DIALOG_REPORT_TUPLETS_UPDATED,
-                    Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
+                    Strings.REPORT_TUPLETS_UPDATED,
+                    Strings.get(Strings.REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
                     spanLocation())))
         );
     }
@@ -122,7 +122,7 @@ class TupletLoadPassTest extends UnitTest {
         var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
 
         assertThat(report.changes()).containsExactly(new ReportedChange(
-            Strings.DIALOG_REPORT_TUPLETS_REMOVED,
+            Strings.REPORT_TUPLETS_REMOVED,
             Strings.get(testCase.reasonKey()),
             spanLocation()));
         assertThat(line.spanRegistry().findSpans(Tuplet.class)).isEmpty();
@@ -131,7 +131,7 @@ class TupletLoadPassTest extends UnitTest {
     static Stream<DroppedCase> droppedCases() {
         return Stream.of(
             new DroppedCase("a stated ratio the validator rejects is dropped with the validator's reason",
-                SAME_COUNT, Strings.DIALOG_REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES)
+                SAME_COUNT, Strings.REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES)
         );
     }
 

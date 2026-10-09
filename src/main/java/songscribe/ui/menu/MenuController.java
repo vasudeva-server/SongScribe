@@ -21,12 +21,15 @@
 package songscribe.ui.menu;
 
 import java.awt.GraphicsEnvironment;
+import java.awt.Toolkit;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import javax.swing.ImageIcon;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -97,6 +100,7 @@ public class MenuController {
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
         menuBar.add(new NotationMenu(mainFrame));
+        menuBar.add(initWindowMenu());
 
         if (SystemInfo.isMacOS) {
             // Desktop.getDesktop().setDefaultMenuBar(menuBar) is broken in macOS.
@@ -267,6 +271,28 @@ public class MenuController {
         }
 
         return pathStr;
+    }
+
+    JMenu initWindowMenu() {
+        var menu = new JMenu(Strings.get(Strings.MENU_WINDOW));
+
+        menu.add(Actions.MINIMIZE_WINDOW_ACTION);
+        menu.add(Actions.ZOOM_WINDOW_ACTION);
+        menu.addSeparator();
+
+        // The native check mark matches the system menus. The menu bar is installed on macOS
+        // only, so this image URL is always available where the menu shows.
+        var checkmark = new ImageIcon(
+            Toolkit.getDefaultToolkit().createImage("NSImage://NSMenuOnStateTemplate")
+        );
+
+        for (var action : List.of(Actions.FOCUS_SCORE_ACTION, Actions.TOGGLE_MESSAGES_ACTION)) {
+            var item = new JCheckBoxMenuItem(action);
+            item.setSelectedIcon(checkmark);
+            menu.add(item);
+        }
+
+        return menu;
     }
 
     JMenu initEditMenu() {

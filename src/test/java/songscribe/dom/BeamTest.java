@@ -129,7 +129,7 @@ class BeamTest extends UnitTest {
             assertThat(beamed.line().spanRegistry().findSpans(Beam.class)).isEmpty();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_BEAMS_REMOVED);
+                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_BEAMS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });
@@ -150,13 +150,13 @@ class BeamTest extends UnitTest {
         return Stream.of(
             new RemovalCase("deleting the anchor",
                 line -> line.removeRange(ElementRange.single(ANCHOR_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED),
+                Strings.REPORT_REASON_ENDPOINT_DELETED),
             new RemovalCase("deleting the end",
                 line -> line.removeRange(ElementRange.single(END_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED),
+                Strings.REPORT_REASON_ENDPOINT_DELETED),
             new RemovalCase("replacing an interior note with a crotchet",
                 line -> line.setElement(INTERIOR_INDEX, crotchet()),
-                Strings.DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE),
+                Strings.REPORT_REASON_BEAM_NOT_BEAMABLE),
             insertionRemoval("inserting a rest inside it", StaffElementFactory::crotchetRest),
             insertionRemoval("inserting a barline inside it", StaffElementFactory::singleBarline),
             insertionRemoval("inserting a breath mark inside it", StaffElementFactory::breathMark),
@@ -184,7 +184,7 @@ class BeamTest extends UnitTest {
     private static RemovalCase insertionRemoval(String description, Supplier<? extends StaffElement> inserted) {
         return new RemovalCase(description,
             line -> line.addElement(INTERIOR_INDEX, inserted.get()),
-            Strings.DIALOG_REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE);
+            Strings.REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE);
     }
 
     // -------------------------------------------------------------------------
@@ -206,7 +206,7 @@ class BeamTest extends UnitTest {
         var line = tiedLine(testCase.tiedFrom());
 
         assertThat(Beam.spanning(line, testCase.range())).isEqualTo(new Spanning.Refused<Beam>(
-            Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES, Spanning.Cause.RANGE, Strings.DIALOG_REPORT_BEAMS_REMOVED));
+            Strings.REPORT_REASON_BEAM_TIED_NOTES, Spanning.Cause.RANGE, Strings.REPORT_BEAMS_REMOVED));
     }
 
     @ParameterizedTest(name = "{0}")

@@ -164,7 +164,7 @@ class HairpinSweepTest extends UnitTest {
             assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_HAIRPINS_REMOVED);
+                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_HAIRPINS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });
@@ -237,16 +237,16 @@ class HairpinSweepTest extends UnitTest {
         return Stream.of(
             new RemoveCase("replacing the anchor with a rest removes it",
                 () -> quavers(LINE_LENGTH), WIDE, line -> line.setElement(ANCHOR_INDEX, quaverRest()),
-                Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID),
+                Strings.REPORT_REASON_HAIRPIN_ENDPOINT_INVALID),
             new RemoveCase("replacing the end with a rest removes it",
                 () -> quavers(LINE_LENGTH), WIDE, line -> line.setElement(END_INDEX, quaverRest()),
-                Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID),
+                Strings.REPORT_REASON_HAIRPIN_ENDPOINT_INVALID),
             new RemoveCase("replacing the anchor with a grace note that leaves one column removes it",
                 () -> quavers(LINE_LENGTH), NARROW, line -> line.setElement(ANCHOR_INDEX, graceQuaver()),
-                Strings.DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_NOTES),
+                Strings.REPORT_REASON_HAIRPIN_TOO_FEW_NOTES),
             new RemoveCase("deleting all but one column removes it",
                 () -> quavers(LINE_LENGTH), NARROW, line -> line.removeRange(ElementRange.single(ANCHOR_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED)
+                Strings.REPORT_REASON_ENDPOINT_DELETED)
         );
     }
 

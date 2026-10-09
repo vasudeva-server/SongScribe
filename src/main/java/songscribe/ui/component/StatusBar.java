@@ -23,6 +23,7 @@ package songscribe.ui.component;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -62,7 +63,10 @@ public final class StatusBar extends JPanel {
     public StatusBar() {
         setLayout(new GridBagLayout());
         setOpaque(true);
-        setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
+        setBorder(BorderFactory.createCompoundBorder(
+            new ThemeAwareMatteBorder(1, 0, 0, 0, "ToolBar.separatorColor"),
+            UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING)
+        ));
 
         var notePanel = new JPanel(new FlowLayout(FlowLayout.LEADING, 0, 0));
         notePanel.setOpaque(false);

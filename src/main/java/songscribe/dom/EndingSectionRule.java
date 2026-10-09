@@ -61,11 +61,11 @@ final class EndingSectionRule implements ModificationRule {
      *
      * @effects when {@code batch} holds a mutation that can change a repeat section, removes,
      *     through {@link Span#removeReported} with
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION}, every ending in the song
+     *     {@link Strings#REPORT_REASON_ENDING_NO_OPEN_SECTION}, every ending in the song
      *     whose split closes no open repeat section
      */
     @Override
-    public void apply(Song song, List<Mutation> batch, ChangeReport report) {
+    public void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {
         if (batch.stream().noneMatch(EndingSectionRule::canChangeSections)) {
             return;
         }
@@ -73,7 +73,7 @@ final class EndingSectionRule implements ModificationRule {
         for (var line : song.getLines()) {
             for (var ending : List.copyOf(line.spanRegistry().findEndings())) {
                 if (!Ending.closesOpenSection(line, ending.getSplitIndex())) {
-                    ending.removeReported(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION);
+                    ending.removeReported(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION);
                 }
             }
         }

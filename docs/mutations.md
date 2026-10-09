@@ -20,7 +20,9 @@ leave a document clean when the user changed nothing.
 
 The outermost bracket also holds the edit's **report**: the changes the song made
 on its own during the edit, beyond what the user asked for. How the batch and the
-report are delivered is stated once, on `ModificationSession.deliver`. See
+report are delivered is stated once, on `ModificationSession.deliver`: the change
+notification that carries the batch carries the edit's report, empty when the edit
+changed nothing on its own. See
 [change-report.md](change-report.md).
 
 The record types form a closed set, so the inventory is checkable and a new kind
@@ -128,8 +130,9 @@ the helpers apply raw state only, suppressing the companion side-work — termin
 maintenance, defaults, span invalidation, the modification rules, automatic
 removals, merging — and bypassing guards that mid-replay intermediate states
 legitimately violate. The recorded batch already contains every change;
-re-deriving them would apply them twice. Nothing is reported: the edit reported
-its changes when it was made.
+re-deriving them would apply them twice. A replay records no new changes into a
+report: an undo delivers an empty report, and a redo delivers again the report of
+the edit it applies.
 
 **The reentrancy guard** is narrower still: it keeps the batch a replay produces
 from being pushed as a new undo step.

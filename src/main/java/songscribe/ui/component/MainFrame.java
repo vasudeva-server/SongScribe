@@ -26,9 +26,12 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
+import java.awt.KeyboardFocusManager;
 import java.awt.Toolkit;
 import java.awt.desktop.AppForegroundEvent;
 import java.awt.desktop.AppForegroundListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -47,10 +50,12 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JSplitPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
+import javax.swing.plaf.basic.BasicSplitPaneUI;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.ui.FlatNativeMacLibrary;
@@ -63,6 +68,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.FileExtensions;
 import songscribe.Strings;
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.font.DocumentFonts;
@@ -159,6 +165,18 @@ public class MainFrame extends JFrame {
 
     @Nullable
     private JLabel titleBarLabel = null;
+
+    // The Messages panel, below the score in the content split
+    private final ReportPanel reportPanel = new ReportPanel(this);
+
+    // The score on top and the Messages panel below; holds the window's content area
+    private final JSplitPane contentSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+
+    /**
+     * The theme's divider size, restored when the Messages panel is shown. Hiding the panel
+     * sets the divider size to 0, so the split pane cannot be asked for it again.
+     */
+    private int messagesDividerSize = 0;
 
     /** macOS 26 (Tahoe) is the first release that left-aligns the window title. */
     private static final int MACOS_TAHOE_VERSION = 26;
@@ -400,7 +418,7 @@ public class MainFrame extends JFrame {
         UIUtils.preWarmDialogPeer(this);
         ActivationGate.install(this);
         LOG.info("Application UI ready");
-        requireScoreView().requestFocusInWindow();
+        focusScore();
 
         pendingStartupAction.run();
     }
@@ -528,6 +546,7 @@ public class MainFrame extends JFrame {
 
         installDesktopHandlers();
         MenuController.init(this);
+        installFocusTracking();
 
         // When the application goes to the background, cancel any pending paste and activate
         // the glass pane so the reactivation click is consumed. ActivationGate.activate() posts
@@ -643,8 +662,8 @@ public class MainFrame extends JFrame {
     }
 
     private void initContent() {
-        // We lay out the content in a border layout: the toolbar in NORTH, the ScoreView in
-        // CENTER, and the status bar in SOUTH.
+        // We lay out the content in a border layout: the toolbar in NORTH, the split of the
+        // ScoreView over the Messages panel in CENTER, and the status bar in SOUTH.
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
@@ -700,9 +719,189 @@ public class MainFrame extends JFrame {
 
         requireScoreView().init();
 
-        contentPane.add(requireScoreView().requireScrollPane(), BorderLayout.CENTER);
+        initContentSplitPane();
+        contentPane.add(contentSplitPane, BorderLayout.CENTER);
         contentPane.add(new StatusBar(), BorderLayout.SOUTH);
+    }
 
+    /**
+     * Puts the score above the Messages panel and shows the panel as the preferences left it.
+     *
+     * @effects installs the score's scroll pane and the Messages panel in the split pane, and a
+     *          listener that saves the panel height when the user releases the divider
+     */
+    private void initContentSplitPane() {
+        contentSplitPane.setTopComponent(requireScoreView().requireScrollPane());
+        contentSplitPane.setBottomComponent(reportPanel);
+
+        // A window resize goes entirely to the score, so the panel keeps its height.
+        contentSplitPane.setResizeWeight(1);
+        messagesDividerSize = contentSplitPane.getDividerSize();
+
+        // A theme change installs a new UI, and with it a new divider.
+        installDividerReleaseListener();
+        contentSplitPane.addPropertyChangeListener("UI", _ -> installDividerReleaseListener());
+
+        applyMessagesPanelVisible(Prefs.getBoolean(PrefsKey.MESSAGES_PANEL_VISIBLE));
+    }
+
+    /**
+     * Saves the Messages panel height when the user releases the divider after a drag.
+     *
+     * <p>The height is saved on release rather than on each divider move, because every
+     * preference write saves the whole preferences file.
+     */
+    private void installDividerReleaseListener() {
+        if (!(contentSplitPane.getUI() instanceof BasicSplitPaneUI ui)) {
+            return;
+        }
+
+        ui.getDivider().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (reportPanel.isVisible()) {
+                    Prefs.put(
+                        PrefsKey.MESSAGES_PANEL_HEIGHT,
+                        messagesPanelBottom() - contentSplitPane.getDividerLocation()
+                    );
+                }
+            }
+        });
+    }
+
+    /**
+     * Shows or hides the Messages panel without saving the choice.
+     *
+     * <p>Hidden, the panel is invisible and the divider has no size, so the score fills the
+     * split. Shown, the divider is restored and placed so the panel has the saved height.
+     *
+     * <p>Every change of visibility goes through here, so the Messages action's selected state
+     * is set here and always agrees with the panel.
+     *
+     * @param visible whether the panel is shown
+     */
+    private void applyMessagesPanelVisible(boolean visible) {
+        reportPanel.setVisible(visible);
+        Actions.TOGGLE_MESSAGES_ACTION.setSelected(visible);
+        contentSplitPane.setDividerSize(visible ? messagesDividerSize : 0);
+
+        if (visible) {
+            placeDividerAtSavedHeight();
+        }
+    }
+
+    /**
+     * Places the divider so the Messages panel has the saved height.
+     *
+     * <p>The place is measured from the bottom of the split pane, so it needs the pane's
+     * height. Before the window is first laid out the pane has none, and the divider is placed
+     * once the pane is first given a size.
+     */
+    private void placeDividerAtSavedHeight() {
+        if (contentSplitPane.getHeight() <= 0) {
+            contentSplitPane.addComponentListener(new ComponentAdapter() {
+                @Override
+                public void componentResized(ComponentEvent e) {
+                    contentSplitPane.removeComponentListener(this);
+                    placeDividerAtSavedHeight();
+                }
+            });
+            return;
+        }
+
+        var panelHeight = Prefs.getInt(PrefsKey.MESSAGES_PANEL_HEIGHT);
+        contentSplitPane.setDividerLocation(Math.max(0, messagesPanelBottom() - panelHeight));
+    }
+
+    /**
+     * The divider location at which the Messages panel would have no height: the split pane's
+     * inner bottom edge, less the divider.
+     */
+    private int messagesPanelBottom() {
+        return contentSplitPane.getHeight()
+            - contentSplitPane.getInsets().bottom
+            - contentSplitPane.getDividerSize();
+    }
+
+    /**
+     * Shows the Messages panel and leaves keyboard focus where it is.
+     *
+     * @effects when the panel is hidden, shows it at the saved height and saves that it is
+     *          visible; otherwise nothing
+     */
+    public void showMessagesPanel() {
+        if (reportPanel.isVisible()) {
+            return;
+        }
+
+        applyMessagesPanelVisible(true);
+        Prefs.put(PrefsKey.MESSAGES_PANEL_VISIBLE, true);
+    }
+
+    /**
+     * Hides the Messages panel. The panel never holds keyboard focus, so focus stays where it is.
+     *
+     * @effects when the panel is visible, hides it and saves that it is hidden; otherwise nothing
+     */
+    public void hideMessagesPanel() {
+        if (!reportPanel.isVisible()) {
+            return;
+        }
+
+        applyMessagesPanelVisible(false);
+        Prefs.put(PrefsKey.MESSAGES_PANEL_VISIBLE, false);
+    }
+
+    /**
+     * Answers whether the Messages panel is shown.
+     *
+     * @return true when the panel is visible in the main window
+     */
+    public boolean isMessagesPanelVisible() {
+        return reportPanel.isVisible();
+    }
+
+    /**
+     * Moves keyboard focus to the score.
+     *
+     * @effects requests focus for the score view; the move happens when the focus system
+     *          processes the request
+     */
+    public void focusScore() {
+        requireScoreView().requestFocusInWindow();
+    }
+
+    /**
+     * Keeps the Score action's selected state in step with focus, whatever moved it.
+     */
+    private void installFocusTracking() {
+        KeyboardFocusManager.getCurrentKeyboardFocusManager()
+            .addPropertyChangeListener("permanentFocusOwner", _ -> syncScoreAction());
+    }
+
+    /**
+     * Selects the Score action while keyboard focus is in the score.
+     *
+     * <p>A check box menu item flips its own selected state when it is clicked, and the click
+     * does not always move focus, so the Score action calls this after it acts.
+     *
+     * @effects sets the selected state of the Score action
+     */
+    public void syncScoreAction() {
+        var owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getPermanentFocusOwner();
+        var scoreView = requireScoreView();
+        Actions.FOCUS_SCORE_ACTION.setSelected(
+            owner != null && SwingUtilities.isDescendingFrom(owner, scoreView.requireScrollPane()));
+    }
+
+    /**
+     * Zooms the window to fill the screen, or returns a zoomed window to its normal size.
+     *
+     * @effects toggles the window's maximized state
+     */
+    public void toggleZoom() {
+        var isZoomed = (getExtendedState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
+        setExtendedState(isZoomed ? Frame.NORMAL : Frame.MAXIMIZED_BOTH);
     }
 
     /**
@@ -893,7 +1092,7 @@ public class MainFrame extends JFrame {
         setCurrentFile(null);
 
         if (scoreView != null) {
-            scoreView.setSong(new Song(), DocumentDidLoadNotification.LoadChange.UNCHANGED);
+            scoreView.setSong(new Song(), ChangeReport.EMPTY);
             scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
             scoreView.requestFocusInWindow();
         }
@@ -1088,7 +1287,7 @@ public class MainFrame extends JFrame {
      * sees the clicks that would normally zoom the window, so the standard
      * double-click-to-zoom gesture is reimplemented here.
      */
-    private static final class TitlePanel extends JPanel {
+    private final class TitlePanel extends JPanel {
         private TitlePanel() {
             super(new BorderLayout());
 
@@ -1097,26 +1296,11 @@ public class MainFrame extends JFrame {
                     @Override
                     public void mouseClicked(MouseEvent e) {
                         if (UIUtils.isLeftDoubleClick(e)) {
-                            toggleZoom();
+                            MainFrame.this.toggleZoom();
                         }
                     }
                 }
             );
-        }
-
-        private void toggleZoom() {
-            if (!(SwingUtilities.getWindowAncestor(this) instanceof Frame frame)) {
-                return;
-            }
-
-            var isZoomed = (frame.getExtendedState() & Frame.MAXIMIZED_BOTH) ==
-                Frame.MAXIMIZED_BOTH;
-
-            if (isZoomed) {
-                frame.setExtendedState(Frame.NORMAL);
-            } else {
-                frame.setExtendedState(Frame.MAXIMIZED_BOTH);
-            }
         }
 
         @Override

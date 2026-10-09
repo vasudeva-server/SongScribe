@@ -600,7 +600,7 @@ public final class LineSpans {
      *
      * @param span the span about to be added, whose endpoints both sit in this line
      * @effects one {@link Span#removeReported} per span removed, with
-     *     {@link Strings#DIALOG_REPORT_REASON_REPLACED}, so each removal is reported and is its
+     *     {@link Strings#REPORT_REASON_REPLACED}, so each removal is reported and is its
      *     own mutation, recorded under the rule that method states
      */
     void removeOverlappingSameKind(Span<?> span) {
@@ -608,7 +608,7 @@ public final class LineSpans {
 
         sameKindSpans(span).stream()
             .filter(existing -> overlapsSpan.test(existing.range()))
-            .forEach(existing -> existing.removeReported(Strings.DIALOG_REPORT_REASON_REPLACED));
+            .forEach(existing -> existing.removeReported(Strings.REPORT_REASON_REPLACED));
     }
 
     /**

@@ -142,8 +142,8 @@ class MusicXmlTieTest extends UnitTest {
         assertThat(anchor.isTiedTo(end)).as("the tie stays").isTrue();
         assertThat(line.spanRegistry().findSpans(Beam.class)).as("the beam goes").isEmpty();
         assertThat(result.report().changes()).containsExactly(new ReportedChange(
-            Strings.DIALOG_REPORT_BEAMS_REMOVED,
-            Strings.get(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES),
+            Strings.REPORT_BEAMS_REMOVED,
+            Strings.get(Strings.REPORT_REASON_BEAM_TIED_NOTES),
             new ElementLocationRange(
                 new ElementLocation(FIRST_LINE, FIRST_ELEMENT), new ElementLocation(FIRST_LINE, SECOND_ELEMENT))));
     }

@@ -98,7 +98,7 @@ final class TupletLoadPass {
      *     with its stated ratio is not recorded
      * @log INFO the dropped and updated counts, when either is not zero
      */
-    static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
+    static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport.Builder report) {
         var counts = placeTuplets(song, pendingTuplets, report);
 
         if (!counts.isEmpty()) {
@@ -111,7 +111,7 @@ final class TupletLoadPass {
      * carries. Adding a tuplet leaves the elements — and so every other pending tuplet's
      * indices — untouched, which is why the sites stay valid as the tuplets are added.
      */
-    private static Counts placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
+    private static Counts placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport.Builder report) {
         var startLineIndex = song.firstNonEmptyLineIndex();
 
         if (startLineIndex == null) {
@@ -158,7 +158,7 @@ final class TupletLoadPass {
      * Adds one pending tuplet to its line, or drops it. Records a dropped tuplet, and a tuplet
      * added with a derived ratio.
      */
-    private static Placement place(TupletValidator.Sited<PendingTuplet> sited, ChangeReport report) {
+    private static Placement place(TupletValidator.Sited<PendingTuplet> sited, ChangeReport.Builder report) {
         var pending = sited.tuplet();
         var site = sited.site();
         var where = ElementLocationRange.onLine(sited.lineIndex(), site.range());
@@ -183,8 +183,8 @@ final class TupletLoadPass {
                 }
 
                 report.record(new ReportedChange(
-                    Strings.DIALOG_REPORT_TUPLETS_UPDATED,
-                    Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, grade.number(), tuplet.getRatio().normalNotes()),
+                    Strings.REPORT_TUPLETS_UPDATED,
+                    Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), tuplet.getRatio().normalNotes()),
                     where));
                 yield Placement.UPDATED;
             }

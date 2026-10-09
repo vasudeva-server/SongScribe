@@ -83,7 +83,7 @@ class TieRuleTest extends UnitTest {
      * @param endIndex    the index the tie from the first element ends on afterwards, or
      *                    {@code null} when the first element is no longer tied
      * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
-     *                    {@link Strings#DIALOG_REPORT_TIES_REMOVED}, or {@code null} when the edit
+     *                    {@link Strings#REPORT_TIES_REMOVED}, or {@code null} when the edit
      *                    reports no tie
      */
     private record EditCase(
@@ -123,7 +123,7 @@ class TieRuleTest extends UnitTest {
     private static void assertTieReport(ReportRecorder reports, @Nullable String reasonKey) {
         var tieEntries = reports.reports().stream()
             .flatMap(List::stream)
-            .filter(change -> change.headingKey().equals(Strings.DIALOG_REPORT_TIES_REMOVED))
+            .filter(change -> change.headingKey().equals(Strings.REPORT_TIES_REMOVED))
             .toList();
 
         if (reasonKey == null) {
@@ -139,11 +139,11 @@ class TieRuleTest extends UnitTest {
     static Stream<EditCase> editCases() {
         return Stream.of(
             new EditCase("a sharp on the anchor removes it",
-                line -> choose(line, ANCHOR, Accidental.SHARP), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                line -> choose(line, ANCHOR, Accidental.SHARP), null, Strings.REPORT_REASON_TIE_NOT_HELD),
             new EditCase("a sharp on the end removes it",
-                line -> choose(line, END, Accidental.SHARP), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                line -> choose(line, END, Accidental.SHARP), null, Strings.REPORT_REASON_TIE_NOT_HELD),
             new EditCase("moving one note to another pitch removes it",
-                line -> move(line, END, OTHER), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                line -> move(line, END, OTHER), null, Strings.REPORT_REASON_TIE_NOT_HELD),
             new EditCase("moving both notes to one new pitch keeps it",
                 line -> {
                     move(line, ANCHOR, OTHER);
@@ -153,18 +153,18 @@ class TieRuleTest extends UnitTest {
             new EditCase("a same-pitch note inserted between them keeps it, ending on that note",
                 line -> line.addElement(END, note(TIED)), END, null),
             new EditCase("a grace note inserted between them removes it",
-                line -> line.addElement(END, grace(TIED)), null, Strings.DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
+                line -> line.addElement(END, grace(TIED)), null, Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
             new EditCase("a note at another pitch inserted between them removes it",
-                line -> line.addElement(END, note(OTHER)), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                line -> line.addElement(END, note(OTHER)), null, Strings.REPORT_REASON_TIE_NOT_HELD),
             new EditCase("converting the anchor to a grace note leaves nothing tied and reports nothing",
                 line -> line.setElement(ANCHOR,
                     StaffElement.convertedFrom(ElementType.GRACE_QUAVER, line.getElement(ANCHOR))),
                 null, null),
             new EditCase("replacing the end with a rest removes it, with no note following",
                 line -> line.setElement(END, crotchetRest()),
-                null, Strings.DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
+                null, Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
             new EditCase("replacing the end with a note at another pitch removes it, as not held",
-                line -> line.setElement(END, note(OTHER)), null, Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                line -> line.setElement(END, note(OTHER)), null, Strings.REPORT_REASON_TIE_NOT_HELD),
             new EditCase("deleting the end note unties the anchor and reports nothing",
                 line -> line.removeRange(ElementRange.single(END)), null, null)
         );
@@ -191,8 +191,8 @@ class TieRuleTest extends UnitTest {
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries)
                     .extracting(ReportedChange::headingKey, ReportedChange::description)
-                    .containsExactly(tuple(Strings.DIALOG_REPORT_BEAMS_REMOVED,
-                        Strings.get(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES))));
+                    .containsExactly(tuple(Strings.REPORT_BEAMS_REMOVED,
+                        Strings.get(Strings.REPORT_REASON_BEAM_TIED_NOTES))));
         });
     }
 
@@ -210,7 +210,7 @@ class TieRuleTest extends UnitTest {
 
             assertThat(anchor.isTiedToNext()).as("the fixture reaches the case only if the edit removes the tie").isFalse();
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst());
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst(), ChangeReport.EMPTY);
 
             assertThat(end.soundingAccidental()).isEqualTo(soundedBefore);
             assertThat(anchor.isTiedTo(end)).isTrue();
@@ -229,7 +229,7 @@ class TieRuleTest extends UnitTest {
      * @param edit        makes the edit, inside a modification bracket
      * @param kept        whether the first line's last note is still tied afterwards
      * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
-     *                    {@link Strings#DIALOG_REPORT_TIES_REMOVED}, or {@code null} when the edit
+     *                    {@link Strings#REPORT_TIES_REMOVED}, or {@code null} when the edit
      *                    reports no tie
      */
     private record CrossLineCase(
@@ -260,7 +260,7 @@ class TieRuleTest extends UnitTest {
             new CrossLineCase("moving the next line's first note to another pitch removes it",
                 new String[] {TIED + " ~", TIED + " " + OTHER},
                 song -> move(song.getLine(SECOND_LINE), ANCHOR, OTHER), false,
-                Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                Strings.REPORT_REASON_TIE_NOT_HELD),
             new CrossLineCase("deleting the end note that is the first note of the next line unties it silently",
                 new String[] {TIED + " ~", TIED + " " + OTHER, "" + TIED},
                 song -> song.getLine(SECOND_LINE).removeRange(ElementRange.single(ANCHOR)), false, null),

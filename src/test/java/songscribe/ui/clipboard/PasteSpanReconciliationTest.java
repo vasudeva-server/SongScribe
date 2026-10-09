@@ -55,7 +55,7 @@ import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 import songscribe.message.MessageSubscription;
-import songscribe.message.notification.ChangesWereReportedNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -148,11 +148,11 @@ class PasteSpanReconciliationTest extends UnitTest {
     }
 
     private static PasteSpanReconciliation.LostSpan straddledAway(Span<?> span) {
-        return new PasteSpanReconciliation.LostSpan(span, Strings.DIALOG_REPORT_REASON_PASTE_STRADDLED);
+        return new PasteSpanReconciliation.LostSpan(span, Strings.REPORT_REASON_PASTE_STRADDLED);
     }
 
     private static PasteSpanReconciliation.LostSpan droppedFromFragment(Span<?> span) {
-        return new PasteSpanReconciliation.LostSpan(span, Strings.DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED);
+        return new PasteSpanReconciliation.LostSpan(span, Strings.REPORT_REASON_PASTE_FRAGMENT_DROPPED);
     }
 
     @ParameterizedTest(name = "{0}")
@@ -378,7 +378,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         assertThat(pasted.spansOnLine()).isEmpty();
         assertThat(pasted.reports()).singleElement().satisfies(report -> {
-            assertThat(report.headingKey()).isEqualTo(Strings.DIALOG_REPORT_ENDINGS_REMOVED);
+            assertThat(report.headingKey()).isEqualTo(Strings.REPORT_ENDINGS_REMOVED);
             assertThat(report.description()).isEqualTo(Strings.get(testCase.refusalKey()));
         });
     }
@@ -387,10 +387,10 @@ class PasteSpanReconciliationTest extends UnitTest {
         return Stream.of(
             new RefusedEndingCase("after a double barline, its anchor is refused",
                 () -> List.of(crotchet(), doubleBarline()), Line::elementCount,
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
             new RefusedEndingCase("in front of a barline, its end bar is refused",
                 () -> List.of(crotchet(), singleBarline()), line -> line.elementCount() - 1,
-                Strings.DIALOG_REPORT_REASON_ENDING_BAR_AFTER_END)
+                Strings.REPORT_REASON_ENDING_BAR_AFTER_END)
         );
     }
 
@@ -439,8 +439,8 @@ class PasteSpanReconciliationTest extends UnitTest {
 
     private static ReportedChange beatBarrierReport(ElementRange landedAt) {
         return new ReportedChange(
-            Strings.DIALOG_REPORT_TUPLETS_REMOVED,
-            Strings.get(Strings.DIALOG_REPORT_REASON_BEAT_BARRIER),
+            Strings.REPORT_TUPLETS_REMOVED,
+            Strings.get(Strings.REPORT_REASON_BEAT_BARRIER),
             ElementLocationRange.onLine(FIRST_LINE, landedAt));
     }
 
@@ -504,7 +504,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             .extracting(ReportedChange::headingKey, ReportedChange::description, ReportedChange::where)
             .containsExactly(tuple(
                 testCase.headingKey(),
-                Strings.get(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED),
+                Strings.get(Strings.REPORT_REASON_ENDPOINT_DELETED),
                 ElementLocationRange.onLine(FIRST_LINE, new ElementRange(0, BARLINE_INDEX - 1))));
     }
 
@@ -513,9 +513,9 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         return Stream.of(
             new StrandedCase("an ending", "6 :| 6 | K:" + RUNNING_KEY.name() + " 6",
-                line -> endingOver(line, range), Strings.DIALOG_REPORT_ENDINGS_REMOVED),
+                line -> endingOver(line, range), Strings.REPORT_ENDINGS_REMOVED),
             new StrandedCase("a tuplet", "Q Q Q | K:" + RUNNING_KEY.name() + " Q",
-                line -> tripletOver(line, range, NoteValue.EIGHTH), Strings.DIALOG_REPORT_TUPLETS_REMOVED)
+                line -> tripletOver(line, range, NoteValue.EIGHTH), Strings.REPORT_TUPLETS_REMOVED)
         );
     }
 
@@ -561,7 +561,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         private final MessageSubscription subscription = new MessageSubscription(this);
 
         @Handler
-        void changesWereReported(ChangesWereReportedNotification notification) {
+        void songDidChange(SongDidChangeNotification notification) {
             entries.addAll(notification.getReport().changes());
         }
 

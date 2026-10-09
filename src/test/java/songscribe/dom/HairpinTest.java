@@ -59,13 +59,13 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 class HairpinTest extends UnitTest {
 
     private static final Spanning.Refused<Hairpin> ENDPOINT_UNUSABLE = refusal(
-        Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE, Spanning.Cause.RANGE);
     private static final Spanning.Refused<Hairpin> TOO_FEW_COLUMNS = refusal(
-        Strings.DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_NOTES, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_HAIRPIN_TOO_FEW_NOTES, Spanning.Cause.RANGE);
     private static final Spanning.Refused<Hairpin> NON_SINGLE_BAR = refusal(
-        Strings.DIALOG_REPORT_REASON_HAIRPIN_NON_SINGLE_BAR, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_HAIRPIN_NON_SINGLE_BAR, Spanning.Cause.RANGE);
     private static final Spanning.Refused<Hairpin> OPPOSITE_OVERLAP = refusal(
-        Strings.DIALOG_REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP, Spanning.Cause.OTHER_SPAN);
+        Strings.REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP, Spanning.Cause.OTHER_SPAN);
 
     /** A diminuendo that a crescendo over {@link #OVERLAPPING} shares two elements with. */
     private static final ElementRange OVERLAPPED = new ElementRange(1, 3);
@@ -326,13 +326,13 @@ class HairpinTest extends UnitTest {
                 assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
                 assertThat(reports.reports()).singleElement().satisfies(entries ->
                     assertThat(entries).singleElement().satisfies(entry -> {
-                        assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_HAIRPINS_REMOVED);
+                        assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_HAIRPINS_REMOVED);
                         assertThat(entry.description())
-                            .isEqualTo(Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_NON_SINGLE_BAR));
+                            .isEqualTo(Strings.get(Strings.REPORT_REASON_HAIRPIN_NON_SINGLE_BAR));
                     }));
             });
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batches.batches().getFirst());
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batches.batches().getFirst(), ChangeReport.EMPTY);
 
             assertThat(line.spanRegistry().findSpans(Hairpin.class)).extracting(Hairpin::range)
                 .containsExactly(EDITED);
@@ -378,7 +378,7 @@ class HairpinTest extends UnitTest {
     }
 
     private static Spanning.Refused<Hairpin> refusal(String reasonKey, Spanning.Cause cause) {
-        return new Spanning.Refused<>(reasonKey, cause, Strings.DIALOG_REPORT_HAIRPINS_REMOVED);
+        return new Spanning.Refused<>(reasonKey, cause, Strings.REPORT_HAIRPINS_REMOVED);
     }
 
     /** A case whose line holds {@code elements} and whose candidate is the whole line. */

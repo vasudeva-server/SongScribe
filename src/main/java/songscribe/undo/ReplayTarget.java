@@ -17,25 +17,19 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.dialog;
+
+package songscribe.undo;
+
+import songscribe.dom.Song;
 
 /**
- * Categorizes dialogs by how they interact with the blocking counter.
- * Only blocking dialogs (EXCLUSIVE and OPERATIONAL) prevent other
- * dialog-opening actions from firing while they are visible.
+ * The open document as the undo engine sees it: the song, and the place where a replay applies
+ * fonts.
  */
-public enum DialogCategory {
+public interface ReplayTarget extends FontTarget {
 
-    /** Read-only dialog that never blocks or is blocked. */
-    INFORMATIONAL,
-
-    /** Modifies global state; blocks and is blocked by other blocking dialogs. */
-    EXCLUSIVE,
-
-    /** Modifies scoped state or runs a task (default); blocks and is blocked. */
-    OPERATIONAL;
-
-    public boolean isBlocking() {
-        return this == EXCLUSIVE || this == OPERATIONAL;
-    }
+    /**
+     * @return the song the open document holds
+     */
+    Song getSong();
 }

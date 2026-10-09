@@ -234,8 +234,8 @@ public record PasteSpanReconciliation(
      * @invariant every one of {@code fragmentSpans} is in exactly one of
      *     {@link #fragmentSpansKept} and {@link #fragmentSpansDropped}
      * @invariant every destination span to remove has the reason
-     *     {@link Strings#DIALOG_REPORT_REASON_PASTE_STRADDLED}, and every dropped fragment span
-     *     the reason {@link Strings#DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED}
+     *     {@link Strings#REPORT_REASON_PASTE_STRADDLED}, and every dropped fragment span
+     *     the reason {@link Strings#REPORT_REASON_PASTE_FRAGMENT_DROPPED}
      * @effects none; {@code line} and its span registry are unchanged
      */
     public static PasteSpanReconciliation reconcile(
@@ -284,7 +284,7 @@ public record PasteSpanReconciliation(
                 || (span instanceof Hairpin hairpin && keptStraddledHairpinKinds.contains(hairpin.getKind()));
 
             if (dropped) {
-                droppedFragmentSpans.add(new LostSpan(span, Strings.DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED));
+                droppedFragmentSpans.add(new LostSpan(span, Strings.REPORT_REASON_PASTE_FRAGMENT_DROPPED));
             } else {
                 keptFragmentSpans.add(span);
             }
@@ -370,7 +370,7 @@ public record PasteSpanReconciliation(
 
     /** The removal of {@code span}, a destination span the paste straddles. */
     private static LostSpan straddled(Span<?> span) {
-        return new LostSpan(span, Strings.DIALOG_REPORT_REASON_PASTE_STRADDLED);
+        return new LostSpan(span, Strings.REPORT_REASON_PASTE_STRADDLED);
     }
 
     /**

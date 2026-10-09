@@ -28,7 +28,6 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.undo.FontTarget;
 
@@ -73,21 +72,29 @@ final class BatchReplay {
     }
 
     /**
-     * Takes the entries of each change report that an edit delivers on the class's bus, in
-     * delivery order. The caller disposes it.
+     * Takes the change report of each notification that an edit delivers on the class's bus, in
+     * delivery order, empty reports included. The caller disposes it.
      */
     static final class ReportRecorder {
-        private final List<List<ReportedChange>> reports = new ArrayList<>();
+        private final List<ChangeReport> allReports = new ArrayList<>();
         private final MessageSubscription subscription = new MessageSubscription(this);
 
         @Handler
-        void changesWereReported(ChangesWereReportedNotification notification) {
-            reports.add(List.copyOf(notification.getReport().changes()));
+        void songDidChange(SongDidChangeNotification notification) {
+            allReports.add(notification.getReport());
         }
 
-        /** The entries of each report delivered since this recorder was made. */
+        /** The entries of each non-empty report delivered since this recorder was made. */
         List<List<ReportedChange>> reports() {
-            return reports;
+            return allReports.stream()
+                .filter(report -> !report.isEmpty())
+                .map(ChangeReport::changes)
+                .toList();
+        }
+
+        /** Every report delivered since this recorder was made, empty ones included. */
+        List<ChangeReport> allReports() {
+            return allReports;
         }
 
         void dispose() {

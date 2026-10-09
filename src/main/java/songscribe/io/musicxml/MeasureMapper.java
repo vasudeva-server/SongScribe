@@ -145,25 +145,25 @@ final class MeasureMapper {
     private enum Damage {
 
         /** A start mark that no stop mark pairs with. */
-        NO_END(Strings.DIALOG_REPORT_REASON_DAMAGED_NO_END),
+        NO_END(Strings.REPORT_REASON_DAMAGED_NO_END),
 
         /** A stop mark that no start mark pairs with. */
-        NO_START(Strings.DIALOG_REPORT_REASON_DAMAGED_NO_START),
+        NO_START(Strings.REPORT_REASON_DAMAGED_NO_START),
 
         /** A start and a stop on different lines, for a span one line must hold whole. */
-        LINE_BREAK(Strings.DIALOG_REPORT_REASON_DAMAGED_LINE_BREAK),
+        LINE_BREAK(Strings.REPORT_REASON_DAMAGED_LINE_BREAK),
 
         /** A {@code <wedge>} with no note after it to bind to. */
-        UNBOUND(Strings.DIALOG_REPORT_REASON_DAMAGED_UNBOUND),
+        UNBOUND(Strings.REPORT_REASON_DAMAGED_UNBOUND),
 
         /** A tie, beam or slide mark on an element that cannot carry it. */
-        WRONG_ELEMENT(Strings.DIALOG_REPORT_REASON_DAMAGED_WRONG_ELEMENT),
+        WRONG_ELEMENT(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT),
 
         /** A tuplet whose {@code <actual-notes>} no {@link TupletGrade} holds. */
-        TUPLET_NUMBER(Strings.DIALOG_REPORT_REASON_DAMAGED_TUPLET_NUMBER),
+        TUPLET_NUMBER(Strings.REPORT_REASON_DAMAGED_TUPLET_NUMBER),
 
         /** A tuplet that states a {@code <normal-type>} without a positive {@code <normal-notes>}. */
-        NORMAL_NOTES(Strings.DIALOG_REPORT_REASON_DAMAGED_NORMAL_NOTES);
+        NORMAL_NOTES(Strings.REPORT_REASON_DAMAGED_NORMAL_NOTES);
 
         /** The {@code Strings} key of the reason, whose value is plain text the user reads. */
         private final String reasonKey;
@@ -777,7 +777,7 @@ final class MeasureMapper {
                             // The writer states no horizontal offset for an ending.
                             pendingEndings.add(new PendingEnding(anchor, end, 0, open.yOffsetSs()));
                         } else {
-                            dropDamaged(Strings.DIALOG_REPORT_ENDINGS_REMOVED, Damage.NO_START, at(end));
+                            dropDamaged(Strings.REPORT_ENDINGS_REMOVED, Damage.NO_START, at(end));
                         }
 
                         open = null;
@@ -806,7 +806,7 @@ final class MeasureMapper {
      */
     private void dropOpenEnding(@Nullable OpenEnding open) {
         if (open != null) {
-            dropDamaged(Strings.DIALOG_REPORT_ENDINGS_REMOVED, Damage.NO_END, at(open.anchor()));
+            dropDamaged(Strings.REPORT_ENDINGS_REMOVED, Damage.NO_END, at(open.anchor()));
         }
     }
 
@@ -1140,7 +1140,7 @@ final class MeasureMapper {
         for (var site : sites) {
             if (site.line != line) {
                 dropUnboundWedges(pendingWedges);
-                dropDangling(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, open);
+                dropDangling(Strings.REPORT_HAIRPINS_REMOVED, open);
                 open = null;
                 line = site.line;
             }
@@ -1168,7 +1168,7 @@ final class MeasureMapper {
         }
 
         dropUnboundWedges(pendingWedges);
-        dropDangling(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, open);
+        dropDangling(Strings.REPORT_HAIRPINS_REMOVED, open);
     }
 
     /**
@@ -1178,7 +1178,7 @@ final class MeasureMapper {
      */
     private void dropUnboundWedges(List<Wedge> wedges) {
         for (var _ : wedges) {
-            dropDamaged(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, Damage.UNBOUND, null);
+            dropDamaged(Strings.REPORT_HAIRPINS_REMOVED, Damage.UNBOUND, null);
         }
 
         wedges.clear();
@@ -1220,7 +1220,7 @@ final class MeasureMapper {
 
             // Only one hairpin is ever open, so a second start finds no stop of its own.
             if (start != null || (open != null && !hasStop)) {
-                dropDamaged(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, Damage.NO_END, at(noteSite.element()));
+                dropDamaged(Strings.REPORT_HAIRPINS_REMOVED, Damage.NO_END, at(noteSite.element()));
                 continue;
             }
 
@@ -1247,7 +1247,7 @@ final class MeasureMapper {
         }
 
         if (open == null) {
-            dropDamaged(Strings.DIALOG_REPORT_HAIRPINS_REMOVED, Damage.NO_START, at(noteSite.element()));
+            dropDamaged(Strings.REPORT_HAIRPINS_REMOVED, Damage.NO_START, at(noteSite.element()));
             return null;
         }
 
@@ -1292,26 +1292,26 @@ final class MeasureMapper {
 
             if (MusicXmlTags.SLIDE_STOP.equals(slideType)) {
                 if (open == null) {
-                    dropOrphanStop(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, note);
+                    dropOrphanStop(Strings.REPORT_GLISSANDOS_REMOVED, note);
                     continue;
                 }
 
                 var glissando = markedNote(open.opener());
 
                 if (glissando == null || markedNote(note) == null) {
-                    dropDamaged(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, Damage.WRONG_ELEMENT, through(open, note));
+                    dropDamaged(Strings.REPORT_GLISSANDOS_REMOVED, Damage.WRONG_ELEMENT, through(open, note));
                 } else {
                     glissando.setSlide(Slide.GLISSANDO);
                 }
 
                 open = null;
             } else if (MusicXmlTags.SLIDE_START.equals(slideType)) {
-                dropDangling(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, open);
+                dropDangling(Strings.REPORT_GLISSANDOS_REMOVED, open);
                 open = new OpenSlide(note);
             }
         }
 
-        dropDangling(Strings.DIALOG_REPORT_GLISSANDOS_REMOVED, open);
+        dropDangling(Strings.REPORT_GLISSANDOS_REMOVED, open);
     }
 
     /**
@@ -1327,11 +1327,11 @@ final class MeasureMapper {
             var beamType = NoteMapper.primaryBeamType(note.pmNote());
 
             if (MusicXmlTags.BEAM_BEGIN.equals(beamType)) {
-                dropDangling(Strings.DIALOG_REPORT_BEAMS_REMOVED, open);
+                dropDangling(Strings.REPORT_BEAMS_REMOVED, open);
                 open = new OpenBeam(note);
             } else if (MusicXmlTags.BEAM_END.equals(beamType)) {
                 if (open == null) {
-                    dropOrphanStop(Strings.DIALOG_REPORT_BEAMS_REMOVED, note);
+                    dropOrphanStop(Strings.REPORT_BEAMS_REMOVED, note);
                 } else {
                     closeBeam(open, note);
                     open = null;
@@ -1340,7 +1340,7 @@ final class MeasureMapper {
             // BEAM_CONTINUE keeps the run open — no action.
         }
 
-        dropDangling(Strings.DIALOG_REPORT_BEAMS_REMOVED, open);
+        dropDangling(Strings.REPORT_BEAMS_REMOVED, open);
     }
 
     /**
@@ -1354,14 +1354,14 @@ final class MeasureMapper {
      * @effects adds the beam to {@code end}'s line, or adds one entry to the reader's entries
      */
     private void closeBeam(OpenBeam open, NoteSite end) {
-        if (!pairsOnOneLine(Strings.DIALOG_REPORT_BEAMS_REMOVED, open, end)) {
+        if (!pairsOnOneLine(Strings.REPORT_BEAMS_REMOVED, open, end)) {
             return;
         }
 
         var begin = open.opener();
 
         if (markedNote(begin) == null || markedNote(end) == null) {
-            dropDamaged(Strings.DIALOG_REPORT_BEAMS_REMOVED, Damage.WRONG_ELEMENT, through(open, end));
+            dropDamaged(Strings.REPORT_BEAMS_REMOVED, Damage.WRONG_ELEMENT, through(open, end));
             return;
         }
 
@@ -1389,7 +1389,7 @@ final class MeasureMapper {
             var anchor = markedNote(note);
 
             if (anchor == null || !Tie.canAnchor(anchor)) {
-                dropDamaged(Strings.DIALOG_REPORT_TIES_REMOVED, Damage.WRONG_ELEMENT, at(note.element()));
+                dropDamaged(Strings.REPORT_TIES_REMOVED, Damage.WRONG_ELEMENT, at(note.element()));
                 continue;
             }
 
@@ -1423,7 +1423,7 @@ final class MeasureMapper {
             var marker = NoteMapper.tupletMarker(note.pmNote());
 
             if (marker.start()) {
-                dropDangling(Strings.DIALOG_REPORT_TUPLETS_REMOVED, open);
+                dropDangling(Strings.REPORT_TUPLETS_REMOVED, open);
                 open = new OpenTuplet(note, marker);
             }
 
@@ -1432,7 +1432,7 @@ final class MeasureMapper {
             }
 
             if (open == null) {
-                dropOrphanStop(Strings.DIALOG_REPORT_TUPLETS_REMOVED, note);
+                dropOrphanStop(Strings.REPORT_TUPLETS_REMOVED, note);
                 continue;
             }
 
@@ -1440,7 +1440,7 @@ final class MeasureMapper {
             open = null;
         }
 
-        dropDangling(Strings.DIALOG_REPORT_TUPLETS_REMOVED, open);
+        dropDangling(Strings.REPORT_TUPLETS_REMOVED, open);
     }
 
     /**
@@ -1452,7 +1452,7 @@ final class MeasureMapper {
      * @effects adds one pending tuplet, or one entry to the reader's entries
      */
     private void buildTuplet(OpenTuplet open, NoteSite end) {
-        if (!pairsOnOneLine(Strings.DIALOG_REPORT_TUPLETS_REMOVED, open, end)) {
+        if (!pairsOnOneLine(Strings.REPORT_TUPLETS_REMOVED, open, end)) {
             return;
         }
 
@@ -1466,7 +1466,7 @@ final class MeasureMapper {
             // SongScribe writes <normal-notes> beside every <normal-type> that states a ratio, so
             // a stated ratio without a positive count is damaged.
             if (normalNotes <= 0) {
-                dropDamaged(Strings.DIALOG_REPORT_TUPLETS_REMOVED, Damage.NORMAL_NOTES, through(open, end));
+                dropDamaged(Strings.REPORT_TUPLETS_REMOVED, Damage.NORMAL_NOTES, through(open, end));
                 return;
             }
 
@@ -1476,7 +1476,7 @@ final class MeasureMapper {
         var grade = TupletGrade.of(marker.actualNotes());
 
         if (grade == null) {
-            dropDamaged(Strings.DIALOG_REPORT_TUPLETS_REMOVED, Damage.TUPLET_NUMBER, through(open, end));
+            dropDamaged(Strings.REPORT_TUPLETS_REMOVED, Damage.TUPLET_NUMBER, through(open, end));
             return;
         }
 
@@ -1510,7 +1510,7 @@ final class MeasureMapper {
             var marker = NoteMapper.trillMarker(note.pmNote());
 
             if (marker.start()) {
-                dropDangling(Strings.DIALOG_REPORT_TRILLS_REMOVED, open);
+                dropDangling(Strings.REPORT_TRILLS_REMOVED, open);
                 open = new OpenTrill(note, marker.yOffsetSs());
             }
 
@@ -1519,11 +1519,11 @@ final class MeasureMapper {
             }
 
             if (open == null) {
-                dropOrphanStop(Strings.DIALOG_REPORT_TRILLS_REMOVED, note);
+                dropOrphanStop(Strings.REPORT_TRILLS_REMOVED, note);
                 continue;
             }
 
-            if (pairsOnOneLine(Strings.DIALOG_REPORT_TRILLS_REMOVED, open, note)) {
+            if (pairsOnOneLine(Strings.REPORT_TRILLS_REMOVED, open, note)) {
                 var anchor = open.opener().element();
                 var element = note.element();
                 var trill = anchor == element ? new Trill(anchor) : new Trill(anchor, element);
@@ -1538,7 +1538,7 @@ final class MeasureMapper {
             open = null;
         }
 
-        dropDangling(Strings.DIALOG_REPORT_TRILLS_REMOVED, open);
+        dropDangling(Strings.REPORT_TRILLS_REMOVED, open);
     }
 
     // -------------------------------------------------------------------------

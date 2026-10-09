@@ -25,9 +25,12 @@ import songscribe.dom.Song;
 import songscribe.message.Message;
 
 /**
- * Posted when a document is loaded (File &gt; Open, File &gt; New).
- * Subscribers that need to perform a full reset in response to a new document
+ * Posted when a document is installed as the one being edited: File &gt; Open, File &gt; New and
+ * Revert to Saved. Subscribers that need to perform a full reset in response to a new document
  * should handle this notification via a dedicated {@code @Handler} method.
+ *
+ * <p>Carries the report of what the load changed in the song on its own
+ * ({@link #getReport()}), which is empty for File &gt; New, since no file was read.
  */
 public class DocumentDidLoadNotification extends Message {
 
@@ -52,11 +55,15 @@ public class DocumentDidLoadNotification extends Message {
     }
 
     private final Song song;
-    private final LoadChange loadChange;
+    private final ChangeReport report;
 
-    public DocumentDidLoadNotification(Song song, LoadChange loadChange) {
+    /**
+     * @param report what the load changed in the song on its own; {@link ChangeReport#EMPTY}
+     *               for a song no file holds yet
+     */
+    public DocumentDidLoadNotification(Song song, ChangeReport report) {
         this.song = song;
-        this.loadChange = loadChange;
+        this.report = report;
     }
 
     public Song getSong() {
@@ -64,11 +71,22 @@ public class DocumentDidLoadNotification extends Message {
     }
 
     /**
+     * Returns the changes the load made to the song on its own, for the user to be told about.
+     *
+     * @return the load's report; empty when the song is what its file holds, and for File &gt;
+     *     New
+     */
+    public ChangeReport getReport() {
+        return report;
+    }
+
+    /**
      * Returns whether the load changed the song.
      *
-     * @return {@link LoadChange#CHANGED} when the song differs from the file it was read from
+     * @return {@link LoadChange#CHANGED} when the song differs from the file it was read from,
+     *     as {@link LoadChange#of} decides it from {@link #getReport()}
      */
     public LoadChange getLoadChange() {
-        return loadChange;
+        return LoadChange.of(report);
     }
 }

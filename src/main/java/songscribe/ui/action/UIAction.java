@@ -804,7 +804,7 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     private boolean enableFromDialogVisibility() {
-        return !hasFlag(Flag.OPENS_DIALOG) || !BaseDialog.isAnyBlockingDialogVisible();
+        return !hasFlag(Flag.OPENS_DIALOG) || !BaseDialog.isAnyDialogVisible();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

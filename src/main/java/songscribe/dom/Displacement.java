@@ -39,7 +39,7 @@ enum Displacement {
 
     /**
      * Removes every same-kind span overlapping the new one before it is added, and reports each
-     * removal with {@link songscribe.Strings#DIALOG_REPORT_REASON_REPLACED}.
+     * removal with {@link songscribe.Strings#REPORT_REASON_REPLACED}.
      */
     REPLACE_OVERLAPPING,
 

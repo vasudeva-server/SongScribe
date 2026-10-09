@@ -83,7 +83,6 @@ import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
@@ -109,8 +108,6 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.clipboard.FragmentPaste;
 import songscribe.ui.component.score.MainPanel;
-import songscribe.ui.dialog.ReportDialog;
-import songscribe.ui.dialog.ReportDialogController;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.InsertionPointMode;
@@ -375,20 +372,6 @@ public final class ScoreViewController {
     public void handleToggleTuplet(ToggleTupletCommand message) {
         operations.toggleTuplet(message.getGrade());
         score.selectionChanged();
-    }
-
-    /**
-     * Shows what an edit changed in the song beyond what the user asked for. The song posts
-     * one report per edit, so the dialog appears once however many changes it lists.
-     * <p>
-     * Delivery is synchronous and the report is posted from inside the closing modification
-     * bracket, so the modal dialog is deferred: shown here, it would hold the rest of the edit
-     * until the user dismissed it.
-     */
-    @Handler
-    public void changesWereReported(ChangesWereReportedNotification message) {
-        var report = message.getReport();
-        SwingUtilities.invokeLater(() -> ReportDialogController.show(ReportDialog.Occasion.EDIT, report));
     }
 
     @Handler

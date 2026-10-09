@@ -137,7 +137,7 @@ class TupletTest extends UnitTest {
             assertThat(fixture.line().spanRegistry().findSpans(Tuplet.class)).isEmpty();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_TUPLETS_REMOVED);
+                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_TUPLETS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });
@@ -209,7 +209,7 @@ class TupletTest extends UnitTest {
 
     /** The removal of a tuplet that an edit to the notes fixture unbalances. */
     private static RemovalCase interiorRemoval(String description, Supplier<Fixture> fixture, Consumer<Line> edit) {
-        return new RemovalCase(description, fixture, edit, Strings.DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED);
+        return new RemovalCase(description, fixture, edit, Strings.REPORT_REASON_TUPLET_INTERIOR_CHANGED);
     }
 
     /** The removal of the notes fixture's tuplet by a fermata written on the element at {@code index}. */
@@ -217,7 +217,7 @@ class TupletTest extends UnitTest {
         return new RemovalCase(description, TupletTest::notesFixture,
             line -> line.modifyElement(index, ElementField.FERMATA,
                 () -> FermataAttachment.addFermata(line.getElement(index))),
-            Strings.DIALOG_REPORT_REASON_FERMATA);
+            Strings.REPORT_REASON_FERMATA);
     }
 
     /**
@@ -231,8 +231,8 @@ class TupletTest extends UnitTest {
      */
     private static @Nullable String modificationReasonKey(ElementField field) {
         return switch (field) {
-            case FERMATA -> Strings.DIALOG_REPORT_REASON_FERMATA;
-            case DOT_COUNT -> Strings.DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED;
+            case FERMATA -> Strings.REPORT_REASON_FERMATA;
+            case DOT_COUNT -> Strings.REPORT_REASON_TUPLET_INTERIOR_CHANGED;
             case SLIDE, PITCH, TRILL, STEM, ACCIDENTAL, ARTICULATION, DYNAMIC_ATTACHMENT,
                  TEMPO_CHANGE, BEAT_CHANGE, ANNOTATION, LYRIC, KEY -> null;
         };

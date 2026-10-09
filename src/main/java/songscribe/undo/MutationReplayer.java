@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
@@ -105,8 +106,9 @@ public final class MutationReplayer {
      * @param fonts     the holder of that song's document fonts
      * @param mutations the whole batch of one edit, whose effect is the song's most recent
      *                  unreplayed change
+     * @param report    the report the posted notification carries
      * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
-     *     that {@link Song#replay} posts, carrying the inverse changes
+     *     that {@link Song#replay} posts, carrying the inverse changes and {@code report}
      * @throws RuntimeException if a record cannot be applied — an index it names no longer
      *                          exists, or an element it names is gone. This means the batch
      *                          was replayed out of turn, incompletely, or against the wrong
@@ -114,8 +116,8 @@ public final class MutationReplayer {
      *                          caller is expected to treat it as an engine bug rather than a
      *                          recoverable error.
      */
-    public static void undoBatch(Song song, FontTarget fonts, List<Mutation> mutations) {
-        song.replay(() -> {
+    public static void undoBatch(Song song, FontTarget fonts, List<Mutation> mutations, ChangeReport report) {
+        song.replay(report, () -> {
             for (var i = mutations.size() - 1; i >= 0; i--) {
                 applyUndo(song, fonts, mutations.get(i));
             }
@@ -134,12 +136,13 @@ public final class MutationReplayer {
      * @param fonts     the holder of that song's document fonts
      * @param mutations the whole batch of one edit, whose effect is the song's next
      *                  unreplayed change
+     * @param report    the report the posted notification carries
      * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
-     *     that {@link Song#replay} posts, carrying the re-applied changes
+     *     that {@link Song#replay} posts, carrying the re-applied changes and {@code report}
      * @throws RuntimeException under the conditions given for {@link #undoBatch}
      */
-    public static void redoBatch(Song song, FontTarget fonts, List<Mutation> mutations) {
-        song.replay(() -> {
+    public static void redoBatch(Song song, FontTarget fonts, List<Mutation> mutations, ChangeReport report) {
+        song.replay(report, () -> {
             for (var mutation : mutations) {
                 applyRedo(song, fonts, mutation);
             }

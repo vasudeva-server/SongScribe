@@ -60,12 +60,12 @@ public record ParsedSong(
      * that sounds the same. One entry stands for every conversion in the file, and a reader adds
      * it after every other entry it makes.
      *
-     * @return the entry under {@link Strings#DIALOG_REPORT_ACCIDENTALS_CONVERTED}, with no location
+     * @return the entry under {@link Strings#REPORT_ACCIDENTALS_CONVERTED}, with no location
      */
     public static ReportedChange accidentalsConvertedEntry() {
         return new ReportedChange(
-            Strings.DIALOG_REPORT_ACCIDENTALS_CONVERTED,
-            Strings.get(Strings.DIALOG_REPORT_ACCIDENTALS_DETAIL),
+            Strings.REPORT_ACCIDENTALS_CONVERTED,
+            Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
             null);
     }
 

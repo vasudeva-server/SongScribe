@@ -30,9 +30,8 @@ import org.jspecify.annotations.Nullable;
  * {@link #headingKey} and shows each one's {@link #description} at its {@link #where}; it never
  * interprets a change.
  *
- * @param headingKey  a {@code Strings} key whose value is a MessageFormat pattern taking, as
- *                    {@code {0}}, the number of entries in the report that share this key; it
- *                    names the kind of change, such as "ties were removed"
+ * @param headingKey  a {@code Strings} key whose value is plain text naming the kind of change
+ *                    for this one entry, such as "A tie was removed"
  * @param description finished user-facing text saying why this change was made
  * @param where       the elements the change was made at, or {@code null} for a change with no
  *                    location in the song, such as the accidental conversion at load

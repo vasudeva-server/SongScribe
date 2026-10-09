@@ -379,10 +379,10 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
          * The {@code Strings} key of the reason the span is reported with: the one a deletion
          * that takes a span's endpoint gives.
          *
-         * @return {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED}
+         * @return {@link Strings#REPORT_REASON_ENDPOINT_DELETED}
          */
         public String reasonKey() {
-            return Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED;
+            return Strings.REPORT_REASON_ENDPOINT_DELETED;
         }
     }
 }

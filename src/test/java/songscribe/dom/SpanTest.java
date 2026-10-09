@@ -128,7 +128,7 @@ class SpanTest extends UnitTest {
 
             assertThat(crescendoRanges(line)).as("the edit removes the crescendo it ends").containsExactly(EXISTING);
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, editBatch);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, editBatch, ChangeReport.EMPTY);
 
             var replayBatch = recorder.batches().getLast();
 
@@ -137,7 +137,7 @@ class SpanTest extends UnitTest {
                 .containsExactlyInAnyOrder(EXISTING, LAST_CRESCENDO_LEFT);
             assertThat(replayBatch).as("the replay records no removal").noneMatch(SpanRemoval.class::isInstance);
 
-            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, editBatch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, editBatch, ChangeReport.EMPTY);
 
             assertThat(crescendoRanges(line)).containsExactly(EXISTING);
         } finally {
@@ -164,14 +164,14 @@ class SpanTest extends UnitTest {
             assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
             assertThat(line.spanRegistry().getSpans()).isEmpty();
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
 
             assertThat(line.effectiveElements())
                 .as("undo puts every deleted element back where it stood")
                 .containsExactlyElementsOf(elements);
             assertThat(line.spanRegistry().getSpans()).containsExactly(crescendo);
 
-            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
 
             assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
             assertThat(line.spanRegistry().getSpans()).isEmpty();

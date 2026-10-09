@@ -29,15 +29,15 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.undo.UndoController;
 
 /**
  * The mutation-recording state machine of a {@link Song} — the depth counters that decide
  * whether a change is recorded, replayed, suspended or guard-bypassed, and what the edit in
- * flight accumulates: its batch and the report of the changes it made on its own, both
- * delivered when the outermost bracket closes ({@link #deliver}).
+ * flight accumulates: its batch and the report of the changes it made on its own, delivered
+ * together on one {@link SongDidChangeNotification} when the outermost bracket closes
+ * ({@link #deliver}).
  *
  * <p>Four independent modes, each depth-counted so nesting is safe:
  * <ul>
@@ -46,7 +46,8 @@ import songscribe.undo.UndoController;
  *       closes.</li>
  *   <li><b>Suspension</b> ({@link #withoutMutationTracking}) — records nothing at all.</li>
  *   <li><b>Replay</b> ({@link #replay}) — mutations are still recorded, but companion
- *       side-work is suppressed because the batch already carries it.</li>
+ *       side-work is suppressed because the batch already carries it, and the edit's report
+ *       is the one the replay is given.</li>
  *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the terminal policy is
  *       bypassed for internally-driven mutations.</li>
  * </ul>
@@ -59,8 +60,8 @@ public final class ModificationSession {
 
     private final Song song;
 
-    // Modification bracket depth counter. Mutations are accumulated while > 0 and
-    // flushed as a single SongDidChangeNotification when depth returns to 0.
+    // Modification bracket depth counter. Mutations and reported changes are accumulated
+    // while > 0 and flushed as a single SongDidChangeNotification when depth returns to 0.
     private int modificationDepth = 0;
 
     // Suspension depth counter. While > 0, mutations apply but nothing is recorded:
@@ -103,10 +104,12 @@ public final class ModificationSession {
         // Mutable: each removal a modification rule records is appended while the rules run.
         private final List<Mutation> batch = new ArrayList<>();
 
-        private final ChangeReport report = new ChangeReport();
+        // Starts empty for an edit, and from the report of the edit being redone for a replay.
+        private final ChangeReport.Builder report;
 
-        OpenEdit(@Nullable String opName) {
+        OpenEdit(@Nullable String opName, ChangeReport seed) {
             this.opName = opName;
+            this.report = new ChangeReport.Builder(seed);
         }
     }
 
@@ -208,10 +211,11 @@ public final class ModificationSession {
      * {@code body} applying the batch's records. The contract, and why the order is what it
      * is, are on {@link Song#replay}.
      *
-     * @param body applies the records of one recorded batch
+     * @param report the report the replay's edit delivers, when its bracket is the outermost one
+     * @param body   applies the records of one recorded batch
      */
-    public void replay(Runnable body) {
-        withReplay(() -> withModification(body));
+    public void replay(ChangeReport report, Runnable body) {
+        withReplay(() -> inBracket(null, report, asSupplier(body)));
     }
 
     /**
@@ -239,19 +243,23 @@ public final class ModificationSession {
 
     /**
      * Opens a modification bracket, declaring {@code explicitLabel} as the op-name
-     * (Tier B) if this is the outermost bracket. Mutations accumulate while the bracket
-     * is open; the notification fires only when the outermost bracket closes.
+     * (Tier B) and {@code seed} as the start of the edit's report if this is the outermost
+     * bracket. Mutations accumulate while the bracket is open; the notification fires only
+     * when the outermost bracket closes.
      *
-     * <p>The op-name is captured only at the depth 0→1 transition, resolving as
-     * {@code explicitLabel != null ? explicitLabel : pendingOpName}. A nested labeled
-     * bracket inside an already-open bracket never re-captures.
+     * <p>The op-name and the seed are captured only at the depth 0→1 transition, the op-name
+     * resolving as {@code explicitLabel != null ? explicitLabel : pendingOpName}. A nested
+     * bracket inside an already-open bracket never re-captures either.
+     *
+     * @param seed the entries the edit's report starts from: {@link ChangeReport#EMPTY} for an
+     *             edit, the report of the edit being redone for a replay
      */
-    private void beginModification(@Nullable String explicitLabel) {
+    private void beginModification(@Nullable String explicitLabel, ChangeReport seed) {
         if (modificationDepth == 0) {
             // UndoController holds the Tier-A pending op-name, set by the UIAction
             // template around synchronous action dispatch (see UIAction.actionPerformed);
             // explicitLabel is the Tier-B name from the labeled withModification overload.
-            openEdit = new OpenEdit(explicitLabel != null ? explicitLabel : UndoController.getPendingOpName());
+            openEdit = new OpenEdit(explicitLabel != null ? explicitLabel : UndoController.getPendingOpName(), seed);
         }
 
         modificationDepth++;
@@ -306,27 +314,32 @@ public final class ModificationSession {
     }
 
     /**
-     * The close of the outermost bracket, and the one place an edit is delivered: when
-     * {@code edit}'s batch is not empty, marks the song modified and posts one
-     * {@link SongDidChangeNotification} carrying it; then, when its report is not empty, posts
-     * one {@link ChangesWereReportedNotification} carrying that. The report follows the batch
-     * because this is the only point that knows the whole edit is over, and the score is laid
-     * out again by then. Runs even when the body or a rule throws, so no batch or report
-     * outlives its bracket.
+     * The close of the outermost bracket, and the one place an edit is delivered.
+     *
+     * <p>Every reporter records a change into the report in the same edit in which it records
+     * the mutation that makes the change, so a non-empty report never comes with an empty batch,
+     * and the report needs no notification of its own: it travels with the batch. This is the
+     * only point that knows the whole edit is over, so the report is built here, complete.
+     *
+     * <p>Runs even when the body or a rule throws, so no batch or report outlives its bracket.
+     *
+     * @param edit the edit the outermost bracket accumulated, already dropped from the session
+     * @effects when {@code edit}'s batch is not empty, marks the song modified and posts one
+     *     {@link SongDidChangeNotification} carrying the batch, the op-name and the built report,
+     *     which is empty when the edit changed nothing on its own; when the batch is empty, posts
+     *     nothing and leaves the modified flag as it is
      */
     private void deliver(OpenEdit edit) {
-        if (!edit.batch.isEmpty()) {
-            song.setModified(true);
-            // Wrap-and-transfer ownership: the notification constructor stores the list
-            // directly, and the edit holding the only other reference has been dropped, so
-            // wrapping once here spares the notification a defensive copy.
-            var mutations = Collections.unmodifiableList(edit.batch);
-            MessageCenter.post(new SongDidChangeNotification(mutations, song, edit.opName));
+        if (edit.batch.isEmpty()) {
+            return;
         }
 
-        if (!edit.report.isEmpty()) {
-            MessageCenter.post(new ChangesWereReportedNotification(edit.report));
-        }
+        song.setModified(true);
+        // Wrap-and-transfer ownership: the notification constructor stores the list
+        // directly, and the edit holding the only other reference has been dropped, so
+        // wrapping once here spares the notification a defensive copy.
+        var mutations = Collections.unmodifiableList(edit.batch);
+        MessageCenter.post(new SongDidChangeNotification(mutations, song, edit.report.build(), edit.opName));
     }
 
     /**
@@ -361,7 +374,7 @@ public final class ModificationSession {
      * half-applied edit.
      */
     public void withModification(Runnable body) {
-        inBracket(null, asSupplier(body));
+        inBracket(null, ChangeReport.EMPTY, asSupplier(body));
     }
 
     /**
@@ -371,7 +384,7 @@ public final class ModificationSession {
      * inside an open one never replaces the op-name the outermost bracket captured.
      */
     public void withModification(String label, Runnable body) {
-        inBracket(label, asSupplier(body));
+        inBracket(label, ChangeReport.EMPTY, asSupplier(body));
     }
 
     /**
@@ -382,17 +395,19 @@ public final class ModificationSession {
      * @return Whatever {@code body} returns
      */
     public <T> T withModificationResult(Supplier<T> body) {
-        return inBracket(null, body);
+        return inBracket(null, ChangeReport.EMPTY, body);
     }
 
     /**
-     * Runs {@code body} inside a modification bracket opened with {@code explicitLabel}. The
-     * bracket closes through {@link #endModification} when {@code body} returns, and through
-     * {@link #closeBracket} when it throws, so a half-applied edit is never judged by the
-     * modification rules and no rule can replace the body's exception with one of its own.
+     * Runs {@code body} inside a modification bracket opened with {@code explicitLabel} and
+     * {@code seed} ({@link #beginModification}). The bracket closes through
+     * {@link #endModification} when {@code body} returns, and through {@link #closeBracket} when
+     * it throws, so a half-applied edit is never judged by the modification rules and no rule
+     * can replace the body's exception with one of its own.
      */
-    private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, Supplier<T> body) {
-        beginModification(explicitLabel);
+    private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, ChangeReport seed,
+                                                     Supplier<T> body) {
+        beginModification(explicitLabel, seed);
         T result;
 
         try {
@@ -464,7 +479,7 @@ public final class ModificationSession {
 
     /**
      * Records {@code change} into the report of the edit in flight, which {@link #deliver}
-     * posts.
+     * posts with the edit's batch.
      * <p>
      * Records nothing while mutation tracking is suspended, where no bracket is required.
      *

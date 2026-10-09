@@ -47,7 +47,7 @@ final class ModificationRules {
      *               records into the same report
      * @effects whatever each rule's {@link ModificationRule#apply} does
      */
-    void apply(Song song, List<Mutation> batch, ChangeReport report) {
+    void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {
         for (var rule : rules) {
             rule.apply(song, batch, report);
         }

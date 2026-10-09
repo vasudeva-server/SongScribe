@@ -37,7 +37,7 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
     /** The heading a removed trill is reported under. */
-    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_TRILLS_REMOVED;
+    private static final String REPORT_HEADING_KEY = Strings.REPORT_TRILLS_REMOVED;
 
     static {
         var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.ORNAMENT_TRILL);

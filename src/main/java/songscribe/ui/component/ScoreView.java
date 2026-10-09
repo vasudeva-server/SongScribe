@@ -55,6 +55,7 @@ import songscribe.Strings;
 import songscribe.binding.Bindings;
 import songscribe.binding.ObservableValue;
 import songscribe.binding.ValueProperty;
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
@@ -96,8 +97,6 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.OverlayHost;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.ScorePanel;
-import songscribe.ui.dialog.ReportDialog;
-import songscribe.ui.dialog.ReportDialogController;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.platform.mac.PinchZoomGesture;
@@ -105,7 +104,7 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.undo.FontTarget;
+import songscribe.undo.ReplayTarget;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
@@ -137,12 +136,12 @@ public final class ScoreView
     implements
     ComponentHierarchyProvider,
     DocumentFontsHolder,
-    FontTarget,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
     LineLayoutProvider,
     OverlayHost,
     RenderContext,
+    ReplayTarget,
     ScoreActions {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
@@ -349,7 +348,9 @@ public final class ScoreView
     private void initScorePanel() {
         scorePanel = new ScorePanel(this);
         scrollPane = new JScrollPane(scorePanel);
-        scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
+        // Only the line below the toolbar: the status bar draws the line above itself, because
+        // the Messages panel can sit between the score and the status bar.
+        scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 0, 0, "ToolBar.separatorColor"));
         updateScoreSurroundBackground();
     }
 
@@ -458,17 +459,7 @@ public final class ScoreView
                 // attachments (tempo, etc.) once layout reruns with the doc font.
                 installDocumentFonts(success.fonts());
 
-                var report = success.report();
-                // A change made on load must prompt the user to save the changed version; the
-                // undo engine marks the song modified from this.
-                setSong(success.song(), DocumentDidLoadNotification.LoadChange.of(report));
-
-                if (!report.isEmpty()) {
-                    // Deferred so the rest of the open, which follows, is not held until
-                    // the user dismisses the modal dialog.
-                    SwingUtilities.invokeLater(
-                        () -> ReportDialogController.show(ReportDialog.Occasion.LOAD, report));
-                }
+                setSong(success.song(), success.report());
 
                 if (onFileOpened != null) {
                     onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
@@ -888,13 +879,14 @@ public final class ScoreView
      * Installs {@code song} as the document this view edits, replacing and disposing the
      * outgoing one.
      *
-     * @param song       the document to install
-     * @param loadChange whether loading {@code song} changed it from its file; once the view is
-     *                   initialized it travels on the {@link DocumentDidLoadNotification}, from
-     *                   which the undo engine decides whether the song starts out modified
+     * @param song   the document to install
+     * @param report what loading {@code song} changed in it on its own, {@link ChangeReport#EMPTY}
+     *               for a song no file holds; once the view is initialized it travels on the
+     *               {@link DocumentDidLoadNotification}, from which the undo engine decides
+     *               whether the song starts out modified and the user is told what changed
      * @effects posts {@link DocumentDidLoadNotification} once the view is initialized
      */
-    public void setSong(Song song, DocumentDidLoadNotification.LoadChange loadChange) {
+    public void setSong(Song song, ChangeReport report) {
         // MBassador holds Song subscribers by weak reference, so the outgoing Song
         // keeps handling broadcast commands — spawning spurious undo steps against
         // the dead document — until GC clears it. Detach it deterministically here.
@@ -951,7 +943,7 @@ public final class ScoreView
         // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
         // that the song has been fully replaced. This must happen after all
         // ScoreView state is consistent.
-        MessageCenter.post(new DocumentDidLoadNotification(song, loadChange));
+        MessageCenter.post(new DocumentDidLoadNotification(song, report));
 
         // Reset scroll position to top-left for the new/opened song
         if (scrollPane != null) {

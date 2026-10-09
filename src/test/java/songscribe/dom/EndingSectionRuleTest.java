@@ -143,8 +143,8 @@ class EndingSectionRuleTest extends UnitTest {
             if (testCase.reportedAt() != null) {
                 assertThat(endingsAfter).isEmpty();
                 assertThat(reports.reports()).singleElement().isEqualTo(List.of(new ReportedChange(
-                    Strings.DIALOG_REPORT_ENDINGS_REMOVED,
-                    Strings.get(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION),
+                    Strings.REPORT_ENDINGS_REMOVED,
+                    Strings.get(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION),
                     testCase.reportedAt())));
             } else {
                 assertThat(endingsAfter).singleElement().isSameAs(fixture.ending());
@@ -202,13 +202,13 @@ class EndingSectionRuleTest extends UnitTest {
                 .as("the fixture reaches the case only if the edit removes the ending")
                 .isEmpty();
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
 
             assertThat(line.getElement(OPENER_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT);
             assertThat(line.spanRegistry().findEndings()).singleElement()
                 .satisfies(restored -> assertThat(restored.range()).isEqualTo(range));
 
-            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
 
             assertThat(line.spanRegistry().findEndings()).isEmpty();
         } finally {

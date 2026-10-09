@@ -20,10 +20,8 @@
 
 package songscribe.dom;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import net.engio.mbassy.listener.Handler;
 import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
@@ -31,9 +29,6 @@ import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.message.MessageSubscription;
-import songscribe.message.notification.ChangesWereReportedNotification;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,9 +42,10 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
 
 /**
  * How an edit's {@link ChangeReport} reaches the bus: one edit delivers one
- * {@code ChangesWereReportedNotification} that holds the removal every kind of source made —
- * the span funnel, a displacement, and a rule that runs when the bracket closes — and an undo,
- * a redo and an edit under suspended tracking deliver none.
+ * {@code SongDidChangeNotification} whose report holds the removal every kind of source made —
+ * the span funnel, a displacement, and a rule that runs when the bracket closes — an edit that
+ * changes nothing on its own delivers an empty report, and a replay delivers the report it is
+ * given.
  *
  * <p>The edit is {@link #makeEveryKindOfRemoval}, on a line of quavers that holds a trill whose end
  * the edit deletes, a trill another trill replaces, and an ending whose opening repeat the edit
@@ -115,54 +111,31 @@ class ChangeReportDeliveryTest extends UnitTest {
     }
 
     @Test
-    void testTheReportArrivesAfterTheSongNotification() {
-        var song = fixtureSong();
-        var order = new DeliveryOrder();
+    void testAnEditThatChangesNothingOnItsOwnDeliversAnEmptyReport() {
+        var song = songOfQuavers(LINE_LENGTH);
 
-        try {
-            song.withModification(() -> makeEveryKindOfRemoval(song));
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> song.getLine(FIRST_LINE).removeRange(ElementRange.single(DELETED_INDEX)));
 
-            assertThat(order.delivered())
-                .containsExactly(SongDidChangeNotification.class, ChangesWereReportedNotification.class);
-        } finally {
-            order.dispose();
-        }
+            assertThat(reports.allReports()).singleElement().satisfies(report -> assertThat(report.isEmpty()).isTrue());
+        });
     }
 
-    /** Takes the song notification and the report notification an edit delivers, in arrival order. */
-    static final class DeliveryOrder {
-        private final List<Class<?>> delivered = new ArrayList<>();
-        private final MessageSubscription subscription = new MessageSubscription(this);
-
-        @Handler
-        void songDidChange(SongDidChangeNotification notification) {
-            delivered.add(SongDidChangeNotification.class);
-        }
-
-        @Handler
-        void changesWereReported(ChangesWereReportedNotification notification) {
-            delivered.add(ChangesWereReportedNotification.class);
-        }
-
-        List<Class<?>> delivered() {
-            return delivered;
-        }
-
-        void dispose() {
-            subscription.dispose();
-        }
-    }
-
+    /**
+     * The changes in the order {@link #makeEveryKindOfRemoval} records them: the displacement
+     * and the funnel record while the edit runs, in the order the edit makes them, and the rule
+     * records last, when the bracket closes.
+     */
     private static void assertHoldsEveryRemoval(List<ReportedChange> entries) {
         assertThat(entries)
             .extracting(ReportedChange::headingKey, ReportedChange::description)
-            .containsExactlyInAnyOrder(
-                tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
-                    Strings.get(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED)),
-                tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
-                    Strings.get(Strings.DIALOG_REPORT_REASON_REPLACED)),
-                tuple(Strings.DIALOG_REPORT_ENDINGS_REMOVED,
-                    Strings.get(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION)));
+            .containsExactly(
+                tuple(Strings.REPORT_TRILLS_REMOVED,
+                    Strings.get(Strings.REPORT_REASON_REPLACED)),
+                tuple(Strings.REPORT_TRILLS_REMOVED,
+                    Strings.get(Strings.REPORT_REASON_ENDPOINT_DELETED)),
+                tuple(Strings.REPORT_ENDINGS_REMOVED,
+                    Strings.get(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION)));
     }
 
     @Test
@@ -178,8 +151,8 @@ class ChangeReportDeliveryTest extends UnitTest {
 
                 var batch = batches.batches().getFirst();
 
-                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
-                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
+                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
+                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
 
                 assertThat(reports.reports()).as("only the edit's report, none from the replays").hasSize(1);
             });

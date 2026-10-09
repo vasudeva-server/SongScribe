@@ -181,7 +181,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * @effects posts one {@link SpanRemoval} per displaced span, then a {@link SpanAddition} for
      *     this span, through the line's song, and appends this span to the registry; under
      *     {@link Displacement#REPLACE_OVERLAPPING}, each displaced span is also reported, through
-     *     {@link #removeReported} with {@link Strings#DIALOG_REPORT_REASON_REPLACED}; what is
+     *     {@link #removeReported} with {@link Strings#REPORT_REASON_REPLACED}; what is
      *     recorded, and what is thrown outside a bracket, is {@link Song#applyChange}'s promise
      * @throws IllegalStateException under the conditions {@link #line} throws
      */
@@ -260,7 +260,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * <p>
      * The default is the rule every kind shares and the whole of {@link Trill}'s:
      * a deletion that takes an endpoint ({@link #isEndpointDeletedBy}) removes the span, for the
-     * reason {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED}, and every other change keeps
+     * reason {@link Strings#REPORT_REASON_ENDPOINT_DELETED}, and every other change keeps
      * it.
      * <p>
      * This is the one question the sweep asks every span kind, and {@link SpanOutcome} holds its
@@ -276,7 +276,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     public SpanOutcome outcomeFor(ElementChange change) {
         return outcomeWhen(
             change instanceof ElementChange.Deletion deletion && isEndpointDeletedBy(deletion),
-            Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
+            Strings.REPORT_REASON_ENDPOINT_DELETED);
     }
 
     /**

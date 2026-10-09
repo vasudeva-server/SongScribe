@@ -101,7 +101,7 @@ class HairpinLoadPassTest extends UnitTest {
 
         assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
         assertThat(report.changes()).containsExactly(new ReportedChange(
-            Strings.DIALOG_REPORT_HAIRPINS_REMOVED,
+            Strings.REPORT_HAIRPINS_REMOVED,
             Strings.get(testCase.refusalKey()),
             ElementLocationRange.onLine(LINE, SPAN)));
     }
@@ -109,7 +109,7 @@ class HairpinLoadPassTest extends UnitTest {
     static Stream<DroppedCase> droppedCases() {
         return Stream.of(
             new DroppedCase("a hairpin that ends on a rest is dropped",
-                PITCH + " " + PITCH + " R", Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE)
+                PITCH + " " + PITCH + " R", Strings.REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE)
         );
     }
 
@@ -127,8 +127,8 @@ class HairpinLoadPassTest extends UnitTest {
             assertThat(hairpin.range()).isEqualTo(SPAN);
         });
         assertThat(report.changes()).containsExactly(new ReportedChange(
-            Strings.DIALOG_REPORT_HAIRPINS_REMOVED,
-            Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP),
+            Strings.REPORT_HAIRPINS_REMOVED,
+            Strings.get(Strings.REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP),
             ElementLocationRange.onLine(LINE, OVERLAPPING_SPAN)));
     }
 

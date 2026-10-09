@@ -63,18 +63,18 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 class EndingTest extends UnitTest {
 
     private static final Spanning.Refused<Ending> NOT_VALID = refusal(
-        Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.RANGE);
     private static final Spanning.Refused<Ending> OVERLAPS_ENDING = refusal(
-        Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
+        Strings.REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
     private static final Spanning.Refused<Ending> NO_OPEN_SECTION = refusal(
-        Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
     private static final Spanning.Refused<Ending> SPLIT_NOT_RIGHT_REPEAT = refusal(
-        Strings.DIALOG_REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT, Spanning.Cause.RANGE);
     private static final Spanning.Refused<Ending> BAR_AFTER_END = refusal(
-        Strings.DIALOG_REPORT_REASON_ENDING_BAR_AFTER_END, Spanning.Cause.RANGE);
+        Strings.REPORT_REASON_ENDING_BAR_AFTER_END, Spanning.Cause.RANGE);
 
     private static Spanning.Refused<Ending> refusal(String reasonKey, Spanning.Cause cause) {
-        return new Spanning.Refused<>(reasonKey, cause, Strings.DIALOG_REPORT_ENDINGS_REMOVED);
+        return new Spanning.Refused<>(reasonKey, cause, Strings.REPORT_ENDINGS_REMOVED);
     }
 
     /** What an ending may end on, besides a note or a rest: the bars that end a section. */
@@ -496,7 +496,7 @@ class EndingTest extends UnitTest {
             assertThat(line.spanRegistry().getSpans()).doesNotContain(ending);
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_ENDINGS_REMOVED);
+                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_ENDINGS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });
@@ -581,62 +581,62 @@ class EndingTest extends UnitTest {
             new RemoveCase("deleting the anchor removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.removeRange(ElementRange.single(NOTE_A_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED),
+                Strings.REPORT_REASON_ENDPOINT_DELETED),
 
             new RemoveCase("deleting the end removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.removeRange(ElementRange.single(END_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED),
+                Strings.REPORT_REASON_ENDPOINT_DELETED),
 
             new RemoveCase("deleting the split removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.removeRange(ElementRange.single(SPLIT_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("deleting the second bracket's only content removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.removeRange(ElementRange.single(NOTE_Y_INDEX)),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("inserting a bar at the end's index removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.addElement(END_INDEX, singleBarline()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("replacing a bracket's content note with a bar removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.setElement(NOTE_X_INDEX, singleBarline()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("replacing a SINGLE_BARLINE anchor with a DOUBLE_BARLINE removes the ending",
                 () -> barAnchoredEnding(singleBarline()),
                 line -> line.setElement(NOTE_A_INDEX, doubleBarline()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("replacing the anchor that is the first bracket's only content with a bar removes the ending",
                 EndingTest::soleContentAnchorFixture,
                 line -> line.setElement(NOTE_A_INDEX, singleBarline()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("inserting a REPEAT_RIGHT in front of a note anchor removes the ending",
                 EndingTest::noteAnchorFixture,
                 line -> line.addElement(NOTE_A_INDEX, repeatRight()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("replacing the note in front of a note anchor with a DOUBLE_BARLINE removes the ending",
                 () -> frontedFixture(crotchet(), crotchet()),
                 line -> line.setElement(FRONTED_ANCHOR_INDEX - 1, doubleBarline()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("deleting the only note between a REPEAT_LEFT and a note anchor removes the ending",
                 () -> frontedFixture(crotchet(), repeatLeft(), crotchet()),
                 line -> line.removeRange(ElementRange.single(TWICE_FRONTED_ANCHOR_INDEX - 1)),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("replacing a SINGLE_BARLINE anchor after a REPEAT_LEFT_RIGHT with a note removes the ending",
                 () -> frontedFixture(singleBarline(), repeatLeftRight()),
                 line -> line.setElement(FRONTED_ANCHOR_INDEX, crotchet()),
-                Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID)
+                Strings.REPORT_REASON_ENDING_NOT_VALID)
         );
     }
 }

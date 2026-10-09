@@ -45,6 +45,9 @@ public class ScorePanel extends JPanel implements Scrollable {
     /** Cached from the LAF in {@link #updateUI}, avoiding a property lookup on every layout pass. */
     private int minHorizontalPaddingPx;
 
+    /** Cached from the LAF in {@link #updateUI}, avoiding a property lookup on every layout pass. */
+    private int minVerticalPaddingPx;
+
     public ScorePanel(Component content) {
         this.content = content;
         setLayout(new GridBagLayout());
@@ -59,6 +62,7 @@ public class ScorePanel extends JPanel implements Scrollable {
 
         setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND));
         minHorizontalPaddingPx = FlatLafProps.getInt(FlatLafKey.SCORE_PANEL_MIN_HORIZONTAL_PADDING);
+        minVerticalPaddingPx = FlatLafProps.getInt(FlatLafKey.SCORE_PANEL_MIN_VERTICAL_PADDING);
     }
 
     @Override
@@ -67,7 +71,11 @@ public class ScorePanel extends JPanel implements Scrollable {
         var parentSize = getParent().getSize();
         var minWidth = contentSize.width + 2 * minHorizontalPaddingPx;
         var width = Math.max(minWidth, parentSize.width);
-        return new Dimension(width, contentSize.height);
+
+        // Not stretched to the viewport height as the width is: the layout centers the content,
+        // and a page shorter than the viewport stays at its top.
+        var height = contentSize.height + 2 * minVerticalPaddingPx;
+        return new Dimension(width, height);
     }
 
     @Override

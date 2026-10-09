@@ -188,6 +188,14 @@ public final class Actions {
     public static ZoomAction ZOOM_OUT_ACTION;
     public static List<ZoomLevelAction> ZOOM_LEVEL_ACTIONS;
 
+    //
+    // Window actions
+    //
+    public static MinimizeWindowAction MINIMIZE_WINDOW_ACTION;
+    public static ZoomWindowAction ZOOM_WINDOW_ACTION;
+    public static FocusScoreAction FOCUS_SCORE_ACTION;
+    public static ToggleMessagesAction TOGGLE_MESSAGES_ACTION;
+
     /**
      * Initializes all action constants using {@code mainFrame} as the owner.
      *
@@ -204,7 +212,7 @@ public final class Actions {
         // class cannot register the handler before the constants it dereferences exist.
         new ResetHandler();
 
-        UndoController.initialize();
+        UndoController.initialize(mainFrame::getScoreView);
 
         //
         // Mode actions
@@ -355,6 +363,11 @@ public final class Actions {
         ZOOM_IN_ACTION = ZoomAction.createZoomInAction(mainFrame);
         ZOOM_OUT_ACTION = ZoomAction.createZoomOutAction(mainFrame);
         ZOOM_LEVEL_ACTIONS = ZoomLevelAction.createActions(mainFrame);
+
+        MINIMIZE_WINDOW_ACTION = MinimizeWindowAction.createAction(mainFrame);
+        ZOOM_WINDOW_ACTION = ZoomWindowAction.createAction(mainFrame);
+        FOCUS_SCORE_ACTION = FocusScoreAction.createAction(mainFrame);
+        TOGGLE_MESSAGES_ACTION = ToggleMessagesAction.createAction(mainFrame);
 
         // Cmd+Shift+= is a secondary accelerator for zoom-in (alongside Cmd+=), matching
         // the common "=" / "+" key ambiguity across keyboard layouts.

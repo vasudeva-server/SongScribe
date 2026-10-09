@@ -7,6 +7,8 @@
   "instrument": 0,
   "lastSeenWhatsNewVersion": "",
   "loopPlayback": false,
+  "messagesPanelHeight": 200,
+  "messagesPanelVisible": false,
   "pageSize": "letter",
   "playInsertedNote": true,
   "playSelectedNote": true,

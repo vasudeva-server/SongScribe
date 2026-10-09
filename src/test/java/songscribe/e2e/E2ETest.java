@@ -73,6 +73,7 @@ import org.junit.jupiter.api.extension.TestWatcher;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.engraving.Staff;
@@ -184,7 +185,7 @@ public abstract class E2ETest {
 
         GuiActionRunner.execute(() -> {
             var song = new Song();
-            scoreView().setSong(song, DocumentDidLoadNotification.LoadChange.UNCHANGED);
+            scoreView().setSong(song, ChangeReport.EMPTY);
             scoreView().installDocumentFonts(DocumentFonts.defaultFonts());
         });
     }
@@ -852,7 +853,7 @@ public abstract class E2ETest {
     protected void loadFixture(String fixtureName) throws UnexpectedException {
         var song = GuiActionRunner.execute(() -> {
             var result = UnitTest.loadFixtureResult(fixtureName);
-            scoreView().setSong(result.song(), DocumentDidLoadNotification.LoadChange.of(result.report()));
+            scoreView().setSong(result.song(), result.report());
             scoreView().installDocumentFonts(result.fonts());
             return result.song();
         });

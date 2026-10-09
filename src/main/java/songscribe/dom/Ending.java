@@ -57,7 +57,7 @@ import songscribe.error.RuntimeError;
  * @invariant exactly one bar stands strictly inside the range: the split, where the two
  *            brackets part, and it is a {@link ElementType#REPEAT_RIGHT}; a
  *            {@link ElementType#REPEAT_LEFT_RIGHT} there is refused with
- *            {@link Strings#DIALOG_REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT}
+ *            {@link Strings#REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT}
  * @invariant the end is a note, a rest, a {@link ElementType#SINGLE_BARLINE}, a
  *            {@link ElementType#DOUBLE_BARLINE}, a {@link ElementType#FINAL_DOUBLE_BARLINE} or a
  *            {@link ElementType#REPEAT_LEFT}
@@ -73,7 +73,7 @@ import songscribe.error.RuntimeError;
 public final class Ending extends Span<StaffElement> {
 
     /** The heading a removed or refused ending is reported under. */
-    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_ENDINGS_REMOVED;
+    private static final String REPORT_HEADING_KEY = Strings.REPORT_ENDINGS_REMOVED;
 
     /**
      * Creates an ending bracket over two elements the caller has already checked span a
@@ -109,10 +109,10 @@ public final class Ending extends Span<StaffElement> {
      *     nothing; or
      *     {@link Spanning.Refused} with {@link Spanning.Cause#RANGE} and the reason
      *     {@link #illFormedReason} answers when the range is ill formed; with
-     *     {@link Spanning.Cause#OTHER_SPAN} and {@link Strings#DIALOG_REPORT_REASON_ENDING_NOT_VALID}
+     *     {@link Spanning.Cause#OTHER_SPAN} and {@link Strings#REPORT_REASON_ENDING_NOT_VALID}
      *     when it overlaps an ending already on {@code line}; or with {@link Spanning.Cause#RANGE}
-     *     and {@link Strings#DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION} when its split closes no
-     *     open repeat section. Every refusal carries {@link Strings#DIALOG_REPORT_ENDINGS_REMOVED}
+     *     and {@link Strings#REPORT_REASON_ENDING_NO_OPEN_SECTION} when its split closes no
+     *     open repeat section. Every refusal carries {@link Strings#REPORT_ENDINGS_REMOVED}
      *     as its heading.
      * @throws IllegalStateException if the range is well formed and overlaps no ending, and
      *     {@code line} is not one of its song's lines
@@ -126,11 +126,11 @@ public final class Ending extends Span<StaffElement> {
         }
 
         if (line.spanRegistry().hasSpan(Ending.class, Span.overlapping(range))) {
-            return refused(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
+            return refused(Strings.REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
         }
 
         if (!closesOpenSection(line, requireSplitIndex(elements, range))) {
-            return refused(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
+            return refused(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
         }
 
         return new Spanning.Spanned<>(new Ending(elements.get(range.begin()), elements.get(range.end())), List.of());
@@ -165,10 +165,10 @@ public final class Ending extends Span<StaffElement> {
      * @param elements a line's elements, as they are or as a pending change projects them
      * @param span     the range the ending covers in {@code elements}
      * @return {@code null} when the ending is well formed;
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT} when its split is
-     *     not a {@link ElementType#REPEAT_RIGHT}; {@link Strings#DIALOG_REPORT_REASON_ENDING_BAR_AFTER_END}
+     *     {@link Strings#REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT} when its split is
+     *     not a {@link ElementType#REPEAT_RIGHT}; {@link Strings#REPORT_REASON_ENDING_BAR_AFTER_END}
      *     when a bar follows its end bar; otherwise, for every other broken rule,
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDING_NOT_VALID}
+     *     {@link Strings#REPORT_REASON_ENDING_NOT_VALID}
      */
     private static @Nullable String illFormedReason(List<StaffElement> elements, ElementRange span) {
         var anchorIndex = span.begin();
@@ -176,23 +176,23 @@ public final class Ending extends Span<StaffElement> {
         var anchorType = elements.get(anchorIndex).getType();
 
         if (!isAnchorType(anchorType) || !hasOpeningPredecessor(elements, anchorIndex)) {
-            return Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID;
+            return Strings.REPORT_REASON_ENDING_NOT_VALID;
         }
 
         var splitIndex = splitIndexOf(elements, span);
 
         if (splitIndex == null) {
-            return Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID;
+            return Strings.REPORT_REASON_ENDING_NOT_VALID;
         }
 
         if (elements.get(splitIndex).getType() != ElementType.REPEAT_RIGHT) {
-            return Strings.DIALOG_REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT;
+            return Strings.REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT;
         }
 
         var endType = elements.get(endIndex).getType();
 
         if (!isValidEnd(endType)) {
-            return Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID;
+            return Strings.REPORT_REASON_ENDING_NOT_VALID;
         }
 
         var first = firstBracketOf(elements, span, splitIndex);
@@ -201,11 +201,11 @@ public final class Ending extends Span<StaffElement> {
             && isWellFormedBracket(elements, first) && isWellFormedBracket(elements, second);
 
         if (!bracketsWellFormed) {
-            return Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID;
+            return Strings.REPORT_REASON_ENDING_NOT_VALID;
         }
 
         return barFollowsEndBar(elements, endIndex)
-            ? Strings.DIALOG_REPORT_REASON_ENDING_BAR_AFTER_END
+            ? Strings.REPORT_REASON_ENDING_BAR_AFTER_END
             : null;
     }
 
@@ -572,7 +572,7 @@ public final class Ending extends Span<StaffElement> {
      * {@link #illFormedReason} over the range between its endpoints' projected positions.
      *
      * @return {@code null} when the ending is well formed in the projection;
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} when an endpoint is not present
+     *     {@link Strings#REPORT_REASON_ENDPOINT_DELETED} when an endpoint is not present
      *     after the change; otherwise the reason {@link #illFormedReason} answers
      */
     private @Nullable String illFormedReasonAfter(ElementChange change) {
@@ -580,7 +580,7 @@ public final class Ending extends Span<StaffElement> {
         var endIndex = change.projectedEndpointIndexOf(getEndElement());
 
         if (anchorIndex == null || endIndex == null) {
-            return Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED;
+            return Strings.REPORT_REASON_ENDPOINT_DELETED;
         }
 
         return illFormedReason(change.projectedElements(), new ElementRange(anchorIndex, endIndex));

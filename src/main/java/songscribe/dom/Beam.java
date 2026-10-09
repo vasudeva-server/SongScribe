@@ -93,7 +93,7 @@ public final class Beam extends Span<NoteElement> {
     private static final int MIN_MEMBERS = 2;
 
     /** The heading a removed or refused beam is reported under. */
-    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_BEAMS_REMOVED;
+    private static final String REPORT_HEADING_KEY = Strings.REPORT_BEAMS_REMOVED;
 
     /** This beam's direction while a {@link DirectionHold} is open on it; null otherwise. */
     private @Nullable Direction heldDirection = null;
@@ -138,14 +138,14 @@ public final class Beam extends Span<NoteElement> {
      * @return {@link Spanning.Spanned} with a new beam over the widened range, anchored on its
      *     first element and ending on its last, and with every beam the widened range absorbs,
      *     empty when it absorbs none; or {@link Spanning.Refused} with
-     *     {@link Spanning.Cause#RANGE}, under {@link Strings#DIALOG_REPORT_BEAMS_REMOVED}, and
+     *     {@link Spanning.Cause#RANGE}, under {@link Strings#REPORT_BEAMS_REMOVED}, and
      *     <ul>
-     *       <li>{@link Strings#DIALOG_REPORT_REASON_BEAM_TOO_FEW_NOTES} when {@code range} holds
+     *       <li>{@link Strings#REPORT_REASON_BEAM_TOO_FEW_NOTES} when {@code range} holds
      *           fewer than {@value #MIN_MEMBERS} elements that are not grace notes;</li>
-     *       <li>{@link Strings#DIALOG_REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT} when an element
+     *       <li>{@link Strings#REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT} when an element
      *           from its first non-grace element to its last is neither beamable nor a grace
      *           note;</li>
-     *       <li>{@link Strings#DIALOG_REPORT_REASON_BEAM_TIED_NOTES} when the widened range holds
+     *       <li>{@link Strings#REPORT_REASON_BEAM_TIED_NOTES} when the widened range holds
      *           both notes of a tie ({@link Tie#bothNotesIn}).</li>
      *     </ul>
      *     The reasons are judged in that order.
@@ -154,14 +154,14 @@ public final class Beam extends Span<NoteElement> {
         var joined = line.nonGraceRange(range);
 
         if (joined == null || joined.size() < MIN_MEMBERS) {
-            return refused(Strings.DIALOG_REPORT_REASON_BEAM_TOO_FEW_NOTES);
+            return refused(Strings.REPORT_REASON_BEAM_TOO_FEW_NOTES);
         }
 
         for (var index = joined.begin(); index <= joined.end(); index++) {
             var type = line.getElement(index).getType();
 
             if (!type.isBeamable() && !type.isGraceNote()) {
-                return refused(Strings.DIALOG_REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT);
+                return refused(Strings.REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT);
             }
         }
 
@@ -171,7 +171,7 @@ public final class Beam extends Span<NoteElement> {
         var widened = absorption.range();
 
         if (holdsTiedPair(line, widened)) {
-            return refused(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES);
+            return refused(Strings.REPORT_REASON_BEAM_TIED_NOTES);
         }
 
         var absorbed = absorption.absorbedAs(Beam.class);
@@ -273,20 +273,20 @@ public final class Beam extends Span<NoteElement> {
      *
      * @param change the pending change, not yet applied to {@code change.line()}
      * @return a {@link SpanOutcome.Remove} whose reason is
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} for a deletion,
-     *     {@link Strings#DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE} for a replacement, or
-     *     {@link Strings#DIALOG_REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE} for an insertion,
+     *     {@link Strings#REPORT_REASON_ENDPOINT_DELETED} for a deletion,
+     *     {@link Strings#REPORT_REASON_BEAM_NOT_BEAMABLE} for a replacement, or
+     *     {@link Strings#REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE} for an insertion,
      *     when {@code change} invalidates the beam; otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
     public SpanOutcome outcomeFor(ElementChange change) {
         return switch (change) {
             case ElementChange.Deletion deletion -> outcomeWhen(
-                isEndpointDeletedBy(deletion), Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
+                isEndpointDeletedBy(deletion), Strings.REPORT_REASON_ENDPOINT_DELETED);
             case ElementChange.Replacement replacement -> outcomeWhen(
-                replacementBreaksInvariant(replacement), Strings.DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE);
+                replacementBreaksInvariant(replacement), Strings.REPORT_REASON_BEAM_NOT_BEAMABLE);
             case ElementChange.Insertion insertion -> outcomeWhen(
-                insertionBreaksInvariant(insertion), Strings.DIALOG_REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE);
+                insertionBreaksInvariant(insertion), Strings.REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE);
             case ElementChange.Modification _ -> SpanOutcome.Keep.INSTANCE;
         };
     }

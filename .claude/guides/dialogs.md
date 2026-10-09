@@ -63,7 +63,7 @@ strings or values this one is, where the JDK type alone would not.
 
 **`O` is not `Copyable`.** It is built by `gather()` from the controls, so there is nothing of the
 document's in it to alias. Its bound is `@Nullable Object`, so a dialog that gathers nothing names
-`@Nullable Void` and its `gather()` answers `null` — `ReportDialog` is the one such dialog.
+`@Nullable Void` and its `gather()` answers `null`.
 
 **Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. A bundle of references exposes exactly those calls and can never expose another.
 
@@ -178,18 +178,9 @@ A dialog that needs a different button row overrides the hook for it and returns
 
 Nothing here repaints the score. A commit that writes the document does so inside a modification bracket, and the bracket's `SongDidChangeNotification` is what re-lays out and repaints ([mutations](../../docs/mutations.md)).
 
-### DialogCategory (constructor arg, default OPERATIONAL)
+### The visible-dialog counter
 
-- `INFORMATIONAL` — never blocked (About, progress, suppressible messages).
-- `EXCLUSIVE` — modifies global state (Preferences, SongSettings).
-- `OPERATIONAL` — scoped state or task.
-
-Both EXCLUSIVE and OPERATIONAL are "blocking": a single counter means any blocking dialog blocks any other blocking-dialog action while visible (category doesn't pair them off). `OptionDialogs` doesn't participate. Actions opening blocking dialogs must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT auto-set it).
-
-Category precedent (pick by analogy):
-- INFORMATIONAL — `ReportDialog`. It is for a window that reports and never edits, so blocking it would hide the report. `ReportDialog` is a `StandardDialog` with its Cancel removed, whose output type is `@Nullable Void` and whose controller answers `dataWasModified` with `false`, so OK only dismisses it.
-- EXCLUSIVE — `PreferencesDialog`, `SongSettingsDialog`
-- OPERATIONAL — the default; everything else
+Every visible `BaseDialog` is counted. An action with `UIAction.Flag.OPENS_DIALOG` is disabled while `BaseDialog.isAnyDialogVisible()` is true. `OptionDialogs` does not take part in the count. An action that opens a `BaseDialog` must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT set it).
 
 ### Deliberate non-`BaseDialog` windows
 

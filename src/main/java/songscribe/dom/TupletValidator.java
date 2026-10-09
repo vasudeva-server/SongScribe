@@ -146,17 +146,17 @@ public final class TupletValidator {
         /** The {@code Strings} key of the text that tells the user why the tuplet failed. */
         private String messageKey() {
             return switch (this) {
-                case EMPTY_SPAN -> Strings.DIALOG_REPORT_REASON_EMPTY_SPAN;
-                case NOT_DIVISIBLE -> Strings.DIALOG_REPORT_REASON_NOT_DIVISIBLE;
-                case SHARE_NOT_NOTATABLE -> Strings.DIALOG_REPORT_REASON_NOT_NOTATABLE;
-                case STATED_VALUE_MISMATCH -> Strings.DIALOG_REPORT_REASON_STATED_VALUE_MISMATCH;
-                case NUMBER_EQUALS_NORMAL_NOTES -> Strings.DIALOG_REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES;
-                case NO_CONVENTIONAL_SPAN -> Strings.DIALOG_REPORT_REASON_NO_CONVENTIONAL_SPAN;
-                case POWER_OF_TWO_RATIO -> Strings.DIALOG_REPORT_REASON_POWER_OF_TWO;
-                case FERMATA -> Strings.DIALOG_REPORT_REASON_FERMATA;
-                case BEAT_BARRIER -> Strings.DIALOG_REPORT_REASON_BEAT_BARRIER;
-                case BAR_OR_BREATH_MARK -> Strings.DIALOG_REPORT_REASON_TUPLET_BAR_OR_BREATH_MARK;
-                case TOO_FEW_NOTES -> Strings.DIALOG_REPORT_REASON_TOO_FEW_NOTES;
+                case EMPTY_SPAN -> Strings.REPORT_REASON_EMPTY_SPAN;
+                case NOT_DIVISIBLE -> Strings.REPORT_REASON_NOT_DIVISIBLE;
+                case SHARE_NOT_NOTATABLE -> Strings.REPORT_REASON_NOT_NOTATABLE;
+                case STATED_VALUE_MISMATCH -> Strings.REPORT_REASON_STATED_VALUE_MISMATCH;
+                case NUMBER_EQUALS_NORMAL_NOTES -> Strings.REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES;
+                case NO_CONVENTIONAL_SPAN -> Strings.REPORT_REASON_NO_CONVENTIONAL_SPAN;
+                case POWER_OF_TWO_RATIO -> Strings.REPORT_REASON_POWER_OF_TWO;
+                case FERMATA -> Strings.REPORT_REASON_FERMATA;
+                case BEAT_BARRIER -> Strings.REPORT_REASON_BEAT_BARRIER;
+                case BAR_OR_BREATH_MARK -> Strings.REPORT_REASON_TUPLET_BAR_OR_BREATH_MARK;
+                case TOO_FEW_NOTES -> Strings.REPORT_REASON_TOO_FEW_NOTES;
             };
         }
     }

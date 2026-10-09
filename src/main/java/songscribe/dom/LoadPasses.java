@@ -54,7 +54,7 @@ final class LoadPasses {
      * @param parsed what the reader handed over
      * @param report the load's report
      */
-    record LoadRun(ParsedSong parsed, ChangeReport report) {
+    record LoadRun(ParsedSong parsed, ChangeReport.Builder report) {
 
         Song song() {
             return parsed.song();
@@ -77,7 +77,7 @@ final class LoadPasses {
          * @param pending the pending spans of this kind the reader found in {@code song}
          * @param report  the load's report
          */
-        void run(Song song, List<P> pending, ChangeReport report);
+        void run(Song song, List<P> pending, ChangeReport.Builder report);
     }
 
     // List order is execution order; the class comment states why it is this one.
@@ -103,11 +103,11 @@ final class LoadPasses {
      * @effects as {@link ParsedSong#settle()} states them
      */
     static ChangeReport run(ParsedSong parsed) {
-        var run = new LoadRun(parsed, new ChangeReport());
+        var run = new LoadRun(parsed, new ChangeReport.Builder());
 
         run.song().withoutMutationTracking(() -> LoadStage.runAll(STAGES, run));
 
-        return run.report();
+        return run.report().build();
     }
 
     /** The stage that runs {@code pass} over the pending spans {@code input} selects. */

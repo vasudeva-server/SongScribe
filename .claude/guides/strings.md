@@ -22,6 +22,7 @@ Each key is validated against `[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*`; an invalid ke
 | `confirm.*` | `showConfirmDialog`, `showOptionDialog` | `confirm.title.<topic>` |
 | `input.*` | `showInputDialog` | `input.title.<topic>` |
 | `dialog.*` | `BaseDialog` / `StandardDialog` windows only | `dialog.<topic>.title` |
+| `report.*` | The change report: its headings, reasons, locations, and the Messages panel's title and empty-list text | — |
 
 `alert` / `confirm` / `input` carry only a title plus a message, so `title` sits second:
 
@@ -77,5 +78,5 @@ Always pass a generated `Strings.*` constant, never a raw string literal.
 ### Adding and removing keys
 
 - **Before adding**, search `strings.properties` for an existing key — duplicates like `button.cancel` vs `dialog.button.cancel` already exist; don't add more.
-- **After adding**, reference the constant — as the literal text `Strings.<CONSTANT>` — somewhere under `src/` in the same change. The build's dead-key audit greps for that exact pattern and fails otherwise. Passing the key through a variable is fine as long as the constant appears literally somewhere (see `ReportedChange`, whose heading key reaches `ReportDialog` as a value). Exempt prefixes, allowed to be unreferenced: `test.`, `month.`.
+- **After adding**, reference the constant — as the literal text `Strings.<CONSTANT>` — somewhere under `src/` in the same change. The build's dead-key audit greps for that exact pattern and fails otherwise. Passing the key through a variable is fine as long as the constant appears literally somewhere (see `ReportedChange`, whose heading key reaches `ReportPanel` as a value). Exempt prefixes, allowed to be unreferenced: `test.`, `month.`.
 - **After removing** code that used `Strings.*` constants, delete the corresponding keys. `./scripts/compile.sh` fails with the list of dead keys if you forget.

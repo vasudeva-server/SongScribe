@@ -78,13 +78,13 @@ final class SpanLoadPass {
      * @log WARN one line for each pending span dropped, naming its kind's heading, its line, its
      *     range and the reason
      */
-    static void run(Song song, List<? extends PendingSpan<?>> pendingSpans, ChangeReport report) {
+    static void run(Song song, List<? extends PendingSpan<?>> pendingSpans, ChangeReport.Builder report) {
         for (var pending : pendingSpans) {
             place(song, pending, report);
         }
     }
 
-    private static <S extends Span<?>> void place(Song song, PendingSpan<S> pending, ChangeReport report) {
+    private static <S extends Span<?>> void place(Song song, PendingSpan<S> pending, ChangeReport.Builder report) {
         var anchor = pending.anchor();
         var line = anchor.getParentLine();
         var lineIndex = line == null ? null : song.indexOfLine(line);

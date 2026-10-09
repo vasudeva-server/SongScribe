@@ -1313,17 +1313,19 @@ public final class Song implements Disposable {
      * judging the song a second time. The modification rules run when an edit closes, unless
      * the song is replaying then; because the edit closes while replay mode is still in force,
      * no rule runs over the replayed batch, which already carries every removal the rules made
-     * when it was first recorded. For the same reason nothing is reported: the removals the
-     * batch re-applies were reported when they were made.
+     * when it was first recorded. For the same reason nothing in the replay records into its
+     * report: the report the replay posts is the one its caller passes, so a redo can show again
+     * what the edit it re-applies reported, and an undo can show that it reported nothing.
      *
-     * @param body applies the records of one recorded batch, in the order the replay requires
+     * @param report the report the posted notification carries
+     * @param body   applies the records of one recorded batch, in the order the replay requires
      * @effects posts one {@link SongDidChangeNotification} carrying the changes {@code body}
-     *     made, when it made any, and never a
-     *     {@link songscribe.message.notification.ChangesWereReportedNotification}; the edit
-     *     closes and replay mode ends whether {@code body} returns or throws
+     *     made and {@code report}, when {@code body} made any change, and nothing otherwise; no
+     *     modification rule runs; the edit closes and replay mode ends whether {@code body}
+     *     returns or throws
      */
-    public void replay(Runnable body) {
-        modifications.replay(body);
+    public void replay(ChangeReport report, Runnable body) {
+        modifications.replay(report, body);
     }
 
     /**

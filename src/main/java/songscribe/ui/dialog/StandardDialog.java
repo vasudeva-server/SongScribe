@@ -100,11 +100,7 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
     private boolean buttonPanelAttached = false;
 
     protected StandardDialog(MainFrame mainFrame, String title, DialogOps<? extends I, ? super O> ops) {
-        this(mainFrame, title, ops, DialogCategory.OPERATIONAL);
-    }
-
-    protected StandardDialog(MainFrame mainFrame, String title, DialogOps<? extends I, ? super O> ops, DialogCategory category) {
-        super(mainFrame, title, Modality.MODAL, category);
+        super(mainFrame, title, Modality.MODAL);
         this.ops = ops;
 
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));

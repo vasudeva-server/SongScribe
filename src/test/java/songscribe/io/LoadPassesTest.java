@@ -120,28 +120,28 @@ class LoadPassesTest extends UnitTest {
 
         assertThat(report.changes()).containsExactly(
             new ReportedChange(
-                Strings.DIALOG_REPORT_TUPLETS_UPDATED,
-                Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, grade.number(), TRIPLET_NORMAL_NOTES),
+                Strings.REPORT_TUPLETS_UPDATED,
+                Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), TRIPLET_NORMAL_NOTES),
                 locationOf(DERIVED_TUPLET)),
             new ReportedChange(
-                Strings.DIALOG_REPORT_TUPLETS_REMOVED,
-                Strings.get(Strings.DIALOG_REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES),
+                Strings.REPORT_TUPLETS_REMOVED,
+                Strings.get(Strings.REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES),
                 locationOf(DROPPED_TUPLET)),
             new ReportedChange(
-                Strings.DIALOG_REPORT_ENDINGS_REMOVED,
-                Strings.get(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
+                Strings.REPORT_ENDINGS_REMOVED,
+                Strings.get(Strings.REPORT_REASON_ENDING_NOT_VALID),
                 locationOf(DROPPED_ENDING)),
             new ReportedChange(
-                Strings.DIALOG_REPORT_HAIRPINS_REMOVED,
-                Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE),
+                Strings.REPORT_HAIRPINS_REMOVED,
+                Strings.get(Strings.REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE),
                 locationOf(DROPPED_HAIRPIN)),
             new ReportedChange(
-                Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
-                Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),
+                Strings.REPORT_BREATH_MARKS_REMOVED,
+                Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
                 ElementLocationRange.single(new ElementLocation(LINE_INDEX, BREATH_MARK_INDEX))),
             new ReportedChange(
-                Strings.DIALOG_REPORT_ACCIDENTALS_CONVERTED,
-                Strings.get(Strings.DIALOG_REPORT_ACCIDENTALS_DETAIL),
+                Strings.REPORT_ACCIDENTALS_CONVERTED,
+                Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
                 null));
     }
 

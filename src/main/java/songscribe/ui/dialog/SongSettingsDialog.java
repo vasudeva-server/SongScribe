@@ -79,7 +79,7 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
      * @param ops       what this dialog may ask of the document, supplied by whoever opened it
      */
     public SongSettingsDialog(MainFrame mainFrame, DialogOps<SongSettingsInput, SongSettingsOutput> ops) {
-        super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), ops, DialogCategory.EXCLUSIVE);
+        super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), ops);
 
         var tabbedContent = createTabbedContent();
         addTab(textTab);

@@ -43,8 +43,7 @@ import songscribe.ui.component.NonBlankTextField;
  * they move on. See the validity section of {@code .claude/guides/dialogs.md}.
  *
  * <p><strong>It opens while another modal dialog is already up</strong>, which is the ordinary case
- * rather than the exception: the combo it serves lives inside a dialog. That needs no
- * {@link DialogCategory} override — it is {@code OPERATIONAL}, the default.
+ * rather than the exception: the combo it serves lives inside a dialog.
  */
 final class OtherValueDialog extends StandardDialog<OtherValue, String> {
 

@@ -48,7 +48,7 @@ public final class Tuplet extends Span<StaffElement> {
     private final TupletNormalTime ratio;
 
     /** The heading a removed or refused tuplet is reported under. */
-    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_TUPLETS_REMOVED;
+    private static final String REPORT_HEADING_KEY = Strings.REPORT_TUPLETS_REMOVED;
 
     /**
      * Creates a fully specified tuplet grouping: {@code grade} notes played in the time
@@ -115,7 +115,7 @@ public final class Tuplet extends Span<StaffElement> {
      * @return {@link Spanning.Spanned} with a new tuplet of {@code grade} over
      *     {@code site.range()}, anchored on its first element and ending on its last, with the
      *     derived ratio, absorbing nothing; or {@link Spanning.Refused} with
-     *     {@link Spanning.Cause#RANGE}, under {@link Strings#DIALOG_REPORT_TUPLETS_REMOVED}, and
+     *     {@link Spanning.Cause#RANGE}, under {@link Strings#REPORT_TUPLETS_REMOVED}, and
      *     the reason of the first check {@link TupletValidator#validate} fails, in the order it
      *     states
      */
@@ -141,7 +141,7 @@ public final class Tuplet extends Span<StaffElement> {
      * @return {@link Spanning.Spanned} with a new tuplet of {@code grade} over
      *     {@code site.range()}, anchored on its first element and ending on its last, with
      *     {@code stated} as its ratio, absorbing nothing; or {@link Spanning.Refused} with
-     *     {@link Spanning.Cause#RANGE}, under {@link Strings#DIALOG_REPORT_TUPLETS_REMOVED}, and
+     *     {@link Spanning.Cause#RANGE}, under {@link Strings#REPORT_TUPLETS_REMOVED}, and
      *     the reason of the first check {@link TupletValidator#validateStated} fails, in the
      *     order it states
      */
@@ -234,8 +234,8 @@ public final class Tuplet extends Span<StaffElement> {
      *
      * @param change the pending change, not yet applied to {@code change.line()}
      * @return a {@link SpanOutcome.Remove} whose reason is
-     *     {@link Strings#DIALOG_REPORT_REASON_FERMATA} for a fermata written inside the group,
-     *     or {@link Strings#DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code change}
+     *     {@link Strings#REPORT_REASON_FERMATA} for a fermata written inside the group,
+     *     or {@link Strings#REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code change}
      *     otherwise invalidates it; otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
@@ -277,7 +277,7 @@ public final class Tuplet extends Span<StaffElement> {
         var fields = modification.fields();
 
         if (fields.contains(ElementField.FERMATA)) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_FERMATA);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_FERMATA);
         }
 
         return interiorChangedWhen(!Collections.disjoint(fields, ElementField.DURATION_AFFECTING));
@@ -289,11 +289,11 @@ public final class Tuplet extends Span<StaffElement> {
      *
      * @param invalidated whether the change unbalances the group
      * @return a {@link SpanOutcome.Remove} with
-     *     {@link Strings#DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code invalidated},
+     *     {@link Strings#REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code invalidated},
      *     otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     private static SpanOutcome interiorChangedWhen(boolean invalidated) {
-        return outcomeWhen(invalidated, Strings.DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED);
+        return outcomeWhen(invalidated, Strings.REPORT_REASON_TUPLET_INTERIOR_CHANGED);
     }
 
     @Override

@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.Message;
@@ -37,7 +38,9 @@ import songscribe.message.mutation.Mutation;
  * <p>The mutation list is never empty: a bracket that accumulated nothing posts no
  * notification at all, so a subscriber may read the first mutation without guarding. It
  * describes the whole edit — every state change the bracket made is in it, which is what
- * lets {@code UndoController} replay it as a unit; see {@code docs/mutations.md}.
+ * lets {@code UndoController} replay it as a unit; see {@code docs/mutations.md}. Beside it
+ * travels the edit's report ({@link #getReport()}), so a subscriber learns what the song
+ * changed on its own from the same notification that tells it the song changed.
  *
  * <p><strong>EDT only.</strong> The cached {@link #getLine()} result is read and written
  * without synchronization; subscribers must call it from the event-dispatch thread.
@@ -47,6 +50,7 @@ public class SongDidChangeNotification extends Message {
 
     private final List<Mutation> mutations;
     private final Song song;
+    private final ChangeReport report;
 
     // Op-name declared by the initiator of this edit (Tier A/B), or null when the
     // edit declared no name — UndoController then derives a type-based fallback label.
@@ -59,25 +63,20 @@ public class SongDidChangeNotification extends Message {
     private Line cachedLine;
 
     /**
-     * Constructs a notification with no declared op-name; delegates to the
-     * {@linkplain #SongDidChangeNotification(List, Song, String) three-arg constructor}.
-     */
-    public SongDidChangeNotification(List<Mutation> mutations, Song song) {
-        this(mutations, song, null);
-    }
-
-    /**
      * Constructs a notification that takes ownership of an already-immutable
      * mutation list. The caller must not retain or mutate the list after
      * construction — {@code ModificationSession}, when it closes the outermost modification
      * bracket, uses this to avoid defensively copying the accumulated list a second time.
      *
+     * @param report what the song changed on its own during this edit; see {@link #getReport()}
      * @param opName the declared op-name for this edit, or {@code null} to let
      *               {@code UndoController} derive a type-based fallback label
      */
-    public SongDidChangeNotification(List<Mutation> mutations, Song song, @Nullable String opName) {
+    public SongDidChangeNotification(List<Mutation> mutations, Song song, ChangeReport report,
+                                     @Nullable String opName) {
         this.mutations = mutations;
         this.song = song;
+        this.report = report;
         this.opName = opName;
     }
 
@@ -87,6 +86,16 @@ public class SongDidChangeNotification extends Message {
 
     public Song getSong() {
         return song;
+    }
+
+    /**
+     * The changes the song made on its own during this edit, for the user to be told about.
+     *
+     * @return the edit's report: empty when the song made no change on its own, and for an
+     *         undo; for a redo, the report of the edit the redo applies again
+     */
+    public ChangeReport getReport() {
+        return report;
     }
 
     /**

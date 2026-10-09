@@ -65,7 +65,7 @@ final class BreathMarkLoadPass {
      *     each breath mark removed, at the index it stood at before removal
      * @log one {@code INFO} line stating how many breath marks were removed, when any were
      */
-    static void run(Song song, ChangeReport report) {
+    static void run(Song song, ChangeReport.Builder report) {
         var removedCount = removeUnhostedBreathMarks(song, report);
 
         if (removedCount > 0) {
@@ -78,7 +78,7 @@ final class BreathMarkLoadPass {
      * onto that index, so the walk stays at {@code i} to judge whatever moved into the slot
      * against the predecessor that is now settled.
      */
-    private static int removeUnhostedBreathMarks(Song song, ChangeReport report) {
+    private static int removeUnhostedBreathMarks(Song song, ChangeReport.Builder report) {
         var removedCount = 0;
 
         for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
@@ -90,8 +90,8 @@ final class BreathMarkLoadPass {
                     line.removeElement(i);
                     removedCount++;
                     report.record(new ReportedChange(
-                        Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
-                        Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),
+                        Strings.REPORT_BREATH_MARKS_REMOVED,
+                        Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
                         ElementLocationRange.single(new ElementLocation(lineIndex, i))));
                 } else {
                     i++;

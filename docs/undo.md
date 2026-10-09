@@ -48,7 +48,9 @@ first to last for redo — and close both. The nesting is what matters. The rule
 that judge an edit run when its bracket closes, unless the model is replaying
 then; because the bracket closes while replay mode is still in force, those
 rules never run over a replayed step, whose records already carry everything
-they removed when the edit was first made, and nothing is reported again. The
+they removed when the edit was first made. The change notification a replay
+delivers carries a report too: an undo carries an empty one, and a redo carries
+the report of the edit it applies again. The
 model owns that nesting, and the replayer owns the order of the records, so no
 caller writes the procedure out for itself.
 

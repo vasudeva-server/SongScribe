@@ -29,14 +29,11 @@ import java.awt.Graphics;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -57,17 +54,12 @@ import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import net.engio.mbassy.listener.Handler;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.lifecycle.Disposable;
 import songscribe.message.MessageCenter;
-import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
-import songscribe.message.notification.PrefsDidChangeNotification;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.binding.Bindings;
@@ -121,12 +113,11 @@ public abstract class BaseDialog implements Disposable {
         TOP,
     }
 
-    private static int visibleBlockingDialogCount = 0;
+    private static int visibleDialogCount = 0;
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;
     protected final Modality modality;
-    private final DialogCategory category;
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
     private final Bindings bindings = new Bindings();
@@ -260,41 +251,27 @@ public abstract class BaseDialog implements Disposable {
     }
 
     protected BaseDialog(MainFrame mainFrame, String title, Modality modality) {
-        this(mainFrame, title, modality, DialogCategory.OPERATIONAL);
-    }
-
-    protected BaseDialog(MainFrame mainFrame, String title, Modality modality, DialogCategory category) {
         this.mainFrame = mainFrame;
         dialogTitle = title;
         this.modality = modality;
-        this.category = category;
     }
 
-    public DialogCategory getCategory() {
-        return category;
+    public static boolean isAnyDialogVisible() {
+        return visibleDialogCount > 0;
     }
 
-    public static boolean isAnyBlockingDialogVisible() {
-        return visibleBlockingDialogCount > 0;
-    }
+    private static void incrementVisibleDialogCount() {
+        visibleDialogCount++;
 
-    static void resetVisibleBlockingDialogCount() {
-        visibleBlockingDialogCount = 0;
-    }
-
-
-    private static void incrementBlockingCount() {
-        visibleBlockingDialogCount++;
-
-        if (visibleBlockingDialogCount == 1) {
+        if (visibleDialogCount == 1) {
             MessageCenter.post(new DialogVisibilityDidChangeNotification(true));
         }
     }
 
-    private static void decrementBlockingCount() {
-        visibleBlockingDialogCount--;
+    private static void decrementVisibleDialogCount() {
+        visibleDialogCount--;
 
-        if (visibleBlockingDialogCount == 0) {
+        if (visibleDialogCount == 0) {
             MessageCenter.post(new DialogVisibilityDidChangeNotification(false));
         }
     }
@@ -813,9 +790,7 @@ public abstract class BaseDialog implements Disposable {
             // Force layout commitment before showing to prevent flash on first display
             dialog.validate();
 
-            if (category.isBlocking()) {
-                incrementBlockingCount();
-            }
+            incrementVisibleDialogCount();
 
             requestFocusLater(initialFocus);
 
@@ -823,14 +798,10 @@ public abstract class BaseDialog implements Disposable {
                 dialog.setVisible(true);
             } catch (Exception e) {
                 // Dispose before decrementing, for the same reason as the close path below:
-                // decrementBlockingCount() posts DialogVisibilityDidChangeNotification(false),
+                // decrementVisibleDialogCount() posts DialogVisibilityDidChangeNotification(false),
                 // which handlers read as "the dialog window is gone".
                 dialog.dispose();
-
-                if (category.isBlocking()) {
-                    decrementBlockingCount();
-                }
-
+                decrementVisibleDialogCount();
                 dispose();
                 throw e;
             }
@@ -844,15 +815,12 @@ public abstract class BaseDialog implements Disposable {
                 var size = isResizable() ? dialog.getSize() : null;
                 DialogGeometryStore.save(getClass(), new DialogGeometry(location, size));
             } finally {
-                // Dispose first: decrementBlockingCount() posts DialogVisibilityDidChangeNotification(false),
+                // Dispose first: decrementVisibleDialogCount() posts DialogVisibilityDidChangeNotification(false),
                 // which handlers rely on to mean the dialog is actually gone (e.g. Component.getMousePosition()
                 // on a component the dialog was covering only returns a real value once disposal has removed
                 // the dialog window) — posting before dispose() would have them react while it is still showing.
                 dialog.dispose();
-
-                if (category.isBlocking()) {
-                    decrementBlockingCount();
-                }
+                decrementVisibleDialogCount();
 
                 // Last, so a handler reacting to DialogVisibilityDidChangeNotification(false)
                 // sees a fully torn-down window rather than one mid-teardown.

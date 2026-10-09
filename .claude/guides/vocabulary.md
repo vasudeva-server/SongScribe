@@ -34,8 +34,8 @@ name — "signature" stays correct.
 Two terms, and they name different things. Neither is a "seam".
 
 - **The dialog framework** — the whole of `songscribe.ui.dialog`: the dialog
-  lifecycle and persisted geometry, the button row, tabs, dialog categories and
-  the blocking counter. Named the way the message framework and the mutation
+  lifecycle and persisted geometry, the button row, tabs and the
+  visible-dialog counter. Named the way the message framework and the mutation
   framework are.
 - **The dialog interface** — how data crosses between a dialog and the rest of
   the application: a record in, a record out, and a bundle of function references

@@ -51,16 +51,16 @@ final class TieRule implements ModificationRule {
      *
      * @effects applies the rule the class Javadoc states to every tie of the judged lines. For
      *     each tie the rule removes, records into {@code report} a change headed
-     *     {@link Strings#DIALOG_REPORT_TIES_REMOVED}, located from the anchor to the element the
+     *     {@link Strings#REPORT_TIES_REMOVED}, located from the anchor to the element the
      *     walk reaches, or at the anchor alone when it reaches none, then posts a
      *     {@link songscribe.message.mutation.TieRemoval} through {@link Line#removeTie}; the
-     *     change's reason is {@link Strings#DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE} when the
-     *     tie fails the rule's first condition and {@link Strings#DIALOG_REPORT_REASON_TIE_NOT_HELD}
+     *     change's reason is {@link Strings#REPORT_REASON_TIE_NO_FOLLOWING_NOTE} when the
+     *     tie fails the rule's first condition and {@link Strings#REPORT_REASON_TIE_NOT_HELD}
      *     when it fails the second. Each beam the rule removes goes through
-     *     {@link Span#removeReported} with {@link Strings#DIALOG_REPORT_REASON_BEAM_TIED_NOTES}
+     *     {@link Span#removeReported} with {@link Strings#REPORT_REASON_BEAM_TIED_NOTES}
      */
     @Override
-    public void apply(Song song, List<Mutation> batch, ChangeReport report) {
+    public void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {
         var judged = new LinkedHashSet<Line>();
 
         for (var mutation : batch) {
@@ -112,7 +112,7 @@ final class TieRule implements ModificationRule {
      * Judges every tied note of {@code line}, one of its song's lines, and removes and reports
      * each tie that does not hold, as {@link #apply} states.
      */
-    private static void judge(Line line, ChangeReport report) {
+    private static void judge(Line line, ChangeReport.Builder report) {
         var elements = line.getElements();
 
         // Removing a tie or a beam changes no element, so the walk over the live list is safe.
@@ -129,18 +129,18 @@ final class TieRule implements ModificationRule {
                 var beam = Tie.beamHoldingBoth(line, i);
 
                 if (beam != null) {
-                    beam.removeReported(Strings.DIALOG_REPORT_REASON_BEAM_TIED_NOTES);
+                    beam.removeReported(Strings.REPORT_REASON_BEAM_TIED_NOTES);
                 }
 
                 continue;
             }
 
             var reasonKey = tie == null
-                ? Strings.DIALOG_REPORT_REASON_TIE_NO_FOLLOWING_NOTE
-                : Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD;
+                ? Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE
+                : Strings.REPORT_REASON_TIE_NOT_HELD;
 
             report.record(new ReportedChange(
-                Strings.DIALOG_REPORT_TIES_REMOVED, Strings.get(reasonKey), location(line, i, reached)));
+                Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), location(line, i, reached)));
             line.removeTie(anchor);
         }
     }

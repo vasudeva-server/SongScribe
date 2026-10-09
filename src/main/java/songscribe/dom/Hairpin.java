@@ -63,7 +63,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.3332;
 
     /** The heading a removed or refused hairpin is reported under. */
-    private static final String REPORT_HEADING_KEY = Strings.DIALOG_REPORT_HAIRPINS_REMOVED;
+    private static final String REPORT_HEADING_KEY = Strings.REPORT_HAIRPINS_REMOVED;
 
     /** Whether this is a crescendo or a diminuendo. */
     private final Kind kind;
@@ -119,19 +119,19 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      *     {@link Spanning.Refused}, judged over the converged range, with
      *     {@link Spanning.Cause#RANGE} and
      *     <ul>
-     *       <li>{@link Strings#DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE} when the anchor
+     *       <li>{@link Strings#REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE} when the anchor
      *           fails {@link #canAnchorAt} or the end fails {@link #canEndAt};</li>
-     *       <li>{@link Strings#DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_NOTES} when it fails
+     *       <li>{@link Strings#REPORT_REASON_HAIRPIN_TOO_FEW_NOTES} when it fails
      *           {@link Span#holdsEnoughPitchedNotes};</li>
-     *       <li>{@link Strings#DIALOG_REPORT_REASON_HAIRPIN_NON_SINGLE_BAR} when
+     *       <li>{@link Strings#REPORT_REASON_HAIRPIN_NON_SINGLE_BAR} when
      *           {@code range} fails {@link #holdsNonSingleBar};</li>
      *     </ul>
      *     or with {@link Spanning.Cause#OTHER_SPAN} and
-     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP} when the range shares
+     *     {@link Strings#REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP} when the range shares
      *     more than one element with a hairpin of the opposite kind
      *     ({@link Span#overlappingBeyondEndpoint}). Every {@link Spanning.Cause#RANGE} refusal
      *     is judged before the {@link Spanning.Cause#OTHER_SPAN} one. Every refusal carries
-     *     {@link Strings#DIALOG_REPORT_HAIRPINS_REMOVED} as its heading.
+     *     {@link Strings#REPORT_HAIRPINS_REMOVED} as its heading.
      */
     public static Spanning<Hairpin> spanning(Line line, Kind kind, ElementRange range) {
         var elements = line.getElements();
@@ -139,19 +139,19 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         var convergedRange = convergence.range();
 
         if (!canAnchorAt(elements, convergedRange) || !canEndAt(elements, convergedRange.end())) {
-            return refused(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE, Spanning.Cause.RANGE);
+            return refused(Strings.REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE, Spanning.Cause.RANGE);
         }
 
         if (!holdsEnoughPitchedNotes(elements, convergedRange)) {
-            return refused(Strings.DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_NOTES, Spanning.Cause.RANGE);
+            return refused(Strings.REPORT_REASON_HAIRPIN_TOO_FEW_NOTES, Spanning.Cause.RANGE);
         }
 
         if (holdsNonSingleBar(elements, range)) {
-            return refused(Strings.DIALOG_REPORT_REASON_HAIRPIN_NON_SINGLE_BAR, Spanning.Cause.RANGE);
+            return refused(Strings.REPORT_REASON_HAIRPIN_NON_SINGLE_BAR, Spanning.Cause.RANGE);
         }
 
         if (line.spanRegistry().hasHairpin(kind.opposite(), Span.overlappingBeyondEndpoint(convergedRange))) {
-            return refused(Strings.DIALOG_REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP, Spanning.Cause.OTHER_SPAN);
+            return refused(Strings.REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP, Spanning.Cause.OTHER_SPAN);
         }
 
         var hairpin = new Hairpin(kind, elements.get(convergedRange.begin()), elements.get(convergedRange.end()));
@@ -262,11 +262,11 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      *     change that removes no element; for a deletion this hairpin survives, a
      *     {@link SpanOutcome.Reshape} naming this hairpin and its projected span, and otherwise
      *     a {@link SpanOutcome.Remove}. A {@code Remove} gives the reason
-     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID} when the change leaves
+     *     {@link Strings#REPORT_REASON_HAIRPIN_ENDPOINT_INVALID} when the change leaves
      *     the anchor or the end breaking rule 1 or 2,
-     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_NOTES} for rule 3,
-     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_NON_SINGLE_BAR} for rule 4, and
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} for a deletion that leaves no
+     *     {@link Strings#REPORT_REASON_HAIRPIN_TOO_FEW_NOTES} for rule 3,
+     *     {@link Strings#REPORT_REASON_HAIRPIN_NON_SINGLE_BAR} for rule 4, and
+     *     {@link Strings#REPORT_REASON_ENDPOINT_DELETED} for a deletion that leaves no
      *     element able to anchor or end it, or leaves fewer than
      *     {@value Span#MIN_PITCHED_NOTES} pitched notes
      */
@@ -303,7 +303,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         var endIndex = change.projectedEndpointIndexOf(end);
 
         if (anchorIndex == null || endIndex == null || endIndex <= anchorIndex) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_HAIRPIN_ENDPOINT_INVALID);
         }
 
         var span = new ElementRange(anchorIndex, endIndex);
@@ -311,15 +311,15 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         // The anchor predicate reads the host after an anchor, so each is asked about the line
         // as it will be, rather than having its rule restated over the change alone.
         if (!canAnchorAt(projected, span) || !canEndAt(projected, endIndex)) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_HAIRPIN_ENDPOINT_INVALID);
         }
 
         if (!holdsEnoughPitchedNotes(projected, span)) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_NOTES);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_HAIRPIN_TOO_FEW_NOTES);
         }
 
         if (holdsNonSingleBar(projected, span)) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_HAIRPIN_NON_SINGLE_BAR);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_HAIRPIN_NON_SINGLE_BAR);
         }
 
         return SpanOutcome.Keep.INSTANCE;
@@ -327,7 +327,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
 
     /**
      * Answers a deletion, pulling each endpoint in to the nearest survivor that can hold
-     * it, or removing the hairpin with {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED}
+     * it, or removing the hairpin with {@link Strings#REPORT_REASON_ENDPOINT_DELETED}
      * when what survives is too narrow to slope across.
      * <p>
      * A deletion never judges rule 4 ({@link #holdsNonSingleBar}): it removes elements and adds
@@ -362,7 +362,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         }
 
         if (first == null || last == null) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_ENDPOINT_DELETED);
         }
 
         var survivors = new ElementRange(first, last);
@@ -370,7 +370,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         var end = resolveEndIndex(survivors, projected);
 
         if (begin == null || end == null || end <= begin) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_ENDPOINT_DELETED);
         }
 
         // A span the user could not have drawn leaves no gesture worth keeping. The count also
@@ -378,7 +378,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         var reshaped = new ElementRange(begin, end);
 
         if (!holdsEnoughPitchedNotes(projected, reshaped)) {
-            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
+            return new SpanOutcome.Remove(Strings.REPORT_REASON_ENDPOINT_DELETED);
         }
 
         return new SpanOutcome.Reshape(this, reshaped);

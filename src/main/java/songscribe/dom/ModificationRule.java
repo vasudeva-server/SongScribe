@@ -48,5 +48,5 @@ interface ModificationRule {
      * @effects records a mutation for each removal it makes, and reports each removal into the
      *     edit's report; it does not read what another rule removed
      */
-    void apply(Song song, List<Mutation> batch, ChangeReport report);
+    void apply(Song song, List<Mutation> batch, ChangeReport.Builder report);
 }

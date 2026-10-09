@@ -72,9 +72,9 @@ class ModificationSessionTest extends UnitTest {
                 .as("the fixture reaches the case only if the edit removes the tie")
                 .anyMatch(TieRemoval.class::isInstance);
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
             MutationReplayer.redoBatch(song, NO_FONT_CHANGES,
-                batch.stream().filter(ElementModification.class::isInstance).toList());
+                batch.stream().filter(ElementModification.class::isInstance).toList(), ChangeReport.EMPTY);
 
             assertThat(anchor.isTiedToNext())
                 .as("the replay moves the note without the removal, and nothing removes the tie for it")
@@ -97,8 +97,8 @@ class ModificationSessionTest extends UnitTest {
             var moveOnly = batch.stream().filter(ElementModification.class::isInstance).toList();
 
             ReportRecorder.whileRecording(reports -> {
-                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
-                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, moveOnly);
+                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
+                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, moveOnly, ChangeReport.EMPTY);
 
                 assertThat(reports.reports())
                     .as("the redo leaves a tie a rule would remove, and no rule runs to report it")

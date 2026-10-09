@@ -36,6 +36,8 @@ public enum PrefsKey {
     INSTRUMENT("instrument"),
     LAST_SEEN_WHATS_NEW_VERSION("lastSeenWhatsNewVersion"),
     LOOP_PLAYBACK("loopPlayback"),
+    MESSAGES_PANEL_HEIGHT("messagesPanelHeight"),
+    MESSAGES_PANEL_VISIBLE("messagesPanelVisible"),
     PAGE_SIZE("pageSize"),
     PLAY_INSERTED_NOTE("playInsertedNote"),
     PLAY_SELECTED_NOTE("playSelectedNote"),

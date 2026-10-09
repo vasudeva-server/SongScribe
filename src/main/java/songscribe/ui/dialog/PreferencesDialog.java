@@ -110,7 +110,7 @@ public class PreferencesDialog extends BaseDialog {
     private static boolean instrumentsLoaded = false;
 
     public PreferencesDialog(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), Modality.MODELESS, DialogCategory.EXCLUSIVE);
+        super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), Modality.MODELESS);
 
         var tabbedContent = createTabbedContent();
         addTab(new GeneralTab());
