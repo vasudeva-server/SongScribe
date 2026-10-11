@@ -35,9 +35,9 @@ import java.awt.Shape;
  * spaces relative to the staff midline, positive downward. A click point is converted
  * into that space once, at query time.
  *
- * <p>How the region resolves against the ones it overlaps, and whether the mouse-move query
- * scans it, both follow from what it addresses rather than from anything chosen where it is
- * registered — so two regions addressing the same kind can never disagree about either.
+ * <p>How the region resolves against the ones it overlaps follows from what it addresses rather
+ * than from anything chosen where it is registered — so two regions addressing the same kind can
+ * never disagree about it.
  *
  * @param shapeSs the clickable area, in layout space (staff spaces)
  * @param target  what a click inside {@code shapeSs} addresses
@@ -49,13 +49,5 @@ public record HitRegion(Shape shapeSs, HitTarget target) {
      */
     public HitPriority priority() {
         return target.priority();
-    }
-
-    /**
-     * @return {@code true} when this region takes part in the mouse-move query,
-     *         {@link HitRegistry#hitTestHover}
-     */
-    public boolean hoverTestable() {
-        return target.hoverTestable();
     }
 }

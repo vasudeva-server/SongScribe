@@ -97,8 +97,9 @@ public enum SMuFLGlyph {
     // Brass techniques (U+E5D0-U+E5EF)
     BRASS_FALL_LIP_SHORT("brassFallLipShort", '\uE5D7'),
 
-    // Trills and tremolos (U+EAA0-U+EAAF)
+    // Multi-segment lines (U+EAA0-U+EB0F)
     WIGGLE_TRILL_FASTER("wiggleTrillFaster", '\uEAA2'),
+    WIGGLE_VIBRATO_MEDIUM_FASTER("wiggleVibratoMediumFaster", '\uEADD'),
 
     // Metronome marks (U+ECA0-U+ECBF)
     MET_NOTE_WHOLE("metNoteWhole", '\uECA2'),

@@ -51,8 +51,9 @@ final class TieRule implements ModificationRule {
      *
      * @effects applies the rule the class Javadoc states to every tie of the judged lines. For
      *     each tie the rule removes, records into {@code report} a change headed
-     *     {@link Strings#REPORT_TIES_REMOVED}, located from the anchor to the element the
-     *     walk reaches, or at the anchor alone when it reaches none, then posts a
+     *     {@link Strings#REPORT_TIES_REMOVED}, naming the anchor's line through the line of
+     *     the element the walk reaches, or the anchor's line alone when it reaches none, then
+     *     posts a
      *     {@link songscribe.message.mutation.TieRemoval} through {@link Line#removeTie}; the
      *     change's reason is {@link Strings#REPORT_REASON_TIE_NO_FOLLOWING_NOTE} when the
      *     tie fails the rule's first condition and {@link Strings#REPORT_REASON_TIE_NOT_HELD}
@@ -139,26 +140,26 @@ final class TieRule implements ModificationRule {
                 ? Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE
                 : Strings.REPORT_REASON_TIE_NOT_HELD;
 
-            report.record(new ReportedChange(
-                Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), location(line, i, reached)));
+            report.record(new RecordedChange(
+                Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), changeLines(line, reached)));
             line.removeTie(anchor);
         }
     }
 
     /**
-     * The elements a tie from {@code line}'s element at {@code anchorIndex} covers.
+     * The lines a tie anchored on {@code line} lies on: the anchor's line, through the line of the
+     * element its walk reaches when that element is on the next line.
      *
+     * @param line    the anchor's line
      * @param reached where the tie's walk stopped, or {@code null} when it reaches no element
-     * @return the range from the anchor's location to {@code reached}, or the anchor's location
-     *     alone when {@code reached} is {@code null}
+     * @return {@code line} through {@code reached}'s line, or {@code line} alone when
+     *     {@code reached} is {@code null} or on {@code line}
      */
-    private static ElementLocationRange location(Line line, int anchorIndex, Tie.@Nullable Reached reached) {
-        var start = new ElementLocation(line.index(), anchorIndex);
-
+    private static ChangeLines changeLines(Line line, Tie.@Nullable Reached reached) {
         if (reached == null) {
-            return ElementLocationRange.single(start);
+            return ChangeLines.on(line);
         }
 
-        return new ElementLocationRange(start, new ElementLocation(reached.line().index(), reached.index()));
+        return new ChangeLines(line, reached.line());
     }
 }

@@ -46,8 +46,7 @@ import songscribe.dom.Annotation;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.ElementLocation;
-import songscribe.dom.ElementLocationRange;
+import songscribe.dom.ChangeLines;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
@@ -60,7 +59,7 @@ import songscribe.dom.ParsedSong;
 import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
-import songscribe.dom.ReportedChange;
+import songscribe.dom.RecordedChange;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
 import songscribe.dom.Spanning;
@@ -307,7 +306,7 @@ final class MeasureMapper {
     private final List<PendingHairpin> pendingHairpins = new ArrayList<>();
 
     // Every report entry the walk made, one per damaged mark it dropped, in the order it made them.
-    private final List<ReportedChange> readerEntries = new ArrayList<>();
+    private final List<RecordedChange> readerEntries = new ArrayList<>();
 
     // The features the document declares; decides which per-note attributes the walk honors.
     private final Set<SupportedFeature> features;
@@ -798,11 +797,12 @@ final class MeasureMapper {
     }
 
     /**
-     * Drops an ending start that no stop pairs with, and reports it at the element it starts on.
+     * Drops an ending start that no stop pairs with, and reports it on the line of the element it
+     * starts on.
      *
      * @param open the open ending, or {@code null} when none is open
      * @effects when {@code open} is not {@code null}, adds one entry to the reader's entries,
-     *     with no location when the start still awaits its note
+     *     with no place when the start still awaits its note
      */
     private void dropOpenEnding(@Nullable OpenEnding open) {
         if (open != null) {
@@ -1174,7 +1174,7 @@ final class MeasureMapper {
     /**
      * Drops every wedge that no note followed on its line, and empties {@code wedges}.
      *
-     * @effects adds one entry with no location to the reader's entries for each wedge
+     * @effects adds one entry with no place to the reader's entries for each wedge
      */
     private void dropUnboundWedges(List<Wedge> wedges) {
         for (var _ : wedges) {
@@ -1554,8 +1554,8 @@ final class MeasureMapper {
      * @param open       the span's start
      * @param end        the site the stop mark was read from
      * @return {@code true} if {@code end} is on the line {@code open} started on
-     * @effects when the lines differ, adds one entry to the reader's entries, over the range
-     *     from the start to the stop
+     * @effects when the lines differ, adds one entry to the reader's entries, naming the lines
+     *     from the start's to the stop's
      */
     private boolean pairsOnOneLine(String headingKey, OpenMark open, NoteSite end) {
         if (end.line() == open.opener().line()) {
@@ -1567,7 +1567,8 @@ final class MeasureMapper {
     }
 
     /**
-     * Drops a start mark that no stop pairs with, and reports it at the element it sits on.
+     * Drops a start mark that no stop pairs with, and reports it on the line of the element it
+     * sits on.
      *
      * @param headingKey the {@code Strings} key of the report heading of the span's kind
      * @param open       the still-open start, or {@code null} when nothing is open
@@ -1580,7 +1581,8 @@ final class MeasureMapper {
     }
 
     /**
-     * Drops a stop mark that no start pairs with, and reports it at the element it sits on.
+     * Drops a stop mark that no start pairs with, and reports it on the line of the element it
+     * sits on.
      *
      * @param headingKey the {@code Strings} key of the report heading of the span's kind
      * @param stop       the site the stop mark was read from
@@ -1596,11 +1598,11 @@ final class MeasureMapper {
      * @param headingKey the {@code Strings} key of the report heading of the kind the mark would
      *                   have made
      * @param damage     how the mark is damaged
-     * @param where      the elements the mark sat on, or {@code null} when it sat on none
+     * @param where      the lines the mark sat on, or {@code null} when it sat on no element
      * @effects adds one entry to the reader's entries
      */
-    private void dropDamaged(String headingKey, Damage damage, @Nullable ElementLocationRange where) {
-        drop(new ReportedChange(headingKey, Strings.get(damage.reasonKey), where));
+    private void dropDamaged(String headingKey, Damage damage, @Nullable ChangeLines where) {
+        drop(new RecordedChange(headingKey, Strings.get(damage.reasonKey), where));
     }
 
     /**
@@ -1609,41 +1611,41 @@ final class MeasureMapper {
      * @effects adds {@code entry} to the reader's entries
      * @log WARN naming the entry
      */
-    private void drop(ReportedChange entry) {
+    private void drop(RecordedChange entry) {
         LOG.warn("Dropping a damaged mark: {}", entry);
         readerEntries.add(entry);
     }
 
     /**
-     * The elements from the one a span's start mark sits on to the one its stop mark sits on,
-     * which may be on different lines.
+     * The lines from the one a span's start mark sits on to the one its stop mark sits on, which
+     * may differ.
      */
-    private static ElementLocationRange through(OpenMark open, NoteSite end) {
-        return new ElementLocationRange(locationOf(open.opener().element()), locationOf(end.element()));
+    private static ChangeLines through(OpenMark open, NoteSite end) {
+        return new ChangeLines(lineOf(open.opener().element()), lineOf(end.element()));
     }
 
     /**
-     * The location of {@code element} alone.
+     * The line of {@code element} alone.
      *
-     * @return the range naming only {@code element}, or {@code null} when {@code element} is
+     * @return the line {@code element} sits on, or {@code null} when {@code element} is
      *     {@code null}
      */
-    private static @Nullable ElementLocationRange at(@Nullable StaffElement element) {
-        return element == null ? null : ElementLocationRange.single(locationOf(element));
+    private static @Nullable ChangeLines at(@Nullable StaffElement element) {
+        return element == null ? null : ChangeLines.on(lineOf(element));
     }
 
     /**
-     * Where {@code element} sits in the song. The passes run once the walk has committed every
-     * line, so every element they read sits on a line of the song.
+     * The line {@code element} sits on. The passes run once the walk has committed every line, so
+     * every element they read sits on a line of the song.
      */
-    private static ElementLocation locationOf(StaffElement element) {
+    private static Line lineOf(StaffElement element) {
         var line = element.getParentLine();
 
         if (line == null) {
             throw RuntimeError.exit("A mapped element sits on no line: " + element);
         }
 
-        return new ElementLocation(line.index(), line.getElementIndex(element));
+        return line;
     }
 
     /**

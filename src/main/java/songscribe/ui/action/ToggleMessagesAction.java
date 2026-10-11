@@ -30,10 +30,10 @@ import songscribe.util.UIUtils;
 
 /**
  * Shows the Messages panel when it is hidden, and hides it when it is shown. Keyboard focus does
- * not move. Selected while the panel is shown; {@link MainFrame} sets that state each time the
- * panel is shown or hidden.
+ * not move. The name says what the next invocation does ("Show Messages" or "Hide Messages");
+ * {@link MainFrame} calls {@link #setPanelShown} each time the panel is shown or hidden.
  */
-public final class ToggleMessagesAction extends SelectableUIAction {
+public final class ToggleMessagesAction extends UIAction {
 
     public static ToggleMessagesAction createAction(MainFrame mainFrame) {
         return new ToggleMessagesAction(mainFrame);
@@ -43,7 +43,7 @@ public final class ToggleMessagesAction extends SelectableUIAction {
     private ToggleMessagesAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Strings.get(Strings.ACTION_WINDOW_MESSAGES),
+            Strings.get(Strings.ACTION_WINDOW_MESSAGES_SHOW),
             "window-messages",
             KeyEvent.VK_M, UIUtils.MENU_SHORTCUT_MASK | InputEvent.SHIFT_DOWN_MASK,
             // Shows and hides the panel only; the document is untouched.
@@ -51,11 +51,20 @@ public final class ToggleMessagesAction extends SelectableUIAction {
         );
     }
 
+    /**
+     * Sets the name to match the panel.
+     *
+     * @param shown whether the Messages panel is shown
+     * @effects names the action "Hide Messages" when shown, "Show Messages" otherwise
+     */
+    public void setPanelShown(boolean shown) {
+        setName(Strings.get(shown ? Strings.ACTION_WINDOW_MESSAGES_HIDE : Strings.ACTION_WINDOW_MESSAGES_SHOW));
+    }
+
     @Override
     protected void performAction(ActionEvent e) {
         var mainFrame = getMainFrame();
 
-        // Either call sets the selected state, which undoes the flip a menu item click made.
         if (mainFrame.isMessagesPanelVisible()) {
             mainFrame.hideMessagesPanel();
         } else {

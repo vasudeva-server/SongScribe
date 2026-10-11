@@ -332,7 +332,7 @@ class HairpinTest extends UnitTest {
                     }));
             });
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batches.batches().getFirst(), ChangeReport.EMPTY);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batches.batches().getFirst());
 
             assertThat(line.spanRegistry().findSpans(Hairpin.class)).extracting(Hairpin::range)
                 .containsExactly(EDITED);

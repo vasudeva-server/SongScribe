@@ -181,18 +181,12 @@ public final class SongScribe {
             System.setProperty("apple.awt.application.appearance", "system");
         }
 
-        // Enable anti-aliasing and sub-pixel rendering for fonts. Like the macOS
-        // properties above, these are read during AWT/Swing initialization, so they
-        // must be set on the main thread before the toolkit starts. macOS ignores
-        // them, but other platforms rely on them for quality text rendering.
-        var aaSetting = "on";  // safe default
-
-        if (SystemInfo.isMacOS) {  // or check System.getProperty("os.name")
-            aaSetting = "lcd";
-        }
-
+        // Enable anti-aliasing for fonts. Like the macOS properties above, these are
+        // read during AWT/Swing initialization, so they must be set on the main thread
+        // before the toolkit starts. The macOS toolkit does not read
+        // awt.useSystemAAFontSettings; UIUtils.initMinimalTheme sets the hint there.
         System.setProperty("swing.aatext", "true");
-        System.setProperty("awt.useSystemAAFontSettings", aaSetting);
+        System.setProperty("awt.useSystemAAFontSettings", "on");
         System.setProperty("apple.awt.textantialiasing", "true");
 
         // Allow Swing components to handle a property change with a null property name,
@@ -211,9 +205,13 @@ public final class SongScribe {
         SwingUtilities.invokeLater(() -> MainFrame.main(args));
     }
 
-    // The bus, and with it the publication-error policy, is set once for the life of
-    // the process, before anything can post or subscribe.
-    private static void setBus() {
+    /**
+     * Sets the application's message bus, and with it the publication-error policy. Call it once
+     * for the life of the process, before anything can post or subscribe. Every entry point that
+     * builds the main window calls it: {@link #main}, and the e2e harness, which builds the window
+     * without {@link #main}.
+     */
+    public static void setBus() {
         if (System.getenv("DEBUG") != null) {
             MessageCenter.setBus(new DebugMBassador<>(MessageCenter::exitOnPublicationError));
         } else {

@@ -24,13 +24,12 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ElementLocationRange;
+import songscribe.dom.ChangeLines;
 import songscribe.dom.KeyChangeStranding;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
-import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Lands a fragment on a line: the paste itself, once the gestures around it have settled what
@@ -107,8 +106,8 @@ public final class FragmentPaste {
      *     {@link Fragment.KeyChangeReduction#strandedSpans} and one per entry of
      *     {@link PasteSpanReconciliation.Settlement#reports}; adds every span of
      *     {@link PasteSpanReconciliation.Settlement#spansToAdd}
-     * @invariant a stranded span is located at the elements it covered that landed, and has no
-     *     location when none did
+     * @invariant a stranded span's entry names {@code line} when some element it covered landed,
+     *     and has no place when none did
      */
     public static void paste(Line line, StaffElementRun.InsertionTarget target, Fragment.KeyChangeReduction reduction) {
         var fragment = reduction.fragment();
@@ -175,32 +174,21 @@ public final class FragmentPaste {
     }
 
     /**
-     * Reports each of {@code strandedSpans}, located at the elements it covered that are on
-     * {@code line}.
+     * Reports each of {@code strandedSpans}, on {@code line} when some element it covered landed
+     * there.
      */
     private static void reportStranded(Line line, List<Fragment.StrandedSpan> strandedSpans) {
         var song = line.getSong();
 
         for (var stranded : strandedSpans) {
-            song.report(stranded.span().reportedAt(stranded.reasonKey(), landedLocation(line, stranded.covered())));
+            song.report(stranded.span().reportedAt(stranded.reasonKey(), landedLines(line, stranded.covered())));
         }
     }
 
     /**
-     * The location of the elements of {@code covered} that are on {@code line}, from the first
-     * to the last; {@code null} when none is.
+     * {@code line}, when some element of {@code covered} is on it; {@code null} when none is.
      */
-    private static @Nullable ElementLocationRange landedLocation(Line line, List<StaffElement> covered) {
-        var landedIndices = covered.stream()
-            .filter(line::contains)
-            .map(line::getElementIndex)
-            .toList();
-
-        if (landedIndices.isEmpty()) {
-            return null;
-        }
-
-        return ElementLocationRange.onLine(
-            line.index(), new ElementRange(landedIndices.getFirst(), landedIndices.getLast()));
+    private static @Nullable ChangeLines landedLines(Line line, List<StaffElement> covered) {
+        return covered.stream().anyMatch(line::contains) ? ChangeLines.on(line) : null;
     }
 }

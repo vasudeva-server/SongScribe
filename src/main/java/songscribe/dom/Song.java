@@ -20,11 +20,14 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -628,6 +631,22 @@ public final class Song implements Disposable {
     }
 
     /**
+     * The verses this song carries lyrics in.
+     *
+     * @return every verse number held by a lyric on any line, each once, ascending; empty when
+     *     the song holds no lyric. The set is unmodifiable.
+     */
+    public SortedSet<Integer> verseNumbers() {
+        var verses = new TreeSet<Integer>();
+
+        for (var line : lines) {
+            verses.addAll(line.verseNumbers());
+        }
+
+        return Collections.unmodifiableSortedSet(verses);
+    }
+
+    /**
      * Selects the verse this song shows. Changing it changes what every line lays out, so the
      * caller is responsible for invalidating layout afterwards.
      *
@@ -776,9 +795,10 @@ public final class Song implements Disposable {
      *   <li>A {@code ||} closes a repeated section, as a final barline does. In
      *       {@code A || B :|} the {@code :|} has no open section, rather than one that starts
      *       at {@code A}.</li>
-     *   <li>A {@code :|} with no open section plays on as an ordinary bar. The editor lets a
-     *       user write one, as in {@code A :| B :|} or {@code A || B :|}, and a load keeps it,
-     *       so {@code null} is an answer about legal music, not about a broken song.</li>
+     *   <li>A {@code null} answer means no section is open before {@code location}. The editor
+     *       lets a user write a {@code :|} there, as in {@code A :| B :|} or
+     *       {@code A || B :|}, and a load keeps it, but such a {@code :|} is an error, which the
+     *       song's lint rule for balanced repeats reports.</li>
      * </ul>
      *
      * <p>Playback loops a {@code :|} that has an open section back to this answer.
@@ -1313,19 +1333,18 @@ public final class Song implements Disposable {
      * judging the song a second time. The modification rules run when an edit closes, unless
      * the song is replaying then; because the edit closes while replay mode is still in force,
      * no rule runs over the replayed batch, which already carries every removal the rules made
-     * when it was first recorded. For the same reason nothing in the replay records into its
-     * report: the report the replay posts is the one its caller passes, so a redo can show again
-     * what the edit it re-applies reported, and an undo can show that it reported nothing.
+     * when it was first recorded. Nothing in a replay records into its edit's report either: no
+     * rule runs and the companion side-work that would report is suppressed, so the report the
+     * replay posts is the one of its own edit, and it is empty.
      *
-     * @param report the report the posted notification carries
-     * @param body   applies the records of one recorded batch, in the order the replay requires
+     * @param body applies the records of one recorded batch, in the order the replay requires
      * @effects posts one {@link SongDidChangeNotification} carrying the changes {@code body}
-     *     made and {@code report}, when {@code body} made any change, and nothing otherwise; no
-     *     modification rule runs; the edit closes and replay mode ends whether {@code body}
-     *     returns or throws
+     *     made and an empty change report, when {@code body} made any change, and nothing
+     *     otherwise; no modification rule runs; the edit closes and replay mode ends whether
+     *     {@code body} returns or throws
      */
-    public void replay(ChangeReport report, Runnable body) {
-        modifications.replay(report, body);
+    public void replay(Runnable body) {
+        modifications.replay(body);
     }
 
     /**
@@ -2098,13 +2117,15 @@ public final class Song implements Disposable {
      * about once the edit is over. Does nothing while mutation tracking is suspended, where no
      * edit need be open.
      *
-     * @param change the change the song made on its own, as the user is told about it
+     * @param change the change the song made on its own, as the user is told about it, naming
+     *               lines of this song
      * @effects appends {@code change} to the report of the open edit, unless tracking is
-     *     suspended
+     *     suspended; its lines are resolved to indices only when the edit is over, so a line
+     *     added or removed in front of them later in the same edit does not make it wrong
      * @throws IllegalStateException if tracking is on and no modification bracket is open
      * @see ModificationSession#report
      */
-    public void report(ReportedChange change) {
+    public void report(RecordedChange change) {
         modifications.report(change);
     }
 

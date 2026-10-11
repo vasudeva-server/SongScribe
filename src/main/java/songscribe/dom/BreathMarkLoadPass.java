@@ -35,9 +35,9 @@ import songscribe.Strings;
  * appends it after that note again, so a {@code .musicxml} file cannot hold the state and the
  * pass finds nothing there.
  *
- * <p>The pass runs once the song is complete and removes each such breath mark, reporting where
- * it stood so the user can be told. Nothing is moved or repaired into a place the file did not
- * say.
+ * <p>The pass runs once the song is complete and removes each such breath mark, reporting the
+ * line it was on so the user can be told. Nothing is moved or repaired into a place the file did
+ * not say.
  */
 final class BreathMarkLoadPass {
 
@@ -62,7 +62,7 @@ final class BreathMarkLoadPass {
      *     a tuplet that holds the removed mark is removed with it, and that removal is not
      *     recorded to {@code report}, because the load runs with mutation tracking suspended
      *     and the sweep's report is silent then; records to {@code report}, in document order,
-     *     each breath mark removed, at the index it stood at before removal
+     *     each breath mark removed, with an entry that names the line the breath mark was on
      * @log one {@code INFO} line stating how many breath marks were removed, when any were
      */
     static void run(Song song, ChangeReport.Builder report) {
@@ -76,7 +76,8 @@ final class BreathMarkLoadPass {
     /**
      * One forward walk over every line. Removing the element at {@code i} closes the line up
      * onto that index, so the walk stays at {@code i} to judge whatever moved into the slot
-     * against the predecessor that is now settled.
+     * against the predecessor that is now settled. Each removal is recorded with an entry that
+     * names the line the breath mark was on.
      */
     private static int removeUnhostedBreathMarks(Song song, ChangeReport.Builder report) {
         var removedCount = 0;
@@ -89,10 +90,10 @@ final class BreathMarkLoadPass {
                 if (line.getElement(i).getType().isBreathMark() && !line.isDurationAt(i - 1)) {
                     line.removeElement(i);
                     removedCount++;
-                    report.record(new ReportedChange(
+                    report.record(new RecordedChange(
                         Strings.REPORT_BREATH_MARKS_REMOVED,
                         Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
-                        ElementLocationRange.single(new ElementLocation(lineIndex, i))));
+                        ChangeLines.on(line)));
                 } else {
                     i++;
                 }

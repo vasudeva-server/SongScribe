@@ -23,12 +23,14 @@ package songscribe.ui.component;
 import songscribe.Strings;
 import songscribe.ui.action.Actions;
 import songscribe.util.GraphicUtils;
+import songscribe.util.UIUtils;
 
 public class StaffAnnotationPopupButton extends PopupMenuButton {
 
     public StaffAnnotationPopupButton() {
         super(Actions.STAFF_ANNOTATION_ACTIONS, null);
         setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
-        setToolTipText(Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS));
+        UIUtils.setToolTipText(
+            this, Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS_TITLE), Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS));
     }
 }

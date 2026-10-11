@@ -445,13 +445,12 @@ public final class TupletValidator {
      * A tuplet the caller supplied, with the site the walk found for it: ready for
      * {@link Tuplet#spanning} or {@link Tuplet#spanningStated}.
      *
-     * @param tuplet    the tuplet as the caller supplied it
-     * @param lineIndex the index of the line holding the tuplet
-     * @param site      the tuplet's span in that line, from the anchor to
-     *                  {@link Anchored#endIndex()}, and the beat in effect at the anchor
-     * @param <T>       the caller's tuplet type
+     * @param tuplet the tuplet as the caller supplied it
+     * @param site   the tuplet's line, its span in that line from the anchor to
+     *               {@link Anchored#endIndex()}, and the beat in effect at the anchor
+     * @param <T>    the caller's tuplet type
      */
-    public record Sited<T>(T tuplet, int lineIndex, Tuplet.Site site) {}
+    public record Sited<T>(T tuplet, Tuplet.Site site) {}
 
     /**
      * Finds the site of every tuplet {@code tuplets} supplies at an anchor at or after
@@ -490,7 +489,7 @@ public final class TupletValidator {
 
                 if (anchored != null) {
                     var range = new ElementRange(index, anchored.endIndex());
-                    sited.add(new Sited<>(anchored.tuplet(), lineIndex, new Tuplet.Site(line, range, runningBeat)));
+                    sited.add(new Sited<>(anchored.tuplet(), new Tuplet.Site(line, range, runningBeat)));
                 }
             }
 

@@ -37,10 +37,16 @@ public final class PlayStopAction extends SequencerAction {
     private static final String STOP_NAME = Strings.get(Strings.ACTION_PLAY_STOP);
     private static final String STOP_TOOLTIP = Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP);
 
+    private static final String BLOCKED_TOOLTIP = Strings.get(Strings.ACTION_PLAY_BLOCKED_TOOLTIP);
+
     private static final String PLAY_ICON = "@\uF446";
     private static final String STOP_ICON = "@\uF447";
 
     private static final int ICON_SIZE = 20;
+
+    // The tooltip of the current Play or Stop state, shown whenever a lint finding does not
+    // block playback.
+    private String stateTooltip = PLAY_TOOLTIP;
 
     public static PlayStopAction createAction(MainFrame mainFrame) {
         return new PlayStopAction(mainFrame);
@@ -59,6 +65,7 @@ public final class PlayStopAction extends SequencerAction {
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_WHEN_SONG_EMPTY,
             Flag.DISABLE_WHEN_MIDI_UNAVAILABLE,
+            Flag.DISABLE_WHEN_PLAYBACK_BLOCKED,
             // Playback only reads the song. The playing indices it pushes into a line
             // component color a note and nothing more, so one that grace mode shifts
             // highlights the wrong note until the next update and touches no grace state.
@@ -80,6 +87,14 @@ public final class PlayStopAction extends SequencerAction {
         }
     }
 
+    /** Also shows why Play is disabled while a lint finding blocks playback. */
+    @Override
+    public boolean updateEnabledState() {
+        var enabled = super.updateEnabledState();
+        applyTooltip();
+        return enabled;
+    }
+
     @Override
     protected void performAction(ActionEvent e) {
         PlaybackController.togglePlayStop();
@@ -88,12 +103,18 @@ public final class PlayStopAction extends SequencerAction {
     private void toggleToPlay() {
         setName(PLAY_NAME);
         setIcon(PLAY_ICON, ICON_SIZE);
-        putValue(SHORT_DESCRIPTION, PLAY_TOOLTIP);
+        stateTooltip = PLAY_TOOLTIP;
+        applyTooltip();
     }
 
     private void toggleToStop() {
         setName(STOP_NAME);
         setIcon(STOP_ICON, ICON_SIZE);
-        putValue(SHORT_DESCRIPTION, STOP_TOOLTIP);
+        stateTooltip = STOP_TOOLTIP;
+        applyTooltip();
+    }
+
+    private void applyTooltip() {
+        putValue(SHORT_DESCRIPTION, enableFromPlaybackBlock() ? stateTooltip : BLOCKED_TOOLTIP);
     }
 }

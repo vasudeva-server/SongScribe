@@ -46,8 +46,8 @@ import songscribe.undo.UndoController;
  *       closes.</li>
  *   <li><b>Suspension</b> ({@link #withoutMutationTracking}) — records nothing at all.</li>
  *   <li><b>Replay</b> ({@link #replay}) — mutations are still recorded, but companion
- *       side-work is suppressed because the batch already carries it, and the edit's report
- *       is the one the replay is given.</li>
+ *       side-work is suppressed because the batch already carries it, and no modification
+ *       rule runs, so the replay's report records nothing and is delivered empty.</li>
  *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the terminal policy is
  *       bypassed for internally-driven mutations.</li>
  * </ul>
@@ -104,12 +104,12 @@ public final class ModificationSession {
         // Mutable: each removal a modification rule records is appended while the rules run.
         private final List<Mutation> batch = new ArrayList<>();
 
-        // Starts empty for an edit, and from the report of the edit being redone for a replay.
+        // Starts empty for every edit; a replay's stays empty, because nothing in a replay records.
         private final ChangeReport.Builder report;
 
-        OpenEdit(@Nullable String opName, ChangeReport seed) {
+        OpenEdit(Song song, @Nullable String opName) {
             this.opName = opName;
-            this.report = new ChangeReport.Builder(seed);
+            this.report = new ChangeReport.Builder(song);
         }
     }
 
@@ -211,11 +211,10 @@ public final class ModificationSession {
      * {@code body} applying the batch's records. The contract, and why the order is what it
      * is, are on {@link Song#replay}.
      *
-     * @param report the report the replay's edit delivers, when its bracket is the outermost one
-     * @param body   applies the records of one recorded batch
+     * @param body applies the records of one recorded batch
      */
-    public void replay(ChangeReport report, Runnable body) {
-        withReplay(() -> inBracket(null, report, asSupplier(body)));
+    public void replay(Runnable body) {
+        withReplay(() -> inBracket(null, asSupplier(body)));
     }
 
     /**
@@ -243,23 +242,20 @@ public final class ModificationSession {
 
     /**
      * Opens a modification bracket, declaring {@code explicitLabel} as the op-name
-     * (Tier B) and {@code seed} as the start of the edit's report if this is the outermost
-     * bracket. Mutations accumulate while the bracket is open; the notification fires only
-     * when the outermost bracket closes.
+     * (Tier B) if this is the outermost bracket. Mutations accumulate while the bracket is
+     * open; the notification fires only when the outermost bracket closes.
      *
-     * <p>The op-name and the seed are captured only at the depth 0→1 transition, the op-name
-     * resolving as {@code explicitLabel != null ? explicitLabel : pendingOpName}. A nested
-     * bracket inside an already-open bracket never re-captures either.
-     *
-     * @param seed the entries the edit's report starts from: {@link ChangeReport#EMPTY} for an
-     *             edit, the report of the edit being redone for a replay
+     * <p>The op-name and the edit's empty report are created only at the depth 0→1
+     * transition, the op-name resolving as
+     * {@code explicitLabel != null ? explicitLabel : pendingOpName}. A nested bracket inside an
+     * already-open bracket never re-captures either.
      */
-    private void beginModification(@Nullable String explicitLabel, ChangeReport seed) {
+    private void beginModification(@Nullable String explicitLabel) {
         if (modificationDepth == 0) {
             // UndoController holds the Tier-A pending op-name, set by the UIAction
             // template around synchronous action dispatch (see UIAction.actionPerformed);
             // explicitLabel is the Tier-B name from the labeled withModification overload.
-            openEdit = new OpenEdit(explicitLabel != null ? explicitLabel : UndoController.getPendingOpName(), seed);
+            openEdit = new OpenEdit(song, explicitLabel != null ? explicitLabel : UndoController.getPendingOpName());
         }
 
         modificationDepth++;
@@ -319,7 +315,8 @@ public final class ModificationSession {
      * <p>Every reporter records a change into the report in the same edit in which it records
      * the mutation that makes the change, so a non-empty report never comes with an empty batch,
      * and the report needs no notification of its own: it travels with the batch. This is the
-     * only point that knows the whole edit is over, so the report is built here, complete.
+     * only point that knows the whole edit is over, so the report is built here, complete, with
+     * its lines resolved against the song as the edit left it.
      *
      * <p>Runs even when the body or a rule throws, so no batch or report outlives its bracket.
      *
@@ -374,7 +371,7 @@ public final class ModificationSession {
      * half-applied edit.
      */
     public void withModification(Runnable body) {
-        inBracket(null, ChangeReport.EMPTY, asSupplier(body));
+        inBracket(null, asSupplier(body));
     }
 
     /**
@@ -384,7 +381,7 @@ public final class ModificationSession {
      * inside an open one never replaces the op-name the outermost bracket captured.
      */
     public void withModification(String label, Runnable body) {
-        inBracket(label, ChangeReport.EMPTY, asSupplier(body));
+        inBracket(label, asSupplier(body));
     }
 
     /**
@@ -395,19 +392,18 @@ public final class ModificationSession {
      * @return Whatever {@code body} returns
      */
     public <T> T withModificationResult(Supplier<T> body) {
-        return inBracket(null, ChangeReport.EMPTY, body);
+        return inBracket(null, body);
     }
 
     /**
-     * Runs {@code body} inside a modification bracket opened with {@code explicitLabel} and
-     * {@code seed} ({@link #beginModification}). The bracket closes through
-     * {@link #endModification} when {@code body} returns, and through {@link #closeBracket} when
-     * it throws, so a half-applied edit is never judged by the modification rules and no rule
-     * can replace the body's exception with one of its own.
+     * Runs {@code body} inside a modification bracket opened with {@code explicitLabel}
+     * ({@link #beginModification}). The bracket closes through {@link #endModification} when
+     * {@code body} returns, and through {@link #closeBracket} when it throws, so a half-applied
+     * edit is never judged by the modification rules and no rule can replace the body's
+     * exception with one of its own.
      */
-    private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, ChangeReport seed,
-                                                     Supplier<T> body) {
-        beginModification(explicitLabel, seed);
+    private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, Supplier<T> body) {
+        beginModification(explicitLabel);
         T result;
 
         try {
@@ -483,11 +479,13 @@ public final class ModificationSession {
      * <p>
      * Records nothing while mutation tracking is suspended, where no bracket is required.
      *
-     * @param change the change the song made on its own, as the user is told about it
-     * @effects appends {@code change} to the open report, unless tracking is suspended
+     * @param change the change the song made on its own, as the user is told about it, naming
+     *               lines of this session's song
+     * @effects appends {@code change} to the open report, unless tracking is suspended; its lines
+     *     are resolved to indices only when the edit is delivered
      * @throws IllegalStateException if tracking is on and no modification bracket is open
      */
-    public void report(ReportedChange change) {
+    public void report(RecordedChange change) {
         if (isMutationTrackingSuspended()) {
             return;
         }

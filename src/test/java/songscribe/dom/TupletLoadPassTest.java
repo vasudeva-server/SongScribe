@@ -109,7 +109,7 @@ class TupletLoadPassTest extends UnitTest {
                 List.of(new ReportedChange(
                     Strings.REPORT_TUPLETS_UPDATED,
                     Strings.get(Strings.REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
-                    spanLocation())))
+                    lineRange())))
         );
     }
 
@@ -124,7 +124,7 @@ class TupletLoadPassTest extends UnitTest {
         assertThat(report.changes()).containsExactly(new ReportedChange(
             Strings.REPORT_TUPLETS_REMOVED,
             Strings.get(testCase.reasonKey()),
-            spanLocation()));
+            lineRange()));
         assertThat(line.spanRegistry().findSpans(Tuplet.class)).isEmpty();
     }
 
@@ -135,10 +135,9 @@ class TupletLoadPassTest extends UnitTest {
         );
     }
 
-    /** The range every report entry of this class names: {@link #SPAN} on the one line. */
-    private static ElementLocationRange spanLocation() {
-        return new ElementLocationRange(
-            new ElementLocation(LINE, SPAN.begin()), new ElementLocation(LINE, SPAN.end()));
+    /** The range every report entry of this class names: the one line. */
+    private static LineRange lineRange() {
+        return new LineRange(LINE, LINE);
     }
 
     /** Settles {@code song} with {@code tuplet} as the only pending span the reader found. */

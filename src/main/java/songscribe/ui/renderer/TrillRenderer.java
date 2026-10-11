@@ -36,8 +36,6 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
  * Renders trill markings (tr symbol + wavy line for extended trills).
@@ -50,9 +48,6 @@ public final class TrillRenderer {
 
     // Trill glyph advance width in staff-space units, used to position the wavy line start
     private static final double TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ORNAMENT_TRILL);
-
-    // Wavy line segment width from the advance width of the WIGGLE_TRILL_FASTER glyph
-    static final double WIGGLE_SEGMENT_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.WIGGLE_TRILL_FASTER);
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -105,7 +100,12 @@ public final class TrillRenderer {
             RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
             if (!TrillGeometry.isSingleNote(trill)) {
-                drawWavyLine(g2, xSs + TRILL_ADVANCE_WIDTH_SS, y, xSs + layout.widthSs(), color);
+                GlyphRun.startingAt(
+                    ScaledGlyph.atDesignSize(SMuFLGlyph.WIGGLE_TRILL_FASTER),
+                    xSs + TRILL_ADVANCE_WIDTH_SS,
+                    xSs + layout.widthSs(),
+                    y
+                ).draw(g2);
             }
         }
     }
@@ -132,40 +132,4 @@ public final class TrillRenderer {
         }
     }
 
-    /**
-     * Draws a wavy trill extension line using tiled WIGGLE_TRILL_FASTER glyphs.
-     * All coordinates in staff-space units.
-     */
-    void drawWavyLine(
-        Graphics2D g2,
-        double x1,
-        double y,
-        double x2,
-        Color color
-    ) {
-        var length = x2 - x1;
-
-        if (length <= 0) {
-            return;
-        }
-
-        var segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
-
-        try (var _ = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
-            g2.setFont(RenderingUtils.MUSIC_FONT);
-            g2.setColor(color);
-            g2.translate(x1, y);
-
-            var scale = length / WIGGLE_SEGMENT_WIDTH_SS / segments;
-            g2.scale(scale, 1d);
-
-            for (var i = 0; i < segments; i++) {
-                g2.drawString(
-                    SMuFLGlyph.WIGGLE_TRILL_FASTER.asString(),
-                    (float) (i * WIGGLE_SEGMENT_WIDTH_SS),
-                    0f
-                );
-            }
-        }
-    }
 }

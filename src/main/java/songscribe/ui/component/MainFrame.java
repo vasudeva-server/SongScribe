@@ -75,6 +75,8 @@ import songscribe.font.DocumentFonts;
 import songscribe.io.SongFileWriter;
 import songscribe.layout.PageModel;
 import songscribe.lifecycle.Shutdown;
+import songscribe.lint.LintRule;
+import songscribe.lint.Linter;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.command.NewFileCommand;
@@ -170,7 +172,7 @@ public class MainFrame extends JFrame {
     private final ReportPanel reportPanel = new ReportPanel(this);
 
     // The score on top and the Messages panel below; holds the window's content area
-    private final JSplitPane contentSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+    private final JSplitPane contentSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     /**
      * The theme's divider size, restored when the Messages panel is shown. Hiding the panel
@@ -273,6 +275,7 @@ public class MainFrame extends JFrame {
             // Initialize the minimal theme (Regular font face + preferred family)
             // before showing the splash so it renders in Source Sans, not a fallback.
             UIUtils.initMinimalTheme();
+            UIUtils.keepToolTipsOpenWhileHovered();
             showSplash();
 
             // Force a synchronous first paint so the splash appears immediately.
@@ -725,16 +728,17 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Puts the score above the Messages panel and shows the panel as the preferences left it.
+     * Puts the score to the left of the Messages panel and shows the panel as the preferences
+     * left it.
      *
      * @effects installs the score's scroll pane and the Messages panel in the split pane, and a
-     *          listener that saves the panel height when the user releases the divider
+     *          listener that saves the panel width when the user releases the divider
      */
     private void initContentSplitPane() {
-        contentSplitPane.setTopComponent(requireScoreView().requireScrollPane());
-        contentSplitPane.setBottomComponent(reportPanel);
+        contentSplitPane.setLeftComponent(requireScoreView().requireScrollPane());
+        contentSplitPane.setRightComponent(reportPanel);
 
-        // A window resize goes entirely to the score, so the panel keeps its height.
+        // A window resize goes entirely to the score, so the panel keeps its width.
         contentSplitPane.setResizeWeight(1);
         messagesDividerSize = contentSplitPane.getDividerSize();
 
@@ -746,9 +750,9 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Saves the Messages panel height when the user releases the divider after a drag.
+     * Saves the Messages panel width when the user releases the divider after a drag.
      *
-     * <p>The height is saved on release rather than on each divider move, because every
+     * <p>The width is saved on release rather than on each divider move, because every
      * preference write saves the whole preferences file.
      */
     private void installDividerReleaseListener() {
@@ -761,8 +765,8 @@ public class MainFrame extends JFrame {
             public void mouseReleased(MouseEvent e) {
                 if (reportPanel.isVisible()) {
                     Prefs.put(
-                        PrefsKey.MESSAGES_PANEL_HEIGHT,
-                        messagesPanelBottom() - contentSplitPane.getDividerLocation()
+                        PrefsKey.MESSAGES_PANEL_WIDTH,
+                        messagesPanelRight() - contentSplitPane.getDividerLocation()
                     );
                 }
             }
@@ -773,60 +777,60 @@ public class MainFrame extends JFrame {
      * Shows or hides the Messages panel without saving the choice.
      *
      * <p>Hidden, the panel is invisible and the divider has no size, so the score fills the
-     * split. Shown, the divider is restored and placed so the panel has the saved height.
+     * split. Shown, the divider is restored and placed so the panel has the saved width.
      *
      * <p>Every change of visibility goes through here, so the Messages action's selected state
-     * is set here and always agrees with the panel.
+     * name is set here and always agrees with the panel.
      *
      * @param visible whether the panel is shown
      */
     private void applyMessagesPanelVisible(boolean visible) {
         reportPanel.setVisible(visible);
-        Actions.TOGGLE_MESSAGES_ACTION.setSelected(visible);
+        Actions.TOGGLE_MESSAGES_ACTION.setPanelShown(visible);
         contentSplitPane.setDividerSize(visible ? messagesDividerSize : 0);
 
         if (visible) {
-            placeDividerAtSavedHeight();
+            placeDividerAtSavedWidth();
         }
     }
 
     /**
-     * Places the divider so the Messages panel has the saved height.
+     * Places the divider so the Messages panel has the saved width.
      *
-     * <p>The place is measured from the bottom of the split pane, so it needs the pane's
-     * height. Before the window is first laid out the pane has none, and the divider is placed
+     * <p>The place is measured from the right edge of the split pane, so it needs the pane's
+     * width. Before the window is first laid out the pane has none, and the divider is placed
      * once the pane is first given a size.
      */
-    private void placeDividerAtSavedHeight() {
-        if (contentSplitPane.getHeight() <= 0) {
+    private void placeDividerAtSavedWidth() {
+        if (contentSplitPane.getWidth() <= 0) {
             contentSplitPane.addComponentListener(new ComponentAdapter() {
                 @Override
                 public void componentResized(ComponentEvent e) {
                     contentSplitPane.removeComponentListener(this);
-                    placeDividerAtSavedHeight();
+                    placeDividerAtSavedWidth();
                 }
             });
             return;
         }
 
-        var panelHeight = Prefs.getInt(PrefsKey.MESSAGES_PANEL_HEIGHT);
-        contentSplitPane.setDividerLocation(Math.max(0, messagesPanelBottom() - panelHeight));
+        var panelWidth = Prefs.getInt(PrefsKey.MESSAGES_PANEL_WIDTH);
+        contentSplitPane.setDividerLocation(Math.max(0, messagesPanelRight() - panelWidth));
     }
 
     /**
-     * The divider location at which the Messages panel would have no height: the split pane's
-     * inner bottom edge, less the divider.
+     * The divider location at which the Messages panel would have no width: the split pane's
+     * inner right edge, less the divider.
      */
-    private int messagesPanelBottom() {
-        return contentSplitPane.getHeight()
-            - contentSplitPane.getInsets().bottom
+    private int messagesPanelRight() {
+        return contentSplitPane.getWidth()
+            - contentSplitPane.getInsets().right
             - contentSplitPane.getDividerSize();
     }
 
     /**
      * Shows the Messages panel and leaves keyboard focus where it is.
      *
-     * @effects when the panel is hidden, shows it at the saved height and saves that it is
+     * @effects when the panel is hidden, shows it at the saved width and saves that it is
      *          visible; otherwise nothing
      */
     public void showMessagesPanel() {
@@ -839,7 +843,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Hides the Messages panel. The panel never holds keyboard focus, so focus stays where it is.
+     * Hides the Messages panel. Keyboard focus stays where it is, or moves to the score when the
+     * panel holds it.
      *
      * @effects when the panel is visible, hides it and saves that it is hidden; otherwise nothing
      */
@@ -848,8 +853,17 @@ public class MainFrame extends JFrame {
             return;
         }
 
+        // A hidden component gives its focus to the next one in the traversal order, which is not
+        // always the score.
+        var focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        var panelHadFocus = focusOwner != null && SwingUtilities.isDescendingFrom(focusOwner, reportPanel);
+
         applyMessagesPanelVisible(false);
         Prefs.put(PrefsKey.MESSAGES_PANEL_VISIBLE, false);
+
+        if (panelHadFocus) {
+            focusScore();
+        }
     }
 
     /**
@@ -1205,16 +1219,65 @@ public class MainFrame extends JFrame {
 
     @Handler
     public void handleSaveAs(SaveAsCommand message) {
+        if (refuseBlockedSave()) {
+            return;
+        }
+
         saveAsNewFile();
     }
 
-    /** Returns true on success, false on write failure or user-cancelled file chooser. */
+    /**
+     * Saves the document to its file, asking for one first when it has none.
+     *
+     * @return true on success; false when a lint finding blocks the save, the write fails, or
+     *     the user cancels the file chooser
+     */
     public boolean save() {
+        if (refuseBlockedSave()) {
+            return false;
+        }
+
         return (currentFile == null) ? saveAsNewFile() : saveCurrentFile();
     }
 
+    /**
+     * Refuses a save while a lint finding blocks it. The lint report is current, because the
+     * linter lints after every change to the song.
+     *
+     * @return true when the save is refused
+     * @effects when refused, shows the Messages panel and an error alert
+     */
+    private boolean refuseBlockedSave() {
+        if (!Linter.hasFlag(LintRule.Flag.BLOCKS_SAVE)) {
+            return false;
+        }
+
+        showMessagesPanel();
+        OptionDialogs.showErrorMessage(
+            this,
+            Strings.ALERT_TITLE_SAVE_BLOCKED,
+            Strings.ERROR_SAVE_BLOCKED_BY_LINT
+        );
+        return true;
+    }
+
     boolean saveCurrentFile() {
-        if (currentFile == null || scoreView == null) {
+        if (currentFile == null) {
+            return false;
+        }
+
+        return writeSong(currentFile);
+    }
+
+    /**
+     * Writes the document to {@code file}, leaving the window's current file alone.
+     *
+     * @return true when the file was written
+     * @effects on success, marks the song unmodified and posts
+     *     {@link DocumentWasSavedNotification}; on failure, shows an error alert
+     */
+    private boolean writeSong(File file) {
+        if (scoreView == null) {
             return false;
         }
 
@@ -1223,14 +1286,14 @@ public class MainFrame extends JFrame {
         try {
             // scoreView is both the document fonts holder and the line layout provider: saved
             // coordinates come from the live layouts the score is painted from.
-            if (SongFileWriter.write(song, scoreView, scoreView, currentFile)) {
+            if (SongFileWriter.write(song, scoreView, scoreView, file)) {
                 song.setModified(false);
-                LOG.info("Saved: {}", currentFile.getName());
+                LOG.info("Saved: {}", file.getName());
                 MessageCenter.post(new DocumentWasSavedNotification());
                 return true;
             }
         } catch (IOException e) {
-            LOG.error("Failed to save {}", currentFile.getName(), e);
+            LOG.error("Failed to save {}", file.getName(), e);
         }
 
         OptionDialogs.showErrorMessage(
@@ -1261,14 +1324,13 @@ public class MainFrame extends JFrame {
             return false;
         }
 
-        setCurrentFile(saveFile);
-        var saved = saveCurrentFile();
-
-        if (saved) {
-            RecentDocumentsManager.add(saveFile.toPath().toAbsolutePath());
+        if (!writeSong(saveFile)) {
+            return false;
         }
 
-        return saved;
+        setCurrentFile(saveFile);
+        RecentDocumentsManager.add(saveFile.toPath().toAbsolutePath());
+        return true;
     }
 
     @Handler

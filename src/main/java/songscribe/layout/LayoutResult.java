@@ -77,6 +77,7 @@ public final class LayoutResult {
     private final double contentAboveStaffSs;
     private final double contentBelowStaffSs;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
+    private final Map<StaffElement, LyricBoxLayout> lyricPlaceholders;
     private final List<LyricConnectorLayout> lyricConnectors;
     private final boolean hasTrailingLyricContinuation;
     private final boolean overflowsStaffWidth;
@@ -118,6 +119,7 @@ public final class LayoutResult {
         double contentAboveStaffSs,
         double contentBelowStaffSs,
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
+        Map<StaffElement, LyricBoxLayout> lyricPlaceholders,
         List<LyricConnectorLayout> lyricConnectors,
         boolean hasTrailingLyricContinuation,
         boolean overflowsStaffWidth,
@@ -145,6 +147,7 @@ public final class LayoutResult {
         }
 
         this.lyricBoxes = Collections.unmodifiableMap(copiedBoxes);
+        this.lyricPlaceholders = Map.copyOf(lyricPlaceholders);
         this.lyricConnectors = List.copyOf(lyricConnectors);
         this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
         this.overflowsStaffWidth = overflowsStaffWidth;
@@ -167,6 +170,7 @@ public final class LayoutResult {
         contentAboveStaffSs = source.contentAboveStaffSs;
         contentBelowStaffSs = source.contentBelowStaffSs;
         lyricBoxes = source.lyricBoxes;
+        lyricPlaceholders = source.lyricPlaceholders;
         lyricConnectors = source.lyricConnectors;
         hasTrailingLyricContinuation = source.hasTrailingLyricContinuation;
         overflowsStaffWidth = source.overflowsStaffWidth;
@@ -522,6 +526,48 @@ public final class LayoutResult {
     public List<LyricBoxLayout> getLyricBoxes(StaffElement element) {
         var boxes = lyricBoxes.get(element);
         return boxes != null ? boxes : List.of();
+    }
+
+    /**
+     * Returns the placeholder box for an element: a box of
+     * {@link LyricLayoutBuilder#PLACEHOLDER_TEXT} placed exactly as a syllable of that text would
+     * be. Layout gives one to every note that can bear a syllable but has none in the verse this
+     * pass was built for; the placeholder takes no space, and a renderer decides whether to draw
+     * it.
+     *
+     * @param element the element to look up
+     * @return the placeholder box, or null when the element has a syllable or cannot bear one
+     */
+    public @Nullable LyricBoxLayout getLyricPlaceholder(StaffElement element) {
+        return lyricPlaceholders.get(element);
+    }
+
+    /**
+     * Returns whether a point lies on a lyric box, tested exactly as the hit registry tests the
+     * region it holds for a syllable there.
+     * <p>
+     * For a box the registry does not hold: a placeholder, which only a renderer decides to draw.
+     *
+     * @param box                a syllable or placeholder box of this result
+     * @param lyricRenderMetrics song-wide lyric render metrics providing the row height
+     * @param pointSs            the point, in the hit registry's line-local, midline-relative
+     *                           staff spaces
+     * @return true when the point lies on the box
+     */
+    public boolean lyricBoxContains(LyricBoxLayout box, LyricRenderMetrics lyricRenderMetrics, Point2D pointSs) {
+        return HitRegionBuilder.inclusiveOf(lyricBoxRectSs(box, lyricRenderMetrics)).contains(pointSs);
+    }
+
+    /**
+     * Returns the region a lyric box answers to: the box's horizontal extent across the full
+     * height of the lyric row, in the hit registry's midline-relative staff spaces.
+     */
+    public Rectangle2D lyricBoxRectSs(LyricBoxLayout box, LyricRenderMetrics lyricRenderMetrics) {
+        // The lyric boxes are the one geometry source in line-top origin. paintAboveMidlineSs()
+        // is the distance from the top of the line's component to the staff midline, so
+        // subtracting it puts the row in the midline-relative space every other region uses.
+        var rowTopYSs = lyricAreaBaseYSs() - paintAboveMidlineSs();
+        return new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), lyricRenderMetrics.lyricBoxHeightSs());
     }
 
     /**

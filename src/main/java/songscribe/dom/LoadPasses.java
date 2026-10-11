@@ -33,14 +33,15 @@ import songscribe.util.LoadStage;
  * <ul>
  *   <li>The accidental stamp runs after the tuplet pass, because a tuplet it drops or adds changes
  *       which notes the chain walk reads.</li>
- *   <li>The ending and hairpin passes run before the breath-mark pass. The breath-mark pass removes
- *       elements, and each pass reports the indices of the line as it saw it, so an ending or a
- *       hairpin judged after a removal would report indices of a line the reader never built. No
- *       ending or hairpin the rule accepts has a breath mark as an endpoint, so the breath-mark
- *       pass cannot break one.</li>
- *   <li>The breath-mark pass runs after the tuplet pass, so that a removed breath mark's index in
- *       the report is its index in the settled line. A removal can remove a tuplet that holds the
- *       mark, and that removal is not reported, because tracking is suspended.</li>
+ *   <li>The tuplet, ending and hairpin passes run before the breath-mark pass. A pending span
+ *       names its endpoints as elements of the line the reader built, and the breath-mark pass
+ *       removes elements, so a pending span judged after it could name an endpoint that is no
+ *       longer in its line. No ending or hairpin the rule accepts has a breath mark as an
+ *       endpoint, so the breath-mark pass cannot break one. A removal can remove a tuplet that
+ *       holds the mark, and that removal is not reported, because tracking is suspended.</li>
+ *   <li>Every entry names the lines its change was made on — a removed breath mark's entry
+ *       names the line the breath mark was on — and no pass adds or removes a line, so the order
+ *       of the passes leaves every entry's place right.</li>
  *   <li>The reader's entries are recorded last, so the heading of the reader's last entry — the
  *       accidentals-converted entry, when the reader made one — comes last in the report, which
  *       orders its headings by first entry.</li>
@@ -103,7 +104,7 @@ final class LoadPasses {
      * @effects as {@link ParsedSong#settle()} states them
      */
     static ChangeReport run(ParsedSong parsed) {
-        var run = new LoadRun(parsed, new ChangeReport.Builder());
+        var run = new LoadRun(parsed, new ChangeReport.Builder(parsed.song()));
 
         run.song().withoutMutationTracking(() -> LoadStage.runAll(STAGES, run));
 

@@ -47,6 +47,8 @@ import songscribe.dom.StaffElement;
  *   <li>note-with-Lyric(extend = CONTINUE) → continues current EXTENDER silently (cross-line
  *       carrier); emits no lyric box</li>
  *   <li>note-with-no-Lyric + active EXTENDER → continues current EXTENDER</li>
+ *   <li>note-with-no-Lyric → a placeholder box ({@link Result#placeholders()}), placed as a
+ *       syllable would be, that takes no space and neither opens nor closes a span</li>
  *   <li>rest + active EXTENDER → continues EXTENDER through the rest, which bears a chain but
  *       never a syllable ({@link songscribe.dom.ElementType#bearsSyllableText()}), exactly as a
  *       barline, a breath mark or a key change does</li>
@@ -82,8 +84,24 @@ public final class LyricLayoutBuilder {
 
     private LyricLayoutBuilder() {}
 
+    /**
+     * The text of a placeholder box: what stands where a missing syllable would go.
+     */
+    public static final String PLACEHOLDER_TEXT = "?";
+
+    /**
+     * @param boxes                   the syllable boxes, by the element that carries each
+     * @param placeholders            for every note that can bear a syllable but has none in
+     *                                the verse laid out, a box of {@link #PLACEHOLDER_TEXT}
+     *                                placed exactly as a syllable of that text would be. A
+     *                                placeholder takes no space and touches no connector; the
+     *                                renderer decides whether to draw it
+     * @param connectors              the hyphens and extenders
+     * @param hasTrailingContinuation whether an extender runs off the end of the line
+     */
     public record Result(
         Map<StaffElement, List<LyricBoxLayout>> boxes,
+        Map<StaffElement, LyricBoxLayout> placeholders,
         List<LyricConnectorLayout> connectors,
         boolean hasTrailingContinuation
     ) {}
@@ -116,6 +134,8 @@ public final class LyricLayoutBuilder {
         double lineWidthSs) {
 
         var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
+        var placeholders = new HashMap<StaffElement, LyricBoxLayout>(columns.size());
+        var placeholderWidthSs = lyricRenderMetrics.lyricBoxWidthSs(PLACEHOLDER_TEXT);
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
 
@@ -154,6 +174,20 @@ public final class LyricLayoutBuilder {
 
             if (lyric == null) {
                 // Note with no lyric: extender (if active) continues silently through this column.
+                // A note that can bear a syllable gets a placeholder where its syllable would go.
+                if (element.getType().bearsSyllableText()) {
+                    var placeholderXSs = computeLyricBoxLeftXSs(
+                        column,
+                        PLACEHOLDER_TEXT,
+                        // A note with no lyric starts no melisma, so its pair carries none.
+                        false,
+                        placeholderWidthSs,
+                        graceUnionWidthSs(columns, columnIndex),
+                        lyricRenderMetrics);
+                    placeholders.put(
+                        element, new LyricBoxLayout(placeholderXSs, placeholderWidthSs, activeVerse, PLACEHOLDER_TEXT));
+                }
+
                 continue;
             }
 
@@ -172,18 +206,16 @@ public final class LyricLayoutBuilder {
             // ElementColumnBuilder measured this syllable's width when it resolved the lyric above;
             // reuse the cached value to avoid a redundant TextLayout allocation per layout pass.
             var widthSs = column.getSyllableWidthSs();
-            // A grace's host is the column immediately after it, resolved once here so the union the
-            // syllable is placed on and the melisma that shares that placement are read off the same
-            // column. Null for anything but a grace, and for a grace ending the line.
-            var hostColumn = column.isGraceNote() && columnIndex + 1 < columns.size()
-                ? columns.get(columnIndex + 1)
-                : null;
+            var hostColumn = graceHostColumn(columns, columnIndex);
             var hostLyric = hostColumn != null ? hostColumn.getLyric() : null;
-            var graceUnionWidthSs = column.isGraceNote()
-                ? spacedGraceHostUnionWidthSs(columns, columnIndex, column, hostColumn)
-                : 0;
+            var graceUnionWidthSs = graceUnionWidthSs(columns, columnIndex);
             var boxXSs = computeLyricBoxLeftXSs(
-                column, lyric, hostLyric, widthSs, graceUnionWidthSs, lyricRenderMetrics);
+                column,
+                text,
+                HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric),
+                widthSs,
+                graceUnionWidthSs,
+                lyricRenderMetrics);
             var box = new LyricBoxLayout(boxXSs, widthSs, activeVerse, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
@@ -236,7 +268,29 @@ public final class LyricLayoutBuilder {
         // so the gap before the following word is a word space, never a hyphen cell.
         clampExtendersToFollowingSyllable(connectors, boxesByElement, lyricRenderMetrics.spaceWidthSs());
 
-        return new Result(boxesByElement, connectors, hasTrailingContinuation);
+        return new Result(boxesByElement, placeholders, connectors, hasTrailingContinuation);
+    }
+
+    /**
+     * Returns the column a grace note's syllable shares its placement with: the column immediately
+     * after it. Null for anything but a grace, and for a grace ending the line.
+     */
+    private static @Nullable ElementColumn graceHostColumn(List<ElementColumn> columns, int columnIndex) {
+        return columns.get(columnIndex).isGraceNote() && columnIndex + 1 < columns.size()
+            ? columns.get(columnIndex + 1)
+            : null;
+    }
+
+    /**
+     * Returns the width of the grace–host union a syllable on the column at {@code columnIndex} is
+     * placed on, or 0 when that column is not a grace note.
+     */
+    private static double graceUnionWidthSs(List<ElementColumn> columns, int columnIndex) {
+        var column = columns.get(columnIndex);
+
+        return column.isGraceNote()
+            ? spacedGraceHostUnionWidthSs(columns, columnIndex, column, graceHostColumn(columns, columnIndex))
+            : 0;
     }
 
     /**
@@ -313,15 +367,15 @@ public final class LyricLayoutBuilder {
      * grace carries the lyric, the host never does. The offset from the grace's origin comes from
      * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator also
      * reads to reserve the neighbor space, so the box is drawn where space was reserved. The pair's
-     * own melisma is part of what that offset places, so whether the pair carries one is derived from
-     * {@code hostLyric} — the host's lyric for this verse — and passed along, as is
+     * own melisma is part of what that offset places, so whether the pair carries one
+     * ({@link HorizontalSpacingCalculator#pairCarriesGraceHostMelisma}) is passed along, as is
      * {@code graceUnionWidthSs}, the union as this line was actually spaced, which is the one input
      * the reservation cannot share (see {@link #spacedGraceHostUnionWidthSs}).
      */
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
-        Lyric lyric,
-        @Nullable Lyric hostLyric,
+        String text,
+        boolean pairCarriesGraceHostMelisma,
         double widthSs,
         double graceUnionWidthSs,
         LyricRenderMetrics lyricRenderMetrics) {
@@ -329,10 +383,10 @@ public final class LyricLayoutBuilder {
         if (column.isGraceNote()) {
             return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
                 widthSs,
-                lyricRenderMetrics.firstGraphemeWidthSs(lyric.text()),
+                lyricRenderMetrics.firstGraphemeWidthSs(text),
                 graceUnionWidthSs,
                 column,
-                HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric));
+                pairCarriesGraceHostMelisma);
         }
 
         // Center the syllable on the notehead, which excludes the flag and augmentation dots

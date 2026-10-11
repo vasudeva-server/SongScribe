@@ -52,20 +52,6 @@ public sealed interface HitTarget {
     HitPriority priority();
 
     /**
-     * Whether a region addressing this kind takes part in the mouse-move query,
-     * {@link HitRegistry#hitTestHover}.
-     * <p>
-     * Lyrics are the only kind that does. The mouse-move path suppresses the preview element
-     * over lyric text and fires on every pixel of pointer motion, so it must be able to ask
-     * about lyrics alone rather than resolving the whole registry.
-     *
-     * @return {@code true} for the kinds the hover query scans
-     */
-    default boolean hoverTestable() {
-        return false;
-    }
-
-    /**
      * The kinds a press can make the selection.
      *
      * <p>A kind outside this interface is addressable but never selected, which is what makes
@@ -123,11 +109,6 @@ public sealed interface HitTarget {
         @Override
         public HitPriority priority() {
             return HitPriority.LYRIC;
-        }
-
-        @Override
-        public boolean hoverTestable() {
-            return true;
         }
 
         @Override

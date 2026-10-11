@@ -315,58 +315,51 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     protected abstract String reportHeadingKey();
 
     /**
-     * The elements this span covers, as locations in the song: from the anchor to the end, both
-     * inclusive, resolved through the anchor's line and that line's index in its song. A span
-     * never crosses a line, so both locations name the same line.
+     * The line a change to this span is made on: its anchor's line, as {@link ChangeLines}. A
+     * span never crosses a line, so that line is the whole of its place.
      * <p>
-     * The span need not be in a registry. It answers for any span whose endpoints are elements
-     * of a line in the song, which is the case for a pasted fragment's span once its elements
-     * are inserted and before the span itself is added.
+     * The span need not be in a registry. It answers for any span whose anchor is an element of
+     * a line, which is the case for a pasted fragment's span once its elements are inserted and
+     * before the span itself is added.
      *
-     * @return the range from the anchor's location to the end's, as they stand when this is called
-     * @throws IllegalStateException when the anchor or the end sits in no line, or the anchor's
-     *     line is not one of its song's lines — the span's own state, not an argument
+     * @return the anchor's line, alone
+     * @throws IllegalStateException when the anchor sits in no line — the span's own state, not
+     *     an argument
      */
-    private ElementLocationRange location() {
-        var line = line();
-        var lineIndex = line.getSong().indexOfLine(line);
-
-        if (lineIndex == null) {
-            throw new IllegalStateException(getClass().getSimpleName() + " anchor line is not in its song: " + this);
-        }
-
-        return ElementLocationRange.onLine(lineIndex, range());
+    private ChangeLines changeLines() {
+        return ChangeLines.on(line());
     }
 
     /**
-     * The report entry for removing this span for the reason {@code reasonKey} names.
+     * The report entry for removing this span for the reason {@code reasonKey} names. The entry
+     * names the span's line.
      *
      * @param reasonKey the {@code Strings} key of the reason, whose value is plain text
      * @return an entry under {@link #reportHeadingKey}, whose description is the reason's text
-     *     and whose location is {@link #location}
-     * @throws IllegalStateException under the conditions {@link #location} throws
+     *     and whose place is {@link #changeLines}
+     * @throws IllegalStateException under the conditions {@link #changeLines} throws
      */
-    public ReportedChange reportedAs(String reasonKey) {
-        return reportedAt(reasonKey, location());
+    public RecordedChange reportedAs(String reasonKey) {
+        return reportedAt(reasonKey, changeLines());
     }
 
     /**
-     * The report entry for removing this span for the reason {@code reasonKey} names, at
-     * {@code where}. A caller uses this in place of {@link #reportedAs} when the span's endpoints
-     * are not in its line, so {@link #location} cannot locate it.
+     * The report entry for removing this span for the reason {@code reasonKey} names, on
+     * {@code where}. A caller uses this in place of {@link #reportedAs} when the span's anchor is
+     * not in a line, so {@link #changeLines} cannot name the span's line.
      *
      * @param reasonKey the {@code Strings} key of the reason, whose value is plain text
-     * @param where the elements to locate the entry at, or {@code null} for an entry with no
-     *     location
+     * @param where the line the entry names, or {@code null} for an entry with no place
      * @return an entry under {@link #reportHeadingKey}, whose description is the reason's text
-     *     and whose location is {@code where}
+     *     and whose place is {@code where}
      */
-    public ReportedChange reportedAt(String reasonKey, @Nullable ElementLocationRange where) {
-        return new ReportedChange(reportHeadingKey(), Strings.get(reasonKey), where);
+    public RecordedChange reportedAt(String reasonKey, @Nullable ChangeLines where) {
+        return new RecordedChange(reportHeadingKey(), Strings.get(reasonKey), where);
     }
 
     /**
-     * Removes this span from its line's span registry and tells the user why.
+     * Removes this span from its line's span registry and tells the user why, in an entry that
+     * names the span's line.
      * <p>
      * Every removal the user did not directly request — one a rule, a sweep, a replacing
      * displacement, a paste or a load makes on its own — goes through this method, so none is silent.
@@ -380,7 +373,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * @effects records {@link #reportedAs reportedAs(reasonKey)} through {@link Song#report},
      *     which records nothing while tracking is suspended, then does what
      *     {@link #removeFrom} does
-     * @throws IllegalStateException under the conditions {@link #location} throws, or when
+     * @throws IllegalStateException under the conditions {@link #changeLines} throws, or when
      *     tracking is on and no modification bracket is open
      */
     public final void removeReported(String reasonKey) {

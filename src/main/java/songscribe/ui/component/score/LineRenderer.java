@@ -43,6 +43,7 @@ import songscribe.layout.CautionaryKeySignature;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
+import songscribe.lint.Linter;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.ScoreView;
@@ -189,6 +190,7 @@ class LineRenderer {
             .setActivelyEditedVerse(editedVerse)
             .setSelectionProvider(lc.getSelectionProvider())
             .setPlaying(lc.getPlaying())
+            .setLintReport(Linter.getReport())
             .build();
     }
 
@@ -600,10 +602,8 @@ class LineRenderer {
                     annotationRenderer.render(invariants, frame, element, g2);
                 }
 
-                // Tier 5: Lyric syllable text (below staff)
-                if (!layoutResult.getLyricBoxes(element).isEmpty()) {
-                    lyricTextRenderer.render(invariants, frame, element, g2);
-                }
+                // Tier 5: Lyric syllable text, or a missing-lyric mark (below staff)
+                lyricTextRenderer.render(invariants, frame, element, g2);
             }
         }
 

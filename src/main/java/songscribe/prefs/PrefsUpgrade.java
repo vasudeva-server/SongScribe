@@ -60,7 +60,8 @@ final class PrefsUpgrade {
     private static final String OBSOLETE_METRIC_KEY = "metric";
 
     private static final List<String> OBSOLETE_KEYS = List.of(
-        "autoSaveAfterStripShortA", "colorizeNote", "defaultProfile", OBSOLETE_METRIC_KEY, "stripShortA"
+        "autoSaveAfterStripShortA", "colorizeNote", "defaultProfile", "messagesPanelHeight", OBSOLETE_METRIC_KEY,
+        "stripShortA"
     );
 
     // Maps old flat-properties key names to PrefsKey values, for the one-time

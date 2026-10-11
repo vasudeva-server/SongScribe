@@ -103,7 +103,7 @@ class HairpinLoadPassTest extends UnitTest {
         assertThat(report.changes()).containsExactly(new ReportedChange(
             Strings.REPORT_HAIRPINS_REMOVED,
             Strings.get(testCase.refusalKey()),
-            ElementLocationRange.onLine(LINE, SPAN)));
+            new LineRange(LINE, LINE)));
     }
 
     static Stream<DroppedCase> droppedCases() {
@@ -129,7 +129,7 @@ class HairpinLoadPassTest extends UnitTest {
         assertThat(report.changes()).containsExactly(new ReportedChange(
             Strings.REPORT_HAIRPINS_REMOVED,
             Strings.get(Strings.REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP),
-            ElementLocationRange.onLine(LINE, OVERLAPPING_SPAN)));
+            new LineRange(LINE, LINE)));
     }
 
     static Stream<Hairpin.Kind> oppositeKindOrders() {

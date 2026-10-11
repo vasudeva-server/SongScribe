@@ -17,13 +17,23 @@ for consent before it removes something, and no kind of change has an alert of
 its own. The edit goes ahead, the report follows it, and undo reverses the edit
 and everything it did on its own in one step. So there is one place that decides
 how a change reads, and one panel the user learns to read. The panel sits at the
-bottom of the main window, where the user can keep it open beside the score.
+right side of the main window, where the user can keep it open beside the score.
 
 A report is a list of entries in the order they were recorded. Each entry names
 the **kind** of change — beams removed, tuplets updated, accidentals converted —
-gives a **description** of why, and says **where**: a range of elements, which
-may cross a line break, as a tie does. A change with no place in the song, such
-as a conversion applied to the whole file, has no location.
+gives a **description** of why, and says **where**: the line it happened on, or
+two lines when it crosses a line break, as a tie does. A change with no place in
+the song, such as a conversion applied to the whole file, has no location.
+
+An entry says where by line, never by element. It describes something that is
+gone — a span removed, a mark dropped — so there is no element left to point at,
+and the elements around it may have moved by the time the user reads it.
+
+The reporter records the line itself, not its number. The number is fixed only
+when the edit or load is over, so it describes the song as the edit left it: a
+line added or removed in front of the recorded one later in the same edit does
+not make the entry wrong. A finished report holds numbers only, and no part of
+the model.
 
 ## The reporter writes the words
 
@@ -31,14 +41,13 @@ The code that makes a change builds its entry, text and all. It is the only code
 that knows what happened: a span's own rule knows whether an endpoint was deleted
 or the notes inside it changed, the tuplet pass knows which ratio it derived, the
 ending check knows which bar broke it. Neither the report nor the panel knows
-any of that. The report groups its entries by kind (`ChangeReport.byHeading`);
-the panel shows each entry as one item, under its kind's heading and with its
-description at its location, and keeps the entries of one kind together. A new kind of change therefore needs no change to the panel —
-only an entry recorded where the change is made.
+any of that. The panel shows each entry as one item: its kind's heading, its
+location, and its description. A new kind of change therefore needs no change to
+the panel — only an entry recorded where the change is made.
 
 The one thing the panel does add is presentation of the location: entries hold
-positions as the model counts them, and the panel alone turns them into the
-line and element numbers the user reads.
+lines as the model counts them, and the panel alone turns them into the line
+numbers the user reads.
 
 ## What reports into it
 
@@ -95,16 +104,16 @@ a collector records into one.
 edit's report; every reporter records into it through the song, wherever in the
 edit it runs, and the report is delivered once for the whole edit, with its
 change notification (`ModificationSession.deliver`). The report is empty when the
-edit changed nothing on its own. The panel replaces its list with the report after
-every edit, so it always shows the most recent change to the song, and an empty
-report clears it. The panel never opens by itself after an edit; the user keeps it
-open if they want to watch it.
+edit changed nothing on its own. The panel replaces its change entries with the
+report after every edit, so they always show the most recent change to the song,
+and an empty report clears them. The panel never opens by itself after an edit;
+the user keeps it open if they want to watch it.
 
-**Undo and redo** deliver a report too. Undo shows an empty report: a replay
-re-applies what the edit recorded and makes no changes of its own to tell the user
-about. Redo shows again the report of the edit it applies, since that is the most
-recent change to the song. A change made while tracking is suspended records
-nothing into an edit's report, since there is no edit;
+**Undo and redo** each deliver an empty report. A replay re-applies what the edit
+recorded and judges nothing: no rule at the close of an edit runs, and no
+companion work that could remove something runs, so nothing records. After an
+undo or a redo the panel shows no change entries. A change made while tracking is
+suspended records nothing into an edit's report, since there is no edit;
 [above](#what-reports-into-it) says what a load reports instead.
 
 **A load** runs with tracking suspended, so there is no bracket to record into.
@@ -113,11 +122,27 @@ song it read. The load passes are handed a report of their own, run in order ove
 the freshly read song, and the reader's entries are recorded after theirs; the
 finished report travels with the load notification.
 When it is not empty, the song is marked modified — the user should save the
-repaired version — and the panel opens by itself. A load that changed nothing
-leaves the panel as the user had it, showing an empty list.
+repaired version. The panel opens by itself when the load's report is not empty
+or the loaded song has lint findings; otherwise it stays as the user had it.
+
+## The panel shows lint findings too
+
+The panel lists two things with different lifetimes. The change entries are an
+event: each edit, undo, redo or load replaces them. The lint findings
+([lint.md](lint.md)) are a state: everything wrong with the song as it is now,
+replaced after every lint run. An update to one never clears the other, so an
+edit somewhere else keeps the lint findings in view.
+
+Changes come first, under headings that start with 💬; lint findings follow,
+under headings that start with ❗. Neither kind of heading is drawn in a color of
+its own. Within each kind, the items are in song order: by line, then by
+element. A change names lines only, so it sorts at the start of its first line,
+and a change with no place sorts before every line. A lint finding's location is
+the line and element it names, numbered when the panel shows it.
 
 ## Showing the panel
 
 The Window menu's Messages item shows the panel when it is hidden and hides it
-when it is shown, and is checked while the panel is shown. The panel never takes
-keyboard focus, so showing or hiding it leaves focus where it was.
+when it is shown, and is checked while the panel is shown. Showing the panel
+leaves keyboard focus where it was. The list takes focus only when the user
+clicks it; hiding the panel while the list has focus moves focus to the score.

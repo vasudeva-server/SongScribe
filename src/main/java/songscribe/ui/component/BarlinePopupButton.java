@@ -23,6 +23,7 @@ package songscribe.ui.component;
 import songscribe.Strings;
 import songscribe.ui.action.Actions;
 import songscribe.util.GraphicUtils;
+import songscribe.util.UIUtils;
 
 /**
  * The toolbar button that drops out a panel of the barline actions.
@@ -35,6 +36,6 @@ public class BarlinePopupButton extends PopupToolbarButton {
     public BarlinePopupButton() {
         super(Actions.BARLINE_ACTIONS);
         setIcon(GraphicUtils.getScaledSVGIcon(ICON, ICON_SIZE_PX, true));
-        setToolTipText(Strings.get(Strings.TOOLTIP_BARLINES));
+        UIUtils.setToolTipText(this, Strings.get(Strings.TOOLTIP_BARLINES_TITLE), Strings.get(Strings.TOOLTIP_BARLINES));
     }
 }

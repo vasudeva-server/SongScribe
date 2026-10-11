@@ -71,14 +71,14 @@ public sealed interface Spanning<S extends Span<?>> permits Spanning.Spanned, Sp
     record Refused<S extends Span<?>>(String reasonKey, Cause cause, String headingKey) implements Spanning<S> {
 
         /**
-         * The report entry for dropping the span this refusal refused, at {@code where}.
+         * The report entry for dropping the span this refusal refused, on {@code where}.
          *
-         * @param where the elements the refused span would have covered
+         * @param where the line the refused span would have lain on
          * @return an entry under {@link #headingKey}, whose description is the text of
-         *     {@link #reasonKey} and whose location is {@code where}
+         *     {@link #reasonKey} and whose place is {@code where}
          */
-        public ReportedChange reportedAt(ElementLocationRange where) {
-            return new ReportedChange(headingKey, Strings.get(reasonKey), where);
+        public RecordedChange reportedAt(ChangeLines where) {
+            return new RecordedChange(headingKey, Strings.get(reasonKey), where);
         }
     }
 

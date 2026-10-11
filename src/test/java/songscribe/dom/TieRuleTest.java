@@ -210,7 +210,7 @@ class TieRuleTest extends UnitTest {
 
             assertThat(anchor.isTiedToNext()).as("the fixture reaches the case only if the edit removes the tie").isFalse();
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst(), ChangeReport.EMPTY);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst());
 
             assertThat(end.soundingAccidental()).isEqualTo(soundedBefore);
             assertThat(anchor.isTiedTo(end)).isTrue();

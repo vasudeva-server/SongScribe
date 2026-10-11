@@ -43,6 +43,8 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.lifecycle.Disposable;
+import songscribe.lint.LintRule;
+import songscribe.lint.Linter;
 import songscribe.message.Message;
 import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.ElementField;
@@ -52,12 +54,16 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.InsertionPointModeDidChangeNotification;
+import songscribe.message.notification.LintReportDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
@@ -123,7 +129,13 @@ public class UIAction extends AbstractAction implements Disposable {
         DISABLE_WHEN_LINE_SELECTED(1 << 16),
         DISABLE_WHEN_GRACE_DURATION_SELECTED(1 << 17),
         ENABLE_WHEN_LINE_SELECTED(1 << 18),
-        REQUIRES_ANNOTATABLE_ELEMENT(1 << 19);
+        REQUIRES_ANNOTATABLE_ELEMENT(1 << 19),
+        /**
+         * Disables the action while playback is stopped, the playback settings play repeats,
+         * and a lint finding blocks playback. While playback runs the flag never disables the
+         * action, so an action that both starts and stops playback can always stop it.
+         */
+        DISABLE_WHEN_PLAYBACK_BLOCKED(1 << 20);
 
         private final int value;
 
@@ -696,6 +708,7 @@ public class UIAction extends AbstractAction implements Disposable {
                 enableInSelectMode(scoreView) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
+                enableFromPlaybackBlock() &&
                 enableFromMidiState() &&
                 enableFromDialogVisibility() &&
                 enableFromGraceModeState() &&
@@ -790,6 +803,38 @@ public class UIAction extends AbstractAction implements Disposable {
 
     protected boolean enableFromPlaybackState() {
         return !hasFlag(Flag.DISABLE_WHEN_PLAYING) || !PlaybackController.isPlaying();
+    }
+
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void lintReportDidChange(LintReportDidChangeNotification message) {
+        if (hasFlag(Flag.DISABLE_WHEN_PLAYBACK_BLOCKED)) {
+            updateEnabledState();
+        }
+    }
+
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void prefsDidChange(PrefsDidChangeNotification message) {
+        var key = message.getKey();
+
+        if (hasFlag(Flag.DISABLE_WHEN_PLAYBACK_BLOCKED)
+                && (key == PrefsKey.PLAY_WITH_REPEATS || key == PrefsKey.ALL)) {
+            updateEnabledState();
+        }
+    }
+
+    /**
+     * Whether {@link Flag#DISABLE_WHEN_PLAYBACK_BLOCKED} leaves this action enabled. The
+     * repeats setting is read from the preference rather than from the playback controller,
+     * so the answer does not depend on which handler of the preference change runs first.
+     *
+     * @return {@code false} only when this action carries the flag, playback is stopped, the
+     *     playback settings play repeats, and a lint finding blocks playback
+     */
+    protected boolean enableFromPlaybackBlock() {
+        return !hasFlag(Flag.DISABLE_WHEN_PLAYBACK_BLOCKED)
+            || PlaybackController.isPlaying()
+            || !Prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS)
+            || !Linter.hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
     }
 
     protected boolean enableFromMidiState() {

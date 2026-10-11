@@ -38,14 +38,15 @@ import songscribe.Strings;
  *                        line at or after the anchor
  * @param pendingHairpins the hairpins the reader found in {@code song}, in staff-space units, under
  *                        the same condition as {@code pendingEndings}
- * @param readerEntries   the report entries the reader made, in the order it made them
+ * @param readerEntries   the report entries the reader made, in the order it made them, each
+ *                        naming lines of {@code song} or no place
  */
 public record ParsedSong(
     Song song,
     List<PendingTuplet> pendingTuplets,
     List<PendingEnding> pendingEndings,
     List<PendingHairpin> pendingHairpins,
-    List<ReportedChange> readerEntries
+    List<RecordedChange> readerEntries
 ) {
 
     public ParsedSong {
@@ -60,10 +61,10 @@ public record ParsedSong(
      * that sounds the same. One entry stands for every conversion in the file, and a reader adds
      * it after every other entry it makes.
      *
-     * @return the entry under {@link Strings#REPORT_ACCIDENTALS_CONVERTED}, with no location
+     * @return the entry under {@link Strings#REPORT_ACCIDENTALS_CONVERTED}, with no place
      */
-    public static ReportedChange accidentalsConvertedEntry() {
-        return new ReportedChange(
+    public static RecordedChange accidentalsConvertedEntry() {
+        return new RecordedChange(
             Strings.REPORT_ACCIDENTALS_CONVERTED,
             Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
             null);

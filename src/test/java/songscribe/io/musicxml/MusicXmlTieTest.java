@@ -34,11 +34,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
-import songscribe.dom.ElementLocation;
-import songscribe.dom.ElementLocationRange;
 import songscribe.dom.ElementType;
 import songscribe.dom.Key;
 import songscribe.dom.NoteElement;
+import songscribe.dom.LineRange;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.StaffElement;
 
@@ -144,8 +143,7 @@ class MusicXmlTieTest extends UnitTest {
         assertThat(result.report().changes()).containsExactly(new ReportedChange(
             Strings.REPORT_BEAMS_REMOVED,
             Strings.get(Strings.REPORT_REASON_BEAM_TIED_NOTES),
-            new ElementLocationRange(
-                new ElementLocation(FIRST_LINE, FIRST_ELEMENT), new ElementLocation(FIRST_LINE, SECOND_ELEMENT))));
+            new LineRange(FIRST_LINE, FIRST_LINE)));
     }
 
     /** The primary {@code <beam number="1">} marker with {@code beamValue}. */

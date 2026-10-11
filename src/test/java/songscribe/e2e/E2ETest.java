@@ -159,6 +159,7 @@ public abstract class E2ETest {
             OptionDialogs.setSuppressDialogs(false);
             FailOnThreadViolationRepaintManager.install();
             SongScribe.logBanner("SongScribe (E2E Tests)");
+            SongScribe.setBus();
 
             GuiActionRunner.execute(() -> {
                 UIUtils.initMinimalTheme();

@@ -161,7 +161,7 @@ final class TupletLoadPass {
     private static Placement place(TupletValidator.Sited<PendingTuplet> sited, ChangeReport.Builder report) {
         var pending = sited.tuplet();
         var site = sited.site();
-        var where = ElementLocationRange.onLine(sited.lineIndex(), site.range());
+        var where = ChangeLines.on(site.line());
         var grade = pending.grade();
         var statedRatio = pending.statedRatio();
         var spanning = statedRatio == null
@@ -182,7 +182,7 @@ final class TupletLoadPass {
                     yield Placement.STATED;
                 }
 
-                report.record(new ReportedChange(
+                report.record(new RecordedChange(
                     Strings.REPORT_TUPLETS_UPDATED,
                     Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), tuplet.getRatio().normalNotes()),
                     where));

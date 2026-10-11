@@ -151,8 +151,8 @@ class ChangeReportDeliveryTest extends UnitTest {
 
                 var batch = batches.batches().getFirst();
 
-                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
-                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
+                MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
+                MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
 
                 assertThat(reports.reports()).as("only the edit's report, none from the replays").hasSize(1);
             });

@@ -29,7 +29,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.ReportedChange;
+import songscribe.dom.RecordedChange;
 import songscribe.dom.Span;
 import songscribe.dom.Spanning;
 import songscribe.dom.StaffElement;
@@ -208,9 +208,9 @@ public record PasteSpanReconciliation(
      * @param spansToAdd the span to add for each fragment span accepted, in the fragment's order;
      *                   none of them is on a line yet
      * @param reports    one entry per fragment span the straddle rule dropped or the target rule
-     *                   refused, located where the span's elements landed, ready to record
+     *                   refused, naming the line the span's elements landed on, ready to record
      */
-    public record Settlement(List<Span<?>> spansToAdd, List<ReportedChange> reports) {
+    public record Settlement(List<Span<?>> spansToAdd, List<RecordedChange> reports) {
 
         public Settlement {
             spansToAdd = List.copyOf(spansToAdd);
@@ -299,8 +299,8 @@ public record PasteSpanReconciliation(
      * for every fragment span the paste leaves out.
      *
      * <p><b>Call this after the fragment's elements have been inserted into {@code line} and
-     * before any fragment span is added.</b> Every index a judge reads, and every location a
-     * report entry names, resolves through the span's anchor element's own line, so the elements
+     * before any fragment span is added.</b> Every index a judge reads, and the line a report
+     * entry names, resolves through the span's anchor element's own line, so the elements
      * must already sit where they will finally sit. Every span is judged against the destination
      * as it stood before any fragment span was added, so no fragment span is judged against
      * another. Refusing a span that was never added is also what keeps this rule free of any
@@ -326,7 +326,7 @@ public record PasteSpanReconciliation(
      */
     public Settlement settle(Line line) {
         var spansToAdd = new ArrayList<Span<?>>(fragmentSpansKept.size());
-        var reports = new ArrayList<ReportedChange>();
+        var reports = new ArrayList<RecordedChange>();
 
         for (var dropped : fragmentSpansDropped) {
             reports.add(dropped.span().reportedAs(dropped.reasonKey()));
@@ -351,13 +351,13 @@ public record PasteSpanReconciliation(
     /**
      * Settles {@code fragmentSpan} on its factory's {@code answer}: the span the factory built,
      * taking {@code fragmentSpan}'s user state, joins {@code spansToAdd}; a refusal joins
-     * {@code reports}, located at {@code fragmentSpan}'s landed elements.
+     * {@code reports}, naming the line {@code fragmentSpan}'s elements landed on.
      */
     private static <E extends StaffElement, S extends Span<E>> void settleWith(
         S fragmentSpan,
         Spanning<S> answer,
         List<Span<?>> spansToAdd,
-        List<ReportedChange> reports
+        List<RecordedChange> reports
     ) {
         switch (answer) {
             case Spanning.Spanned<S>(var spanned, var ignored) -> {

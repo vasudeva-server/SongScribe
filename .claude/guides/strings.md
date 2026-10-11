@@ -45,7 +45,8 @@ This is a Java `.properties` file:
 
 - Newlines in a value: `\n` — e.g. `song.default.attribution = Words and Music\nby Sri Chinmoy`.
 - A literal leading space must be escaped: `dialog.song.settings.the.first = \ the first`.
-- HTML is allowed and rendered by Swing — used for multi-line tooltips and styled labels: `<html><strong>Tuplet</strong><br>Create a tuplet…</html>`.
+- HTML is allowed and rendered by Swing — used for styled labels, such as `label.title.edited`.
+- A tooltip with a heading is never HTML in this file. It is two plain-text keys, the description `tooltip.<topic>` and the heading `tooltip.<topic>.title`, which `UIUtils.setToolTipText` puts together in the form every such tooltip shares.
 
 ### MessageFormat
 

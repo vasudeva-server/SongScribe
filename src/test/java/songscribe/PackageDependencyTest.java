@@ -76,6 +76,22 @@ class PackageDependencyTest extends UnitTest {
     }
 
     @Test
+    void domMustNotImportLint() throws IOException {
+        var violations = findForbiddenImports("songscribe/dom", "songscribe.lint");
+        assertThat(violations)
+            .as("songscribe.dom must not import songscribe.lint")
+            .isEmpty();
+    }
+
+    @Test
+    void lintMustNotImportUi() throws IOException {
+        var violations = findForbiddenImports("songscribe/lint", "songscribe.ui");
+        assertThat(violations)
+            .as("songscribe.lint must not import songscribe.ui")
+            .isEmpty();
+    }
+
+    @Test
     void shapeMustNotImportLayout() throws IOException {
         var violations = findForbiddenImports("songscribe/shape", "songscribe.layout");
         assertThat(violations)

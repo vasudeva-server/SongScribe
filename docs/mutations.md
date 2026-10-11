@@ -130,9 +130,8 @@ the helpers apply raw state only, suppressing the companion side-work — termin
 maintenance, defaults, span invalidation, the modification rules, automatic
 removals, merging — and bypassing guards that mid-replay intermediate states
 legitimately violate. The recorded batch already contains every change;
-re-deriving them would apply them twice. A replay records no new changes into a
-report: an undo delivers an empty report, and a redo delivers again the report of
-the edit it applies.
+re-deriving them would apply them twice. A replay records nothing into a report,
+because it judges nothing: an undo and a redo each deliver an empty report.
 
 **The reentrancy guard** is narrower still: it keeps the batch a replay produces
 from being pushed as a new undo step.

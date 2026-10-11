@@ -38,15 +38,9 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 /**
  * What {@link BreathMarkLoadPass#run} promises about a freshly parsed song: every breath mark
  * that does not follow a duration element is removed, a run of consecutive breath marks keeps at
- * most its first, each removal is reported against the position it stood at once earlier
- * removals have closed the line up, and the pass leaves no mutation behind for undo to see.
+ * most its first, each removal is reported against the line it stood on, and the pass leaves no mutation behind for undo to see.
  */
 class BreathMarkLoadPassTest extends UnitTest {
-
-    /** The index each removed breath mark is reported at, once earlier removals have closed the line up. */
-    private static final int LEADING_BREATH_MARK_REPORTED_INDEX = 0;
-    private static final int BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX = 2;
-    private static final int SECOND_OF_CONSECUTIVE_PAIR_REPORTED_INDEX = 6;
 
     /** The elements the pass leaves behind, in the order they end up in. */
     private static final int REMAINING_ELEMENT_COUNT = 7;
@@ -80,9 +74,9 @@ class BreathMarkLoadPassTest extends UnitTest {
         var report = new ParsedSong(song, List.of(), List.of(), List.of(), List.of()).settle();
 
         assertThat(report.changes()).containsExactly(
-            removedAt(lineIndex, LEADING_BREATH_MARK_REPORTED_INDEX),
-            removedAt(lineIndex, BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX),
-            removedAt(lineIndex, SECOND_OF_CONSECUTIVE_PAIR_REPORTED_INDEX)
+            removedOn(lineIndex),
+            removedOn(lineIndex),
+            removedOn(lineIndex)
         );
 
         var line = song.getLine(lineIndex);
@@ -93,11 +87,11 @@ class BreathMarkLoadPassTest extends UnitTest {
         assertThat(song.isModified()).isFalse();
     }
 
-    /** The entry the pass records for the breath mark that stood at {@code index} of line {@code lineIndex}. */
-    private static ReportedChange removedAt(int lineIndex, int index) {
+    /** The entry the pass records for a breath mark that stood on line {@code lineIndex}. */
+    private static ReportedChange removedOn(int lineIndex) {
         return new ReportedChange(
             Strings.REPORT_BREATH_MARKS_REMOVED,
             Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
-            ElementLocationRange.single(new ElementLocation(lineIndex, index)));
+            new LineRange(lineIndex, lineIndex));
     }
 }

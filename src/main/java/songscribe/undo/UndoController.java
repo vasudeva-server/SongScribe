@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.dom.Beam;
-import songscribe.dom.ChangeReport;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
@@ -127,12 +126,11 @@ public final class UndoController {
 
     /**
      * One undo step: the recorded mutation batch from a single outermost modification
-     * bracket, the report of what the song changed on its own during it, which a redo posts
-     * again, and the op-name its initiator declared (or {@code null} for the type-based
+     * bracket, and the op-name its initiator declared (or {@code null} for the type-based
      * fallback label). Each instance has a distinct identity, so it doubles as the
      * reference-compared clean marker.
      */
-    private record UndoStep(List<Mutation> mutations, ChangeReport report, @Nullable String opName) {
+    private record UndoStep(List<Mutation> mutations, @Nullable String opName) {
     }
 
     /**
@@ -141,7 +139,7 @@ public final class UndoController {
      * pushed steps is unambiguous.
      */
     private static final UndoStep BASELINE =
-        new UndoStep(Collections.unmodifiableList(new ArrayList<>()), ChangeReport.EMPTY, null);
+        new UndoStep(Collections.unmodifiableList(new ArrayList<>()), null);
 
     private static final UndoController INSTANCE = new UndoController();
 
@@ -231,7 +229,7 @@ public final class UndoController {
             return;
         }
 
-        undoStack.push(new UndoStep(message.getMutations(), message.getReport(), message.getOpName()));
+        undoStack.push(new UndoStep(message.getMutations(), message.getOpName()));
         redoStack.clear();
 
         if (undoStack.size() > UNDO_STACK_MAX_DEPTH) {
@@ -259,9 +257,8 @@ public final class UndoController {
      * Otherwise the document's modified flag is recomputed against the save point (see
      * {@link #documentWasSaved}) and {@link UndoStateDidChangeNotification} is posted. The
      * replay itself posts a {@link SongDidChangeNotification} describing the inverse
-     * mutations — which is how the score repaints — without recording a new step. Its report
-     * is empty: the undo reverses the changes the edit made on its own along with the rest, so
-     * none of them remains to be told about.
+     * mutations — which is how the score repaints — without recording a new step. Its change
+     * report is empty, because nothing in a replay records.
      *
      * <p>Never throws. A replay that fails is an engine bug, not a caller error: the model
      * is then mid-step and matches neither stack, so both stacks are cleared and the
@@ -275,7 +272,7 @@ public final class UndoController {
 
     void performUndo() {
         replayTop(undoStack, (song, fonts, step) ->
-            MutationReplayer.undoBatch(song, fonts, step.mutations(), ChangeReport.EMPTY), redoStack::push);
+            MutationReplayer.undoBatch(song, fonts, step.mutations()), redoStack::push);
     }
 
     /**
@@ -287,10 +284,8 @@ public final class UndoController {
      *
      * <p>A no-op, posting nothing, when {@link #canRedo()} is false or no document is open.
      * In every other respect — in-place restoration, the recomputed modified flag, the posted
-     * notifications, and the never-throws fail-safe — it matches {@link #undo()}, except that
-     * the replay's {@link SongDidChangeNotification} carries the report of the edit the redo
-     * applies again: the redo makes the changes that edit made on its own a second time, so the
-     * user is told about them again.
+     * notifications with their empty change report, and the never-throws fail-safe — it
+     * matches {@link #undo()}.
      *
      * <p>EDT only.
      */
@@ -300,7 +295,7 @@ public final class UndoController {
 
     void performRedo() {
         replayTop(redoStack, (song, fonts, step) ->
-            MutationReplayer.redoBatch(song, fonts, step.mutations(), step.report()), undoStack::push);
+            MutationReplayer.redoBatch(song, fonts, step.mutations()), undoStack::push);
     }
 
     /** Replays one step with one of {@link MutationReplayer}'s two batch replays. */

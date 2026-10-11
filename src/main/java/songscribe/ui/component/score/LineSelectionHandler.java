@@ -22,25 +22,32 @@ package songscribe.ui.component.score;
 
 import java.awt.Point;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.Staff;
+import songscribe.hit.HitRegion;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.SweepRange;
+import songscribe.lint.LintMark;
+import songscribe.lint.Linter;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
+import songscribe.ui.renderer.LyricTextRenderer;
 
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
@@ -153,13 +160,30 @@ class LineSelectionHandler {
      *         this component has no line to test against
      */
     @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
+        var region = hitRegionAtViewPoint(viewPoint);
+
+        if (region == null) {
+            return null;
+        }
+
+        return region.target();
+    }
+
+    /**
+     * Hit-tests the given point as {@link #hitTestViewPoint} does, and returns the region that
+     * wins rather than only its target, for a caller that also needs where the target is.
+     *
+     * @return the region whose target {@link #hitTestViewPoint} returns, or {@code null} when it
+     *         returns {@code null}
+     */
+    @Nullable HitRegion hitRegionAtViewPoint(Point viewPoint) {
         var registry = readyRegistry();
 
         if (registry == null) {
             return null;
         }
 
-        return registry.hitTest(layoutXSs(viewPoint), layoutYSs(viewPoint));
+        return registry.hitRegion(layoutXSs(viewPoint), layoutYSs(viewPoint));
     }
 
     /**
@@ -221,32 +245,109 @@ class LineSelectionHandler {
     }
 
     /**
-     * Hit-tests a point, in view pixels, against the lyric row alone.
+     * Hit-tests a point, in view pixels, against the "?" drawn where a lyric is missing.
      * <p>
-     * Answers the same question as looking for a {@link HitTarget.Lyric} in
-     * {@link #hitTestViewPoint}'s result — a lyric outranks everything else, so nothing can
-     * take a point away from it — while testing only the regions marked hover-testable.
-     * {@code mouseMoved} asks this on every pixel of pointer motion, which is the whole
-     * reason the registry offers a hover query rather than leaving callers to filter a full
-     * resolution afterwards.
+     * A "?" has no region in the hit registry. Layout places a placeholder under every slot that
+     * lacks a syllable, but the lint report decides which of them are drawn, and layout never
+     * reads the lint report. This test therefore asks the renderer which placeholders it draws,
+     * and tests each against the region a syllable in its place would have.
      *
-     * @return the lyric under the point, or {@code null} when the point is not over one
+     * @return the "?" under the point, or {@code null} when the point is not over one
      */
-    HitTarget.@Nullable Lyric hitTestLyricViewPoint(Point viewPoint) {
-        var registry = readyRegistry();
+    @Nullable MissingLyricHit hitTestMissingLyricViewPoint(Point viewPoint) {
+        var ready = lc.readyLayout();
 
-        if (registry == null) {
+        if (ready == null) {
             return null;
         }
 
-        var hover = registry.hitTestHover(layoutXSs(viewPoint), layoutYSs(viewPoint));
+        var line = ready.line();
+        var layoutResult = ready.layoutResult();
+        var lintReport = Linter.getReport();
+        var activeVerse = line.getSong().getActiveVerse();
+        var lyricRenderMetrics = lc.getLyricRenderMetrics();
+        var pointSs = new Point2D.Double(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
-        if (hover instanceof HitTarget.Lyric lyric) {
-            return lyric;
+        for (var element : line.getElements()) {
+            var placeholder = LyricTextRenderer.drawnLyricPlaceholder(layoutResult, lintReport, activeVerse, element);
+
+            if (placeholder != null && layoutResult.lyricBoxContains(placeholder, lyricRenderMetrics, pointSs)) {
+                return new MissingLyricHit(element, layoutResult.lyricBoxRectSs(placeholder, lyricRenderMetrics));
+            }
         }
 
         return null;
     }
+
+    /**
+     * Returns the lint mark under a point: its "?", or else the target a click there gets, when the
+     * lint report marks that target.
+     * <p>
+     * The "?" comes first because it stands in the lyric row, and a lyric outranks every other
+     * target.
+     *
+     * @param region       the point's {@link #hitRegionAtViewPoint} result
+     * @param missingLyric the point's {@link #hitTestMissingLyricViewPoint} result
+     * @return the mark under the point, with the box of the "?" or of the winning region, or
+     *         {@code null} when the point is on no mark
+     */
+    @Nullable LintMarkHit lintMarkAt(@Nullable HitRegion region, @Nullable MissingLyricHit missingLyric) {
+        var line = lc.getLine();
+
+        if (missingLyric != null && line != null) {
+            var mark = new LintMark.MissingLyric(missingLyric.element(), line.getSong().getActiveVerse());
+            return new LintMarkHit(mark, missingLyric.boundsSs());
+        }
+
+        if (region == null) {
+            return null;
+        }
+
+        var report = Linter.getReport();
+        LintMark mark = null;
+
+        if (region.target() instanceof HitTarget.Element(var element) && report.isFlagged(element)) {
+            mark = new LintMark.Flagged(element);
+        } else if (region.target() instanceof HitTarget.Attachment(AnnotationAttachment annotation)
+            && annotation.owner() instanceof StaffElement owner
+            && report.isAnnotationFlagged(owner)) {
+            mark = new LintMark.FlaggedAnnotation(owner);
+        }
+
+        if (mark == null) {
+            return null;
+        }
+
+        return new LintMarkHit(mark, region.shapeSs().getBounds2D());
+    }
+
+    /**
+     * Returns the lint mark under a point, as {@link #lintMarkAt(HitRegion, MissingLyricHit)}
+     * does for the point's own hit tests.
+     *
+     * @return the mark under the point and its box, or {@code null} when the point is on no mark
+     */
+    @Nullable LintMarkHit lintMarkAt(Point viewPoint) {
+        return lintMarkAt(hitRegionAtViewPoint(viewPoint), hitTestMissingLyricViewPoint(viewPoint));
+    }
+
+    /**
+     * A "?" under the pointer.
+     *
+     * @param element  the slot that lacks a lyric
+     * @param boundsSs the box the "?" is hit in, in the hit registry's midline-relative staff
+     *                 spaces
+     */
+    record MissingLyricHit(StaffElement element, Rectangle2D boundsSs) { }
+
+    /**
+     * A lint mark under the pointer, and where the item under the pointer is.
+     *
+     * @param mark     the mark
+     * @param boundsSs the box of the "?" or of the hit region the pointer is on, in the hit
+     *                 registry's midline-relative staff spaces
+     */
+    record LintMarkHit(LintMark mark, Rectangle2D boundsSs) { }
 
     /**
      * Whether the given point, in view pixels, is horizontally within the staff header,

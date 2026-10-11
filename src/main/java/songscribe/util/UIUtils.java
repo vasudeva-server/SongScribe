@@ -33,6 +33,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.MouseInfo;
 import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
@@ -44,6 +45,9 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+import java.util.StringJoiner;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
 import javax.swing.Action;
@@ -59,6 +63,7 @@ import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListCellRenderer;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
 import javax.swing.event.PopupMenuEvent;
@@ -69,6 +74,7 @@ import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatInspector;
 import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
+import com.formdev.flatlaf.util.SystemInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,6 +122,9 @@ public final class UIUtils {
 
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
+    /** What separates two sections of a tooltip: a line break and a blank line. */
+    private static final String TOOLTIP_SECTION_SEPARATOR = "<br><br>";
+
     static final int SCREEN_MARGIN_PX = 20;
 
     /** Click count that identifies a double-click in a {@link MouseEvent}. */
@@ -137,9 +146,64 @@ public final class UIUtils {
         var tip = (String) action.getValue(Action.SHORT_DESCRIPTION);
 
         if ((tip != null) && !tip.isEmpty()) {
-            var name = (String) action.getValue(Action.NAME);
-            var html = "<html><strong>" + escapeHtml(name) + "</strong>";
+            var name = Objects.requireNonNullElse((String) action.getValue(Action.NAME), "");
             var accelerator = (KeyStroke) action.getValue(Action.ACCELERATOR_KEY);
+            tip = toolTipHtml(List.of(new ToolTipSection(name, accelerator, tip)));
+        }
+
+        component.setToolTipText(tip);
+    }
+
+    /**
+     * Keeps every tooltip open for as long as the pointer stays on its item. The tooltip manager
+     * otherwise closes a tooltip after a few seconds; it still closes one when the pointer moves
+     * off its item or presses a button.
+     */
+    public static void keepToolTipsOpenWhileHovered() {
+        ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
+    }
+
+    /**
+     * Gives {@code component} a tooltip of one section, in the form {@link #toolTipHtml} gives.
+     *
+     * @param component   the component the tooltip is for
+     * @param heading     the bold first line, as plain text
+     * @param description the text under the heading, as plain text
+     */
+    public static void setToolTipText(JComponent component, String heading, String description) {
+        component.setToolTipText(toolTipHtml(List.of(new ToolTipSection(heading, null, description))));
+    }
+
+    /**
+     * Returns the HTML of a tooltip with headings, the one form such a tooltip takes in the
+     * application: each section a bold heading over its description, with a blank line between
+     * sections. A tooltip of one plain line needs none of this.
+     *
+     * @param sections the sections, in the order they are shown
+     * @return the tooltip text, ready for {@link JComponent#setToolTipText}
+     */
+    public static String toolTipHtml(List<ToolTipSection> sections) {
+        var html = new StringJoiner(TOOLTIP_SECTION_SEPARATOR, "<html>", "</html>");
+
+        for (var section : sections) {
+            html.add(section.html());
+        }
+
+        return html.toString();
+    }
+
+    /**
+     * One section of a tooltip: a heading in bold, optionally followed by a keyboard shortcut,
+     * over a description. All three are plain text; {@link #toolTipHtml} escapes them.
+     *
+     * @param heading     the bold first line
+     * @param accelerator the keyboard shortcut shown after the heading, or {@code null} for none
+     * @param description the text under the heading
+     */
+    public record ToolTipSection(String heading, @Nullable KeyStroke accelerator, String description) {
+
+        private String html() {
+            var html = "<strong>" + escapeHtml(heading) + "</strong>";
 
             if (accelerator != null) {
                 var modifiers = Utils.getPlatformModifiersString(accelerator);
@@ -147,10 +211,8 @@ public final class UIUtils {
                 html += "&nbsp;&nbsp;(" + escapeHtml(modifiers + keyName) + ')';
             }
 
-            tip = html + "<br>" + tip + "</html>";
+            return html + "<br>" + escapeHtml(description);
         }
-
-        component.setToolTipText(tip);
     }
 
     /**
@@ -649,6 +711,15 @@ public final class UIUtils {
      * under {@code DEBUG=1}.
      */
     public static void initMinimalTheme() {
+        // Every component measures its text under the antialiasing hint it gets from the UI
+        // defaults. On macOS the toolkit suggests LCD, which FlatLaf passes on, but macOS paints
+        // grayscale text, whose glyph widths differ: text measured under LCD paints wider than
+        // its component and covers the right padding. A developer default outranks the hint
+        // of every look and feel, so it holds across theme changes.
+        if (SystemInfo.isMacOS) {
+            UIManager.put(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        }
+
         SourceSans3Font.installRegular();
 
         // Set up the base font family for FlatLaf

@@ -74,7 +74,7 @@ final class SpanLoadPass {
      *     {@code song}, or its end does not sit in the anchor's line at or after the anchor
      * @effects adds a span to its anchor's line for every pending span not dropped; records to
      *     {@code report}, in the order of {@code pendingSpans}, every pending span the pass
-     *     dropped, as {@link Spanning.Refused#reportedAt} states it over the span's range
+     *     dropped, as {@link Spanning.Refused#reportedAt} states it on the span's line
      * @log WARN one line for each pending span dropped, naming its kind's heading, its line, its
      *     range and the reason
      */
@@ -106,7 +106,7 @@ final class SpanLoadPass {
                 LOG.warn("Load pass: dropped an ill-formed span ({}) over elements {}-{} of line {} ({})",
                     refused.headingKey(), range.begin(), range.end(), lineIndex, refused.reasonKey());
 
-                report.record(refused.reportedAt(ElementLocationRange.onLine(lineIndex, range)));
+                report.record(refused.reportedAt(ChangeLines.on(line)));
             }
         }
     }

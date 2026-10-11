@@ -38,12 +38,12 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
-import songscribe.dom.ElementLocationRange;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.NoteValue;
+import songscribe.dom.LineRange;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.Span;
 import songscribe.dom.Spanning;
@@ -437,11 +437,11 @@ class PasteSpanReconciliationTest extends UnitTest {
         return new ElementRange(original.begin() - captured.begin(), original.end() - captured.begin());
     }
 
-    private static ReportedChange beatBarrierReport(ElementRange landedAt) {
+    private static ReportedChange beatBarrierReport() {
         return new ReportedChange(
             Strings.REPORT_TUPLETS_REMOVED,
             Strings.get(Strings.REPORT_REASON_BEAT_BARRIER),
-            ElementLocationRange.onLine(FIRST_LINE, landedAt));
+            new LineRange(FIRST_LINE, FIRST_LINE));
     }
 
     @Test
@@ -453,7 +453,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         assertThat(pasted.spansOnLine()).isEmpty();
         assertThat(pasted.reports())
-            .containsExactly(beatBarrierReport(landedAt(FIRST_TRIPLET, FIRST_TRIPLET)));
+            .containsExactly(beatBarrierReport());
     }
 
     @Test
@@ -467,7 +467,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         assertThat(pasted.spansOnLine()).singleElement().isInstanceOfSatisfying(Tuplet.class, tuplet ->
             assertThat(tuplet.range()).isEqualTo(landedAt(FIRST_TRIPLET, captured)));
-        assertThat(pasted.reports()).containsExactly(beatBarrierReport(landedAt(SECOND_TRIPLET, captured)));
+        assertThat(pasted.reports()).containsExactly(beatBarrierReport());
     }
 
     // ---- A span with an endpoint on a removed key-change barline ----
@@ -505,7 +505,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             .containsExactly(tuple(
                 testCase.headingKey(),
                 Strings.get(Strings.REPORT_REASON_ENDPOINT_DELETED),
-                ElementLocationRange.onLine(FIRST_LINE, new ElementRange(0, BARLINE_INDEX - 1))));
+                new LineRange(FIRST_LINE, FIRST_LINE)));
     }
 
     static Stream<StrandedCase> strandedCases() {

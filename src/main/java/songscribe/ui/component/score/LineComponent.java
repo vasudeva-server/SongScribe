@@ -22,10 +22,13 @@ package songscribe.ui.component.score;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
+import java.util.ArrayList;
 import java.util.Objects;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 
 import org.jspecify.annotations.Nullable;
 
@@ -41,6 +44,8 @@ import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.lint.LintMark;
+import songscribe.lint.Linter;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
@@ -60,6 +65,7 @@ import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.util.GraphicsState;
 import songscribe.util.UIUtils;
+import songscribe.util.UIUtils.ToolTipSection;
 
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
@@ -190,6 +196,10 @@ public class LineComponent extends ScoreComponent
      */
     public LineComponent() {
         addMouseMotionListener(this);
+
+        // getToolTipText(MouseEvent) answers per point, so no tooltip text is set; registering
+        // is what makes the tooltip manager ask.
+        ToolTipManager.sharedInstance().registerComponent(this);
     }
 
     /**
@@ -601,6 +611,15 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        // The cascade runs once per move and serves both the lint hover and the lyric test below.
+        // The lint hover comes first, so that it follows the pointer in every mode and state.
+        var point = e.getPoint();
+        var region = selectionHandler.hitRegionAtViewPoint(point);
+        var hit = region == null ? null : region.target();
+        var missingLyric = selectionHandler.hitTestMissingLyricViewPoint(point);
+        var lintMarkHit = selectionHandler.lintMarkAt(region, missingLyric);
+        LintHover.pointerIsOver(lintMarkHit == null ? null : lintMarkHit.mark());
+
         if (getGraceModeManager().mouseMoved(this, e)) {
             return;
         }
@@ -612,9 +631,7 @@ public class LineComponent extends ScoreComponent
         }
 
         // No preview anywhere in the clef/key signature column or over the lyrics, since a click
-        // there selects rather than inserting an element. The header test is two comparisons, so it
-        // runs before the lyric test, which walks the line's lyric boxes. This fires on every pixel
-        // of pointer motion, so it asks only about lyrics rather than running the whole cascade.
+        // there selects rather than inserting an element.
         //
         // This is what makes a lyric outrank the preview rather than the other way round. The lyric
         // row is not out of the preview's reach: the row sits just below the line's laid-out content,
@@ -622,10 +639,12 @@ public class LineComponent extends ScoreComponent
         // of the lyric text. Clearing it here means the staff positions a lyric box covers cannot be
         // clicked to insert a note — the accepted price of leaving lyric text clickable wherever it
         // is drawn, and the reason a lyric is the one kind selectable in EDIT mode at all (see
-        // handleEditModePress).
+        // handleEditModePress). A "?" drawn where a lyric is missing counts as lyric text: a
+        // double-click on it opens the lyric editor there.
         if (getScoreView().getMode() == Mode.EDIT
-            && (selectionHandler.isWithinHeaderX(e.getPoint())
-                || selectionHandler.hitTestLyricViewPoint(e.getPoint()) != null)) {
+            && (selectionHandler.isWithinHeaderX(point)
+                || hit instanceof HitTarget.Lyric
+                || missingLyric != null)) {
             clearPreviewElement();
             return;
         }
@@ -689,21 +708,27 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // The same lyric test the press path's cascade runs first, so both agree on which
-        // syllable is under the pointer. Only the lyric answer matters here, so the rest of the
-        // cascade is skipped.
-        var lyricHit = selectionHandler.hitTestLyricViewPoint(e.getPoint());
+        // The same cascade the press path runs, so both agree on what is under the pointer, and
+        // every test below shares its one result, as hitTestViewPoint's own contract asks. A lyric
+        // outranks every other target. A "?" drawn where a lyric is missing stands where its
+        // syllable would, so it is tested next and handled as one.
+        var clickHit = selectionHandler.hitTestViewPoint(e.getPoint());
+        var lyricHit = clickHit instanceof HitTarget.Lyric lyric ? lyric : null;
+        var missingLyric = lyricHit == null
+            ? selectionHandler.hitTestMissingLyricViewPoint(e.getPoint())
+            : null;
+        var missingLyricElement = missingLyric == null ? null : missingLyric.element();
 
-        if (lyricHit != null) {
-            // Consumed either way: the press already selected the lyric, and nothing below this
-            // should insert an element or re-resolve the click to a note.
+        if (lyricHit != null || missingLyricElement != null) {
+            // Consumed either way: the press already selected the lyric, or mouseMoved hid the
+            // preview over the "?", and nothing below this should insert an element or
+            // re-resolve the click to a note.
             if (UIUtils.isLeftDoubleClick(e)
                 && line != null
                 && view.getActiveLyricEditor() == null) {
-                var element = lyricHit.element();
-                var lyric = element.getLyricForVerse(lyricHit.verse());
+                var element = lyricHit != null ? editableLyricElement(lyricHit) : missingLyricElement;
 
-                if (lyric != null && !lyric.text().isBlank()) {
+                if (element != null) {
                     LyricEditor.deselectAndOpenOn(view, line, line.getElementIndex(element));
                 }
             }
@@ -711,10 +736,9 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // All four double-click-to-edit gestures ask about the same point, so it is resolved
-        // once here and shared, as hitTestViewPoint's own contract asks and as pressed
-        // already does with its cascade result. Pinning line to a local here is what lets the
-        // three that act on notation take it as a plain non-null argument.
+        // All four double-click-to-edit gestures ask about the same point, so they share the
+        // cascade result above. Pinning line to a local here is what lets the three that act on
+        // notation take it as a plain non-null argument.
         //
         // No modifier gates this: a double-click always means "edit this," regardless of
         // which keys happen to be down, so shift+double-click on a selectable element opens
@@ -728,8 +752,6 @@ public class LineComponent extends ScoreComponent
         var clickedLine = line;
 
         if (UIUtils.isLeftDoubleClick(e) && clickedLine != null) {
-            var clickHit = selectionHandler.hitTestViewPoint(e.getPoint());
-
             if (editDoubleClickedAttribution(clickHit)) {
                 return;
             }
@@ -762,6 +784,16 @@ public class LineComponent extends ScoreComponent
         }
 
         PreviewElementManager.handleClick(this);
+    }
+
+    /**
+     * Returns the element whose lyric a double-click on {@code lyricHit} edits, or null when the
+     * syllable has no text to edit.
+     */
+    private static @Nullable StaffElement editableLyricElement(HitTarget.Lyric lyricHit) {
+        var element = lyricHit.element();
+        var lyric = element.getLyricForVerse(lyricHit.verse());
+        return lyric != null && !lyric.text().isBlank() ? element : null;
     }
 
     /**
@@ -966,8 +998,7 @@ public class LineComponent extends ScoreComponent
         //
         // The cascade walks every element in the line, so it runs exactly once per press: this one
         // result feeds the mode switch, the EDIT-mode selection path, the pitch-drag handler and
-        // the press dispatch, all below. This is the only handler that needs the whole cascade —
-        // mouseMoved and clicked ask about lyrics alone.
+        // the press dispatch, all below.
         var pressHit = selectionHandler.hitTestViewPoint(e.getPoint());
 
         if (view.getMode() == Mode.EDIT
@@ -1023,6 +1054,64 @@ public class LineComponent extends ScoreComponent
     protected void exited(MouseEvent e, ScoreView view) {
         getInsertionPointMode().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
+        LintHover.pointerIsOver(null);
+    }
+
+    // ==========================================================================
+    // Lint Tooltip
+    // ==========================================================================
+
+    /**
+     * Returns the tooltip of the lint mark under the pointer: the heading and the description of
+     * each of its findings, as the Messages panel shows them, without their place.
+     * <p>
+     * The mark is found from the event's own point, not taken from {@link LintHover}: the tooltip
+     * manager and {@link #mouseMoved} hear the same move in an order neither controls, so the
+     * hover's mark can be one move old.
+     *
+     * @return the tooltip text, or {@code null} when the pointer is on no mark, so no tooltip shows
+     */
+    @Override
+    public @Nullable String getToolTipText(MouseEvent event) {
+        var lintMarkHit = selectionHandler.lintMarkAt(event.getPoint());
+        return lintMarkHit == null ? null : lintToolTipText(lintMarkHit.mark());
+    }
+
+    /**
+     * Places the lint tooltip centered under the item the pointer is on: the "?", the flagged
+     * element, or the flagged annotation.
+     *
+     * @return the tooltip's top-left corner in this component's coordinates, or {@code null}
+     *         when the pointer is on no mark
+     */
+    @Override
+    public @Nullable Point getToolTipLocation(MouseEvent event) {
+        var lintMarkHit = selectionHandler.lintMarkAt(event.getPoint());
+
+        if (lintMarkHit == null) {
+            return null;
+        }
+
+        // The tooltip manager builds its tooltip the same way, so this one measures as wide.
+        var toolTip = createToolTip();
+        toolTip.setTipText(lintToolTipText(lintMarkHit.mark()));
+
+        var viewScale = getViewScale();
+        var boundsSs = lintMarkHit.boundsSs();
+        var centerXViewPx = viewScale.toViewPx(new Ss(boundsSs.getCenterX())).positionPx();
+        var bottomYViewPx = viewScale.toViewPx(new Ss(boundsSs.getMaxY() + getMiddleLineYSs())).positionPx();
+
+        return new Point(centerXViewPx - toolTip.getPreferredSize().width / 2, bottomYViewPx);
+    }
+
+    private static String lintToolTipText(LintMark mark) {
+        var sections = new ArrayList<ToolTipSection>();
+
+        for (var finding : Linter.getReport().findingsAt(mark)) {
+            sections.add(new ToolTipSection(Strings.get(finding.headingKey()), null, finding.description()));
+        }
+
+        return UIUtils.toolTipHtml(sections);
     }
 
     // ==========================================================================

@@ -50,7 +50,9 @@ public final class MainToolbarPanel extends JPanel {
 
     public MainToolbarPanel() {
         setLayout(new BorderLayout());
-        setBorder(new ThemeAwareMatteBorder(1, 0, 0, 0, "ToolBar.separatorColor"));
+        // The line below the toolbar belongs to the toolbar, so it runs across the window above
+        // both the score and the Messages panel.
+        setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
         var toolsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         toolsPanel.add(createModeToolbarPanel());
         toolsPanel.add(createDurationToolbarPanel());

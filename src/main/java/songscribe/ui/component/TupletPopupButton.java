@@ -33,6 +33,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.menu.TupletMenuItems;
+import songscribe.util.UIUtils;
 
 public class TupletPopupButton extends PopupMenuButton {
 
@@ -50,7 +51,7 @@ public class TupletPopupButton extends PopupMenuButton {
         super.configureButtonFromAction(action);
 
         // Used a fixed tooltip for the button
-        setToolTipText(Strings.get(Strings.TOOLTIP_TUPLET));
+        UIUtils.setToolTipText(this, Strings.get(Strings.TOOLTIP_TUPLET_TITLE), Strings.get(Strings.TOOLTIP_TUPLET));
     }
 
     /**

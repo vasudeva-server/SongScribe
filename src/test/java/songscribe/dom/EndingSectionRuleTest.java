@@ -99,19 +99,9 @@ class EndingSectionRuleTest extends UnitTest {
         return new Fixture(song, ending);
     }
 
-    /** How far an edit before the ending moves it: one element inserted ahead of it, or removed. */
-    private static final int ONE_INSERTED = 1;
-    private static final int ONE_REMOVED = -1;
-
-    /**
-     * Where the fixture's ending stands after an edit that moved it {@code shift} elements along
-     * its line.
-     */
-    private static ElementLocationRange endingAfter(int lineIndex, int anchorIndex, int shift) {
-        var shiftedAnchor = anchorIndex + shift;
-
-        return ElementLocationRange.onLine(
-            lineIndex, new ElementRange(shiftedAnchor, shiftedAnchor + END_OFFSET_FROM_ANCHOR));
+    /** The report's place for a removed ending: the one line it stood on, in the song as the edit left it. */
+    private static LineRange endingOn(int lineIndex) {
+        return new LineRange(lineIndex, lineIndex);
     }
 
     /**
@@ -121,12 +111,12 @@ class EndingSectionRuleTest extends UnitTest {
      * @param anchorIndex  the ending's anchor index in the fixture's last line
      * @param lines        the fixture's lines in compact notation
      * @param edit         makes the edit, inside a modification bracket
-     * @param reportedAt   where the report places the removed ending, in the song as the edit
-     *                     leaves it; {@code null} when the ending is kept and nothing is reported
+     * @param reportedAt   the line the report places the removed ending on, in the song as
+     *                     the edit leaves it; {@code null} when the ending is kept and nothing is reported
      */
     private record SectionCase(
         String description, int anchorIndex, String[] lines, Consumer<Song> edit,
-        @Nullable ElementLocationRange reportedAt
+        @Nullable LineRange reportedAt
     ) {}
 
     @ParameterizedTest(name = "{0}")
@@ -158,23 +148,23 @@ class EndingSectionRuleTest extends UnitTest {
             new SectionCase("deleting the opening repeat removes the ending",
                 ONE_LINE_ANCHOR_INDEX, new String[] {ONE_LINE},
                 song -> song.getLine(FIRST_LINE).removeRange(ElementRange.single(OPENER_INDEX)),
-                endingAfter(FIRST_LINE, ONE_LINE_ANCHOR_INDEX, ONE_REMOVED)),
+                endingOn(FIRST_LINE)),
             new SectionCase("inserting a closing repeat after the opening repeat removes the ending",
                 ONE_LINE_ANCHOR_INDEX, new String[] {ONE_LINE},
                 song -> song.getLine(FIRST_LINE).addElement(OPENER_INDEX + 1, repeatRight()),
-                endingAfter(FIRST_LINE, ONE_LINE_ANCHOR_INDEX, ONE_INSERTED)),
+                endingOn(FIRST_LINE)),
             new SectionCase("inserting a double barline after the opening repeat removes the ending",
                 ONE_LINE_ANCHOR_INDEX, new String[] {ONE_LINE},
                 song -> song.getLine(FIRST_LINE).addElement(OPENER_INDEX + 1, doubleBarline()),
-                endingAfter(FIRST_LINE, ONE_LINE_ANCHOR_INDEX, ONE_INSERTED)),
+                endingOn(FIRST_LINE)),
             new SectionCase("replacing the opening repeat with a single barline removes the ending",
                 ONE_LINE_ANCHOR_INDEX, new String[] {ONE_LINE},
                 replaceOpener(),
-                endingAfter(FIRST_LINE, ONE_LINE_ANCHOR_INDEX, 0)),
+                endingOn(FIRST_LINE)),
             new SectionCase("deleting the line that holds the opening repeat removes the ending",
                 ENDING_LINE_ANCHOR_INDEX, new String[] {":| 3", "|: 3", ENDING_LINE},
                 song -> song.removeLine(OPENER_LINE),
-                endingAfter(SECOND_LINE, ENDING_LINE_ANCHOR_INDEX, 0)),
+                endingOn(SECOND_LINE)),
             new SectionCase("an opening repeat on an earlier line keeps the ending through an edit to its line",
                 ENDING_LINE_ANCHOR_INDEX, new String[] {":| |: 3", ENDING_LINE},
                 song -> song.getLine(SECOND_LINE).addElement(0, crotchet()),
@@ -202,13 +192,13 @@ class EndingSectionRuleTest extends UnitTest {
                 .as("the fixture reaches the case only if the edit removes the ending")
                 .isEmpty();
 
-            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, batch);
 
             assertThat(line.getElement(OPENER_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT);
             assertThat(line.spanRegistry().findEndings()).singleElement()
                 .satisfies(restored -> assertThat(restored.range()).isEqualTo(range));
 
-            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch, ChangeReport.EMPTY);
+            MutationReplayer.redoBatch(song, NO_FONT_CHANGES, batch);
 
             assertThat(line.spanRegistry().findEndings()).isEmpty();
         } finally {

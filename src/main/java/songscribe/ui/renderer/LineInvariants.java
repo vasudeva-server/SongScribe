@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.LyricRun;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
@@ -40,6 +41,7 @@ import songscribe.font.FontKey;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.lint.LintReport;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
@@ -99,6 +101,7 @@ public final class LineInvariants {
     private final Color selectionColor;
     private final @Nullable Playing playing;
     private final ViewScale viewScale;
+    private final LintReport lintReport;
 
     /**
      * The elements of this line the playing note's tie passes over, both notes included, or
@@ -129,6 +132,7 @@ public final class LineInvariants {
         selectionColor = b.selectionColor;
         playing = b.playing;
         viewScale = b.viewScale;
+        lintReport = b.lintReport;
         playingTieRange = (b.playing != null && b.currentLine != null)
             ? playingTieRange(b.currentLine, b.playing)
             : null;
@@ -291,13 +295,18 @@ public final class LineInvariants {
         return selectionColor;
     }
 
+    /** Returns the lint report this render pass draws findings from. */
+    public LintReport getLintReport() {
+        return lintReport;
+    }
+
     // ==========================================================================
     // Color resolution
     // ==========================================================================
 
     /**
      * Returns whether {@code color} is the one every colour lookup here falls back to when
-     * nothing applies — no playback, no selection, no hover.
+     * nothing applies — no playback, no selection, no hover, no lint finding.
      * <p>
      * Callers ask this to decide whether a lookup contributed anything, so that a renderer can
      * fall through to its own colour choice. One predicate rather than a comparison written out
@@ -310,24 +319,25 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns the rendering color for the element at the given index.
+     * Returns the rendering color for the element at the given index, through
+     * {@link #resolveColor}: the element or its tie playing, then a range selection that
+     * covers it, then the hover highlight, then a lint finding on it.
      * <p>
-     * Covers playback highlighting, selection, and hover (replaced-element) highlighting.
      * Does not include grace-cancel coloring (handled in LineRenderer).
      */
     public Color getElementColor(int elementIndex) {
-        return colorFor(
+        return resolveColor(
             elementIndex,
-            () -> isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex),
-            () -> false
+            () -> isElementOrTiePlaying(elementIndex),
+            () -> isElementRangeSelected(elementIndex)
         );
     }
 
     /**
      * Returns the rendering color for a lyric syllable attached to the element at
-     * {@code elementIndex}, for the given verse. Extends {@link #getElementColor} with
-     * a per-verse {@code isLyricSelected} check inserted between playback and
-     * element-level selection.
+     * {@code elementIndex}, for the given verse. Differs from {@link #getElementColor} in its
+     * playing test, described below, and in its selection test, which also holds when the
+     * syllable itself is selected.
      * <p>
      * The playback highlight extends across the syllable's span: a melisma anchor
      * ({@link Lyric.Extend#START}) stays highlighted while any extender carrier of
@@ -336,10 +346,11 @@ public final class LineInvariants {
      * including) the next text-bearing syllable.
      */
     public Color getLyricColor(int elementIndex, StaffElement element, int verseIndex) {
-        return colorFor(
+        return resolveColor(
             elementIndex,
             () -> isLyricSpanPlaying(elementIndex, element, verseIndex),
             () -> isSelected(new HitTarget.Lyric(element, verseIndex))
+                || isElementRangeSelected(elementIndex)
         );
     }
 
@@ -365,10 +376,10 @@ public final class LineInvariants {
         }
 
         var anchor = currentLine.getElement(anchorIndex);
-        return colorFor(
+        return resolveColor(
             anchorIndex,
             () -> isLyricSpanPlaying(anchorIndex, anchor, verseIndex),
-            () -> false
+            () -> isElementRangeSelected(anchorIndex)
         );
     }
 
@@ -390,11 +401,11 @@ public final class LineInvariants {
 
     /**
      * Returns the rendering color for the element {@code target} addresses, the target-keyed
-     * counterpart of {@link #getElementColor(int)}: playback, then selection of this exact
-     * target, then the hovered replaced-element highlight.
+     * counterpart of {@link #getElementColor(int)}, resolved through {@link #resolveColor}
+     * with selection of this exact target as its selection test.
      * <p>
-     * Playback and hover are asked by position, so an element that has no position in the
-     * line — a preview being dragged — is colored by selection alone.
+     * Playback, hover and lint are asked by position, so an element that has no position in
+     * the line — a preview being dragged — is colored by selection alone.
      * <p>
      * {@code elementIndex} is not derived here: the call site already has it from its own
      * loop, so deriving it would repeat a lookup the caller has already done.
@@ -402,29 +413,16 @@ public final class LineInvariants {
      * @param target       the element being drawn, as a click would address it
      * @param elementIndex that element's index within the line, or {@code null} when the
      *     element is not in the line
-     * @return the playing color, else the selection color, else the hover highlight, else the
-     *     default color; for a {@code null} index, what {@link #colorFor(HitTarget)} returns
+     * @return what {@link #resolveColor} returns; for a {@code null} index, what
+     *     {@link #colorFor(HitTarget)} returns
      */
     public Color colorFor(HitTarget.Element target, @Nullable Integer elementIndex) {
-        var targetColor = colorFor((HitTarget) target);
-
         if (elementIndex == null) {
-            return targetColor;
+            return colorFor((HitTarget) target);
         }
 
-        if (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex)) {
-            return ScoreView.getPlayingNoteColor();
-        }
-
-        if (!isDefaultColor(targetColor)) {
-            return targetColor;
-        }
-
-        if (isElementHovered(elementIndex)) {
-            return REPLACED_ELEMENT_COLOR;
-        }
-
-        return Color.BLACK;
+        int index = elementIndex;
+        return resolveColor(index, () -> isElementOrTiePlaying(index), () -> isSelected(target));
     }
 
     /** Returns whether the selection provider holds exactly {@code target} on this line. */
@@ -432,20 +430,40 @@ public final class LineInvariants {
         return selectionProvider != null && selectionProvider.isSelected(target, lineIndex);
     }
 
-    private Color colorFor(
+    /**
+     * The color chain every element-keyed lookup here resolves through. The first step that
+     * holds decides the color:
+     * <ol>
+     *   <li><b>playing</b> — {@code isPlaying} holds: the playing-note color;</li>
+     *   <li><b>selection</b> — {@code isSelected} holds: the selection color;</li>
+     *   <li><b>hover</b> — the element is the preview's replacement target: the
+     *       replaced-element highlight;</li>
+     *   <li><b>lint</b> — the lint report flags the element ({@link LintReport#isFlagged}):
+     *       {@link ScoreView#getLintColor()};</li>
+     *   <li>otherwise black.</li>
+     * </ol>
+     * Selection wins over hover and lint because the selection is what the next Delete
+     * removes; the user is never left guessing at that because something else colors the
+     * element.
+     * <p>
+     * Each caller supplies only its playing test and its selection test; the order is held
+     * here once.
+     *
+     * @param elementIndex the element's index within this line; hover and lint are asked by it
+     * @param isPlaying    whether the thing being drawn reads as playing
+     * @param isSelected   whether the thing being drawn reads as selected
+     * @return the color of the first step that holds
+     */
+    private Color resolveColor(
         int elementIndex,
-        BooleanSupplier playingCheck,
-        BooleanSupplier extraSelectionCheck
+        BooleanSupplier isPlaying,
+        BooleanSupplier isSelected
     ) {
-        if (playingCheck.getAsBoolean()) {
+        if (isPlaying.getAsBoolean()) {
             return ScoreView.getPlayingNoteColor();
         }
 
-        if (extraSelectionCheck.getAsBoolean()) {
-            return selectionColor;
-        }
-
-        if (isElementRangeSelected(elementIndex)) {
+        if (isSelected.getAsBoolean()) {
             return selectionColor;
         }
 
@@ -453,7 +471,23 @@ public final class LineInvariants {
             return REPLACED_ELEMENT_COLOR;
         }
 
+        if (isElementFlagged(elementIndex)) {
+            return ScoreView.getLintColor();
+        }
+
         return Color.BLACK;
+    }
+
+    /** Returns whether the lint report flags the element at {@code elementIndex} on this line. */
+    private boolean isElementFlagged(int elementIndex) {
+        return currentLine != null
+            && currentLine.hasIndex(elementIndex)
+            && lintReport.isFlagged(currentLine.getElement(elementIndex));
+    }
+
+    /** Returns whether the element at {@code elementIndex} or the tie through it is playing. */
+    private boolean isElementOrTiePlaying(int elementIndex) {
+        return isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex);
     }
 
     /**
@@ -524,12 +558,11 @@ public final class LineInvariants {
     /**
      * Returns whether the lyric anchored at {@code anchorIndex} for {@code verseIndex}
      * should render in the playing-note color: either its own element is playing (or
-     * tied to the playing note), or the playing note falls inside the anchor's lyric
-     * span (melisma extender carriers, or the unlyriced notes between a BEGIN/MIDDLE
-     * syllable and the next text-bearing syllable).
+     * tied to the playing note), or the playing note falls inside the span the anchor's
+     * lyric opens on this line ({@link LyricRun#lyricSpanEnd}).
      */
     private boolean isLyricSpanPlaying(int anchorIndex, StaffElement element, int verseIndex) {
-        if (isElementPlaying(anchorIndex) || isElementInPlayingTie(anchorIndex)) {
+        if (isElementOrTiePlaying(anchorIndex)) {
             return true;
         }
 
@@ -537,47 +570,14 @@ public final class LineInvariants {
             return false;
         }
 
-        var playingNoteIndex = playing.noteIndex();
         var lyric = element.getLyricForVerse(verseIndex);
 
-        if (lyric == null) {
+        if (lyric == null || !LyricRun.opensLyricSpan(lyric)) {
             return false;
         }
 
-        var syllabic = lyric.syllabic();
-        var extendsForward = lyric.extend() == Lyric.Extend.START
-                || syllabic == Lyric.Syllabic.BEGIN
-                || syllabic == Lyric.Syllabic.MIDDLE;
-
-        if (!extendsForward) {
-            return false;
-        }
-
-        var count = currentLine.elementCount();
-
-        for (var i = anchorIndex + 1; i < count; i++) {
-            var next = currentLine.getElement(i).getLyricForVerse(verseIndex);
-
-            if (next == null) {
-                continue;
-            }
-
-            var extend = next.extend();
-
-            // A CONTINUE carrier is an interior note of this anchor's melisma — keep
-            // scanning for the boundary so the span covers every carrier, not just the first.
-            if (extend == Lyric.Extend.CONTINUE) {
-                continue;
-            }
-
-            // A STOP carrier is the final note of this anchor's melisma — span includes it.
-            // A text-bearing lyric starts a new span — this anchor's span ends just before it.
-            var spanEnd = extend == Lyric.Extend.STOP ? i : i - 1;
-            return playingNoteIndex <= spanEnd;
-        }
-
-        // No further lyric on this line: span runs to the end of the line.
-        return playingNoteIndex < count;
+        var spanEnd = currentLine.lyricSpanEnd(anchorIndex + 1, verseIndex);
+        return playing.noteIndex() <= spanEnd.lastCoveredIndex();
     }
 
     // ==========================================================================
@@ -608,6 +608,7 @@ public final class LineInvariants {
         private Color selectionColor = ScoreView.getSelectionColor();
         private @Nullable Playing playing;
         private final ViewScale viewScale;
+        private LintReport lintReport = LintReport.EMPTY;
 
         private Builder(Song song, DocumentFontsHolder fonts, ViewScale viewScale) {
             this.song = song;
@@ -664,6 +665,12 @@ public final class LineInvariants {
         /** Sets the currently playing note and its paired grace note, or {@code null} when none. */
         public Builder setPlaying(@Nullable Playing playing) {
             this.playing = playing;
+            return this;
+        }
+
+        /** Sets the lint report whose findings this pass draws; {@link LintReport#EMPTY} if unset. */
+        public Builder setLintReport(LintReport lintReport) {
+            this.lintReport = lintReport;
             return this;
         }
 

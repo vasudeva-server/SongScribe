@@ -38,7 +38,7 @@ import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.ParsedSong;
 import songscribe.dom.PartialDate;
-import songscribe.dom.ReportedChange;
+import songscribe.dom.RecordedChange;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.StaffElement;
@@ -725,7 +725,7 @@ public final class SongIO {
 
             var readerEntries = accidentalsConverted()
                 ? List.of(ParsedSong.accidentalsConvertedEntry())
-                : List.<ReportedChange>of();
+                : List.<RecordedChange>of();
 
             return new ParsedSong(
                 song,

@@ -751,6 +751,82 @@ public interface LyricRun extends StaffElementRun {
         return textBearingIndexAtOrAfter(fromIndex + 1, verse) != null;
     }
 
+    // -------------------------------------------------------------------------
+    // Lyric spans
+    // -------------------------------------------------------------------------
+
+    /**
+     * Whether {@code lyric} opens a span over the elements after its own: it starts a melisma
+     * ({@link Lyric.Extend#START}), or its word goes on into a later syllable
+     * ({@link Lyric.Syllabic#BEGIN} or {@link Lyric.Syllabic#MIDDLE}). The elements a span covers
+     * are sung on the syllable that opened it, so they hold no syllable of their own.
+     *
+     * @return {@code true} when a chain runs forward from {@code lyric}; {@code false} for a
+     *     carrier and for a syllable that ends its word with no melisma
+     */
+    static boolean opensLyricSpan(Lyric lyric) {
+        return lyric.extend() == Lyric.Extend.START || isWordContinuingLyric(lyric);
+    }
+
+    /**
+     * Where a lyric span that is open in front of {@code start} ends on this run, for
+     * {@code verse}. The span is open in front of {@code start} when the lyric just before it
+     * {@linkplain #opensLyricSpan opens a span}, or when a span ran off the end of the run before
+     * this one, as a melisma or a word does across a line break.
+     *
+     * <p>Walking forward from {@code start}, the span covers every element that holds no
+     * {@code verse} lyric and every {@link Lyric.Extend#CONTINUE} carrier. It ends at the first of:
+     *
+     * <ul>
+     *   <li>a {@link Lyric.Extend#STOP} carrier, which closes the melisma and is covered;</li>
+     *   <li>a text-bearing lyric, which starts a span of its own and is not covered;</li>
+     *   <li>a repeat, which nothing runs through (see {@code docs/lyrics.md}), and which is not
+     *       covered;</li>
+     *   <li>the end of the run, where the span stays open onto whatever follows the run.</li>
+     * </ul>
+     *
+     * @param start the first element the span may cover; {@code elementCount()} for a span
+     *     opened by the run's last element
+     * @param verse the verse whose lyrics are read
+     * @return the index of the last element the span covers, and whether the span is still open
+     *     at the end of the run
+     * @invariant {@code start - 1 <= result.lastCoveredIndex() < elementCount()}; it is
+     *     {@code start - 1} when the span covers nothing on this run
+     * @invariant {@code result.openAtRunEnd()} implies
+     *     {@code result.lastCoveredIndex() == elementCount() - 1}
+     */
+    default LyricSpanEnd lyricSpanEnd(int start, int verse) {
+        for (var i = start; i < elementCount(); i++) {
+            var element = getElement(i);
+
+            if (!element.getType().bearsLyricChain()) {
+                return new LyricSpanEnd(i - 1, false);
+            }
+
+            var lyric = element.getLyricForVerse(verse);
+
+            if (lyric == null || lyric.extend() == Lyric.Extend.CONTINUE) {
+                continue;
+            }
+
+            var lastCovered = lyric.extend() == Lyric.Extend.STOP ? i : i - 1;
+            return new LyricSpanEnd(lastCovered, false);
+        }
+
+        return new LyricSpanEnd(elementCount() - 1, true);
+    }
+
+    /**
+     * The end of a lyric span on one run, as {@link #lyricSpanEnd} finds it.
+     *
+     * @param lastCoveredIndex the index of the last element the span covers, or one less than
+     *     where the walk started when it covers none
+     * @param openAtRunEnd     {@code true} when the span reaches the end of the run unclosed, so it
+     *     goes on over the leading elements of the run that follows, such as the next line
+     */
+    record LyricSpanEnd(int lastCoveredIndex, boolean openAtRunEnd) {
+    }
+
     /**
      * Records one step of the lyric chain repairs. Gated on {@code DEBUG_LYRICS} as well as the
      * log level, since these run several times per keystroke and would drown any other debug
@@ -1173,8 +1249,13 @@ public interface LyricRun extends StaffElementRun {
         }
     }
 
-    /** Every verse number carried by any element in this run, in first-seen order. */
-    private List<Integer> verseNumbers() {
+    /**
+     * The verses this run carries lyrics in.
+     *
+     * @return every verse number held by a lyric on any element of this run, each once, in
+     *     first-seen order; empty when the run holds no lyric
+     */
+    default List<Integer> verseNumbers() {
         var verses = new LinkedHashSet<Integer>();
 
         for (var index = 0; index < effectiveElementCount(); index++) {

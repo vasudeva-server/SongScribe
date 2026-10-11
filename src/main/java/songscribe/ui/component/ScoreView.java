@@ -72,6 +72,7 @@ import songscribe.io.LoadWarning;
 import songscribe.io.SongFileLoader;
 import songscribe.io.SongLoadResult;
 import songscribe.layout.LayoutResult;
+import songscribe.lint.Linter;
 import songscribe.layout.LineLayoutProvider;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
@@ -79,6 +80,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.LintReportDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -167,6 +169,15 @@ public final class ScoreView
 
     public static Color getSelectionColor() {
         return FlatLafProps.getColor(FlatLafKey.SCORE_SELECTION_COLOR);
+    }
+
+    /**
+     * The color the score draws a lint finding in. It is the overflow color on purpose: a lint
+     * error and an overflowing line both mean that the score shows something wrong with the
+     * document.
+     */
+    public static Color getLintColor() {
+        return FlatLafProps.getColor(FlatLafKey.SCORE_OVERFLOW_COLOR);
     }
 
     private final Dimension sheetSize = new Dimension();
@@ -291,6 +302,9 @@ public final class ScoreView
 
         // Create initial song
         song = new Song();
+
+        // Linting the first song creates the linter, so it is subscribed before the first edit.
+        Linter.lint(song);
         documentFontManager.installFonts(DocumentFonts.defaultFonts());
 
         // Initialize UI components
@@ -348,9 +362,9 @@ public final class ScoreView
     private void initScorePanel() {
         scorePanel = new ScorePanel(this);
         scrollPane = new JScrollPane(scorePanel);
-        // Only the line below the toolbar: the status bar draws the line above itself, because
-        // the Messages panel can sit between the score and the status bar.
-        scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 0, 0, "ToolBar.separatorColor"));
+        // No lines of its own: the toolbar draws the line below itself, and the status bar the
+        // line above itself. An empty border, not null, keeps the theme's scroll pane border off.
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
         updateScoreSurroundBackground();
     }
 
@@ -942,7 +956,9 @@ public final class ScoreView
 
         // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
         // that the song has been fully replaced. This must happen after all
-        // ScoreView state is consistent.
+        // ScoreView state is consistent. The song is linted first, so every subscriber to the
+        // load reads the new song's lint report.
+        Linter.lint(song);
         MessageCenter.post(new DocumentDidLoadNotification(song, report));
 
         // Reset scroll position to top-left for the new/opened song
@@ -1198,6 +1214,12 @@ public final class ScoreView
     @Handler(priority = ZOOM_APPLY_PRIORITY)
     public void zoomDidChangeApplyZoom(ZoomDidChangeNotification message) {
         applyZoomPercent(message.getNewZoomPercent(), message.getAnchorPoint());
+    }
+
+    /** Repaints the score, so it draws the findings of the new lint report. */
+    @Handler
+    public void lintReportDidChange(LintReportDidChangeNotification message) {
+        repaint();
     }
 
     /**

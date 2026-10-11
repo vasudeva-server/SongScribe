@@ -56,6 +56,7 @@ public class LayoutResultBuilder {
     private double contentAboveStaffSs = 0;
     private double contentBelowStaffSs = 0;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
+    private final Map<StaffElement, LyricBoxLayout> lyricPlaceholders;
     private final List<LyricConnectorLayout> lyricConnectors;
     private boolean hasTrailingLyricContinuation = false;
     private boolean overflowsStaffWidth = false;
@@ -76,6 +77,7 @@ public class LayoutResultBuilder {
         decorationLayouts = new DecorationLayouts.Builder();
         slideLayouts = new HashMap<>();
         lyricBoxes = new HashMap<>();
+        lyricPlaceholders = new HashMap<>();
         lyricConnectors = new ArrayList<>();
     }
 
@@ -129,6 +131,19 @@ public class LayoutResultBuilder {
      */
     public LayoutResultBuilder addLyricBox(StaffElement element, LyricBoxLayout box) {
         lyricBoxes.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
+        return this;
+    }
+
+    /**
+     * Sets the placeholder box for an element that can bear a syllable but has none in the verse
+     * laid out ({@link LyricLayoutBuilder.Result#placeholders()}).
+     *
+     * @param element     the element the placeholder is anchored to
+     * @param placeholder the placeholder box
+     * @return this builder for chaining
+     */
+    public LayoutResultBuilder addLyricPlaceholder(StaffElement element, LyricBoxLayout placeholder) {
+        lyricPlaceholders.put(element, placeholder);
         return this;
     }
 
@@ -273,6 +288,7 @@ public class LayoutResultBuilder {
             contentAboveStaffSs,
             contentBelowStaffSs,
             lyricBoxes,
+            lyricPlaceholders,
             lyricConnectors,
             hasTrailingLyricContinuation,
             overflowsStaffWidth,

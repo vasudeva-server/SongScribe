@@ -488,7 +488,7 @@ public enum ElementType {
      *
      * @return {@code true} for every type but a repeat
      */
-    private boolean bearsLyricChain() {
+    public boolean bearsLyricChain() {
         return !isRepeat();
     }
 

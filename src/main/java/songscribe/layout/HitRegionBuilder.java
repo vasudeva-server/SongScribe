@@ -89,9 +89,8 @@ import songscribe.hit.HitTarget;
  *   staff header extent — no layout map      ──▶  StaffLine
  * </pre>
  *
- * <p>How each region resolves against the ones it overlaps, and whether the mouse-move query
- * scans it, are properties of the target kind and are declared on {@link HitTarget}. Nothing
- * here chooses either.
+ * <p>How each region resolves against the ones it overlaps is a property of the target kind and
+ * is declared on {@link HitTarget}. Nothing here chooses it.
  *
  * <p><b>Registration happens at layout, never at render.</b> Everything here is built from data
  * the layout pipeline has already produced, so a line's hit geometry exists from the moment its
@@ -193,16 +192,9 @@ public final class HitRegionBuilder {
         LyricRenderMetrics lyricRenderMetrics,
         HitRegistry.Builder builder) {
 
-        var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
-
-        // The lyric boxes are the one geometry source in line-top origin. paintAboveMidlineSs()
-        // is the distance from the top of the line's component to the staff midline, so
-        // subtracting it puts the row in the midline-relative space every other region uses.
-        var rowTopYSs = layoutResult.lyricAreaBaseYSs() - layoutResult.paintAboveMidlineSs();
-
         for (var element : line.getElements()) {
             for (var box : layoutResult.getLyricBoxes(element)) {
-                var rectSs = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
+                var rectSs = layoutResult.lyricBoxRectSs(box, lyricRenderMetrics);
                 addRegion(builder, rectSs, new HitTarget.Lyric(element, box.verseIndex()));
             }
         }
@@ -567,7 +559,7 @@ public final class HitRegionBuilder {
     }
 
     /** @see #addRegion */
-    private static Shape inclusiveOf(Shape shapeSs) {
+    static Shape inclusiveOf(Shape shapeSs) {
         if (!(shapeSs instanceof Rectangle2D rectSs)) {
             return shapeSs;
         }

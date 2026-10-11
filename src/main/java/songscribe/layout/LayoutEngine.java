@@ -298,6 +298,10 @@ public class LayoutEngine {
             }
         }
 
+        for (var entry : lyricResult.placeholders().entrySet()) {
+            builder.addLyricPlaceholder(entry.getKey(), entry.getValue());
+        }
+
         for (var connector : lyricResult.connectors()) {
             builder.addLyricConnector(connector);
         }

@@ -279,18 +279,17 @@ public class MenuController {
         menu.add(Actions.MINIMIZE_WINDOW_ACTION);
         menu.add(Actions.ZOOM_WINDOW_ACTION);
         menu.addSeparator();
+        menu.add(Actions.TOGGLE_MESSAGES_ACTION);
+        menu.addSeparator();
 
         // The native check mark matches the system menus. The menu bar is installed on macOS
         // only, so this image URL is always available where the menu shows.
         var checkmark = new ImageIcon(
             Toolkit.getDefaultToolkit().createImage("NSImage://NSMenuOnStateTemplate")
         );
-
-        for (var action : List.of(Actions.FOCUS_SCORE_ACTION, Actions.TOGGLE_MESSAGES_ACTION)) {
-            var item = new JCheckBoxMenuItem(action);
-            item.setSelectedIcon(checkmark);
-            menu.add(item);
-        }
+        var focusScoreItem = new JCheckBoxMenuItem(Actions.FOCUS_SCORE_ACTION);
+        focusScoreItem.setSelectedIcon(checkmark);
+        menu.add(focusScoreItem);
 
         return menu;
     }

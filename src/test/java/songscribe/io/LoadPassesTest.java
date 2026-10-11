@@ -30,9 +30,8 @@ import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Accidental;
 import songscribe.dom.ChainedAccidental.ChainType;
-import songscribe.dom.ElementLocation;
-import songscribe.dom.ElementLocationRange;
 import songscribe.dom.Hairpin;
+import songscribe.dom.LineRange;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
 import songscribe.dom.ParsedSong;
@@ -44,7 +43,6 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletNormalTime;
-import songscribe.dom.TupletValidator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
@@ -67,6 +65,9 @@ class LoadPassesTest extends UnitTest {
     private static final String ACCIDENTAL_FIXTURE = "accidental-load";
 
     private static final int LINE_INDEX = 0;
+
+    /** Every change in the fixture song is made on its one line. */
+    private static final LineRange THE_LINE = new LineRange(LINE_INDEX, LINE_INDEX);
 
     /** The notes of the accidental fixture's line, in line order. */
     private static final int LEADING_FLAT_INDEX = 0;
@@ -122,23 +123,23 @@ class LoadPassesTest extends UnitTest {
             new ReportedChange(
                 Strings.REPORT_TUPLETS_UPDATED,
                 Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), TRIPLET_NORMAL_NOTES),
-                locationOf(DERIVED_TUPLET)),
+                THE_LINE),
             new ReportedChange(
                 Strings.REPORT_TUPLETS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES),
-                locationOf(DROPPED_TUPLET)),
+                THE_LINE),
             new ReportedChange(
                 Strings.REPORT_ENDINGS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_ENDING_NOT_VALID),
-                locationOf(DROPPED_ENDING)),
+                THE_LINE),
             new ReportedChange(
                 Strings.REPORT_HAIRPINS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE),
-                locationOf(DROPPED_HAIRPIN)),
+                THE_LINE),
             new ReportedChange(
                 Strings.REPORT_BREATH_MARKS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
-                ElementLocationRange.single(new ElementLocation(LINE_INDEX, BREATH_MARK_INDEX))),
+                THE_LINE),
             new ReportedChange(
                 Strings.REPORT_ACCIDENTALS_CONVERTED,
                 Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
@@ -163,11 +164,6 @@ class LoadPassesTest extends UnitTest {
     ) {
         return new PendingTuplet(
             elements.get(span.begin()), elements.get(span.end()), grade, statedRatio, NO_OFFSET_SS);
-    }
-
-    private static ElementLocationRange locationOf(ElementRange span) {
-        return new ElementLocationRange(
-            new ElementLocation(LINE_INDEX, span.begin()), new ElementLocation(LINE_INDEX, span.end()));
     }
 
     /** The notes of the accidental fixture's first line, loaded once for the class. */

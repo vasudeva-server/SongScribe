@@ -41,7 +41,7 @@ import static songscribe.dom.StaffElementFactory.note;
 /**
  * How the report of an edit travels through undo and redo: the undo of an edit that reported
  * changes delivers an empty report, because the undo reverses those changes along with the rest,
- * and the redo delivers a report equal to the edit's, because it makes them again.
+ * and the redo delivers an empty report too, because nothing in a replay records.
  */
 class UndoControllerTest extends UnitTest {
 
@@ -82,7 +82,7 @@ class UndoControllerTest extends UnitTest {
     }
 
     @Test
-    void testUndoDeliversAnEmptyReportAndRedoDeliversTheEditsReport() {
+    void testUndoAndRedoEachDeliverAnEmptyReport() {
         var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
         var line = song.getLine(FIRST_LINE);
         var controller = new UndoController(() -> new SongTarget(song));
@@ -92,9 +92,7 @@ class UndoControllerTest extends UnitTest {
         try {
             song.withModification(() -> line.addElement(INSERTED_INDEX, note(OTHER)));
 
-            var editReport = collector.reports.getFirst();
-
-            assertThat(editReport.isEmpty()).as("the edit breaks the tie and reports it").isFalse();
+            assertThat(collector.reports.getFirst().isEmpty()).as("the edit breaks the tie and reports it").isFalse();
 
             controller.performUndo();
 
@@ -104,7 +102,7 @@ class UndoControllerTest extends UnitTest {
             controller.performRedo();
 
             assertThat(collector.reports).as("the redo delivers one report").hasSize(3);
-            assertThat(collector.reports.get(2).changes()).as("the redo's report").isEqualTo(editReport.changes());
+            assertThat(collector.reports.get(2).isEmpty()).as("the redo's report").isTrue();
         } finally {
             collector.dispose();
             controllerSubscription.dispose();

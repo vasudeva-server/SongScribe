@@ -27,6 +27,8 @@ import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.font.TextMeasurement;
 import songscribe.hit.HitTarget;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
@@ -36,9 +38,22 @@ import static songscribe.util.GraphicsState.Property.FONT;
  * Renders text annotations attached to notes.
  * <p>
  * Annotations are text labels that appear above or below notes,
- * typically used for performance instructions or other markings.
+ * typically used for performance instructions or other markings. An annotation that a lint
+ * finding names ({@link songscribe.lint.LintReport#isAnnotationFlagged}) keeps its own color
+ * and gets a sawtooth squiggle under its text in {@link ScoreView#getLintColor()}, whatever
+ * color the text is drawn in, with the squiggle's ink top {@value #SQUIGGLE_GAP_DOC_PX}
+ * document pixels below the text baseline.
  */
 public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
+
+    private static final double SQUIGGLE_SCALE = 0.5;
+
+    private static final ScaledGlyph SQUIGGLE =
+        new ScaledGlyph(SMuFLGlyph.WIGGLE_VIBRATO_MEDIUM_FASTER, SQUIGGLE_SCALE);
+
+    private static final double SQUIGGLE_GAP_DOC_PX = 2.0;
+
+    private static final double SQUIGGLE_GAP_SS = SQUIGGLE_GAP_DOC_PX / DocumentScale.PIXELS_PER_STAFF_SPACE;
 
     private static final AnnotationRenderer INSTANCE = new AnnotationRenderer();
 
@@ -71,19 +86,29 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
         }
 
         var annotationFont = invariants.getAnnotationFont();
+        var text = attachment.getAnnotation().text();
+        var xSs = decorationLayout.xSs();
+        var ascentSs = TextMeasurement.fontAscentSs(annotationFont).value();
+        var baselineYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants) + ascentSs;
 
+        // The annotation is selectable on its own, so its color is keyed on the attachment
+        // rather than on the note it hangs off.
         try (var _ = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(DocumentScale.fontSizedInSs(annotationFont));
-            // The annotation is selectable on its own, so the color is keyed on the attachment
-            // rather than on the note it hangs off.
-            RenderingUtils.applyDecorationColor(
-                g2, new HitTarget.Attachment(attachment), element, invariants, frame);
+            g2.setColor(RenderingUtils.decorationColor(new HitTarget.Attachment(attachment), element, invariants, frame));
+            g2.drawString(text, (float) xSs, (float) baselineYSs);
 
-            var ascentSs = TextMeasurement.fontAscentSs(annotationFont).value();
-            var xSs = decorationLayout.xSs();
-            var baselineYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants) + ascentSs;
+            if (invariants.getLintReport().isAnnotationFlagged(element)) {
+                var widthSs = TextMeasurement.textWidthSs(annotationFont, text).value();
 
-            g2.drawString(attachment.getAnnotation().text(), (float) xSs, (float) baselineYSs);
+                g2.setColor(ScoreView.getLintColor());
+                GlyphRun.centeredOn(
+                    SQUIGGLE,
+                    xSs,
+                    xSs + widthSs,
+                    baselineYSs + SQUIGGLE_GAP_SS - SQUIGGLE.inkTopYSs()
+                ).draw(g2);
+            }
         }
     }
 }

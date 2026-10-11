@@ -77,43 +77,29 @@ public final class HitRegistry {
      *         contains it
      */
     public @Nullable HitTarget hitTest(double xSs, double layoutYSs) {
-        return resolve(xSs, layoutYSs, false);
+        var region = hitRegion(xSs, layoutYSs);
+
+        if (region == null) {
+            return null;
+        }
+
+        return region.target();
     }
 
     /**
-     * Resolves a click point against the regions marked {@link HitRegion#hoverTestable()},
-     * with the same priority and area rules as {@link #hitTest}.
-     *
-     * <p>This exists so the mouse-move path stays cheap. Pointer motion fires this on
-     * every pixel, and the only thing hovering needs to know about is lyrics, so this asks
-     * for lyrics alone instead of running the whole cascade. Filtering a full {@link #hitTest} afterwards would give the same answer
-     * while doing all the work this method exists to avoid.
+     * Resolves a click point against every region, as {@link #hitTest} does, and returns the
+     * region that wins rather than only its target.
      *
      * @param xSs       X in line-local staff spaces
      * @param layoutYSs Y in staff spaces relative to the staff midline, positive downward
-     * @return the resolved hover target, or {@code null} if no hover-testable region
+     * @return the region whose target {@link #hitTest} returns, or {@code null} if no region
      *         contains the point
      */
-    public @Nullable HitTarget hitTestHover(double xSs, double layoutYSs) {
-        return resolve(xSs, layoutYSs, true);
-    }
-
-    /**
-     * @return every registered region, unmodifiable and in unspecified order
-     */
-    public List<HitRegion> regions() {
-        return regions;
-    }
-
-    private @Nullable HitTarget resolve(double xSs, double layoutYSs, boolean hoverOnly) {
+    public @Nullable HitRegion hitRegion(double xSs, double layoutYSs) {
         HitRegion best = null;
         var bestArea = 0.0;
 
         for (var region : regions) {
-            if (hoverOnly && !region.hoverTestable()) {
-                continue;
-            }
-
             var shape = region.shapeSs();
 
             if (!shape.contains(xSs, layoutYSs)) {
@@ -131,11 +117,14 @@ public final class HitRegistry {
             bestArea = area;
         }
 
-        if (best == null) {
-            return null;
-        }
+        return best;
+    }
 
-        return best.target();
+    /**
+     * @return every registered region, unmodifiable and in unspecified order
+     */
+    public List<HitRegion> regions() {
+        return regions;
     }
 
     // Higher priority wins; equal priority is broken by smaller bounding-box area.
@@ -159,8 +148,8 @@ public final class HitRegistry {
         private final List<HitRegion> regions = new ArrayList<>();
 
         /**
-         * Registers one clickable area. How it resolves against overlapping areas, and whether
-         * {@link #hitTestHover} scans it, both follow from {@code target}.
+         * Registers one clickable area. How it resolves against overlapping areas follows from
+         * {@code target}.
          *
          * @param shapeSs the clickable area in layout space
          * @param target  what a click inside {@code shapeSs} addresses
