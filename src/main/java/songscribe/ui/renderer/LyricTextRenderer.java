@@ -28,6 +28,7 @@ import songscribe.dom.StaffElement;
 import songscribe.error.RuntimeError;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.lint.LintMark;
 import songscribe.lint.LintReport;
 import songscribe.ui.component.ScoreView;
@@ -44,7 +45,8 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  * {@link LayoutResult} and draws each syllable at the verse
  * baseline provided by that line's own {@link LayoutResult}. It also draws the
  * {@link LintMark.MissingLyric} mark: the element's placeholder box
- * ({@link LayoutResult#getLyricPlaceholder}), in {@link ScoreView#getLintColor()}, so the mark
+ * ({@link LayoutResult#getLyricPlaceholder}), in {@link LyricRenderMetrics#placeholderFont()}
+ * and {@link ScoreView#getLintColor()}, so the mark
  * stands exactly where the missing syllable would. Stateless.
  */
 public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
@@ -103,7 +105,8 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             // the current zoom so glyph size still tracks zoom like everything else drawn
             // inside the transform.
             g2.scale(1.0 / viewPxPerSs, 1.0 / viewPxPerSs);
-            g2.setFont(invariants.getViewScale().zoomedFont(lyricRenderMetrics.lyricsFont()));
+            var viewScale = invariants.getViewScale();
+            g2.setFont(viewScale.zoomedFont(lyricRenderMetrics.lyricsFont()));
 
             for (var box : boxes) {
                 g2.setColor(invariants.getLyricColor(elementIndex, element, box.verseIndex()));
@@ -111,6 +114,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             }
 
             if (placeholder != null) {
+                g2.setFont(viewScale.zoomedFont(lyricRenderMetrics.placeholderFont()));
                 g2.setColor(ScoreView.getLintColor());
                 drawBox(g2, placeholder, viewPxPerSs, yPx);
             }

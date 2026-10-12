@@ -209,6 +209,6 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static LyricRenderMetrics metrics() {
         var font = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
-        return new LyricRenderMetrics(font, font, SPACE_WIDTH_SS, SPACE_WIDTH_SS, 0.0);
+        return new LyricRenderMetrics(font, font, font, SPACE_WIDTH_SS, SPACE_WIDTH_SS, 0.0);
     }
 }

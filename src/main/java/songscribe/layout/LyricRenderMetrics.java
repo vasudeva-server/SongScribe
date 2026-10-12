@@ -29,7 +29,9 @@ import javax.swing.JTextField;
 
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
+import songscribe.font.LocalFonts;
 import songscribe.font.LyricBoxMetrics;
+import songscribe.font.SourceSans3Font;
 import songscribe.font.TextMeasurement;
 
 /**
@@ -42,7 +44,10 @@ import songscribe.font.TextMeasurement;
  *                         syllable advances in staff-space units
  * @param scaledLyricsFont the lyrics font scaled to staff-space units; used by renderers
  *                         that draw inside the staff-space coordinate transform
- * @param hyphenWidthSs    width of a hyphen glyph in staff-space units
+ * @param placeholderFont  the font of the "?" drawn where a lyric is missing, at the size of
+ *                         {@code lyricsFont}; layout measures the placeholder in it and the
+ *                         renderer draws in it, so the box matches the drawn glyph
+ * @param hyphenWidthSs   width of a hyphen glyph in staff-space units
  * @param spaceWidthSs     width of one space character in staff-space units; used as the
  *                         gap between non-hyphenated syllables
  * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
@@ -54,6 +59,7 @@ import songscribe.font.TextMeasurement;
 public record LyricRenderMetrics(
     Font lyricsFont,
     Font scaledLyricsFont,
+    Font placeholderFont,
     double hyphenWidthSs,
     double spaceWidthSs,
     double staffToLyricsGapSs
@@ -77,6 +83,9 @@ public record LyricRenderMetrics(
         return new LyricRenderMetrics(
             lyricsFont,
             DocumentScale.fontSizedInSs(lyricsFont),
+            // SemiBold so the mark stands out from the lyrics; the face ships with the
+            // application, so every document draws the mark at the same weight.
+            LocalFonts.load(SourceSans3Font.STYLE_SEMIBOLD, lyricsFont.getSize2D()),
             TextMeasurement.textWidthSs(lyricsFont, "-").value(),
             TextMeasurement.textWidthSs(lyricsFont, " ").value(),
             LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
@@ -96,6 +105,14 @@ public record LyricRenderMetrics(
         }
 
         return TextMeasurement.textWidthSs(lyricsFont, text).value();
+    }
+
+    /**
+     * Returns the width in staff spaces of {@link LyricLayoutBuilder#PLACEHOLDER_TEXT} in
+     * {@link #placeholderFont}.
+     */
+    public double placeholderWidthSs() {
+        return TextMeasurement.textWidthSs(placeholderFont, LyricLayoutBuilder.PLACEHOLDER_TEXT).value();
     }
 
     /**

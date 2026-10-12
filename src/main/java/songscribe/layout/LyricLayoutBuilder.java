@@ -135,7 +135,7 @@ public final class LyricLayoutBuilder {
 
         var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var placeholders = new HashMap<StaffElement, LyricBoxLayout>(columns.size());
-        var placeholderWidthSs = lyricRenderMetrics.lyricBoxWidthSs(PLACEHOLDER_TEXT);
+        var placeholderWidthSs = lyricRenderMetrics.placeholderWidthSs();
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
 
@@ -178,12 +178,12 @@ public final class LyricLayoutBuilder {
                 if (element.getType().bearsSyllableText()) {
                     var placeholderXSs = computeLyricBoxLeftXSs(
                         column,
-                        PLACEHOLDER_TEXT,
+                        // The placeholder text is one grapheme, so its first grapheme is all of it.
+                        placeholderWidthSs,
                         // A note with no lyric starts no melisma, so its pair carries none.
                         false,
                         placeholderWidthSs,
-                        graceUnionWidthSs(columns, columnIndex),
-                        lyricRenderMetrics);
+                        graceUnionWidthSs(columns, columnIndex));
                     placeholders.put(
                         element, new LyricBoxLayout(placeholderXSs, placeholderWidthSs, activeVerse, PLACEHOLDER_TEXT));
                 }
@@ -211,11 +211,10 @@ public final class LyricLayoutBuilder {
             var graceUnionWidthSs = graceUnionWidthSs(columns, columnIndex);
             var boxXSs = computeLyricBoxLeftXSs(
                 column,
-                text,
+                lyricRenderMetrics.firstGraphemeWidthSs(text),
                 HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric),
                 widthSs,
-                graceUnionWidthSs,
-                lyricRenderMetrics);
+                graceUnionWidthSs);
             var box = new LyricBoxLayout(boxXSs, widthSs, activeVerse, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
@@ -371,19 +370,21 @@ public final class LyricLayoutBuilder {
      * ({@link HorizontalSpacingCalculator#pairCarriesGraceHostMelisma}) is passed along, as is
      * {@code graceUnionWidthSs}, the union as this line was actually spaced, which is the one input
      * the reservation cannot share (see {@link #spacedGraceHostUnionWidthSs}).
+     * <p>
+     * {@code firstGraphemeWidthSs} is the width of the box text's first grapheme, measured in the
+     * font the box is drawn in.
      */
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
-        String text,
+        double firstGraphemeWidthSs,
         boolean pairCarriesGraceHostMelisma,
         double widthSs,
-        double graceUnionWidthSs,
-        LyricRenderMetrics lyricRenderMetrics) {
+        double graceUnionWidthSs) {
 
         if (column.isGraceNote()) {
             return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
                 widthSs,
-                lyricRenderMetrics.firstGraphemeWidthSs(text),
+                firstGraphemeWidthSs,
                 graceUnionWidthSs,
                 column,
                 pairCarriesGraceHostMelisma);

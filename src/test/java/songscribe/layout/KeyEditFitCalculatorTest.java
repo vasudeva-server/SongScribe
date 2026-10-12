@@ -204,7 +204,7 @@ class KeyEditFitCalculatorTest extends UnitTest {
     private static LyricRenderMetrics metrics() {
         var font = new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE);
 
-        return new LyricRenderMetrics(font, font, SYLLABLE_GAP_SS, SYLLABLE_GAP_SS, 0.0);
+        return new LyricRenderMetrics(font, font, font, SYLLABLE_GAP_SS, SYLLABLE_GAP_SS, 0.0);
     }
 
     static Stream<MidLineEditCase> midLineEditCases() {
