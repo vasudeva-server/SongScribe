@@ -38,8 +38,10 @@ import songscribe.hit.HitRegion;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.SweepRange;
 import songscribe.lint.LintMark;
+import songscribe.lint.LintReport;
 import songscribe.lint.Linter;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -261,15 +263,12 @@ class LineSelectionHandler {
             return null;
         }
 
-        var line = ready.line();
         var layoutResult = ready.layoutResult();
-        var lintReport = Linter.getReport();
-        var activeVerse = line.getSong().getActiveVerse();
         var lyricRenderMetrics = lc.getLyricRenderMetrics();
         var pointSs = new Point2D.Double(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
-        for (var element : line.getElements()) {
-            var placeholder = LyricTextRenderer.drawnLyricPlaceholder(layoutResult, lintReport, activeVerse, element);
+        for (var element : ready.line().getElements()) {
+            var placeholder = drawnLyricPlaceholder(ready, element);
 
             if (placeholder != null && layoutResult.lyricBoxContains(placeholder, lyricRenderMetrics, pointSs)) {
                 return new MissingLyricHit(element, layoutResult.lyricBoxRectSs(placeholder, lyricRenderMetrics));
@@ -277,6 +276,17 @@ class LineSelectionHandler {
         }
 
         return null;
+    }
+
+    /**
+     * Returns the placeholder the renderer draws a "?" on for {@code element}, from the current
+     * lint report and the song's active verse.
+     *
+     * @return the drawn placeholder, or {@code null} when no "?" is drawn on the element
+     */
+    private static @Nullable LyricBoxLayout drawnLyricPlaceholder(LineComponent.ReadyLayout ready, StaffElement element) {
+        var activeVerse = ready.line().getSong().getActiveVerse();
+        return LyricTextRenderer.drawnLyricPlaceholder(ready.layoutResult(), Linter.getReport(), activeVerse, element);
     }
 
     /**
@@ -303,16 +313,7 @@ class LineSelectionHandler {
             return null;
         }
 
-        var report = Linter.getReport();
-        LintMark mark = null;
-
-        if (region.target() instanceof HitTarget.Element(var element) && report.isFlagged(element)) {
-            mark = new LintMark.Flagged(element);
-        } else if (region.target() instanceof HitTarget.Attachment(AnnotationAttachment annotation)
-            && annotation.owner() instanceof StaffElement owner
-            && report.isAnnotationFlagged(owner)) {
-            mark = new LintMark.FlaggedAnnotation(owner);
-        }
+        var mark = lintMarkOf(region.target(), Linter.getReport());
 
         if (mark == null) {
             return null;
@@ -329,6 +330,89 @@ class LineSelectionHandler {
      */
     @Nullable LintMarkHit lintMarkAt(Point viewPoint) {
         return lintMarkAt(hitRegionAtViewPoint(viewPoint), hitTestMissingLyricViewPoint(viewPoint));
+    }
+
+    /**
+     * Returns where this line draws a lint mark: the inverse of {@link #lintMarkAt(Point)}.
+     *
+     * @return the mark with the box of its "?", or with the union of the boxes of the regions whose
+     *         target {@link #lintMarkAt(Point)} answers with the mark; {@code null} when this line
+     *         does not draw the mark, because the mark's element is on another line or the current
+     *         report does not hold the mark
+     */
+    @Nullable LintMarkHit lintMarkHit(LintMark mark) {
+        var ready = lc.readyLayout();
+
+        if (ready == null) {
+            return null;
+        }
+
+        var boundsSs = switch (mark) {
+            case LintMark.MissingLyric missingLyric -> missingLyricBoundsSs(ready, missingLyric);
+            case LintMark.Flagged _, LintMark.FlaggedAnnotation _ -> regionBoundsSs(ready, mark);
+        };
+
+        return boundsSs == null ? null : new LintMarkHit(mark, boundsSs);
+    }
+
+    /** The box of the "?" drawn for {@code mark}, or {@code null} when none is drawn. */
+    private @Nullable Rectangle2D missingLyricBoundsSs(LineComponent.ReadyLayout ready, LintMark.MissingLyric mark) {
+        if (mark.verse() != ready.line().getSong().getActiveVerse()) {
+            return null;
+        }
+
+        var placeholder = drawnLyricPlaceholder(ready, mark.element());
+
+        if (placeholder == null) {
+            return null;
+        }
+
+        return ready.layoutResult().lyricBoxRectSs(placeholder, lc.getLyricRenderMetrics());
+    }
+
+    /**
+     * The union of the boxes of the regions whose target is {@code mark}'s item, or {@code null}
+     * when no region's target is.
+     */
+    private static @Nullable Rectangle2D regionBoundsSs(LineComponent.ReadyLayout ready, LintMark mark) {
+        var report = Linter.getReport();
+        Rectangle2D boundsSs = null;
+
+        for (var region : ready.layoutResult().getHitRegistry().regions()) {
+            if (!mark.equals(lintMarkOf(region.target(), report))) {
+                continue;
+            }
+
+            var regionBoundsSs = region.shapeSs().getBounds2D();
+
+            if (boundsSs == null) {
+                boundsSs = regionBoundsSs;
+            } else {
+                boundsSs.add(regionBoundsSs);
+            }
+        }
+
+        return boundsSs;
+    }
+
+    /**
+     * Returns the lint mark a hit target shows: a flagged element, or the annotation of an element
+     * whose annotation is flagged.
+     *
+     * @return the mark, or {@code null} when {@code report} marks nothing on the target
+     */
+    private static @Nullable LintMark lintMarkOf(HitTarget target, LintReport report) {
+        if (target instanceof HitTarget.Element(var element) && report.isFlagged(element)) {
+            return new LintMark.Flagged(element);
+        }
+
+        if (target instanceof HitTarget.Attachment(AnnotationAttachment annotation)
+            && annotation.owner() instanceof StaffElement owner
+            && report.isAnnotationFlagged(owner)) {
+            return new LintMark.FlaggedAnnotation(owner);
+        }
+
+        return null;
     }
 
     /**

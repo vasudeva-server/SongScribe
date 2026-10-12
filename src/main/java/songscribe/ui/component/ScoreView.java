@@ -95,6 +95,7 @@ import songscribe.ui.ZoomController;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LineOverlayComponent;
+import songscribe.ui.component.score.LintCallout;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.OverlayHost;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -253,6 +254,8 @@ public final class ScoreView
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
     @Nullable private LyricEditor activeLyricEditor;
+
+    private final LintCallout lintCallout = new LintCallout(this);
 
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
@@ -1220,6 +1223,11 @@ public final class ScoreView
     @Handler
     public void lintReportDidChange(LintReportDidChangeNotification message) {
         repaint();
+    }
+
+    /** The tooltip this score shows for a lint mark on request rather than on hover. */
+    public LintCallout getLintCallout() {
+        return lintCallout;
     }
 
     /**

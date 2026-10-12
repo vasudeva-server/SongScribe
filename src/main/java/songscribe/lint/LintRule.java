@@ -43,7 +43,7 @@ public enum LintRule {
     /** Every repeat section is opened and closed exactly once, and none is nested. */
     BALANCED_REPEATS(new BalancedRepeatsCheck(), EnumSet.of(Flag.BLOCKS_SAVE, Flag.BLOCKS_PLAYBACK)),
 
-    /** Every slot carries a lyric in every verse, or an open lyric chain covers it. */
+    /** Every slot carries a lyric in the active verse, or an open lyric chain covers it. */
     MISSING_LYRIC(new MissingLyricCheck(), EnumSet.of(Flag.BLOCKS_SAVE)),
 
     /** Every Fine stands on a bar, before the end, with a later reference to it, and the reverse. */

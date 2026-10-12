@@ -24,6 +24,7 @@ import java.awt.Dimension;
 import java.awt.GraphicsConfiguration;
 import javax.swing.JComponent;
 import javax.swing.JToolTip;
+import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.ComponentUI;
 
 import com.formdev.flatlaf.ui.FlatToolTipUI;
@@ -78,9 +79,11 @@ public final class ScreenScaleToolTipUI extends FlatToolTipUI {
         }
 
         // The probe has a graphics configuration, so asking it for its size comes back to this
-        // method and takes the first branch.
+        // method and takes the first branch. It takes the tooltip's insets rather than its
+        // border, because a tooltip can add to its border's insets.
         var probe = new MeasuringToolTip(ownerConfiguration);
         probe.setFont(toolTip.getFont());
+        probe.setBorder(new EmptyBorder(toolTip.getInsets()));
         probe.setTipText(toolTip.getTipText());
         return probe.getPreferredSize();
     }

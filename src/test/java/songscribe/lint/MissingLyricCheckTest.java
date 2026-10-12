@@ -42,8 +42,9 @@ import static songscribe.lint.LintSongs.pairedGraceNote;
 import static songscribe.lint.LintSongs.sung;
 
 /**
- * Which slots {@link MissingLyricCheck} reports, and for which verse: a slot no syllable of a
- * verse is sung on, and no slot that a melisma, a word, a tie or a paired grace note covers.
+ * Which slots {@link MissingLyricCheck} reports: a slot no syllable of the active verse is sung
+ * on, and no slot that a melisma, a word, a tie or a paired grace note covers, or that only
+ * another verse leaves bare.
  */
 class MissingLyricCheckTest extends UnitTest {
 
@@ -85,7 +86,7 @@ class MissingLyricCheckTest extends UnitTest {
             new LyricCase("the note a tie from the note before it reaches is not flagged",
                 MissingLyricCheckTest::tiedNote),
             new LyricCase("rests and barlines are not flagged", MissingLyricCheckTest::restAndBarline),
-            new LyricCase("verse 1 complete and verse 2 missing on one note is flagged for verse 2 only",
+            new LyricCase("with verse 1 active, a slot only verse 2 leaves bare is not flagged",
                 MissingLyricCheckTest::secondVerseMissingOnOneNote)
         );
     }
@@ -151,9 +152,7 @@ class MissingLyricCheckTest extends UnitTest {
 
         var onlyFirstVerse = sung(FIRST_VERSE, "le", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE);
 
-        return new Scenario(
-            songOfLine(complete, onlyFirstVerse),
-            List.of(new LintMark.MissingLyric(onlyFirstVerse, SECOND_VERSE)));
+        return new Scenario(songOfLine(complete, onlyFirstVerse), List.of());
     }
 
     private static Song songOfLine(StaffElement... elements) {

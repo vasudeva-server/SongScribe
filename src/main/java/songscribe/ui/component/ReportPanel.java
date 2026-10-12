@@ -42,6 +42,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.ListCellRenderer;
+import javax.swing.ListSelectionModel;
 import javax.swing.UIManager;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.DefaultStyledDocument;
@@ -64,7 +65,6 @@ import songscribe.lint.LintReport;
 import songscribe.lint.Linter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.message.notification.HoveredLintMarkDidChangeNotification;
 import songscribe.message.notification.LintReportDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.FlatLafKey;
@@ -98,9 +98,10 @@ import songscribe.util.UIUtils;
  * heading starts with {@value #LINT_HEADING_PREFIX} and a change heading with
  * {@value #CHANGE_HEADING_PREFIX}.
  *
- * <p>While the pointer is on a lint mark in the score, the rows of that mark's findings are
- * selected, also while the panel is hidden. A click on a row selects it too. While the list has
- * focus, the pointer leaving the list clears the selection.
+ * <p>At most one row is selected. Selecting a lint row scrolls its mark's item into view in the
+ * score and shows the mark's tooltip there; clearing the selection, or selecting a change row,
+ * hides the tooltip. The selection also clears when the score dismisses the tooltip on its own,
+ * when the panel is hidden, and, while the list has focus, when the pointer leaves the list.
  *
  * <p>It lives for the process, as the main window does, so it registers with the bus for the
  * process and is never disposed.
@@ -162,9 +163,23 @@ public final class ReportPanel extends JPanel {
         this.mainFrame = mainFrame;
 
         list.setCellRenderer(new CellRenderer());
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                showSelectedMark();
+            }
+        });
 
-        // Only while the list has focus: a hover in the score selects rows while focus stays in
-        // the score, and the pointer leaves the list on its way to the hovered mark.
+        // A hidden panel shows no selected row, so it holds none.
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentHidden(ComponentEvent e) {
+                list.clearSelection();
+            }
+        });
+
+        // Only while the list has focus: a row selected before focus moved to the score stays
+        // selected when the pointer crosses the list.
         list.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseExited(MouseEvent e) {
@@ -222,36 +237,6 @@ public final class ReportPanel extends JPanel {
     }
 
     /**
-     * Selects the row of every finding with the hovered mark, and scrolls the first into view; with
-     * no mark hovered, selects nothing. The selection lasts until the next hover change or the next
-     * replacement of the rows.
-     */
-    @Handler
-    public void hoveredLintMarkDidChange(HoveredLintMarkDidChangeNotification message) {
-        list.clearSelection();
-        var mark = message.getMark();
-
-        if (mark == null) {
-            return;
-        }
-
-        var indices = new ArrayList<Integer>();
-
-        for (var index = 0; index < model.size(); index++) {
-            if (mark.equals(model.get(index).mark())) {
-                indices.add(index);
-            }
-        }
-
-        if (indices.isEmpty()) {
-            return;
-        }
-
-        list.setSelectedIndices(indices.stream().mapToInt(Integer::intValue).toArray());
-        list.ensureIndexIsVisible(indices.getFirst());
-    }
-
-    /**
      * Replaces both sources with those of the loaded song, and shows the panel when either is not
      * empty.
      */
@@ -263,6 +248,22 @@ public final class ReportPanel extends JPanel {
 
         if (!changeReport.isEmpty() || !lintReport.isEmpty()) {
             mainFrame.showMessagesPanel();
+        }
+    }
+
+    /**
+     * Shows the selected lint row's mark in the score, with its tooltip; with no row selected, or
+     * a change row, hides the tooltip. A tooltip the score dismisses on its own deselects the row.
+     */
+    private void showSelectedMark() {
+        var row = list.getSelectedValue();
+        var mark = row == null ? null : row.mark();
+        var lintCallout = mainFrame.requireScoreView().getLintCallout();
+
+        if (mark == null) {
+            lintCallout.hide();
+        } else {
+            lintCallout.show(mark, list::clearSelection);
         }
     }
 
@@ -366,7 +367,7 @@ public final class ReportPanel extends JPanel {
      *                    change with no place
      * @param description what changed or what is wrong
      * @param position    where the row sorts
-     * @param mark        the finding's mark, which a hover in the score selects the row by;
+     * @param mark        the finding's mark, which selecting the row shows in the score;
      *                    {@code null} for a change
      */
     private record Row(
@@ -551,8 +552,8 @@ public final class ReportPanel extends JPanel {
 
             var font = list.getFont();
             // The active selection colors come from the theme, not from the list: FlatLaf sets the
-            // list's own selection colors to the inactive ones while it lacks focus, and a hover in
-            // the score selects rows while focus stays in the score.
+            // list's own selection colors to the inactive ones while it lacks focus, and a row stays
+            // selected after focus moves to the score.
             var foreground = isSelected ? UIManager.getColor("List.selectionForeground") : list.getForeground();
             setBackground(isSelected ? UIManager.getColor("List.selectionBackground") : list.getBackground());
 

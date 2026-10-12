@@ -29,8 +29,8 @@ import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 
 /**
- * The check of {@link LintRule#MISSING_LYRIC}: in every verse the song carries, every slot is
- * sung on some syllable.
+ * The check of {@link LintRule#MISSING_LYRIC}: in the active verse, every slot is sung on some
+ * syllable.
  *
  * <p>A <em>slot</em> is an element a syllable can go on ({@code StaffElement.canBearSyllable}): a
  * note or a grace note, but not the host of a paired grace note, whose syllable is the grace
@@ -45,33 +45,33 @@ import songscribe.dom.Song;
  *       continues a note already sung.</li>
  * </ul>
  *
- * <p>Every verse is checked, not only the active one: a verse is the song's lyrics in one
- * language, so a translation must have a syllable on every note too, and a finding does not
- * depend on which verse is shown. A song with no lyric in any verse carries no verse and gives no
- * violation.
+ * <p>Only the active verse is checked, because the score shows and edits that verse only: a
+ * finding in another verse would have no "?" to point at and no way to be fixed. A song that
+ * carries no lyric in the active verse gives no violation.
  *
- * <p>Each slot sung on no syllable gives one violation per verse, with the text
+ * <p>Each slot sung on no syllable gives one violation, with the text
  * {@link Strings#LINT_REASON_LYRIC_MISSING} and the mark {@link LintMark.MissingLyric} naming the
  * slot and the verse.
  */
 final class MissingLyricCheck implements LintCheck {
 
     /**
-     * Finds every slot that a verse leaves without a syllable.
+     * Finds every slot that the active verse leaves without a syllable.
      *
      * @param song the song to examine; read only
-     * @return the violations in the song order of their slots; on one slot, in ascending verse
-     *     order
-     * @invariant every violation's mark is a {@link LintMark.MissingLyric} whose verse is a verse
-     *     some lyric of the song carries
-     * @invariant a slot gets at most one violation for each verse
+     * @return the violations in the song order of their slots; empty when no lyric of the song
+     *     carries the active verse
+     * @invariant every violation's mark is a {@link LintMark.MissingLyric} whose verse is the
+     *     song's active verse
+     * @invariant a slot gets at most one violation
      */
     @Override
     public List<Violation> check(Song song) {
         var found = new SongOrderedViolations();
+        var activeVerse = song.getActiveVerse();
 
-        for (var verse : song.verseNumbers()) {
-            checkVerse(song, verse, found);
+        if (song.verseNumbers().contains(activeVerse)) {
+            checkVerse(song, activeVerse, found);
         }
 
         return found.inSongOrder();
