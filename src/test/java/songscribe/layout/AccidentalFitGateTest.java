@@ -71,7 +71,7 @@ class AccidentalFitGateTest extends UnitTest {
         var live = (NoteElement) line.getElement(1);
         var detached = StaffElementFactory.note(F, Accidental.SHARP);
 
-        var restamps = ProjectedEdit.inserting(line, 1, List.of(detached)).walk();
+        var restamps = ProjectedEdit.inserting(line, 1, List.of(detached), line.getRunningKey()).walk();
 
         return new Fixture(line, live, detached, live.accidentalState(), detached.accidentalState(), restamps);
     }
@@ -117,7 +117,8 @@ class AccidentalFitGateTest extends UnitTest {
         var detached = StaffElementFactory.note(F, Accidental.FLAT);
         narrowToFit(song, otherLine);
 
-        var restamps = ProjectedEdit.inserting(editedLine, editedLine.elementCount(), List.of(detached)).walk();
+        var restamps = ProjectedEdit.inserting(
+            editedLine, editedLine.elementCount(), List.of(detached), editedLine.getRunningKey()).walk();
         var otherStateBefore = other.accidentalState();
         var detachedStateBefore = detached.accidentalState();
 

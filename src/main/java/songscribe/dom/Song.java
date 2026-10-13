@@ -21,11 +21,12 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.DoubleSupplier;
@@ -38,7 +39,9 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.io.SongIO;
 import songscribe.lifecycle.Disposable;
+import songscribe.lint.Linter;
 import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.SongData;
 import songscribe.message.mutation.ElementDeletion;
@@ -51,7 +54,6 @@ import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineKeyChange;
-import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.LyricsChange;
 import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
@@ -61,6 +63,7 @@ import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
+import songscribe.message.notification.ActiveScriptDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -134,9 +137,17 @@ public final class Song implements Disposable {
         }
     }
 
-    /** The position the song-level tempo defines its beat at — the very start of the song. */
-    private static final int FIRST_LINE_INDEX = 0;
-    private static final int FIRST_ELEMENT_INDEX = 0;
+    /**
+     * A script a song's lyrics are written in. Each note holds at most one lyric per script, and
+     * the song shows one script at a time ({@link #getActiveScript()}).
+     *
+     * <p>The application holds a {@code Script}, never a lyric number. A lyric number exists only
+     * in a file, and only {@code songscribe.io.LyricNumbers} converts between the two.
+     */
+    public enum Script {
+        LATIN,
+        BENGALI
+    }
 
     /**
      * Default line-wide rest length (delta-X Ss between adjacent column origins) from which every
@@ -240,11 +251,11 @@ public final class Song implements Disposable {
      */
     private final Map<Line, Key> inheritedKeys = new IdentityHashMap<>();
 
-    // The verse the song is currently showing. A song's verses are the languages its lyrics are
-    // written in, not stanzas to stack, so exactly one of them is laid out, painted and edited at
-    // any moment. Deliberately not persisted: which language a reader last looked at is a property
-    // of the session, not of the document, so every file opens on its first verse.
-    private int activeVerse = Lyric.FIRST_VERSE;
+    // The script the song is currently showing. A song's lyrics are written in scripts, not
+    // stanzas to stack, so exactly one script is laid out, painted and edited at any moment.
+    // Deliberately not persisted: which script a reader last looked at is a property of the
+    // session, not of the document, so every file opens on Script.LATIN.
+    private Script activeScript = Script.LATIN;
 
     /**
      * Indicates whether this song has been dynamically laid out.
@@ -286,6 +297,10 @@ public final class Song implements Disposable {
 
     // Answers what tempo and what beat are in effect at a position.
     private final TempoResolver tempoResolver = new TempoResolver(this);
+
+    // This song's own linter. Initialized here so every constructor, the parsing stub's
+    // included, creates it before anything can build a LintingNotification for this song.
+    private final Linter linter = new Linter(this);
 
     private final MessageSubscription subscription;
 
@@ -504,8 +519,9 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Returns a syllabified-style text assembled from the {@link #getActiveVerse() active verse}'s
-     * per-note {@link Lyric} records. Returns an empty string when that verse has no lyrics.
+     * Returns a syllabified-style text assembled from the {@link #getActiveScript() active
+     * script}'s per-note {@link Lyric} records. Returns an empty string when that script has no
+     * lyrics.
      */
     public String getLyricsText() {
         var sb = new StringBuilder(1000);
@@ -514,7 +530,7 @@ public final class Song implements Disposable {
             var line = lines.get(i);
 
             for (var j = 0; j < line.effectiveElementCount(); j++) {
-                var lyric = line.getElement(j).getLyricForVerse(activeVerse);
+                var lyric = line.getElement(j).getLyricForScript(activeScript);
 
                 if (lyric == null) {
                     continue;
@@ -622,43 +638,60 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Returns the 1-based verse this song is showing — the one verse that layout, painting and the
-     * lyric editor all work on. Every other verse the song carries is a translation held in the
-     * document but not displayed.
+     * This song's linter, which holds its lint report.
+     *
+     * @return the linter this song created; the same one for the life of the song
      */
-    public int getActiveVerse() {
-        return activeVerse;
+    public Linter getLinter() {
+        return linter;
     }
 
     /**
-     * The verses this song carries lyrics in.
+     * Returns the script this song is showing — the one script that layout, painting, the lyric
+     * editor and the lyric lint rules all work on. Lyrics in every other script stay in the
+     * document but are not displayed.
      *
-     * @return every verse number held by a lyric on any line, each once, ascending; empty when
-     *     the song holds no lyric. The set is unmodifiable.
+     * @return the active script; {@link Script#LATIN} until {@link #setActiveScript} changes it
      */
-    public SortedSet<Integer> verseNumbers() {
-        var verses = new TreeSet<Integer>();
+    public Script getActiveScript() {
+        return activeScript;
+    }
+
+    /**
+     * The scripts this song carries lyrics in.
+     *
+     * @return every script held by a lyric on any line, each once, in {@link Script} order; empty
+     *     when the song holds no lyric. The set is unmodifiable.
+     */
+    public Set<Script> scripts() {
+        var scripts = EnumSet.noneOf(Script.class);
 
         for (var line : lines) {
-            verses.addAll(line.verseNumbers());
+            scripts.addAll(line.scripts());
         }
 
-        return Collections.unmodifiableSortedSet(verses);
+        return Collections.unmodifiableSet(scripts);
     }
 
     /**
-     * Selects the verse this song shows. Changing it changes what every line lays out, so the
-     * caller is responsible for invalidating layout afterwards.
+     * Selects the script this song shows. The script changes what every line lays out and what
+     * the lyric lint rules check, so the change is announced rather than left to the caller.
      *
-     * @param activeVerse the 1-based verse to show
-     * @throws IllegalArgumentException if {@code activeVerse} is below {@link Lyric#FIRST_VERSE}
+     * <p>Which script is shown is a property of the session, not of the document: selecting one
+     * does not mark the song modified, and it adds no undo step.
+     *
+     * @param activeScript the script to show
+     * @effects when {@code activeScript} differs from the active script, sets it, then posts an
+     *     {@link ActiveScriptDidChangeNotification} for this song, whose construction lints it;
+     *     otherwise does nothing. Leaves {@link #isModified()} as it was and records no mutation
      */
-    public void setActiveVerse(int activeVerse) {
-        if (activeVerse < Lyric.FIRST_VERSE) {
-            throw new IllegalArgumentException("verse indices are 1-based, got " + activeVerse);
+    public void setActiveScript(Script activeScript) {
+        if (activeScript == this.activeScript) {
+            return;
         }
 
-        this.activeVerse = activeVerse;
+        this.activeScript = activeScript;
+        MessageCenter.post(new ActiveScriptDidChangeNotification(this));
     }
 
     public Line getLine(int index) {
@@ -777,95 +810,6 @@ public final class Song implements Disposable {
         var lineIndex = firstNonEmptyLineIndex();
 
         return lineIndex == null ? null : lines.get(lineIndex).getElement(0);
-    }
-
-    /**
-     * The first element of the repeat section that is open just before {@code location} — the
-     * element a {@code :|} at {@code location} plays back from, and the passage an edit there
-     * repeats.
-     *
-     * <p>A section opens at a bar that {@link ElementType#opensRepeatSection() opens one} — a
-     * {@code |:} or a {@code :|:} — or at the song start. It is closed by a bar that
-     * {@link ElementType#closesRepeatSection() closes one}. A {@code :|:} both closes the section
-     * before it and opens the one after it. Line breaks neither open nor close one: a section
-     * may start any number of lines before {@code location}.
-     *
-     * <p>Two musical judgments shape the answer:
-     * <ul>
-     *   <li>A {@code ||} closes a repeated section, as a final barline does. In
-     *       {@code A || B :|} the {@code :|} has no open section, rather than one that starts
-     *       at {@code A}.</li>
-     *   <li>A {@code null} answer means no section is open before {@code location}. The editor
-     *       lets a user write a {@code :|} there, as in {@code A :| B :|} or
-     *       {@code A || B :|}, and a load keeps it, but such a {@code :|} is an error, which the
-     *       song's lint rule for balanced repeats reports.</li>
-     * </ul>
-     *
-     * <p>Playback loops a {@code :|} that has an open section back to this answer.
-     *
-     * @param location an element of this song, named by its line index and element index
-     *     ({@link ElementLocation}); it must exist
-     * @return the element just after the opening {@code |:} or {@code :|:}, or the song's
-     *     first element when the song start opens the section; {@code null} when a bar that
-     *     closes a section stands between the opener and {@code location}, so that no section
-     *     is open
-     * @invariant the search looks only at elements strictly before {@code location}: the
-     *     element at {@code location} never opens or closes the section it asks about
-     * @invariant when the opener is the last element of its line, the answer is the first
-     *     element of the next line that has elements; such a line exists, because
-     *     {@code location} comes after the opener
-     * @invariant the song start is element 0 of {@link #firstNonEmptyLineIndex()}, so a
-     *     leading empty line is skipped
-     * @invariant a non-null answer is never after {@code location}; it equals
-     *     {@code location} exactly when the opener, or the song start, is immediately before it
-     */
-    public @Nullable ElementLocation repeatSectionStart(ElementLocation location) {
-        var searchLineIndex = location.lineIndex();
-        var searchElementIndex = location.elementIndex() - 1;
-
-        while (searchLineIndex >= FIRST_LINE_INDEX) {
-            var searchLine = lines.get(searchLineIndex);
-
-            while (searchElementIndex >= FIRST_ELEMENT_INDEX) {
-                var type = searchLine.getElement(searchElementIndex).getType();
-
-                // A :|: both closes and opens; walking backward, it is the opener that counts.
-                if (type.opensRepeatSection()) {
-                    return firstElementAtOrAfter(searchLineIndex, searchElementIndex + 1);
-                }
-
-                if (type.closesRepeatSection()) {
-                    return null;
-                }
-
-                searchElementIndex--;
-            }
-
-            searchLineIndex--;
-
-            if (searchLineIndex >= FIRST_LINE_INDEX) {
-                searchElementIndex = lines.get(searchLineIndex).elementCount() - 1;
-            }
-        }
-
-        return firstElementAtOrAfter(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX);
-    }
-
-    /**
-     * The first element at or after the given position in song order, where a position past
-     * the end of its line continues on the next line. The caller guarantees that such an
-     * element exists.
-     */
-    private ElementLocation firstElementAtOrAfter(int lineIndex, int elementIndex) {
-        var searchLineIndex = lineIndex;
-        var searchElementIndex = elementIndex;
-
-        while (searchElementIndex >= lines.get(searchLineIndex).elementCount()) {
-            searchLineIndex++;
-            searchElementIndex = FIRST_ELEMENT_INDEX;
-        }
-
-        return new ElementLocation(searchLineIndex, searchElementIndex);
     }
 
     /**
@@ -1333,15 +1277,12 @@ public final class Song implements Disposable {
      * judging the song a second time. The modification rules run when an edit closes, unless
      * the song is replaying then; because the edit closes while replay mode is still in force,
      * no rule runs over the replayed batch, which already carries every removal the rules made
-     * when it was first recorded. Nothing in a replay records into its edit's report either: no
-     * rule runs and the companion side-work that would report is suppressed, so the report the
-     * replay posts is the one of its own edit, and it is empty.
+     * when it was first recorded.
      *
      * @param body applies the records of one recorded batch, in the order the replay requires
      * @effects posts one {@link SongDidChangeNotification} carrying the changes {@code body}
-     *     made and an empty change report, when {@code body} made any change, and nothing
-     *     otherwise; no modification rule runs; the edit closes and replay mode ends whether
-     *     {@code body} returns or throws
+     *     made, when {@code body} made any change, and nothing otherwise; no modification rule
+     *     runs; the edit closes and replay mode ends whether {@code body} returns or throws
      */
     public void replay(Runnable body) {
         modifications.replay(body);

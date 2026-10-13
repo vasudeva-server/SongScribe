@@ -27,9 +27,10 @@ import org.audiveris.proxymusic.Syllabic;
 
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
+import songscribe.io.LyricNumbers;
 
 /**
- * Builds the {@code <lyric>} children of a {@link Note} from a {@link StaffElement}'s per-verse
+ * Builds the {@code <lyric>} children of a {@link Note} from a {@link StaffElement}'s per-script
  * {@link Lyric}s.
  *
  * <p>A text-bearing lyric emits {@code <syllabic>} then {@code <text>}, plus
@@ -44,7 +45,8 @@ final class LyricBuilder {
 
     /**
      * Appends one {@code <lyric>} to {@code pmNote} for each of {@code element}'s lyrics, in
-     * verse order.
+     * the order {@link StaffElement#getLyrics()} returns them. Each is numbered with
+     * {@link LyricNumbers#number}.
      */
     static void addLyrics(BuildContext context, StaffElement element, Note pmNote) {
         var lyrics = element.getLyrics();
@@ -58,7 +60,7 @@ final class LyricBuilder {
         for (var lyric : lyrics) {
             var extend = lyric.extend();
             var pmLyric = factory.createLyric();
-            pmLyric.setNumber(Integer.toString(lyric.verse()));
+            pmLyric.setNumber(Integer.toString(LyricNumbers.number(lyric.script())));
 
             if (lyric.isCarrier()) {
                 // A carrier has no text of its own: the <extend> is the whole element.

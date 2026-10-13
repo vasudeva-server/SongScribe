@@ -32,40 +32,53 @@ import songscribe.UnitTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Which bars {@link BalancedRepeatsCheck} flags, and with which reason, for the cases its class
- * description works through. A bar the check must flag ends in {@code !} in the notation.
+ * The findings {@link BalancedRepeatsCheck} makes from the {@code RepeatSections} model, one row
+ * for each kind: a closer with no open section, an opener never closed, and a nested opener. The
+ * repeat rules themselves are stated by {@code RepeatSectionsTest}. A bar the check must flag
+ * ends in {@code !} in the notation.
  */
 class BalancedRepeatsCheckTest extends UnitTest {
 
-    private record RepeatCase(String notation, List<String> reasonKeys) {
+    private static final LintSongs.Reason NOT_OPENED =
+        new LintSongs.Reason(Strings.LINT_REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NOT_OPENED);
+
+    private static final LintSongs.Reason NOT_CLOSED =
+        new LintSongs.Reason(Strings.LINT_REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NOT_CLOSED);
+
+    private static final LintSongs.Reason NESTED =
+        new LintSongs.Reason(Strings.LINT_REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NESTED);
+
+    private record RepeatCase(String description, String notation, List<LintSongs.Reason> reasons) {
 
         @Override
         public String toString() {
-            return notation;
+            return description;
         }
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("repeatCases")
-    void testFlagsExactlyTheBarsTheClassDescriptionNames(RepeatCase testCase) {
+    void testFlagsExactlyTheBarsOfEachKindOfFinding(RepeatCase testCase) {
         var song = LintSongs.song(testCase.notation());
 
         var violations = new BalancedRepeatsCheck().check(song);
 
         assertThat(LintSongs.found(song, violations))
-            .containsExactlyElementsOf(LintSongs.expected(testCase.reasonKeys(), testCase.notation()));
+            .containsExactlyElementsOf(
+                LintSongs.expected(LintMark.Flagged.class, testCase.reasons(), testCase.notation()));
     }
 
     static Stream<RepeatCase> repeatCases() {
         return Stream.of(
-            new RepeatCase("|: A :|", List.of()),
-            new RepeatCase("A :|", List.of()),
-            new RepeatCase("A || A :|!", List.of(Strings.LINT_REASON_REPEAT_NOT_OPENED)),
-            new RepeatCase("A :| A :|!", List.of(Strings.LINT_REASON_REPEAT_NOT_OPENED)),
-            new RepeatCase("|:! A", List.of(Strings.LINT_REASON_REPEAT_NOT_CLOSED)),
-            new RepeatCase("|: |:! :| :|", List.of(Strings.LINT_REASON_REPEAT_NESTED)),
-            new RepeatCase("|: A :|: A :|", List.of()),
-            new RepeatCase("|: A :|:! A", List.of(Strings.LINT_REASON_REPEAT_NOT_CLOSED))
+            new RepeatCase("a closer after its section is closed is flagged as not opened",
+                "|: A :| A :|!",
+                List.of(NOT_OPENED)),
+            new RepeatCase("an opener with no closer after it is flagged as not closed",
+                "|:! A",
+                List.of(NOT_CLOSED)),
+            new RepeatCase("an opener inside an open section is flagged as nested",
+                "|: |:! :| :|",
+                List.of(NESTED))
         );
     }
 }

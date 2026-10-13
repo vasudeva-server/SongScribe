@@ -32,10 +32,10 @@ public record LintFinding(LintRule rule, Violation violation) {
     /**
      * The heading the Messages panel shows above this finding.
      *
-     * @return the violation's heading key
+     * @return the violation's resolved heading text
      */
-    public String headingKey() {
-        return violation.headingKey();
+    public String heading() {
+        return violation.heading();
     }
 
     /**

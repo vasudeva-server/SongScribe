@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Song;
 
 /**
  * Populates per-note {@code Properties.lyrics} records from a legacy
@@ -211,7 +212,7 @@ public final class LegacyLyricsImporter {
                 LOG.warn("Dropping blank lyric syllable in legacy lyrics block");
             } else {
                 line.getElement(elementIdx).putLyric(
-                    new Lyric(1, word, extend, syllabic, compound));
+                    new Lyric(Song.Script.LATIN, word, extend, syllabic, compound));
             }
 
             elementIdx++;

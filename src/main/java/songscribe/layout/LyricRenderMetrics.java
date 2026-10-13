@@ -50,6 +50,8 @@ import songscribe.font.TextMeasurement;
  * @param hyphenWidthSs   width of a hyphen glyph in staff-space units
  * @param spaceWidthSs     width of one space character in staff-space units; used as the
  *                         gap between non-hyphenated syllables
+ * @param placeholderWidthSs width of {@link LyricLayoutBuilder#PLACEHOLDER_TEXT} in
+ *                         {@code placeholderFont}, in staff-space units
  * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
  *                         to the baseline of its lyric row. Equals
  *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus
@@ -62,6 +64,7 @@ public record LyricRenderMetrics(
     Font placeholderFont,
     double hyphenWidthSs,
     double spaceWidthSs,
+    double placeholderWidthSs,
     double staffToLyricsGapSs
 ) {
 
@@ -76,18 +79,21 @@ public record LyricRenderMetrics(
      * In particular {@code staffToLyricsGapSs} is a <em>baseline</em> offset, not the visual
      * gap: it is {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus the font's above-baseline ink,
      * so a baseline placed at this distance puts the text's ink top one visual margin below
-     * the line's content. Getting that composition wrong shifts every verse in the song, which
+     * the line's content. Getting that composition wrong shifts every script in the song, which
      * is why it lives here rather than at the call site.
      */
     public static LyricRenderMetrics forFont(Font lyricsFont) {
+        // SemiBold so the mark stands out from the lyrics; the face ships with the
+        // application, so every document draws the mark at the same weight.
+        var placeholderFont = LocalFonts.load(SourceSans3Font.STYLE_SEMIBOLD, lyricsFont.getSize2D());
+
         return new LyricRenderMetrics(
             lyricsFont,
             DocumentScale.fontSizedInSs(lyricsFont),
-            // SemiBold so the mark stands out from the lyrics; the face ships with the
-            // application, so every document draws the mark at the same weight.
-            LocalFonts.load(SourceSans3Font.STYLE_SEMIBOLD, lyricsFont.getSize2D()),
+            placeholderFont,
             TextMeasurement.textWidthSs(lyricsFont, "-").value(),
             TextMeasurement.textWidthSs(lyricsFont, " ").value(),
+            TextMeasurement.textWidthSs(placeholderFont, LyricLayoutBuilder.PLACEHOLDER_TEXT).value(),
             LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
     }
 
@@ -105,14 +111,6 @@ public record LyricRenderMetrics(
         }
 
         return TextMeasurement.textWidthSs(lyricsFont, text).value();
-    }
-
-    /**
-     * Returns the width in staff spaces of {@link LyricLayoutBuilder#PLACEHOLDER_TEXT} in
-     * {@link #placeholderFont}.
-     */
-    public double placeholderWidthSs() {
-        return TextMeasurement.textWidthSs(placeholderFont, LyricLayoutBuilder.PLACEHOLDER_TEXT).value();
     }
 
     /**

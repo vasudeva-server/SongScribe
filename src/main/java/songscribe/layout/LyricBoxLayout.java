@@ -20,6 +20,8 @@
 
 package songscribe.layout;
 
+import songscribe.dom.Song;
+
 /**
  * Per-element lyric text placement produced by the layout pass and consumed by the renderer.
  * <p>
@@ -29,7 +31,7 @@ package songscribe.layout;
  *
  * @param xSs        left edge of the syllable text in staff spaces
  * @param widthSs    rendered width of the syllable text in staff spaces
- * @param verseIndex 1-based verse number
+ * @param script     the script the syllable is written in
  * @param text       syllable text
  */
-public record LyricBoxLayout(double xSs, double widthSs, int verseIndex, String text) {}
+public record LyricBoxLayout(double xSs, double widthSs, Song.Script script, String text) {}

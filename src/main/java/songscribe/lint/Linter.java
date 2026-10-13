@@ -22,52 +22,46 @@ package songscribe.lint;
 
 import java.util.ArrayList;
 
-import net.engio.mbassy.listener.Handler;
-
 import songscribe.dom.Song;
-import songscribe.message.MessageCenter;
-import songscribe.message.MessageSubscription;
-import songscribe.message.notification.LintReportDidChangeNotification;
-import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.LintingNotification;
 
 /**
- * Owns the lint report of the open document: runs every {@link LintRule} over the song and
- * holds the result until the next run.
+ * Runs every {@link LintRule} over one song and holds the result until the next run.
  *
- * <p>The report is current after every change to the song. Every edit, undo and redo posts a
- * {@link SongDidChangeNotification}, and the linter lints at once on each, so a reader never
- * sees a report older than the last change. Whoever installs a new document lints it.
+ * <p>One linter belongs to one song. Only the {@link Song} constructor creates it, and the song
+ * hands it out through {@link Song#getLinter()}.
  *
- * <p>The linter knows nothing of the UI. The UI asks it for the report ({@link #getReport()},
- * {@link #hasFlag}) and repaints on {@link LintReportDidChangeNotification}.
+ * <p>The song lints when a {@link LintingNotification} for it is built; that class states the
+ * order this gives every reader of the report.
+ *
+ * <p>The linter has no bus subscription and posts no notification. It knows nothing of the UI:
+ * the UI asks it for the report ({@link #getReport()}, {@link #hasFlag}).
  *
  * <p>EDT only, by contract: it runs on the thread that owns the song, and reads the song only.
- *
- * <p><b>Lifecycle:</b> created the first time any of its methods is called, it subscribes to
- * the message bus for the life of the process and is never disposed. The static instance keeps
- * it reachable.
  */
 public final class Linter {
 
-    private static final Linter INSTANCE = new Linter();
+    private final Song song;
 
     private LintReport report = LintReport.EMPTY;
 
-    private Linter() {
-        MessageSubscription.addProcessListener(this);
+    /**
+     * Creates the linter of {@code song}. Called only by the {@link Song} constructor.
+     *
+     * @param song the song this linter lints; read only, never changed
+     */
+    public Linter(Song song) {
+        this.song = song;
     }
 
     /**
-     * Lints {@code song} with every rule and makes the result the current report.
+     * Lints the song with every rule and makes the result the current report.
      *
-     * @param song the song to lint; read only, never changed
-     * @return the new current report
      * @invariant the findings are in {@link LintRule} declaration order and, within a rule, in
      *     song order
-     * @effects replaces the current report, then posts {@link LintReportDidChangeNotification}
-     *     whether or not the findings changed
+     * @effects replaces the current report; reads the song and changes nothing in it
      */
-    public static LintReport lint(Song song) {
+    public void lint() {
         var findings = new ArrayList<LintFinding>();
 
         for (var rule : LintRule.values()) {
@@ -76,10 +70,7 @@ public final class Linter {
             }
         }
 
-        var lintReport = new LintReport(findings);
-        INSTANCE.report = lintReport;
-        MessageCenter.post(new LintReportDidChangeNotification());
-        return lintReport;
+        report = new LintReport(findings);
     }
 
     /**
@@ -87,25 +78,17 @@ public final class Linter {
      *
      * @return the current report; {@link LintReport#EMPTY} before the first run
      */
-    public static LintReport getReport() {
-        return INSTANCE.report;
+    public LintReport getReport() {
+        return report;
     }
 
     /**
      * Whether some finding in the current report blocks what {@code flag} names.
      *
+     * @param flag what a finding may block
      * @return {@link LintReport#hasFlag} of {@link #getReport()}
      */
-    public static boolean hasFlag(LintRule.Flag flag) {
-        return getReport().hasFlag(flag);
-    }
-
-    /**
-     * Lints the song the edit changed. Only a document song posts this notification: a song
-     * being parsed runs with mutation tracking suspended.
-     */
-    @Handler
-    public void songDidChange(SongDidChangeNotification message) {
-        lint(message.getSong());
+    public boolean hasFlag(LintRule.Flag flag) {
+        return report.hasFlag(flag);
     }
 }

@@ -635,9 +635,11 @@ public final class SongIO {
          *
          * @return the assembled song, in staff-space units and migrated to the current format,
          *     with the tuplets, endings and hairpins the reader found pending — none for a v1.0
-         *     document, which predates them — and, when the document named a retired accidental,
-         *     the accidentals-converted entry as its one reader entry; the load passes have not
-         *     run
+         *     document, which predates them — and the reader entries: the accidentals-converted
+         *     entry when the document named a retired accidental, then one
+         *     {@link ParsedSong#lyricDroppedEntry lyric-dropped entry} for each line that lost a
+         *     lyric whose number names no script, in line order. Such a lyric is dropped rather
+         *     than refusing the document. The load passes have not run
          * @throws SAXException if the document's song-level key tags name no key
          */
         public ParsedSong getSong() throws SAXException {
@@ -723,9 +725,19 @@ public final class SongIO {
             ctx.song = song;
             MigrationPipeline.runPostAssembly(ctx);
 
-            var readerEntries = accidentalsConverted()
-                ? List.of(ParsedSong.accidentalsConvertedEntry())
-                : List.<RecordedChange>of();
+            var readerEntries = new ArrayList<RecordedChange>();
+
+            if (accidentalsConverted()) {
+                readerEntries.add(ParsedSong.accidentalsConvertedEntry());
+            }
+
+            // Only a lineReader reads lyrics: a v1.0 document keeps its lyrics at song level,
+            // where the legacy lyrics import places them.
+            if (lineReader != null) {
+                for (var line : lineReader.linesThatDroppedLyrics()) {
+                    readerEntries.add(ParsedSong.lyricDroppedEntry(line));
+                }
+            }
 
             return new ParsedSong(
                 song,

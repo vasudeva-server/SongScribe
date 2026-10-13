@@ -44,23 +44,20 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.lifecycle.Disposable;
 import songscribe.lint.LintRule;
-import songscribe.lint.Linter;
 import songscribe.message.Message;
 import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
-import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.InsertionPointModeDidChangeNotification;
-import songscribe.message.notification.LintReportDidChangeNotification;
+import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -131,9 +128,8 @@ public class UIAction extends AbstractAction implements Disposable {
         ENABLE_WHEN_LINE_SELECTED(1 << 18),
         REQUIRES_ANNOTATABLE_ELEMENT(1 << 19),
         /**
-         * Disables the action while playback is stopped, the playback settings play repeats,
-         * and a lint finding blocks playback. While playback runs the flag never disables the
-         * action, so an action that both starts and stops playback can always stop it.
+         * Disables the action whenever a finding of the current song carries
+         * {@link LintRule.Flag#BLOCKS_PLAYBACK}, under the conditions that flag states.
          */
         DISABLE_WHEN_PLAYBACK_BLOCKED(1 << 20);
 
@@ -806,13 +802,6 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void lintReportDidChange(LintReportDidChangeNotification message) {
-        if (hasFlag(Flag.DISABLE_WHEN_PLAYBACK_BLOCKED)) {
-            updateEnabledState();
-        }
-    }
-
-    @Handler(priority = Message.MEDIUM_PRIORITY)
     public void prefsDidChange(PrefsDidChangeNotification message) {
         var key = message.getKey();
 
@@ -827,14 +816,22 @@ public class UIAction extends AbstractAction implements Disposable {
      * repeats setting is read from the preference rather than from the playback controller,
      * so the answer does not depend on which handler of the preference change runs first.
      *
-     * @return {@code false} only when this action carries the flag, playback is stopped, the
-     *     playback settings play repeats, and a lint finding blocks playback
+     * @return {@code false} only when this action carries the flag and
+     *     {@link LintRule.Flag#BLOCKS_PLAYBACK} blocks playback now
      */
     protected boolean enableFromPlaybackBlock() {
         return !hasFlag(Flag.DISABLE_WHEN_PLAYBACK_BLOCKED)
             || PlaybackController.isPlaying()
             || !Prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS)
-            || !Linter.hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
+            || !hasPlaybackBlockingFinding();
+    }
+
+    private boolean hasPlaybackBlockingFinding() {
+        var score = getScoreView();
+
+        return score != null
+            && score.isInitialized()
+            && score.getSong().getLinter().hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
     }
 
     protected boolean enableFromMidiState() {
@@ -966,13 +963,13 @@ public class UIAction extends AbstractAction implements Disposable {
             && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION));
     }
 
+    /**
+     * Refreshes the enabled state when the song's content, its loaded document or its active
+     * script changed. Each of those can change what the song's lint report says, and the
+     * notification's construction has already linted the song.
+     */
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void songDidChange(SongDidChangeNotification message) {
-        updateEnabledState();
-    }
-
-    @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void documentDidLoad(DocumentDidLoadNotification message) {
+    public void linting(LintingNotification message) {
         updateEnabledState();
     }
 

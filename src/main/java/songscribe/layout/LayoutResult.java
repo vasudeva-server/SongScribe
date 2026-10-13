@@ -22,7 +22,6 @@ package songscribe.layout;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -37,7 +36,6 @@ import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
 import songscribe.hit.HitRegistry;
 
@@ -235,6 +233,20 @@ public final class LayoutResult {
         return column != null ? column.getXSs() : 0;
     }
 
+    /**
+     * Returns the box a click on an element answers to: its note head expanded to the minimum
+     * clickable size ({@link ElementHitGeometry#elementHitRectSs}), at its column's X. The hit
+     * registry holds this box for the element, and the score points at the element with it.
+     *
+     * @param element an element this result laid out
+     * @return a new rectangle in the hit registry's line-local, midline-relative staff spaces
+     */
+    public Rectangle2D.Double elementHitRectSs(StaffElement element) {
+        var rectSs = new Rectangle2D.Double();
+        ElementHitGeometry.elementHitRectSs(getElementXSs(element), element, rectSs);
+        return rectSs;
+    }
+
     // ==========================================================================
     // Beam + Stem Layout Access
     // ==========================================================================
@@ -413,8 +425,8 @@ public final class LayoutResult {
     /**
      * Returns the total vertical space this line's lyrics occupy, in staff spaces, measured from
      * this line's below-staff content down to the bottom of the lyric row. The band is one row deep
-     * whatever the line holds: only the song's active verse is ever laid out, and the row is
-     * reserved even before that verse has any lyrics on this line, so entering the first lyric does
+     * whatever the line holds: only the song's active script is ever laid out, and the row is
+     * reserved even before that script has any lyrics on this line, so entering the first lyric does
      * not re-space the song and a song carrying a second language is no taller than one that does
      * not.
      * <p>
@@ -503,8 +515,8 @@ public final class LayoutResult {
      * {@link #lyricAnchorBelowStaffSs} — so lyrics hug each line individually rather than a
      * song-wide maximum.
      * <p>
-     * There is one such row per line, not one per verse: the song shows a single verse at a time,
-     * so whichever verse is active sits on this baseline.
+     * There is one such row per line, not one per script: the song shows a single script at a time,
+     * so whichever script is active sits on this baseline.
      */
     public double lyricBaselineYSsInLine(LyricRenderMetrics lyricRenderMetrics) {
         return staffBottomYSsInLine()
@@ -517,11 +529,11 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the lyric boxes for an element — at most one, for the verse this layout pass was
+     * Returns the lyric boxes for an element — at most one, for the script this layout pass was
      * built for.
      *
      * @param element the element to look up
-     * @return immutable list of lyric boxes; empty if the element has no lyric in that verse
+     * @return immutable list of lyric boxes; empty if the element has no lyric in that script
      */
     public List<LyricBoxLayout> getLyricBoxes(StaffElement element) {
         var boxes = lyricBoxes.get(element);
@@ -531,7 +543,7 @@ public final class LayoutResult {
     /**
      * Returns the placeholder box for an element: a box of
      * {@link LyricLayoutBuilder#PLACEHOLDER_TEXT} placed exactly as a syllable of that text would
-     * be. Layout gives one to every note that can bear a syllable but has none in the verse this
+     * be. Layout gives one to every note that can bear a syllable but has none in the script this
      * pass was built for; the placeholder takes no space, and a renderer decides whether to draw
      * it.
      *
@@ -543,24 +555,14 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns whether a point lies on a lyric box, tested exactly as the hit registry tests the
-     * region it holds for a syllable there.
-     * <p>
-     * For a box the registry does not hold: a placeholder, which only a renderer decides to draw.
-     *
-     * @param box                a syllable or placeholder box of this result
-     * @param lyricRenderMetrics song-wide lyric render metrics providing the row height
-     * @param pointSs            the point, in the hit registry's line-local, midline-relative
-     *                           staff spaces
-     * @return true when the point lies on the box
-     */
-    public boolean lyricBoxContains(LyricBoxLayout box, LyricRenderMetrics lyricRenderMetrics, Point2D pointSs) {
-        return HitRegionBuilder.inclusiveOf(lyricBoxRectSs(box, lyricRenderMetrics)).contains(pointSs);
-    }
-
-    /**
      * Returns the region a lyric box answers to: the box's horizontal extent across the full
-     * height of the lyric row, in the hit registry's midline-relative staff spaces.
+     * height of the lyric row.
+     *
+     * @param box                a syllable box ({@link #getLyricBoxes}) or a placeholder box
+     *                           ({@link #getLyricPlaceholder}) of this result
+     * @param lyricRenderMetrics the song-wide lyric render metrics this result was laid out with,
+     *                           which give the row's height
+     * @return a new rectangle in the hit registry's line-local, midline-relative staff spaces
      */
     public Rectangle2D lyricBoxRectSs(LyricBoxLayout box, LyricRenderMetrics lyricRenderMetrics) {
         // The lyric boxes are the one geometry source in line-top origin. paintAboveMidlineSs()
@@ -568,13 +570,6 @@ public final class LayoutResult {
         // subtracting it puts the row in the midline-relative space every other region uses.
         var rowTopYSs = lyricAreaBaseYSs() - paintAboveMidlineSs();
         return new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), lyricRenderMetrics.lyricBoxHeightSs());
-    }
-
-    /**
-     * Delegates to {@link LayoutHitTester#hitTestLyric}.
-     */
-    public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
-        return hitTester.hitTestLyric(lyricRenderMetrics, line, pointPx);
     }
 
     /**
@@ -633,8 +628,8 @@ public final class LayoutResult {
      * {@link IllegalStateException} when neither a box nor a column is available — that indicates
      * a broken layout state, not a recoverable condition.
      * <p>
-     * The Y is the line's single lyric baseline: the editor edits the active verse, and the active
-     * verse is what sits on that baseline.
+     * The Y is the line's single lyric baseline: the editor edits the active script, and the active
+     * script is what sits on that baseline.
      *
      * @param element            the element to anchor on
      * @param lyricRenderMetrics song-wide lyric render metrics providing the lyric baseline Y
@@ -945,6 +940,20 @@ public final class LayoutResult {
         double marginSs();
 
         /**
+         * Returns the drawn box of the decoration, with nothing added.
+         * <p>
+         * The box's top is {@code ySs} outright. For a {@link Sloped} tuplet bracket, whose top
+         * edge tilts, that is the top at {@code xSs}, so the box does not follow the bracket;
+         * the hit registry gives a tuplet its own shape instead.
+         *
+         * @return a new rectangle from ({@code xSs}, {@code ySs}), {@code widthSs} wide and
+         *         {@code heightSs} high, in the line's layout space
+         */
+        default Rectangle2D.Double inkRectSs() {
+            return new Rectangle2D.Double(xSs(), ySs(), widthSs(), heightSs());
+        }
+
+        /**
          * Returns a copy shifted by the given offsets, with every other component carried
          * through.
          * <p>
@@ -1118,5 +1127,4 @@ public final class LayoutResult {
      * @param baselineYSs  the line's lyric text baseline Y in staff spaces
      */
     public record LyricAnchor(Ss centerXSs, Ss baselineYSs) {}
-    public record LyricHit(StaffElement element, int verse) {}
 }

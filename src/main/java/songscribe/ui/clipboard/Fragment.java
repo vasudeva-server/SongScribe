@@ -36,6 +36,7 @@ import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
 import songscribe.dom.NoteElement;
+import songscribe.dom.SongStart;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
@@ -293,7 +294,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
      *
      * <p>A span with an endpoint on a removed element cannot be drawn, so it goes with it. The
      * user did not ask to lose it, so the reduction names it in
-     * {@link KeyChangeReduction#strandedSpans}, for the paste to report. An ending can be hit,
+     * {@link Reduction#strandedSpans}, for the paste to report. An ending can be hit,
      * and so can a tuplet that ends on a barline; a beam and a hairpin cannot, because their
      * endpoints are notes.
      *
@@ -302,18 +303,48 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
      *     otherwise a reduced fragment — which may hold no elements at all, when the whole
      *     fragment was one such pair — and every span it left out
      * @invariant every one of this fragment's spans is either in the reduced fragment's spans or
-     *     in {@link KeyChangeReduction#strandedSpans}, never both
+     *     in {@link Reduction#strandedSpans}, never both
      */
-    public KeyChangeReduction withoutRedundantKeyChanges(Key keyAtInsertion) {
+    public Reduction withoutRedundantKeyChanges(Key keyAtInsertion) {
         var stranded = run().redundantKeyChangeRanges(keyAtInsertion);
 
         if (stranded.isEmpty()) {
-            return new KeyChangeReduction(this, List.of());
+            return new Reduction(this, List.of());
         }
 
+        return without(stranded);
+    }
+
+    /**
+     * Returns the effective range of each bar line that starts this fragment, in ascending order:
+     * the first element when it is a bar line, then the first element after that range when it
+     * is one too, and so on. Each range is widened to the pair its bar line belongs to, so a key
+     * change behind a bar line goes with it.
+     */
+    private List<StaffElementRun.EffectiveRange> leadingBarRanges() {
+        var run = run();
+        var ranges = new ArrayList<StaffElementRun.EffectiveRange>();
+        var index = 0;
+
+        while (index < elements.size() && elements.get(index).getType().isBar()) {
+            var effectiveRange = run.effectiveRange(StaffElementRun.ElementRange.single(index));
+            ranges.add(effectiveRange);
+            index = effectiveRange.range().end() + 1;
+        }
+
+        return ranges;
+    }
+
+    /**
+     * Returns this fragment with the elements of {@code removed} left out, and every span with an
+     * endpoint on one of them named as stranded.
+     *
+     * @param removed the ranges to leave out, pairwise disjoint
+     */
+    private Reduction without(List<StaffElementRun.EffectiveRange> removed) {
         var removedIndices = new HashSet<Integer>();
 
-        for (var effectiveRange : stranded) {
+        for (var effectiveRange : removed) {
             var range = effectiveRange.range();
 
             for (var index = range.begin(); index <= range.end(); index++) {
@@ -344,26 +375,85 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
             }
         }
 
-        return new KeyChangeReduction(new Fragment(keptElements, keptSpans), strandedSpans);
+        return new Reduction(new Fragment(keptElements, keptSpans), strandedSpans);
     }
 
     /**
-     * What {@link #withoutRedundantKeyChanges} leaves of a fragment.
+     * What {@link #withoutRedundantKeyChanges}, and then {@link #withoutLeadingBars}, leave of a
+     * fragment.
      *
      * @param fragment      the fragment to land
      * @param strandedSpans every span of the original fragment with an endpoint on a removed
-     *                      element, in the original fragment's order; empty when nothing was
-     *                      removed
+     *                      element: those of each reduction in the order the reductions ran,
+     *                      and within one reduction in the original fragment's order; empty when
+     *                      nothing was removed
      */
-    public record KeyChangeReduction(Fragment fragment, List<StrandedSpan> strandedSpans) {
+    public record Reduction(Fragment fragment, List<StrandedSpan> strandedSpans) {
 
-        public KeyChangeReduction {
+        public Reduction {
             strandedSpans = List.copyOf(strandedSpans);
+        }
+
+        /**
+         * Returns this reduction with the bar lines that start its fragment left out as well,
+         * each together with the element it is paired with, for a paste that lands at the
+         * start of the song, where no bar line may stand ({@link SongStart}).
+         *
+         * <p>An ending can start on a bar line, so a span with an endpoint on a removed element
+         * is left out with it and named in {@link #strandedSpans}, as
+         * {@link #withoutRedundantKeyChanges} does.
+         *
+         * <p>A key change left out with its bar line set the key every element after it sounds
+         * in, so the drop names the key of the last one it left out, for the paste to move onto
+         * the destination line ({@link SongStart#keyBehind}).
+         *
+         * @return the drop: this reduction and no moved key when its fragment does not start with
+         *     a bar line; otherwise a reduction whose fragment no longer does — and which may hold
+         *     no elements at all — with this reduction's stranded spans followed by those it adds,
+         *     and the key of the last key change it left out, or {@code null} when it left out
+         *     none
+         * @invariant every span of this reduction's fragment is either in the returned
+         *     fragment's spans or in the stranded spans it adds, never both
+         */
+        public LeadingBarDrop withoutLeadingBars() {
+            var leadingBars = fragment.leadingBarRanges();
+
+            if (leadingBars.isEmpty()) {
+                return new LeadingBarDrop(this, null);
+            }
+
+            var run = fragment.run();
+            @Nullable Key movedKey = null;
+
+            for (var leadingBar : leadingBars) {
+                var key = SongStart.keyBehind(run, leadingBar);
+
+                if (key != null) {
+                    movedKey = key;
+                }
+            }
+
+            var reduced = fragment.without(leadingBars);
+            var stranded = new ArrayList<>(strandedSpans);
+            stranded.addAll(reduced.strandedSpans());
+
+            return new LeadingBarDrop(new Reduction(reduced.fragment(), stranded), movedKey);
         }
     }
 
     /**
-     * A span {@link #withoutRedundantKeyChanges} left out because an endpoint of it was removed.
+     * What {@link Reduction#withoutLeadingBars} leaves of a fragment, and the key it moves.
+     *
+     * @param reduction the reduction, its fragment no longer starting with a bar line
+     * @param movedKey  the key of the last key change the drop left out, which the paste makes
+     *                  the destination line's own key; {@code null} when the drop left out no key
+     *                  change
+     */
+    public record LeadingBarDrop(Reduction reduction, @Nullable Key movedKey) {
+    }
+
+    /**
+     * A span a {@link Reduction} left out because an endpoint of it was removed.
      *
      * @param span    the span, never added to any line
      * @param covered the elements it covered in the original fragment, from its anchor to its

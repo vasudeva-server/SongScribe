@@ -38,6 +38,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.SongFactory.LineBuilder;
 import songscribe.dom.Ss;
+import songscribe.font.TextMeasurement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
@@ -88,7 +89,12 @@ class KeyEditFitCalculatorTest extends UnitTest {
     private static final double WIDEST_LINE_WIDTH_SS = 200.0;
     private static final double LINE_WIDTH_STEP_SS = 1.0;
 
+    /** The three fonts of the metrics differ in face and size, so no one is mistaken for another. */
     private static final int LYRICS_FONT_SIZE = 12;
+
+    private static final int SCALED_LYRICS_FONT_SIZE = 13;
+
+    private static final int PLACEHOLDER_FONT_SIZE = 14;
 
     /** The syllable spacing the metrics carry; the notes here hold no lyrics, so it measures nothing. */
     private static final double SYLLABLE_GAP_SS = 0.25;
@@ -202,9 +208,19 @@ class KeyEditFitCalculatorTest extends UnitTest {
     }
 
     private static LyricRenderMetrics metrics() {
-        var font = new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE);
+        var lyricsFont = new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE);
+        var scaledLyricsFont = new Font(Font.SERIF, Font.ITALIC, SCALED_LYRICS_FONT_SIZE);
+        var placeholderFont = new Font(Font.MONOSPACED, Font.BOLD, PLACEHOLDER_FONT_SIZE);
+        var placeholderWidthSs = TextMeasurement.textWidthSs(placeholderFont, LyricLayoutBuilder.PLACEHOLDER_TEXT).value();
 
-        return new LyricRenderMetrics(font, font, font, SYLLABLE_GAP_SS, SYLLABLE_GAP_SS, 0.0);
+        return new LyricRenderMetrics(
+            lyricsFont,
+            scaledLyricsFont,
+            placeholderFont,
+            SYLLABLE_GAP_SS,
+            SYLLABLE_GAP_SS,
+            placeholderWidthSs,
+            0.0);
     }
 
     static Stream<MidLineEditCase> midLineEditCases() {

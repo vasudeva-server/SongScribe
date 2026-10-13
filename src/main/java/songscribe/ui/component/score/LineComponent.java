@@ -24,13 +24,11 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.Toolkit;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Objects;
-import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
@@ -43,14 +41,16 @@ import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
 import songscribe.error.RuntimeError;
+import songscribe.hit.HitRegion;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.lint.LintMark;
-import songscribe.lint.Linter;
+import songscribe.lint.LintReport;
 import songscribe.ui.Mode;
+import songscribe.ui.ViewScale;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
@@ -84,6 +84,12 @@ import songscribe.util.UIUtils.ToolTipSection;
  */
 public class LineComponent extends ScoreComponent
     implements MouseMotionListener {
+
+    /**
+     * The space, in view pixels, kept on each side of a lint mark's item when it is scrolled into
+     * view, so that the item does not sit at the edge of the viewport.
+     */
+    private static final int LINT_MARK_MARGIN = 10;
 
     // ==========================================================================
     // Functional Interface for Selection State
@@ -196,13 +202,50 @@ public class LineComponent extends ScoreComponent
     private final LineRenderer lineRenderer = new LineRenderer(this);
 
     /**
+     * The lint mark the latest lookup found under the pointer, and what that lookup read.
+     * <p>
+     * The rule: the stored mark answers for a point while the point equals {@code viewPoint} and
+     * the song's current lint report, this line's current layout and the view's current zoom are
+     * the very instances stored. Each of the three is immutable and replaced, never changed in
+     * place, so an edit, a script change or a zoom fails the comparison and the mark is looked up
+     * again; a stored mark is never one the current report does not hold, or one at a place the
+     * pointer has left.
+     *
+     * @param viewPoint    the point looked up, in this component's view pixels; a copy, so later
+     *                     changes to the event's point do not reach it
+     * @param report       the lint report the lookup read
+     * @param layoutResult the layout the lookup read
+     * @param viewScale    the zoom the lookup converted the point at
+     * @param hit          the mark under the point and its box, or {@code null} when the point is
+     *                     on no mark
+     */
+    private record PointerMark(
+        Point viewPoint,
+        LintReport report,
+        LayoutResult layoutResult,
+        ViewScale viewScale,
+        LineSelectionHandler.@Nullable LintMarkHit hit
+    ) { }
+
+    /**
+     * The mark under the pointer as of the latest lookup, or {@code null} before the first one
+     * and after the pointer leaves this component. {@link #mouseMoved} sets it on every move, and
+     * the tooltip methods read it, so each mouse event runs the hit test once.
+     */
+    private @Nullable PointerMark pointerMark = null;
+
+    /**
      * Creates a new LineComponent.
      */
     public LineComponent() {
+        // This listener must be added before the tooltip manager registers below, and the order
+        // must stay: Swing calls motion listeners in the order they were added, so mouseMoved
+        // stores the mark under the pointer (pointerMark) before the manager's listener asks
+        // the tooltip methods, which read it.
         addMouseMotionListener(this);
 
         // getToolTipText(MouseEvent) answers per point, so no tooltip text is set; registering
-        // is what makes the tooltip manager ask.
+        // is what makes the tooltip manager ask. It must stay after addMouseMotionListener above.
         ToolTipManager.sharedInstance().registerComponent(this);
     }
 
@@ -615,6 +658,10 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseMoved(MouseEvent e) {
+        // Before every early return: the tooltip methods read the mark stored here in every mode.
+        var point = e.getPoint();
+        var pointerHit = lookUpPointer(point);
+
         if (getGraceModeManager().mouseMoved(this, e)) {
             return;
         }
@@ -626,8 +673,8 @@ public class LineComponent extends ScoreComponent
         }
 
         // No preview anywhere in the clef/key signature column or over the lyrics, since a click
-        // there selects rather than inserting an element. The header test is two comparisons, so it
-        // runs before the hit tests, which this fires on every pixel of pointer motion.
+        // there selects rather than inserting an element. The hit tests ran once, above, and their
+        // result serves here too.
         //
         // This is what makes a lyric outrank the preview rather than the other way round. The lyric
         // row is not out of the preview's reach: the row sits just below the line's laid-out content,
@@ -637,12 +684,12 @@ public class LineComponent extends ScoreComponent
         // is drawn, and the reason a lyric is the one kind selectable in EDIT mode at all (see
         // handleEditModePress). A "?" drawn where a lyric is missing counts as lyric text: a
         // double-click on it opens the lyric editor there.
-        var point = e.getPoint();
+        var region = pointerHit.region();
 
         if (getScoreView().getMode() == Mode.EDIT
             && (selectionHandler.isWithinHeaderX(point)
-                || selectionHandler.hitTestViewPoint(point) instanceof HitTarget.Lyric
-                || selectionHandler.hitTestMissingLyricViewPoint(point) != null)) {
+                || (region != null && region.target() instanceof HitTarget.Lyric)
+                || pointerHit.missingLyric() != null)) {
             clearPreviewElement();
             return;
         }
@@ -715,7 +762,7 @@ public class LineComponent extends ScoreComponent
         var missingLyric = lyricHit == null
             ? selectionHandler.hitTestMissingLyricViewPoint(e.getPoint())
             : null;
-        var missingLyricElement = missingLyric == null ? null : missingLyric.element();
+        var missingLyricElement = missingLyric == null ? null : missingLyric.mark().element();
 
         if (lyricHit != null || missingLyricElement != null) {
             // Consumed either way: the press already selected the lyric, or mouseMoved hid the
@@ -790,7 +837,7 @@ public class LineComponent extends ScoreComponent
      */
     private static @Nullable StaffElement editableLyricElement(HitTarget.Lyric lyricHit) {
         var element = lyricHit.element();
-        var lyric = element.getLyricForVerse(lyricHit.verse());
+        var lyric = element.getLyricForScript(lyricHit.script());
         return lyric != null && !lyric.text().isBlank() ? element : null;
     }
 
@@ -1050,6 +1097,7 @@ public class LineComponent extends ScoreComponent
 
     @Override
     protected void exited(MouseEvent e, ScoreView view) {
+        pointerMark = null;
         getInsertionPointMode().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
     }
@@ -1066,124 +1114,124 @@ public class LineComponent extends ScoreComponent
      */
     @Override
     public @Nullable String getToolTipText(MouseEvent event) {
-        var lintMarkHit = selectionHandler.lintMarkAt(event.getPoint());
+        var lintMarkHit = lintMarkAtPointer(event.getPoint());
         return lintMarkHit == null ? null : lintToolTipText(lintMarkHit.mark());
     }
 
     /**
      * Places the lint tooltip at the item the pointer is on: the "?", the flagged element, or the
-     * flagged annotation. See {@link #lintToolTipPlacement}.
+     * flagged annotation, by the rule of {@link LintToolTipPlacement}.
      *
      * @return the tooltip's top-left corner in this component's coordinates, or {@code null}
      *         when the pointer is on no mark
      */
     @Override
     public @Nullable Point getToolTipLocation(MouseEvent event) {
-        var lintMarkHit = selectionHandler.lintMarkAt(event.getPoint());
-        return lintMarkHit == null ? null : lintToolTipPlacement(lintMarkHit).location();
+        var lintMarkHit = lintMarkAtPointer(event.getPoint());
+        return lintMarkHit == null ? null : placeLintToolTip(lintMarkHit).locationIn(this);
     }
 
     /**
-     * Returns the tooltip of the lint mark under the pointer, whose arrow points at the item the
-     * pointer is on.
-     * <p>
-     * The tooltip manager passes no event here, so the mark is found at the pointer. The manager
-     * shows a tooltip for the point of the latest move, which is where the pointer is. If the
-     * pointer is off this component, the tooltip is a plain one, without an arrow.
+     * What one run of the hit cascade found at a point.
      *
-     * @return the tooltip for the mark under the pointer
+     * @param region       the region a click there gets, or {@code null} when it gets none
+     * @param missingLyric the "?" under the point, or {@code null} when it is on none
      */
-    @Override
-    public JToolTip createToolTip() {
-        // Two lint tooltips never show at once: the hover tooltip replaces the callout.
-        getScoreView().getLintCallout().dismiss();
+    private record PointerHit(@Nullable HitRegion region, LineSelectionHandler.@Nullable MissingLyricHit missingLyric) {
 
-        var pointer = getMousePosition();
-        var lintMarkHit = pointer == null ? null : selectionHandler.lintMarkAt(pointer);
+        /** Nothing under the point, or no line laid out to look in. */
+        static final PointerHit NONE = new PointerHit(null, null);
+    }
 
-        if (lintMarkHit == null) {
-            return super.createToolTip();
+    /**
+     * Runs the hit cascade at {@code viewPoint} once, and stores the lint mark it finds there in
+     * {@link #pointerMark}, with what the lookup read.
+     *
+     * @param viewPoint the point, in this component's view pixels
+     * @return what the cascade found; {@link PointerHit#NONE} when this component has no line
+     *         laid out, in which case {@link #pointerMark} is cleared
+     * @effects when the point is on a mark that differs from the one stored before, hover over
+     *          that mark begins, and the score's {@link LintCalloutController} is told so
+     */
+    private PointerHit lookUpPointer(Point viewPoint) {
+        var ready = readyLayout();
+
+        if (ready == null) {
+            pointerMark = null;
+            return PointerHit.NONE;
         }
 
-        return lintToolTipPlacement(lintMarkHit).toolTip();
+        var report = ready.line().getSong().getLinter().getReport();
+        var layout = ready.layoutResult();
+        var region = selectionHandler.hitRegionAtViewPoint(viewPoint);
+        var missingLyric = selectionHandler.hitTestMissingLyricViewPoint(viewPoint);
+        var hit = selectionHandler.lintMarkAt(region, missingLyric, report, layout);
+        var previous = pointerMark;
+        var previousHit = previous == null ? null : previous.hit();
+
+        pointerMark = new PointerMark(new Point(viewPoint), report, layout, getViewScale(), hit);
+
+        if (hit != null && (previousHit == null || !previousHit.mark().equals(hit.mark()))) {
+            getScoreView().requireLintCalloutController().hoverDidEnterMark();
+        }
+
+        return new PointerHit(region, missingLyric);
     }
 
     /**
-     * Scrolls the item of a lint mark into view, when it is not in view, and returns the mark's
-     * tooltip, placed at the item as the hover tooltip is.
+     * Returns the lint mark under {@code viewPoint}: the stored {@link #pointerMark} while its
+     * rule holds for the point, and otherwise a fresh lookup, which replaces it.
      *
-     * @return the tooltip and its top-left corner on the screen, or {@code null} when this line
-     *         does not draw the mark
+     * @param viewPoint the point, in this component's view pixels
+     * @return the mark and its box, or {@code null} when the point is on no mark or this component
+     *         has no line laid out
      */
-    @Nullable PlacedLintToolTip revealLintMark(LintMark mark) {
+    private LineSelectionHandler.@Nullable LintMarkHit lintMarkAtPointer(Point viewPoint) {
+        var stored = pointerMark;
+        var ready = readyLayout();
+
+        if (stored != null
+            && ready != null
+            && stored.viewPoint().equals(viewPoint)
+            && stored.report() == ready.line().getSong().getLinter().getReport()
+            && stored.layoutResult() == ready.layoutResult()
+            && stored.viewScale() == getViewScale()) {
+            return stored.hit();
+        }
+
+        lookUpPointer(viewPoint);
+
+        var looked = pointerMark;
+        return looked == null ? null : looked.hit();
+    }
+
+    /**
+     * Scrolls the full height of this line and the mark's item into view, when they are not in
+     * view, and returns the tooltip of a lint mark, placed at the mark's item as the hover tooltip
+     * is.
+     *
+     * @param mark a mark of the song's current lint report whose element is on this component's
+     *             line
+     * @return the tooltip and its top-left corner on the screen
+     */
+    LintToolTipPlacement.Placed revealLintMark(LintMark mark) {
         var lintMarkHit = selectionHandler.lintMarkHit(mark);
+        var markBounds = viewBounds(lintMarkHit.boundsSs());
 
-        if (lintMarkHit == null) {
-            return null;
-        }
+        markBounds.grow(LINT_MARK_MARGIN, 0);
 
-        scrollRectToVisible(viewBounds(lintMarkHit.boundsSs()));
+        // A line is usually wider than the viewport, which then shows only the left end of a
+        // rectangle that is the whole line, so the rectangle spans the mark's item across.
+        scrollRectToVisible(new Rectangle(markBounds.x, 0, markBounds.width, getHeight()));
 
         // The placement reads where the item is on the screen, so it follows the scroll.
-        var placement = lintToolTipPlacement(lintMarkHit);
-        var locationOnScreen = new Point(placement.location());
-        SwingUtilities.convertPointToScreen(locationOnScreen, this);
-        return new PlacedLintToolTip(placement.toolTip(), locationOnScreen);
+        return placeLintToolTip(lintMarkHit);
     }
 
-    /**
-     * A lint tooltip and where it goes.
-     *
-     * @param toolTip          the tooltip, with its text set
-     * @param locationOnScreen its top-left corner, in screen coordinates
-     */
-    record PlacedLintToolTip(LintToolTip toolTip, Point locationOnScreen) { }
-
-    /**
-     * A lint tooltip and where it goes.
-     *
-     * @param location the tooltip's top-left corner, in this component's coordinates
-     * @param toolTip  the tooltip, with its text set and its arrow pointing at the item
-     */
-    private record LintToolTipPlacement(Point location, LintToolTip toolTip) { }
-
-    /**
-     * Places the tooltip of a mark below its item, with its arrow pointing up at the item's
-     * bottom center. When the tooltip does not fit on the screen below the item, it goes above,
-     * with its arrow pointing down at the item's top center.
-     * <p>
-     * The tooltip goes where its {@link LintToolTip#arrowTipOffset()} puts the arrow's tip on that
-     * point. The tooltip can be pushed sideways to keep it on the screen, and the arrow then moves
-     * along the edge to keep pointing at the item.
-     */
-    private LintToolTipPlacement lintToolTipPlacement(LineSelectionHandler.LintMarkHit lintMarkHit) {
-        var itemBounds = viewBounds(lintMarkHit.boundsSs());
-        var centerXViewPx = (int) itemBounds.getCenterX();
-        var text = lintToolTipText(lintMarkHit.mark());
-
-        var below = placedLintToolTip(
-            new LintToolTip.Target(new Point(centerXViewPx, itemBounds.y + itemBounds.height), LintToolTip.ArrowEdge.TOP),
-            text);
-
-        var bottomOnScreen = new Point(0, below.location().y + below.toolTip().getPreferredSize().height);
-        SwingUtilities.convertPointToScreen(bottomOnScreen, this);
-
-        if (bottomOnScreen.y <= usableScreenBottomY()) {
-            return below;
-        }
-
-        return placedLintToolTip(
-            new LintToolTip.Target(new Point(centerXViewPx, itemBounds.y), LintToolTip.ArrowEdge.BOTTOM), text);
-    }
-
-    /** Returns a tooltip with {@code text}, placed so its arrow's tip is on the target's anchor. */
-    private LintToolTipPlacement placedLintToolTip(LintToolTip.Target target, String text) {
-        var toolTip = new LintToolTip(this, target);
-        toolTip.setTipText(text);
-
-        var anchor = target.anchor();
-        var tipOffset = toolTip.arrowTipOffset();
-        return new LintToolTipPlacement(new Point(anchor.x - tipOffset.x, anchor.y - tipOffset.y), toolTip);
+    /** Returns the tooltip of a mark, placed at its item by {@link LintToolTipPlacement}. */
+    private LintToolTipPlacement.Placed placeLintToolTip(LineSelectionHandler.LintMarkHit lintMarkHit) {
+        return LintToolTipPlacement.place(
+            viewBounds(lintMarkHit.boundsSs()), this, lintToolTipText(lintMarkHit.mark()));
     }
 
     /**
@@ -1200,23 +1248,17 @@ public class LineComponent extends ScoreComponent
         return new Rectangle(leftXViewPx, topYViewPx, rightXViewPx - leftXViewPx, bottomYViewPx - topYViewPx);
     }
 
-    /**
-     * Returns the lowest screen y a tooltip can reach on this component's screen: the screen's
-     * bottom less what the system keeps there, such as the Dock. The tooltip manager keeps a
-     * tooltip above the same line.
-     */
-    private int usableScreenBottomY() {
-        var configuration = getGraphicsConfiguration();
-        var screenBounds = configuration.getBounds();
-        var screenInsets = Toolkit.getDefaultToolkit().getScreenInsets(configuration);
-        return screenBounds.y + screenBounds.height - screenInsets.bottom;
-    }
+    private String lintToolTipText(LintMark mark) {
+        var lineModel = getLine();
 
-    private static String lintToolTipText(LintMark mark) {
+        if (lineModel == null) {
+            throw RuntimeError.exit("lint tooltip requested for a line component with no line");
+        }
+
         var sections = new ArrayList<ToolTipSection>();
 
-        for (var finding : Linter.getReport().findingsAt(mark)) {
-            sections.add(new ToolTipSection(Strings.get(finding.headingKey()), null, finding.description()));
+        for (var finding : lineModel.getSong().getLinter().getReport().findingsAt(mark)) {
+            sections.add(new ToolTipSection(finding.heading(), null, finding.description()));
         }
 
         return UIUtils.toolTipHtml(sections);

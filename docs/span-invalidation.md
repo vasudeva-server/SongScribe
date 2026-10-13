@@ -32,7 +32,7 @@ replaces, and those the rules at the close of the edit make. A span a merge
 absorbs is not removed in any sense the user sees — the merged span covers it —
 so it goes unreported. A removal the user asked for — deleting a selected span,
 deleting every element a span covers, toggling a beam or a tie off, deleting the
-note a tie ends on — is not. [change-report.md](change-report.md) lists every
+note a tie ends on — is not. [The Change Report](../guides/subsystems/change-report.md) lists every
 route into the report.
 
 The second of those cases is decided by the registry, not by any span's rule. A

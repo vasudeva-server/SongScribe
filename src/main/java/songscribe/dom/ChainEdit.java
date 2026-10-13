@@ -54,8 +54,9 @@ import songscribe.message.mutation.TieRemoval;
  *
  * <p>The edited range covers the elements of one line from {@link #start()} up to
  * {@link #end()}, indexed as the song stands after the edit: an insertion covers what it inserted, a
- * modification covers the one element, and a removal is the empty range at the point it removed
- * from.
+ * modification covers the one element, a removal is the empty range at the point it removed
+ * from, and a swap that also moves its line's key covers the line from its start through what it
+ * inserted.
  *
  * <p>Every edit comes from one of the factories here, each of which states what its edit means;
  * the constructor is private so that no edit exists that a factory did not describe.
@@ -210,6 +211,29 @@ public final class ChainEdit {
      */
     public static ChainEdit lineRekeyed(int lineIndex) {
         return rekeyingFrom(new Cursor(lineIndex, 0));
+    }
+
+    /**
+     * The edit that changed the key the line at {@code start.lineIndex()} starts in and swapped
+     * {@code removed} at {@code start} for {@code inserted}, which now stands at
+     * {@code start.index()..start.index() + inserted.size() - 1}. Every element on the line from
+     * its start through the inserted ones is under the moved key, so the edited range covers them
+     * all, as a key set on the line by hand reaches from the line's start.
+     *
+     * @param start    the place the first removed element stood at and the first inserted one
+     *                 stands at
+     * @param removed  the removed elements, in line order
+     * @param inserted the inserted elements, in line order
+     * @return the edit, covering the line's elements from its start through the inserted
+     *     elements, vacating the position of every removed note, reaching the next key change
+     */
+    public static ChainEdit lineRekeyedAndReplaced(
+        Cursor start, List<? extends StaffElement> removed, List<? extends StaffElement> inserted) {
+
+        return new ChainEdit(
+            new Cursor(start.lineIndex(), 0), start.index() + inserted.size(), positionsOf(removed),
+            Reach.TO_NEXT_KEY_CHANGE
+        );
     }
 
     /**

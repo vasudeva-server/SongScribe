@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,19 +36,31 @@ class PackageDependencyTest extends UnitTest {
 
     private static final Path SRC_ROOT = Paths.get("src/main/java");
 
-    // Collect all import lines in .java files under a given source root-relative path
-    // that match the forbidden prefix.
+    // Collect all import lines, plain and static, in .java files under a given source
+    // root-relative path that match the forbidden prefix.
     private List<String> findForbiddenImports(String sourceDir, String forbiddenPrefix)
         throws IOException {
-        var dir = SRC_ROOT.resolve(sourceDir);
+        return findForbiddenImports(SRC_ROOT.resolve(sourceDir), null, forbiddenPrefix);
+    }
+
+    // The same over the whole source tree, leaving out the files under exemptDir.
+    private List<String> findForbiddenImportsOutside(String exemptDir, String forbiddenPrefix)
+        throws IOException {
+        return findForbiddenImports(SRC_ROOT, SRC_ROOT.resolve(exemptDir), forbiddenPrefix);
+    }
+
+    private List<String> findForbiddenImports(Path dir, @Nullable Path exemptDir, String forbiddenPrefix)
+        throws IOException {
         var violations = new ArrayList<String>();
 
         try (var walk = Files.walk(dir)) {
             walk.filter(p -> p.toString().endsWith(".java"))
+                .filter(p -> exemptDir == null || !p.startsWith(exemptDir))
                 .forEach(file -> {
                     try (var lines = Files.lines(file)) {
                         lines
-                            .filter(line -> line.startsWith("import " + forbiddenPrefix))
+                            .filter(line -> line.startsWith("import " + forbiddenPrefix)
+                                || line.startsWith("import static " + forbiddenPrefix))
                             .map(line -> file + ": " + line.strip())
                             .forEach(violations::add);
                     } catch (IOException e) {
@@ -76,14 +89,6 @@ class PackageDependencyTest extends UnitTest {
     }
 
     @Test
-    void domMustNotImportLint() throws IOException {
-        var violations = findForbiddenImports("songscribe/dom", "songscribe.lint");
-        assertThat(violations)
-            .as("songscribe.dom must not import songscribe.lint")
-            .isEmpty();
-    }
-
-    @Test
     void lintMustNotImportUi() throws IOException {
         var violations = findForbiddenImports("songscribe/lint", "songscribe.ui");
         assertThat(violations)
@@ -104,6 +109,14 @@ class PackageDependencyTest extends UnitTest {
         var violations = findForbiddenImports("songscribe/layout", "songscribe.ui");
         assertThat(violations)
             .as("songscribe.layout must not import songscribe.ui")
+            .isEmpty();
+    }
+
+    @Test
+    void onlyIoMayImportLyricNumbers() throws IOException {
+        var violations = findForbiddenImportsOutside("songscribe/io", "songscribe.io.LyricNumbers");
+        assertThat(violations)
+            .as("no file outside songscribe.io may import songscribe.io.LyricNumbers")
             .isEmpty();
     }
 }

@@ -40,8 +40,8 @@ import songscribe.util.StringUtils;
  *       syllabic} is {@code null}.</li>
  * </ol>
  *
- * @param verse    1-based verse number; a song's verses are the languages its lyrics are written
- *                 in, and {@link Song#getActiveVerse()} selects the one being shown
+ * @param script   the script this lyric is written in; {@link Song#getActiveScript()} selects the
+ *                 one being shown
  * @param text     syllable text; blank for a carrier ({@link Extend#STOP} or
  *                 {@link Extend#CONTINUE}), which marks a melisma boundary on a note that has no
  *                 text of its own, and never blank otherwise — a text-bearing lyric bears text,
@@ -57,14 +57,8 @@ import songscribe.util.StringUtils;
  *     compound; if a non-carrier lyric has blank text or a null syllabic; or if a compound
  *     lyric's syllabic is not one that continues into the next syllable
  */
-public record Lyric(int verse, String text, Extend extend,
+public record Lyric(Song.Script script, String text, Extend extend,
         @Nullable Syllabic syllabic, boolean compound) {
-
-    /**
-     * The lowest verse index a lyric can carry. Verse numbering is 1-based — verse 0 does not
-     * exist — so this is also the verse a song shows until another one is selected.
-     */
-    public static final int FIRST_VERSE = 1;
 
     /**
      * Compound-word boundary marker: a non-breaking hyphen (U+2011) appended to a
@@ -123,16 +117,16 @@ public record Lyric(int verse, String text, Extend extend,
     }
 
     /**
-     * Returns a melisma carrier for {@code verse}: no text, no syllabic, not compound.
+     * Returns a melisma carrier for {@code script}: no text, no syllabic, not compound.
      *
-     * @param verse  the verse number
+     * @param script the script the carrier is written in
      * @param extend {@link Extend#STOP} or {@link Extend#CONTINUE}
      * @return the carrier
      * @throws IllegalArgumentException if {@code extend} is not a carrier state, since a
      *     text-bearing lyric cannot have the null syllabic a carrier has
      */
-    public static Lyric carrier(int verse, Extend extend) {
-        return new Lyric(verse, "", extend, null, false);
+    public static Lyric carrier(Song.Script script, Extend extend) {
+        return new Lyric(script, "", extend, null, false);
     }
 
     /**
@@ -145,7 +139,7 @@ public record Lyric(int verse, String text, Extend extend,
      *     given a non-carrier state
      */
     public Lyric withExtend(Extend extend) {
-        return this.extend == extend ? this : new Lyric(verse, text, extend, syllabic, compound);
+        return this.extend == extend ? this : new Lyric(script, text, extend, syllabic, compound);
     }
 
     /**

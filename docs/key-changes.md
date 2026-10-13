@@ -124,6 +124,21 @@ note entry and click-placement get the same answer rather than each restating th
 rule. The same closure protects a grace note and the note it decorates: they mean
 nothing apart, so nothing goes between them either.
 
+## A key change cannot start the song
+
+No bar line stands first in the song, so a bar line with a key change behind it
+cannot start it either: the pair would be a key change ahead of every note, which
+is what the first line's own key already says. When a load or a paste would put
+such a pair there, it is removed — and **its key becomes the line's own key**, so
+every note after it keeps the key it was written in and the song sounds as written.
+The removal is reported as something the song changed on its own, not refused.
+
+A paste that does this is measured before it commits in the key the line will
+start in, not the one it starts in now: the accidentals the paste decides and the
+width of the line's opening signature both depend on it. The key itself moves only
+once the paste is certain to land, so a paste refused for want of room leaves the
+line in the key it had.
+
 ## A mid-line change never restates the key already in effect
 
 A key change that steps to the key already running into it cancels nothing, and a

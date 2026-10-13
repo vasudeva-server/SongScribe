@@ -22,8 +22,6 @@ package songscribe.dom;
 
 import java.util.List;
 
-import songscribe.message.mutation.ElementField;
-
 /**
  * A {@link LyricRun} whose elements can be inserted and removed, and that repairs what such an
  * edit breaks: the lyric chains running through the edit's neighbors and the glissando left
@@ -138,11 +136,11 @@ public interface EditableRun extends LyricRun {
      * computed at, so the caller runs it before calling this.
      *
      * @param effectiveRange the range to delete
-     * @invariant in every verse, a word that lost syllables to the range closes up around the
+     * @invariant in every script, a word that lost syllables to the range closes up around the
      *     gap: one that lost its end ends on the syllable before the range, one that lost its
      *     beginning begins on the syllable after it, one that lost only middle syllables stays
      *     one word, and one left with a single syllable is a single-syllable word
-     * @invariant in every verse, a melisma that lost its syllable to the range loses its
+     * @invariant in every script, a melisma that lost its syllable to the range loses its
      *     extender, and the notes it ran under are left with no lyric; one that lost only notes
      *     under its extender closes on the last note that remains under it, and one left with
      *     none is an ordinary syllable
@@ -155,14 +153,14 @@ public interface EditableRun extends LyricRun {
      */
     default void deleteRange(EffectiveRange effectiveRange) {
         var range = effectiveRange.range();
-        var versesWithWordEnd = versesWithWordEndIn(range);
+        var scriptsWithWordEnd = scriptsWithWordEndIn(range);
 
         // Recorded like every other change here — stripping it raw would leave undo restoring the
         // deleted elements but not the glissando.
         removeGlissandoInto(range.begin());
 
         removeRange(range);
-        repairChainsAfterDeletion(range.begin(), versesWithWordEnd);
+        repairChainsAfterDeletion(range.begin(), scriptsWithWordEnd);
     }
 
     /**

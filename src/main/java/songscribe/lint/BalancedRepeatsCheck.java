@@ -20,50 +20,38 @@
 
 package songscribe.lint;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import songscribe.Strings;
+import songscribe.dom.ElementLocation;
+import songscribe.dom.RepeatSections;
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 
 /**
  * The check of {@link LintRule#BALANCED_REPEATS}: every repeat section is opened once and
- * closed once, by repeats, and no section opens inside another.
+ * closed once, by repeats, and no section opens inside another. What opens, closes and nests a
+ * section is the rule of {@link RepeatSections}, which playback reads too; this check reports
+ * the bars that model leaves unmatched.
  *
- * <p>A <em>left repeat</em> is a bar that opens a repeat section ({@code |:} or {@code :|:}); a
- * <em>right repeat</em> is a bar that closes one and plays back ({@code :|} or {@code :|:}); a
- * <em>closer</em> is any other bar that ends a section without playing back ({@code ||}, a final
- * barline). The elements are read in song order, across every line; a line break neither opens
- * nor closes a section. The semantics agree with {@code Song.repeatSectionStart}, which answers
- * where playback loops back to:
+ * <p>Each violation carries the heading {@link Strings#LINT_REPEATS_UNBALANCED} and the mark
+ * {@link LintMark.Flagged} on the offending bar:
  *
  * <ul>
- *   <li>The song start opens a section, but only for the first right repeat before any left
- *       repeat or closer. In {@code A :| B :|} the first {@code :|} balances with the song
- *       start and the second has no opener.</li>
- *   <li>A closer closes the open section, including the song-start section. In
- *       {@code A || B :|} the {@code :|} has no opener.</li>
- *   <li>A {@code :|:} first closes the open section as a right repeat, then opens a new one.
- *       {@code |: A :|: B :|} is balanced.</li>
- * </ul>
- *
- * <p>Each violation carries the mark {@link LintMark.Flagged} on the offending bar:
- *
- * <ul>
- *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_OPENED} on a right repeat that no open section,
- *       and not the song start, lets it close.</li>
- *   <li>{@link Strings#LINT_REASON_REPEAT_NESTED} on a left repeat that comes while a section is
- *       already open. In {@code |: |: :| :|} the second {@code |:} is flagged; it is taken to
- *       open an inner section, which the first {@code :|} closes, so the second {@code :|}
- *       closes the outer one and is not flagged as well.</li>
- *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_CLOSED} on a left repeat whose section no right
- *       repeat closes: a closer or the end of the song ends it first. In {@code |: A :|: B} the
- *       {@code :|:} is flagged. A left repeat already flagged as nested is not flagged again.</li>
+ *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_OPENED} on each of
+ *       {@link RepeatSections#unopenedClosers()}.</li>
+ *   <li>{@link Strings#LINT_REASON_REPEAT_NESTED} on each of
+ *       {@link RepeatSections#nestedOpeners()}.</li>
+ *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_CLOSED} on each of
+ *       {@link RepeatSections#unclosedOpeners()}.</li>
  * </ul>
  */
 final class BalancedRepeatsCheck implements LintCheck {
+
+    /** Orders element locations as the song reads: by line, then by element within a line. */
+    private static final Comparator<ElementLocation> SONG_ORDER =
+        Comparator.comparingInt(ElementLocation::lineIndex).thenComparingInt(ElementLocation::elementIndex);
 
     /**
      * Finds every unbalanced repeat in {@code song}.
@@ -76,71 +64,33 @@ final class BalancedRepeatsCheck implements LintCheck {
      */
     @Override
     public List<Violation> check(Song song) {
-        return new Pass().run(song);
+        var sections = RepeatSections.of(song);
+        var flags = new ArrayList<Flag>();
+        addFlags(flags, sections.unopenedClosers(), Strings.LINT_REASON_REPEAT_NOT_OPENED);
+        addFlags(flags, sections.nestedOpeners(), Strings.LINT_REASON_REPEAT_NESTED);
+        addFlags(flags, sections.unclosedOpeners(), Strings.LINT_REASON_REPEAT_NOT_CLOSED);
+
+        // A stable sort, so two flags on one :|: keep the order they were added in.
+        flags.sort(Comparator.comparing(Flag::location, SONG_ORDER));
+
+        return flags.stream().map(flag -> flag.toViolation(song)).toList();
     }
 
-    /** One open left repeat, with whether it was already flagged as nested. */
-    private record OpenSection(StaffElement opener, int position, boolean nested) {
+    /** One bar to flag, with the {@code Strings} key of the reason. */
+    private record Flag(ElementLocation location, String reasonKey) {
+
+        Violation toViolation(Song song) {
+            var element = song.getLine(location.lineIndex()).getElement(location.elementIndex());
+
+            return new Violation(Strings.get(Strings.LINT_REPEATS_UNBALANCED),
+                                 Strings.get(reasonKey),
+                                 new LintMark.Flagged(element));
+        }
     }
 
-    /** The state of one forward pass over a song. */
-    private static final class Pass {
-
-        private final Deque<OpenSection> open = new ArrayDeque<>();
-        private final SongOrderedViolations found = new SongOrderedViolations();
-        private boolean songStartOpen = true;
-
-        List<Violation> run(Song song) {
-            LintCheck.walk(song, this::visit);
-            closeAll();
-            return found.inSongOrder();
-        }
-
-        private void visit(StaffElement element, int position) {
-            var type = element.getType();
-
-            if (type.closesRepeat()) {
-                closeWithRightRepeat(element, position);
-            } else if (type.closesRepeatSection()) {
-                closeAll();
-                songStartOpen = false;
-            }
-
-            if (type.opensRepeatSection()) {
-                var nested = !open.isEmpty();
-
-                if (nested) {
-                    flag(element, position, Strings.LINT_REASON_REPEAT_NESTED);
-                }
-
-                open.push(new OpenSection(element, position, nested));
-                songStartOpen = false;
-            }
-        }
-
-        private void closeWithRightRepeat(StaffElement element, int position) {
-            if (!open.isEmpty()) {
-                open.pop();
-            } else if (!songStartOpen) {
-                flag(element, position, Strings.LINT_REASON_REPEAT_NOT_OPENED);
-            }
-
-            songStartOpen = false;
-        }
-
-        private void closeAll() {
-            for (var section : open) {
-                if (!section.nested()) {
-                    flag(section.opener(), section.position(), Strings.LINT_REASON_REPEAT_NOT_CLOSED);
-                }
-            }
-
-            open.clear();
-        }
-
-        private void flag(StaffElement element, int position, String reasonKey) {
-            found.add(position, new Violation(
-                Strings.LINT_REPEATS_UNBALANCED, Strings.get(reasonKey), new LintMark.Flagged(element)));
+    private static void addFlags(List<Flag> flags, List<ElementLocation> locations, String reasonKey) {
+        for (var location : locations) {
+            flags.add(new Flag(location, reasonKey));
         }
     }
 }

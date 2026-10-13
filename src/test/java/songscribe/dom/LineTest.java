@@ -163,12 +163,12 @@ class LineTest extends UnitTest {
         line.addElement(crotchet());
 
         var successor = crotchet();
-        successor.putLyric(new Lyric(Lyric.FIRST_VERSE, SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
+        successor.putLyric(new Lyric(Song.Script.LATIN, SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
         line.addElement(successor);
 
         insertRun(line, testCase.run());
 
-        var successorLyric = successor.getLyricForVerse(Lyric.FIRST_VERSE);
+        var successorLyric = successor.getLyricForScript(Song.Script.LATIN);
 
         assertThat(successorLyric).isNotNull();
         assertThat(successorLyric.syllabic()).isEqualTo(testCase.expectedSyllabic());

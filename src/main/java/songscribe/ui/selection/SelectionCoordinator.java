@@ -357,24 +357,20 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Makes the lyric on {@code element} in verse {@code verse} the sole selection, activating
+     * Makes the lyric on {@code element} in script {@code script} the sole selection, activating
      * the line the element sits on.
      * <p>
      * Unlike every other target, a lyric names the line it belongs to, so this resolves and
      * activates that line itself rather than requiring the caller to have done it.
+     *
+     * @param element an element in a line, as every element a press on the score reaches is
      */
-    public void selectLyric(StaffElement element, int verse) {
-        var line = element.getParentLine();
-
-        // Selecting a lyric on an element in no line is meaningless, and there is no
-        // line index to activate. Bail before disturbing the existing selection.
-        if (line == null) {
-            return;
-        }
+    public void selectLyric(StaffElement element, Song.Script script) {
+        var line = element.requireParentLine();
 
         clearSelection();
         activeLineIndex = findLineIndex(line);
-        select(new HitTarget.Lyric(element, verse));
+        select(new HitTarget.Lyric(element, script));
     }
 
     // -------------------------------------------------------------------------

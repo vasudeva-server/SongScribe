@@ -500,18 +500,19 @@ public final class PreviewElementManager {
             return null;
         }
 
-        // A breath mark never replaces an existing element, so it never highlights one
-        // as a replacement target.
+        // Nothing replaces an existing element without a preview element, and a breath mark
+        // never replaces one, so neither highlights one as a replacement target.
         var previewElement = EditModeManager.getPreviewElement();
 
-        if (previewElement != null && previewElement.getType().isBreathMark()) {
+        if (previewElement == null || previewElement.getType().isBreathMark()) {
             return null;
         }
 
-        // An element that may not be replaced never shows the red replacement highlight.
+        // An element the preview element may not replace never shows the red replacement
+        // highlight.
         var line = current.line().getLine();
 
-        if (line != null && !line.canReplaceElementAt(current.insertionIndex())) {
+        if (line != null && !line.canReplaceElementAt(current.insertionIndex(), previewElement.getType())) {
             return null;
         }
 
@@ -652,9 +653,11 @@ public final class PreviewElementManager {
         var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
 
         // Some elements may never be replaced by clicking through them with another element —
-        // a grace note, a key change, the barline a key change sits behind. Hide the ghost
-        // preview over them; handleClick separately ignores the click.
-        var replacementBlocked = elementAtX != null && !line.canReplaceElementAt(elementAtX);
+        // a grace note, a key change, the barline a key change sits behind — and a bar line may
+        // not replace the first element of the song. Hide the ghost preview over them;
+        // handleClick separately ignores the click.
+        var replacementBlocked = elementAtX != null && previewElement != null
+            && !line.canReplaceElementAt(elementAtX, previewElement.getType());
 
         var candidate = new PreviewHover(lc, xIndex, staffPosition, newXMatch, newYMatch);
         var previous = hover;

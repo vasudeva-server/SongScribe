@@ -47,7 +47,8 @@ import songscribe.undo.UndoController;
  *   <li><b>Suspension</b> ({@link #withoutMutationTracking}) — records nothing at all.</li>
  *   <li><b>Replay</b> ({@link #replay}) — mutations are still recorded, but companion
  *       side-work is suppressed because the batch already carries it, and no modification
- *       rule runs, so the replay's report records nothing and is delivered empty.</li>
+ *       rule runs. A replay re-applies what an edit recorded and judges nothing, so its report
+ *       records nothing: an undo or a redo always delivers an empty report.</li>
  *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the terminal policy is
  *       bypassed for internally-driven mutations.</li>
  * </ul>
@@ -104,7 +105,7 @@ public final class ModificationSession {
         // Mutable: each removal a modification rule records is appended while the rules run.
         private final List<Mutation> batch = new ArrayList<>();
 
-        // Starts empty for every edit; a replay's stays empty, because nothing in a replay records.
+        // Starts empty for every edit.
         private final ChangeReport.Builder report;
 
         OpenEdit(Song song, @Nullable String opName) {

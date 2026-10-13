@@ -20,6 +20,7 @@
 package songscribe.io.musicxml;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -72,7 +73,6 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletNormalTime;
-import songscribe.error.RuntimeError;
 import songscribe.io.DocumentValidation;
 import songscribe.io.ReadAnnotation;
 
@@ -289,6 +289,11 @@ final class MeasureMapper {
     // over, after every entry the walk made.
     private boolean accidentalsConverted = false;
 
+    // Every line on which a note lost a <lyric> whose number names no script, once each, in the
+    // order the walk reached them. Each gets one report entry, which map adds after the
+    // accidentals-converted entry.
+    private final Set<Line> linesThatDroppedLyrics = new LinkedHashSet<>();
+
     // Every tuplet bracket the walk has closed, with no stated ratio when the file states
     // none; carried to the load passes in the ParsedSong — a mapper cannot build a Tuplet, since
     // the beat a stated-less ratio derives from may still change in a later measure while the
@@ -323,12 +328,14 @@ final class MeasureMapper {
     /**
      * Maps {@code score}'s first part onto {@code song}'s lines, honoring only the
      * per-note attributes {@code features} declares. A damaged span mark does not refuse the
-     * document: it is dropped and reported, as the class Javadoc states.
+     * document: it is dropped and reported, as the class Javadoc states. Nor does a
+     * {@code <lyric>} whose number names no script: it is dropped, and each line that lost one is
+     * reported once, by {@link ParsedSong#lyricDroppedEntry}.
      *
      * @return {@code song}, with the tuplets, endings and hairpins the walk paired still pending,
      *     and the report entries the walk made: one for each damaged mark it dropped, in the order
      *     it dropped them, then the accidentals-converted entry when the walk converted a retired
-     *     accidental
+     *     accidental, then one lyric-dropped entry for each line that lost a lyric, in line order
      * @throws SAXException if the document is corrupt, or states something SongScribe cannot
      *                      represent
      */
@@ -343,6 +350,10 @@ final class MeasureMapper {
 
         if (mapper.accidentalsConverted) {
             mapper.readerEntries.add(ParsedSong.accidentalsConvertedEntry());
+        }
+
+        for (var line : mapper.linesThatDroppedLyrics) {
+            mapper.readerEntries.add(ParsedSong.lyricDroppedEntry(line));
         }
 
         return new ParsedSong(
@@ -693,6 +704,10 @@ final class MeasureMapper {
 
         if (mapped.usedLegacyAccidental()) {
             accidentalsConverted = true;
+        }
+
+        if (mapped.droppedLyric()) {
+            linesThatDroppedLyrics.add(line);
         }
 
         site.noteSite = new NoteSite(pmNote, element, line);
@@ -1618,10 +1633,14 @@ final class MeasureMapper {
 
     /**
      * The lines from the one a span's start mark sits on to the one its stop mark sits on, which
-     * may differ.
+     * may differ. The passes run once the walk has committed every line, so every element they
+     * read, here and in {@link #at}, sits on a line of the song.
      */
     private static ChangeLines through(OpenMark open, NoteSite end) {
-        return new ChangeLines(lineOf(open.opener().element()), lineOf(end.element()));
+        return new ChangeLines(
+            open.opener().element().requireParentLine(),
+            end.element().requireParentLine()
+        );
     }
 
     /**
@@ -1631,21 +1650,7 @@ final class MeasureMapper {
      *     {@code null}
      */
     private static @Nullable ChangeLines at(@Nullable StaffElement element) {
-        return element == null ? null : ChangeLines.on(lineOf(element));
-    }
-
-    /**
-     * The line {@code element} sits on. The passes run once the walk has committed every line, so
-     * every element they read sits on a line of the song.
-     */
-    private static Line lineOf(StaffElement element) {
-        var line = element.getParentLine();
-
-        if (line == null) {
-            throw RuntimeError.exit("A mapped element sits on no line: " + element);
-        }
-
-        return line;
+        return element == null ? null : ChangeLines.on(element.requireParentLine());
     }
 
     /**

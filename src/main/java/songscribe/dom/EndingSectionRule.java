@@ -70,9 +70,13 @@ final class EndingSectionRule implements ModificationRule {
             return;
         }
 
+        // Removing an ending changes no element, so one model built after the batch's
+        // mutations stays true for the whole run.
+        var sections = RepeatSections.of(song);
+
         for (var line : song.getLines()) {
             for (var ending : List.copyOf(line.spanRegistry().findEndings())) {
-                if (!Ending.closesOpenSection(line, ending.getSplitIndex())) {
+                if (!Ending.closesOpenSection(sections, line, ending.getSplitIndex())) {
                     ending.removeReported(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION);
                 }
             }

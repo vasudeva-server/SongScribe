@@ -21,7 +21,7 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,7 +38,7 @@ import songscribe.util.LogUtils;
  * A run of {@link StaffElement}s carrying lyric chains, and every rule for keeping those
  * chains consistent as the run is edited.
  *
- * <p>Two chains run through a verse's lyrics, and both are stored on the individual
+ * <p>Two chains run through a script's lyrics, and both are stored on the individual
  * syllables rather than as spans, so both have to be repaired element by element whenever
  * an edit changes who a syllable's neighbors are:
  *
@@ -96,35 +96,35 @@ public interface LyricRun extends StaffElementRun {
     // -------------------------------------------------------------------------
 
     /**
-     * Settles, in every verse, the word and the melisma that reach the gap at {@code gapIndex}:
+     * Settles, in every script, the word and the melisma that reach the gap at {@code gapIndex}:
      * the position between what stands before it and what stands at or after it.
      *
      * <p>A chain may cross the gap only where the caller says so. Where it may not, the word
      * before the gap ends there, the syllable after it begins a word, the melisma before it
      * closes on its last member, and the carriers after it go. Where it may, a chain whose two
      * sides both still stand is left as it is, and a side left without its other side is settled
-     * as above. An element that holds no lyric for a verse is no neighbor in that verse, so the
+     * as above. An element that holds no lyric for a script is no neighbor in that script, so the
      * sides are found past any rest, barline, breath mark or key change.
      *
      * <p>Must be called inside a modification bracket.
      *
      * @param gapIndex the index of the first element after the gap
-     * @param versesThatMayCross the verses whose chains may run across the gap
+     * @param scriptsThatMayCross the scripts whose chains may run across the gap
      */
-    private void settleChainsAcross(int gapIndex, Predicate<Integer> versesThatMayCross) {
-        for (var verse : verseNumbers()) {
-            var mayCross = versesThatMayCross.test(verse);
+    private void settleChainsAcross(int gapIndex, Predicate<Song.Script> scriptsThatMayCross) {
+        for (var script : scripts()) {
+            var mayCross = scriptsThatMayCross.test(script);
 
-            settleMelismaAcross(gapIndex, verse, mayCross);
-            settleWordAcross(gapIndex, verse, mayCross);
+            settleMelismaAcross(gapIndex, script, mayCross);
+            settleWordAcross(gapIndex, script, mayCross);
         }
     }
 
-    private void settleMelismaAcross(int gapIndex, int verse, boolean mayCross) {
-        var beforeIndex = previousLyricBearingIndex(gapIndex, verse);
-        var afterIndex = lyricBearingIndexAtOrAfter(gapIndex, verse);
-        var beforeLyric = beforeIndex == null ? null : getElement(beforeIndex).getLyricForVerse(verse);
-        var afterLyric = afterIndex == null ? null : getElement(afterIndex).getLyricForVerse(verse);
+    private void settleMelismaAcross(int gapIndex, Song.Script script, boolean mayCross) {
+        var beforeIndex = previousLyricBearingIndex(gapIndex, script);
+        var afterIndex = lyricBearingIndexAtOrAfter(gapIndex, script);
+        var beforeLyric = beforeIndex == null ? null : getElement(beforeIndex).getLyricForScript(script);
+        var afterLyric = afterIndex == null ? null : getElement(afterIndex).getLyricForScript(script);
         var isOpenBefore = beforeLyric != null
             && (beforeLyric.extend() == Lyric.Extend.START || beforeLyric.extend() == Lyric.Extend.CONTINUE);
         var isCarriedAfter = afterLyric != null && afterLyric.isCarrier();
@@ -135,32 +135,32 @@ public interface LyricRun extends StaffElementRun {
         }
 
         if (isOpenBefore && beforeIndex != null) {
-            closeMelismaAt(beforeIndex, verse);
+            closeMelismaAt(beforeIndex, script);
         }
 
         if (isCarriedAfter && afterIndex != null) {
-            removeCarriersFrom(afterIndex, verse);
+            removeCarriersFrom(afterIndex, script);
         }
     }
 
-    private void settleWordAcross(int gapIndex, int verse, boolean mayCross) {
-        var beforeIndex = previousTextBearingIndex(gapIndex, verse);
+    private void settleWordAcross(int gapIndex, Song.Script script, boolean mayCross) {
+        var beforeIndex = previousTextBearingIndex(gapIndex, script);
 
         if (beforeIndex != null) {
-            var beforeLyric = getElement(beforeIndex).getLyricForVerse(verse);
-            var crosses = mayCross && hasFollowingTextBearingLyric(beforeIndex, verse);
+            var beforeLyric = getElement(beforeIndex).getLyricForScript(script);
+            var crosses = mayCross && hasFollowingTextBearingLyric(beforeIndex, script);
 
             if (beforeLyric != null && isWordContinuingLyric(beforeLyric) && !crosses) {
-                setSyllableBoundary(beforeIndex, verse, true, false);
+                setSyllableBoundary(beforeIndex, script, true, false);
             }
         }
 
-        fixSuccessorSyllabic(gapIndex - 1, verse, previousLyricContinues(gapIndex, verse));
+        fixSuccessorSyllabic(gapIndex - 1, script, previousLyricContinues(gapIndex, script));
     }
 
     /**
      * Breaks the lyric chains that the run about to be inserted at {@code insertionIndex}
-     * interrupts: in every verse, the word and the melisma that run across the position. The
+     * interrupts: in every script, the word and the melisma that run across the position. The
      * word before it ends there and the syllable after it begins a word; the melisma closes on
      * its last member before it and the carriers after it go. Must be called inside a
      * modification bracket, <em>before</em> {@link Line#addElement(int, StaffElement)}, while the
@@ -185,7 +185,7 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        settleChainsAcross(insertionIndex, verse -> false);
+        settleChainsAcross(insertionIndex, script -> false);
     }
 
     /**
@@ -279,36 +279,36 @@ public interface LyricRun extends StaffElementRun {
         if (interruptsLyricChains(insertedRun)) {
             // The inserted element holds no lyric yet, so the gap it opened is found on either
             // side of it from its own index.
-            settleChainsAcross(insertedIndex, verse -> false);
+            settleChainsAcross(insertedIndex, script -> false);
         }
 
         repairNeighborsAfterInsertion(insertedIndex, insertedRun);
     }
 
     /**
-     * The verses in which a word ends inside {@code range}: some syllable there is the last of
+     * The scripts in which a word ends inside {@code range}: some syllable there is the last of
      * its word. Across such a range, what stands before it and what stands after it are
      * different words, so no word may close up over it once it is gone.
      *
      * @param range the elements about to be deleted
-     * @return the verse numbers, in no particular order
+     * @return the scripts, in no particular order
      */
-    default Set<Integer> versesWithWordEndIn(ElementRange range) {
-        var verses = new HashSet<Integer>();
+    default Set<Song.Script> scriptsWithWordEndIn(ElementRange range) {
+        var scripts = EnumSet.noneOf(Song.Script.class);
 
         for (var index = range.begin(); index <= range.end(); index++) {
             for (var lyric : getElement(index).getLyrics()) {
                 if (!lyric.isCarrier() && !isWordContinuingLyric(lyric)) {
-                    verses.add(lyric.verse());
+                    scripts.add(lyric.script());
                 }
             }
         }
 
-        return verses;
+        return scripts;
     }
 
     /**
-     * Repairs the lyric chains around a range that has just been removed, so that in every verse
+     * Repairs the lyric chains around a range that has just been removed, so that in every script
      * the syllables that remain form whole words and whole melismas:
      *
      * <ul>
@@ -324,22 +324,22 @@ public interface LyricRun extends StaffElementRun {
      * their indices hold only while the range is out of the list.
      *
      * @param gapIndex the index the removed range began at
-     * @param versesWithWordEnd what {@link #versesWithWordEndIn} answered for the range before
+     * @param scriptsWithWordEnd what {@link #scriptsWithWordEndIn} answered for the range before
      *     it was removed
      */
-    default void repairChainsAfterDeletion(int gapIndex, Set<Integer> versesWithWordEnd) {
-        settleChainsAcross(gapIndex, verse -> !versesWithWordEnd.contains(verse));
+    default void repairChainsAfterDeletion(int gapIndex, Set<Song.Script> scriptsWithWordEnd) {
+        settleChainsAcross(gapIndex, script -> !scriptsWithWordEnd.contains(script));
     }
 
     /**
      * Removes the melisma carriers found from {@code startIndex} on, through the close of their
-     * chain. An element holding no {@code verse} lyric is passed over, since a melisma runs
+     * chain. An element holding no {@code script} lyric is passed over, since a melisma runs
      * through a rest or a barline; the first syllable ends the walk.
      */
-    private void removeCarriersFrom(int startIndex, int verse) {
+    private void removeCarriersFrom(int startIndex, Song.Script script) {
         for (var i = startIndex; i < effectiveElementCount(); i++) {
             var element = getElement(i);
-            var lyric = element.getLyricForVerse(verse);
+            var lyric = element.getLyricForScript(script);
 
             if (lyric == null) {
                 continue;
@@ -352,7 +352,7 @@ public interface LyricRun extends StaffElementRun {
             // A carrier has no text of its own, so clearing its extend would strand an empty
             // lyric — one that still counts as lyric-bearing for lyric navigation. Drop the
             // entry instead.
-            modifyElement(i, ElementField.LYRIC, () -> element.removeLyricForVerse(verse));
+            modifyElement(i, ElementField.LYRIC, () -> element.removeLyricForScript(script));
 
             if (lyric.extend() == Lyric.Extend.STOP) {
                 break;
@@ -363,10 +363,10 @@ public interface LyricRun extends StaffElementRun {
     /**
      * Makes the melisma member at {@code index} the last of its chain: a carrier there becomes
      * the close, and a syllable there loses its extender, since one note carries no melisma.
-     * No-op when the {@code verse} lyric at {@code index} is absent or is not an open member.
+     * No-op when the {@code script} lyric at {@code index} is absent or is not an open member.
      */
-    private void closeMelismaAt(int index, int verse) {
-        var lyric = getElement(index).getLyricForVerse(verse);
+    private void closeMelismaAt(int index, Song.Script script) {
+        var lyric = getElement(index).getLyricForScript(script);
 
         if (lyric == null) {
             return;
@@ -380,7 +380,7 @@ public interface LyricRun extends StaffElementRun {
 
         var newExtend = existingExtend == Lyric.Extend.CONTINUE ? Lyric.Extend.STOP : Lyric.Extend.NONE;
 
-        setExtendForVerse(index, verse, newExtend);
+        setExtendForScript(index, script, newExtend);
     }
 
     /**
@@ -391,24 +391,24 @@ public interface LyricRun extends StaffElementRun {
      */
     default void backfillSyllabic() {
         for (var index = 0; index < elementCount(); index++) {
-            // Snapshot the verses first: backfillSyllabicAt writes the element's lyrics.
-            for (var verse : verseNumbersOf(getElement(index))) {
-                backfillSyllabicAt(index, verse);
+            // Snapshot the scripts first: backfillSyllabicAt writes the element's lyrics.
+            for (var script : scriptsOf(getElement(index))) {
+                backfillSyllabicAt(index, script);
             }
         }
     }
 
     /**
-     * Updates the lyric at {@code (index, verse)} so its {@link Lyric#syllabic()} is consistent
+     * Updates the lyric at {@code (index, script)} so its {@link Lyric#syllabic()} is consistent
      * with the syllabic chain. BEGIN/MIDDLE on the predecessor means this element is in the middle
      * or end of a word; BEGIN on this element (from an initial best-guess load) means it continues
-     * to the next. No-op when the element has no lyric for the verse, the lyric is a carrier, or
+     * to the next. No-op when the element has no lyric for the script, the lyric is a carrier, or
      * the stored value already matches. Writes the element directly, outside any bracket — the
      * caller is responsible for any required modification bracket.
      */
-    private void backfillSyllabicAt(int index, int verse) {
+    private void backfillSyllabicAt(int index, Song.Script script) {
         var element = getElement(index);
-        var lyric = element.getLyricForVerse(verse);
+        var lyric = element.getLyricForScript(script);
 
         if (lyric == null) {
             return;
@@ -424,8 +424,8 @@ public interface LyricRun extends StaffElementRun {
         // The nearest earlier lyric of any kind, carrier included: a carrier's syllabic is
         // null, and syllabicContinues reads that as "does not continue", which is the answer
         // a melisma running into this syllable calls for.
-        var prevIndex = previousLyricBearingIndex(index, verse);
-        var prevLyric = prevIndex == null ? null : getElement(prevIndex).getLyricForVerse(verse);
+        var prevIndex = previousLyricBearingIndex(index, script);
+        var prevLyric = prevIndex == null ? null : getElement(prevIndex).getLyricForScript(script);
         var prevContinues = prevLyric != null && Lyric.syllabicContinues(prevLyric.syllabic());
 
         // BEGIN was assigned by best-guess load to signal "this syllable continues to the next".
@@ -435,11 +435,11 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        element.putLyric(new Lyric(lyric.verse(), lyric.text(), lyric.extend(), derived, lyric.compound()));
+        element.putLyric(new Lyric(lyric.script(), lyric.text(), lyric.extend(), derived, lyric.compound()));
     }
 
     /**
-     * Adjusts the syllable boundary on the lyric at {@code (index, verse)} and propagates the
+     * Adjusts the syllable boundary on the lyric at {@code (index, script)} and propagates the
      * change to the next syllable so its {@link Lyric.Syllabic} stays consistent
      * with the chain. The lyric at {@code index} must already exist and must not be a carrier
      * ({@link Lyric.Extend#STOP} / {@link Lyric.Extend#CONTINUE}); typical use is right after a
@@ -463,17 +463,17 @@ public interface LyricRun extends StaffElementRun {
      * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
      *
      * @param index      the element index in this run
-     * @param verse      the verse number (typically 1)
+     * @param script      the script of the lyric
      * @param isWordEnd  {@code true} when this syllable terminates the word (no continuation)
      * @param isCompound {@code true} when this syllable joins the next via a compound-word
      *                   boundary; ignored when {@code isWordEnd} is {@code true}
      */
-    default void setSyllableBoundary(int index, int verse, boolean isWordEnd, boolean isCompound) {
-        var lyric = getElement(index).getLyricForVerse(verse);
+    default void setSyllableBoundary(int index, Song.Script script, boolean isWordEnd, boolean isCompound) {
+        var lyric = getElement(index).getLyricForScript(script);
 
         if (lyric == null) {
             throw new IllegalStateException(
-                "setSyllableBoundary requires existing lyric at index " + index + " verse " + verse);
+                "setSyllableBoundary requires existing lyric at index " + index + " script " + script);
         }
 
         if (lyric.syllabic() == null) {
@@ -481,7 +481,7 @@ public interface LyricRun extends StaffElementRun {
                 "setSyllableBoundary cannot run on carrier lyric (extend=" + lyric.extend() + ')');
         }
 
-        var prevContinues = previousLyricContinues(index, verse);
+        var prevContinues = previousLyricContinues(index, script);
         var newSyllabic = deriveSyllabic(prevContinues, !isWordEnd);
 
         var newCompound = !isWordEnd && isCompound;
@@ -494,11 +494,11 @@ public interface LyricRun extends StaffElementRun {
                 replaceSyllabicAndCompound(index, lyric, newSyllabic, newCompound));
         }
 
-        fixSuccessorSyllabic(index, verse, !isWordEnd);
+        fixSuccessorSyllabic(index, script, !isWordEnd);
     }
 
     /**
-     * Writes the {@code verse} lyric at {@code index} with its syllabic already derived from
+     * Writes the {@code script} lyric at {@code index} with its syllabic already derived from
      * chain context, then re-letters the following syllable if this write changed what that
      * one must be.
      *
@@ -512,20 +512,20 @@ public interface LyricRun extends StaffElementRun {
      * <p>The syllabic follows the lyric's own kind: {@code null} for a melisma carrier (which
      * has no syllable of its own), and the chain-derived value for a text-bearing syllable.
      * Blank text on a non-carrier is an erasure rather than a syllable — {@link Lyric}'s
-     * constructor rejects blank text on anything but a carrier — so this removes the verse
-     * entry outright and returns before any {@link Lyric} is derived or constructed.
+     * constructor rejects blank text on anything but a carrier — so this removes the script's
+     * lyric outright and returns before any {@link Lyric} is derived or constructed.
      *
      * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
      *
      * @param index      the element index in this run
-     * @param verse      the verse number (typically 1)
+     * @param script      the script of the lyric
      * @param text       the syllable text; blank for a carrier or an erased syllable
      * @param extend     melisma extender state for the lyric
      * @param isWordEnd  {@code true} when this syllable terminates the word (no continuation)
      * @param isCompound {@code true} when this syllable joins the next via a compound-word
      *                   boundary; ignored when {@code isWordEnd} is {@code true}
      */
-    default void writeLyricForVerse(int index, int verse, String text, Lyric.Extend extend,
+    default void writeLyricForScript(int index, Song.Script script, String text, Lyric.Extend extend,
             boolean isWordEnd, boolean isCompound) {
         var isCarrier = Lyric.isCarrier(extend);
 
@@ -533,8 +533,8 @@ public interface LyricRun extends StaffElementRun {
         // string does. Decided before any Lyric is derived or constructed, since Lyric's
         // constructor now rejects blank text on a non-carrier outright.
         if (!isCarrier && text.isBlank()) {
-            trace("writeLyricForVerse({}, '{}', {}): blank, erasing", index, text, extend);
-            removeLyricForVerse(index, verse);
+            trace("writeLyricForScript({}, '{}', {}): blank, erasing", index, text, extend);
+            removeLyricForScript(index, script);
             return;
         }
 
@@ -546,11 +546,11 @@ public interface LyricRun extends StaffElementRun {
 
         Lyric.@Nullable Syllabic syllabic = isCarrier
             ? null
-            : deriveSyllabic(previousLyricContinues(index, verse), continuesIntoNext);
+            : deriveSyllabic(previousLyricContinues(index, script), continuesIntoNext);
 
         var compound = continuesIntoNext && isCompound;
 
-        trace("writeLyricForVerse({}, '{}', {}): syllabic={}, compound={}",
+        trace("writeLyricForScript({}, '{}', {}): syllabic={}, compound={}",
             index, text, extend, syllabic, compound);
 
         var element = getElement(index);
@@ -558,23 +558,23 @@ public interface LyricRun extends StaffElementRun {
         // Skip a write that would store what is already there, as setSyllableBoundary and
         // fixSuccessorSyllabic do: an ElementModification costs two element clones plus an undo
         // entry the user could step back into for no visible change.
-        if (!storesSameLyric(element.getLyricForVerse(verse), text, extend, syllabic, compound)) {
+        if (!storesSameLyric(element.getLyricForScript(script), text, extend, syllabic, compound)) {
             var lyric = isCarrier
-                ? Lyric.carrier(verse, extend)
-                : new Lyric(verse, text, extend, syllabic, compound);
+                ? Lyric.carrier(script, extend)
+                : new Lyric(script, text, extend, syllabic, compound);
             modifyElement(index, ElementField.LYRIC, () -> element.putLyric(lyric));
         }
 
         if (!isCarrier) {
-            fixSuccessorSyllabic(index, verse, continuesIntoNext);
+            fixSuccessorSyllabic(index, script, continuesIntoNext);
         }
     }
 
     /**
-     * Whether {@code existing} already holds exactly what {@link #writeLyricForVerse} would
+     * Whether {@code existing} already holds exactly what {@link #writeLyricForScript} would
      * store for these values, making the write a no-op. {@code text} is never blank here:
-     * {@link #writeLyricForVerse} routes a blank non-carrier syllable to
-     * {@link #removeLyricForVerse} before this is ever reached.
+     * {@link #writeLyricForScript} routes a blank non-carrier syllable to
+     * {@link #removeLyricForScript} before this is ever reached.
      */
     private static boolean storesSameLyric(@Nullable Lyric existing, String text,
             Lyric.Extend extend, Lyric.@Nullable Syllabic syllabic, boolean compound) {
@@ -599,23 +599,23 @@ public interface LyricRun extends StaffElementRun {
      * @param index the position whose successor is relettered, or {@code null} when the
      *     successor is the run's first syllable, because the syllable at issue has no
      *     predecessor at all — a deleted head, or the head of a run
-     * @param verse the verse whose chain is repaired
+     * @param script the script whose chain is repaired
      * @param predecessorContinues whether the syllable at {@code index} continues into its
      *     successor; always {@code false} when {@code index} is {@code null}
      */
-    private void fixSuccessorSyllabic(@Nullable Integer index, int verse, boolean predecessorContinues) {
-        var nextIndex = textBearingIndexAtOrAfter(index == null ? 0 : index + 1, verse);
+    private void fixSuccessorSyllabic(@Nullable Integer index, Song.Script script, boolean predecessorContinues) {
+        var nextIndex = textBearingIndexAtOrAfter(index == null ? 0 : index + 1, script);
 
         if (nextIndex == null) {
             trace("fixSuccessorSyllabic({}): no syllable follows", index);
             return;
         }
 
-        var nextLyric = getElement(nextIndex).getLyricForVerse(verse);
+        var nextLyric = getElement(nextIndex).getLyricForScript(script);
 
         if (nextLyric != null) {
             trace("fixSuccessorSyllabic({}): successor {}", index, nextIndex);
-            reletterSyllable(nextIndex, verse, nextLyric, predecessorContinues);
+            reletterSyllable(nextIndex, script, nextLyric, predecessorContinues);
         }
     }
 
@@ -626,11 +626,11 @@ public interface LyricRun extends StaffElementRun {
      *
      * <p>Skips a write that would store what is already there: an {@code ElementModification}
      * costs two element clones plus an undo entry the user could step back into for no visible
-     * change. {@code lyric} must be the element's current {@code verse} lyric.
+     * change. {@code lyric} must be the element's current {@code script} lyric.
      *
      * <p>Must be called inside a modification bracket.
      */
-    private void reletterSyllable(int index, int verse, Lyric lyric, boolean predecessorContinues) {
+    private void reletterSyllable(int index, Song.Script script, Lyric lyric, boolean predecessorContinues) {
         var newSyllabic = deriveSyllabic(predecessorContinues, Lyric.syllabicContinues(lyric.syllabic()));
 
         trace("reletterSyllable({}): {} -> {}, predecessorContinues={}",
@@ -644,37 +644,37 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Rewrites {@code lyric} on the element at {@code index} with the given syllabic and
-     * compound flag, keeping its verse, text and extend. {@code lyric} must be that element's
-     * current lyric for its verse.
+     * compound flag, keeping its script, text and extend. {@code lyric} must be that element's
+     * current lyric for its script.
      */
     private void replaceSyllabicAndCompound(int index, Lyric lyric,
             Lyric.@Nullable Syllabic syllabic, boolean compound) {
         getElement(index).putLyric(new Lyric(
-            lyric.verse(), lyric.text(), lyric.extend(), syllabic, compound));
+            lyric.script(), lyric.text(), lyric.extend(), syllabic, compound));
     }
 
-    private boolean previousLyricContinues(int index, int verse) {
-        var prevIndex = previousTextBearingIndex(index, verse);
+    private boolean previousLyricContinues(int index, Song.Script script) {
+        var prevIndex = previousTextBearingIndex(index, script);
 
         if (prevIndex == null) {
             return false;
         }
 
-        var prevLyric = getElement(prevIndex).getLyricForVerse(verse);
+        var prevLyric = getElement(prevIndex).getLyricForScript(script);
         return prevLyric != null && Lyric.syllabicContinues(prevLyric.syllabic());
     }
 
     /**
-     * Returns the index of the first element on this run whose {@code verse} lyric is
+     * Returns the index of the first element on this run whose {@code script} lyric is
      * non-null, or {@code null} if there is none.
      */
-    private @Nullable Integer firstLyricBearingIndex(int verse) {
-        return lyricBearingIndexAtOrAfter(0, verse);
+    private @Nullable Integer firstLyricBearingIndex(Song.Script script) {
+        return lyricBearingIndexAtOrAfter(0, script);
     }
 
-    private @Nullable Integer lyricBearingIndexAtOrAfter(int start, int verse) {
+    private @Nullable Integer lyricBearingIndexAtOrAfter(int start, Song.Script script) {
         for (var i = start; i < elementCount(); i++) {
-            if (getElement(i).getLyricForVerse(verse) != null) {
+            if (getElement(i).getLyricForScript(script) != null) {
                 return i;
             }
         }
@@ -684,11 +684,11 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Walks backward from {@code fromIndex - 1} and returns the index of the first element whose
-     * {@code verse} lyric is non-null, or {@code null} if there is none.
+     * {@code script} lyric is non-null, or {@code null} if there is none.
      */
-    default @Nullable Integer previousLyricBearingIndex(int fromIndex, int verse) {
+    default @Nullable Integer previousLyricBearingIndex(int fromIndex, Song.Script script) {
         for (var i = fromIndex - 1; i >= 0; i--) {
-            if (getElement(i).getLyricForVerse(verse) != null) {
+            if (getElement(i).getLyricForScript(script) != null) {
                 return i;
             }
         }
@@ -698,13 +698,13 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Walks backward from {@code fromIndex - 1} and returns the index of the first element
-     * carrying a text-bearing {@code verse} syllable, or {@code null} if there is none.
+     * carrying a text-bearing {@code script} syllable, or {@code null} if there is none.
      * Melisma carriers are skipped: they hold no syllable, and so no syllabic chain
      * position, of their own.
      */
-    private @Nullable Integer previousTextBearingIndex(int fromIndex, int verse) {
+    private @Nullable Integer previousTextBearingIndex(int fromIndex, Song.Script script) {
         for (var i = fromIndex - 1; i >= 0; i--) {
-            var lyric = getElement(i).getLyricForVerse(verse);
+            var lyric = getElement(i).getLyricForScript(script);
 
             if (lyric != null && lyric.syllabic() != null) {
                 return i;
@@ -716,12 +716,12 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Walks forward from {@code start} and returns the index of the first element carrying a
-     * text-bearing {@code verse} syllable, or {@code null} if there is none. Melisma carriers
+     * text-bearing {@code script} syllable, or {@code null} if there is none. Melisma carriers
      * are skipped, as {@link #previousTextBearingIndex} skips them going backward.
      */
-    private @Nullable Integer textBearingIndexAtOrAfter(int start, int verse) {
+    private @Nullable Integer textBearingIndexAtOrAfter(int start, Song.Script script) {
         for (var i = start; i < elementCount(); i++) {
-            var lyric = getElement(i).getLyricForVerse(verse);
+            var lyric = getElement(i).getLyricForScript(script);
 
             if (lyric != null && lyric.syllabic() != null) {
                 return i;
@@ -738,17 +738,17 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * Whether a {@code verse} syllable stands anywhere after {@code fromIndex}. Melisma
+     * Whether a {@code script} syllable stands anywhere after {@code fromIndex}. Melisma
      * carriers between the two do not count and do not hide it: they belong to the syllable
      * before them, so a word runs on past its own melisma.
      *
      * @param fromIndex the index the search starts after
-     * @param verse the verse searched
+     * @param script the script searched
      * @return {@code true} when some element after {@code fromIndex} holds a text-bearing
-     *     {@code verse} lyric
+     *     {@code script} lyric
      */
-    default boolean hasFollowingTextBearingLyric(int fromIndex, int verse) {
-        return textBearingIndexAtOrAfter(fromIndex + 1, verse) != null;
+    default boolean hasFollowingTextBearingLyric(int fromIndex, Song.Script script) {
+        return textBearingIndexAtOrAfter(fromIndex + 1, script) != null;
     }
 
     // -------------------------------------------------------------------------
@@ -761,6 +761,7 @@ public interface LyricRun extends StaffElementRun {
      * ({@link Lyric.Syllabic#BEGIN} or {@link Lyric.Syllabic#MIDDLE}). The elements a span covers
      * are sung on the syllable that opened it, so they hold no syllable of their own.
      *
+     * @param lyric the lyric to test, a syllable or a carrier
      * @return {@code true} when a chain runs forward from {@code lyric}; {@code false} for a
      *     carrier and for a syllable that ends its word with no melisma
      */
@@ -770,12 +771,12 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Where a lyric span that is open in front of {@code start} ends on this run, for
-     * {@code verse}. The span is open in front of {@code start} when the lyric just before it
+     * {@code script}. The span is open in front of {@code start} when the lyric just before it
      * {@linkplain #opensLyricSpan opens a span}, or when a span ran off the end of the run before
      * this one, as a melisma or a word does across a line break.
      *
      * <p>Walking forward from {@code start}, the span covers every element that holds no
-     * {@code verse} lyric and every {@link Lyric.Extend#CONTINUE} carrier. It ends at the first of:
+     * {@code script} lyric and every {@link Lyric.Extend#CONTINUE} carrier. It ends at the first of:
      *
      * <ul>
      *   <li>a {@link Lyric.Extend#STOP} carrier, which closes the melisma and is covered;</li>
@@ -787,7 +788,7 @@ public interface LyricRun extends StaffElementRun {
      *
      * @param start the first element the span may cover; {@code elementCount()} for a span
      *     opened by the run's last element
-     * @param verse the verse whose lyrics are read
+     * @param script the script whose lyrics are read
      * @return the index of the last element the span covers, and whether the span is still open
      *     at the end of the run
      * @invariant {@code start - 1 <= result.lastCoveredIndex() < elementCount()}; it is
@@ -795,7 +796,7 @@ public interface LyricRun extends StaffElementRun {
      * @invariant {@code result.openAtRunEnd()} implies
      *     {@code result.lastCoveredIndex() == elementCount() - 1}
      */
-    default LyricSpanEnd lyricSpanEnd(int start, int verse) {
+    default LyricSpanEnd lyricSpanEnd(int start, Song.Script script) {
         for (var i = start; i < elementCount(); i++) {
             var element = getElement(i);
 
@@ -803,7 +804,7 @@ public interface LyricRun extends StaffElementRun {
                 return new LyricSpanEnd(i - 1, false);
             }
 
-            var lyric = element.getLyricForVerse(verse);
+            var lyric = element.getLyricForScript(script);
 
             if (lyric == null || lyric.extend() == Lyric.Extend.CONTINUE) {
                 continue;
@@ -850,9 +851,9 @@ public interface LyricRun extends StaffElementRun {
      * <p>Must be called inside a modification bracket, after the carrier at {@code index} has
      * been written.
      */
-    default void adjustSuccessorAfterMelismaCarrier(int index, int verse) {
+    default void adjustSuccessorAfterMelismaCarrier(int index, Song.Script script) {
         for (var i = index + 1; i < elementCount(); i++) {
-            var lyric = getElement(i).getLyricForVerse(verse);
+            var lyric = getElement(i).getLyricForScript(script);
 
             if (lyric == null || lyric.syllabic() == null) {
                 continue;
@@ -862,22 +863,22 @@ public interface LyricRun extends StaffElementRun {
 
             // A melisma is sung on one syllable, so the word running into it always ends at
             // the carrier: nothing before this successor continues into it.
-            reletterSyllable(i, verse, lyric, false);
+            reletterSyllable(i, script, lyric, false);
             return;
         }
     }
 
     /**
-     * Repairs syllabic chain markers on the neighbors of a just-deleted verse lyric.
+     * Repairs syllabic chain markers on the neighbors of a just-deleted script lyric.
      * Must be called inside a modification bracket, after the lyric at {@code index}
      * has already been cleared.
      */
-    default void adjustNeighborsForLyricDeletion(int index, int verse) {
-        var backIndex = previousLyricBearingIndex(index, verse);
+    default void adjustNeighborsForLyricDeletion(int index, Song.Script script) {
+        var backIndex = previousLyricBearingIndex(index, script);
         trace("adjustNeighborsForLyricDeletion({}): predecessor={}", index, backIndex);
 
         if (backIndex != null) {
-            var backLyric = getElement(backIndex).getLyricForVerse(verse);
+            var backLyric = getElement(backIndex).getLyricForScript(script);
 
             if (backLyric == null) {
                 return;
@@ -892,78 +893,78 @@ public interface LyricRun extends StaffElementRun {
                 return;
             }
 
-            endDanglingWord(backIndex, verse);
+            endDanglingWord(backIndex, script);
             return;
         }
 
         // No predecessor — fix the successor if it now lacks a continuing predecessor.
-        fixSuccessorSyllabic(null, verse, false);
+        fixSuccessorSyllabic(null, script, false);
     }
 
     /**
      * Ends the word at {@code index} when the syllable there continues into a next one that
-     * is not there — no text-bearing lyric follows it in this verse. A melisma carrier is
+     * is not there — no text-bearing lyric follows it in this script. A melisma carrier is
      * not that successor: it holds no syllable of its own for a hyphen to reach.
      *
-     * <p>No-op when the element carries no {@code verse} lyric, or when the syllable
+     * <p>No-op when the element carries no {@code script} lyric, or when the syllable
      * continues into a syllable that does exist. Must be called inside a modification
      * bracket.
      */
-    private void endDanglingWord(int index, int verse) {
-        var lyric = getElement(index).getLyricForVerse(verse);
+    private void endDanglingWord(int index, Song.Script script) {
+        var lyric = getElement(index).getLyricForScript(script);
 
         if (lyric == null
                 || !isWordContinuingLyric(lyric)
-                || hasFollowingTextBearingLyric(index, verse)) {
+                || hasFollowingTextBearingLyric(index, script)) {
             return;
         }
 
         trace("endDanglingWord({}): ending dangling word", index);
 
         // setSyllableBoundary also adjusts the next syllable.
-        setSyllableBoundary(index, verse, true, false);
+        setSyllableBoundary(index, script, true, false);
     }
 
     /**
-     * Removes the {@code verse} lyric at {@code index} outright, leaving no residue.
+     * Removes the {@code script} lyric at {@code index} outright, leaving no residue.
      *
      * <p>This is deliberately stronger than clearing a lyric's melisma extend, which keeps
      * an (empty-texted) lyric on the element. An empty lyric still counts as lyric-bearing
      * for lyric navigation, so a melisma carrier that is no longer wanted must be removed,
      * not cleared.
      *
-     * <p>No-op when the element has no lyric for the verse. Must be called inside a
+     * <p>No-op when the element has no lyric for the script. Must be called inside a
      * modification bracket.
      */
-    default void removeLyricForVerse(int index, int verse) {
+    default void removeLyricForScript(int index, Song.Script script) {
         if (index < 0 || index >= effectiveElementCount()) {
             return;
         }
 
         var element = getElement(index);
 
-        if (element.getLyricForVerse(verse) == null) {
+        if (element.getLyricForScript(script) == null) {
             return;
         }
 
-        // Blank text + NONE is setLyricForVerse's "remove the entry" case, which keeps the
+        // Blank text + NONE is setLyricForScript's "remove the entry" case, which keeps the
         // removal inside the API that enforces the carrier/text-bearing invariants.
-        modifyElement(index, ElementField.LYRIC, () -> element.removeLyricForVerse(verse));
+        modifyElement(index, ElementField.LYRIC, () -> element.removeLyricForScript(script));
     }
 
-    /** The verse number of every lyric on {@code element}, in list order. */
-    private static List<Integer> verseNumbersOf(StaffElement element) {
-        var verses = new ArrayList<Integer>();
+    /** The script of every lyric on {@code element}, in list order. */
+    private static List<Song.Script> scriptsOf(StaffElement element) {
+        var scripts = new ArrayList<Song.Script>();
 
         for (var lyric : element.getLyrics()) {
-            verses.add(lyric.verse());
+            scripts.add(lyric.script());
         }
 
-        return verses;
+        return scripts;
     }
 
     /**
-     * Moves the {@code verse} syllable from {@code fromIndex} to {@code toIndex}, replacing
+     * Moves the {@code script} syllable from {@code fromIndex} to {@code toIndex}, replacing
      * whatever lyric the target held. Used by the automatic grace-host melisma, host→grace
      * when a pair is formed: the syllable belongs to the grace.
      *
@@ -973,10 +974,10 @@ public interface LyricRun extends StaffElementRun {
      * part of the write, so a text-less carrier on the target can never collide with the
      * incoming text.
      *
-     * <p>No-op when the source has no lyric for the verse or its lyric is a text-less
+     * <p>No-op when the source has no lyric for the script or its lyric is a text-less
      * carrier — there is no syllable to move. Must be called inside a modification bracket.
      */
-    default void transferLyricForVerse(int fromIndex, int toIndex, int verse) {
+    default void transferLyricForScript(int fromIndex, int toIndex, Song.Script script) {
         var elementCount = effectiveElementCount();
 
         if (fromIndex == toIndex
@@ -985,24 +986,24 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        var sourceLyric = getElement(fromIndex).getLyricForVerse(verse);
+        var sourceLyric = getElement(fromIndex).getLyricForScript(script);
 
         if (sourceLyric == null || sourceLyric.isCarrier()) {
             return;
         }
 
         // Read off the source before anything is written: putLyric replaces the target's
-        // existing verse entry with the incoming syllable.
+        // existing script entry with the incoming syllable.
         var targetElement = getElement(toIndex);
         modifyElement(toIndex, ElementField.LYRIC, () ->
             targetElement.putLyric(sourceLyric.withExtend(Lyric.Extend.NONE)));
-        removeLyricForVerse(fromIndex, verse);
+        removeLyricForScript(fromIndex, script);
     }
 
     /**
-     * Moves every verse's syllable from {@code fromIndex} to {@code toIndex} via
-     * {@link #transferLyricForVerse}, so a caller moving a whole element's lyrics does not
-     * enumerate the verses itself.
+     * Moves every script's syllable from {@code fromIndex} to {@code toIndex} via
+     * {@link #transferLyricForScript}, so a caller moving a whole element's lyrics does not
+     * enumerate the scripts itself.
      *
      * <p>Must be called inside a modification bracket.
      */
@@ -1011,9 +1012,9 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        // Snapshot the verses first: transferLyricForVerse mutates the source's lyric list.
-        for (var verse : verseNumbersOf(getElement(fromIndex))) {
-            transferLyricForVerse(fromIndex, toIndex, verse);
+        // Snapshot the scripts first: transferLyricForScript mutates the source's lyric list.
+        for (var script : scriptsOf(getElement(fromIndex))) {
+            transferLyricForScript(fromIndex, toIndex, script);
         }
     }
 
@@ -1051,21 +1052,21 @@ public interface LyricRun extends StaffElementRun {
         }
 
         var isPaired = isPairedGraceNote(graceIndex);
-        var verses = new LinkedHashSet<>(verseNumbersOf(getElement(graceIndex)));
-        verses.addAll(verseNumbersOf(getElement(hostIndex)));
+        var scripts = new LinkedHashSet<>(scriptsOf(getElement(graceIndex)));
+        scripts.addAll(scriptsOf(getElement(hostIndex)));
 
-        for (var verse : verses) {
-            syncGraceHostMelismaForVerse(graceIndex, verse, isPaired);
+        for (var script : scripts) {
+            syncGraceHostMelismaForScript(graceIndex, script, isPaired);
         }
     }
 
     /**
      * Normalizes every grace-host pair in this run to the automatic grace-host melisma, for
      * files written before the melisma was maintained automatically (or by another program).
-     * Two states are repaired, per verse and per pair:
+     * Two states are repaired, per script and per pair:
      *
      * <ul>
-     *   <li>the host carries a syllable of its own and the grace has no lyric for that verse —
+     *   <li>the host carries a syllable of its own and the grace has no lyric for that script —
      *       the syllable moves to the grace, which is where a paired grace's syllable belongs,
      *       and the melisma is established across the host;</li>
      *   <li>the grace carries a syllable with no melisma — the melisma is established.</li>
@@ -1094,28 +1095,28 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * Hands each of the host's own syllables back to the grace, for the verses where the grace
-     * has no lyric at all. A verse the grace already occupies — with a syllable or with a
+     * Hands each of the host's own syllables back to the grace, for the scripts where the grace
+     * has no lyric at all. A script the grace already occupies — with a syllable or with a
      * carrier — is left untouched; see {@link #repairGraceHostMelismas}.
      */
     private void moveHostSyllablesToGrace(int graceIndex) {
         var hostIndex = graceIndex + 1;
         var graceElement = getElement(graceIndex);
 
-        // Snapshot the verses first: transferLyricForVerse mutates the host's lyric list.
-        for (var verse : verseNumbersOf(getElement(hostIndex))) {
-            // transferLyricForVerse ignores a text-less carrier, so a host STOP stays put.
-            if (graceElement.getLyricForVerse(verse) == null) {
-                transferLyricForVerse(hostIndex, graceIndex, verse);
+        // Snapshot the scripts first: transferLyricForScript mutates the host's lyric list.
+        for (var script : scriptsOf(getElement(hostIndex))) {
+            // transferLyricForScript ignores a text-less carrier, so a host STOP stays put.
+            if (graceElement.getLyricForScript(script) == null) {
+                transferLyricForScript(hostIndex, graceIndex, script);
             }
         }
     }
 
-    private void syncGraceHostMelismaForVerse(int graceIndex, int verse, boolean isPaired) {
+    private void syncGraceHostMelismaForScript(int graceIndex, Song.Script script, boolean isPaired) {
         var hostIndex = graceIndex + 1;
         var hostElement = getElement(hostIndex);
-        var graceLyric = getElement(graceIndex).getLyricForVerse(verse);
-        var hostLyric = hostElement.getLyricForVerse(verse);
+        var graceLyric = getElement(graceIndex).getLyricForScript(script);
+        var hostLyric = hostElement.getLyricForScript(script);
         var graceCarries = graceLyric != null && graceLyric.isCarrier();
         var graceHasSyllable = graceLyric != null && !graceCarries && !graceLyric.text().isBlank();
 
@@ -1123,7 +1124,7 @@ public interface LyricRun extends StaffElementRun {
             graceIndex, hostIndex, isPaired, graceCarries, graceHasSyllable, hostLyric);
 
         if (isPaired && graceHasSyllable) {
-            setExtendForVerse(graceIndex, verse, Lyric.Extend.START);
+            setExtendForScript(graceIndex, script, Lyric.Extend.START);
 
             // A host that already carries the extender onward needs no STOP of its own.
             if (hostLyric != null && hostLyric.isCarrier()) {
@@ -1132,7 +1133,7 @@ public interface LyricRun extends StaffElementRun {
 
             var hostHadSyllable = hostLyric != null;
             modifyElement(hostIndex, ElementField.LYRIC, () ->
-                hostElement.putLyric(Lyric.carrier(verse, Lyric.Extend.STOP)));
+                hostElement.putLyric(Lyric.carrier(script, Lyric.Extend.STOP)));
 
             // The host's own syllable is gone, so its neighbors' syllabic chain has to heal
             // exactly as it would after a deletion. adjustNeighborsForLyricDeletion documents
@@ -1140,7 +1141,7 @@ public interface LyricRun extends StaffElementRun {
             // than nothing — that is equivalent for its purposes, since it reads only the
             // neighbors of `index`, never `index` itself.
             if (hostHadSyllable) {
-                adjustNeighborsForLyricDeletion(hostIndex, verse);
+                adjustNeighborsForLyricDeletion(hostIndex, script);
             }
 
             return;
@@ -1152,19 +1153,19 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        removeLyricForVerse(hostIndex, verse);
-        setExtendForVerse(graceIndex, verse, Lyric.Extend.NONE);
+        removeLyricForScript(hostIndex, script);
+        setExtendForScript(graceIndex, script, Lyric.Extend.NONE);
     }
 
     /**
-     * Replaces the melisma extend of the {@code verse} lyric at {@code index}, leaving its
-     * text, syllabic and compound flag untouched. No-op when there is no lyric for the verse
+     * Replaces the melisma extend of the {@code script} lyric at {@code index}, leaving its
+     * text, syllabic and compound flag untouched. No-op when there is no lyric for the script
      * or the extend already matches. Only valid for text-bearing lyrics, whose non-null
      * syllabic remains legal for every non-carrier extend.
      */
-    private void setExtendForVerse(int index, int verse, Lyric.Extend extend) {
+    private void setExtendForScript(int index, Song.Script script, Lyric.Extend extend) {
         var element = getElement(index);
-        var lyric = element.getLyricForVerse(verse);
+        var lyric = element.getLyricForScript(script);
 
         if (lyric == null || lyric.extend() == extend) {
             return;
@@ -1172,7 +1173,7 @@ public interface LyricRun extends StaffElementRun {
 
         modifyElement(index, ElementField.LYRIC, () ->
             element.putLyric(
-                new Lyric(lyric.verse(), lyric.text(), extend, lyric.syllabic(), lyric.compound())));
+                new Lyric(lyric.script(), lyric.text(), extend, lyric.syllabic(), lyric.compound())));
     }
 
     private static Lyric.Syllabic deriveSyllabic(boolean prevContinues, boolean thisContinues) {
@@ -1209,59 +1210,59 @@ public interface LyricRun extends StaffElementRun {
      * <p>Idempotent — a run with no chain crossing either end is left untouched.
      */
     default void endDanglingChains() {
-        for (var verse : verseNumbers()) {
-            endDanglingChainsForVerse(verse);
+        for (var script : scripts()) {
+            endDanglingChainsForScript(script);
         }
     }
 
-    private void endDanglingChainsForVerse(int verse) {
-        var firstIndex = firstLyricBearingIndex(verse);
+    private void endDanglingChainsForScript(Song.Script script) {
+        var firstIndex = firstLyricBearingIndex(script);
 
         if (firstIndex == null) {
             return;
         }
 
-        var firstLyric = getElement(firstIndex).getLyricForVerse(verse);
+        var firstLyric = getElement(firstIndex).getLyricForScript(script);
 
         // A carrier at the head sustains a melisma that began outside the run, so its
         // START is gone and it extends nothing — exactly what deleting that START leaves
         // behind. A text-bearing head is left alone: a melisma it starts is the run's own.
         if (firstLyric != null && firstLyric.isCarrier()) {
-            removeCarriersFrom(firstIndex, verse);
+            removeCarriersFrom(firstIndex, script);
         }
 
         // The head has no predecessor at all, so its syllable cannot be continuing one.
-        fixSuccessorSyllabic(null, verse, false);
+        fixSuccessorSyllabic(null, script, false);
 
         var effectiveCount = effectiveElementCount();
 
         // The tail's chain never reaches its STOP, which is the deleted-STOP case.
-        var tailIndex = previousLyricBearingIndex(effectiveCount, verse);
+        var tailIndex = previousLyricBearingIndex(effectiveCount, script);
 
         if (tailIndex != null) {
-            closeMelismaAt(tailIndex, verse);
+            closeMelismaAt(tailIndex, script);
         }
 
-        var lastTextIndex = previousTextBearingIndex(effectiveCount, verse);
+        var lastTextIndex = previousTextBearingIndex(effectiveCount, script);
 
         if (lastTextIndex != null) {
-            endDanglingWord(lastTextIndex, verse);
+            endDanglingWord(lastTextIndex, script);
         }
     }
 
     /**
-     * The verses this run carries lyrics in.
+     * The scripts this run carries lyrics in.
      *
-     * @return every verse number held by a lyric on any element of this run, each once, in
+     * @return every script held by a lyric on any element of this run, each once, in
      *     first-seen order; empty when the run holds no lyric
      */
-    default List<Integer> verseNumbers() {
-        var verses = new LinkedHashSet<Integer>();
+    default List<Song.Script> scripts() {
+        var scripts = new LinkedHashSet<Song.Script>();
 
         for (var index = 0; index < effectiveElementCount(); index++) {
-            verses.addAll(verseNumbersOf(getElement(index)));
+            scripts.addAll(scriptsOf(getElement(index)));
         }
 
-        return List.copyOf(verses);
+        return List.copyOf(scripts);
     }
 }

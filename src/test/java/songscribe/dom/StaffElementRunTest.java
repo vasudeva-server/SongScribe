@@ -34,6 +34,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
@@ -102,6 +103,12 @@ class StaffElementRunTest extends UnitTest {
     private static final int PAIRING_LONE_NOTE = 7;
     private static final int PAIRING_LONE_BARLINE = 8;
     private static final int PAST_THE_PAIRING_LINE = 9;
+
+    /** The song-start rule's lines in compact notation: two notes, and a line with none. */
+    private static final String TWO_NOTES = "3 3";
+    private static final String NO_NOTES = "";
+    private static final int FIRST_LINE = 0;
+    private static final int SECOND_LINE = 1;
 
     private Line line;
     private Line insertRunLine;
@@ -206,16 +213,51 @@ class StaffElementRunTest extends UnitTest {
      * @param run          the elements that would land there
      * @param expected     whether the run may be inserted
      */
-    private record InsertRunCase(String description, int index, List<? extends StaffElement> run, boolean expected) {}
+    private record InsertRunCase(
+        String description, LineSource lineSource, int index, List<? extends StaffElement> run, boolean expected
+    ) {
+
+        /** A case on {@link #insertRunLine}. */
+        InsertRunCase(String description, int index, List<? extends StaffElement> run, boolean expected) {
+            this(description, INSERT_RUN_LINE, index, run, expected);
+        }
+    }
+
+    /** Which line a case asks about, given the test instance that holds the shared fixture lines. */
+    @FunctionalInterface
+    private interface LineSource {
+        Line lineOf(StaffElementRunTest test);
+    }
+
+    private static final LineSource INSERT_RUN_LINE = test -> test.insertRunLine;
+    private static final LineSource PAIRING_LINE = test -> test.pairingLine;
+
+    /** A line of a song, for a rule that reads the song: the line's neighbors decide the answer. */
+    private static LineSource lineOfSong(int lineIndex, String... notations) {
+        return test -> compactSong(Key.NO_ACCIDENTALS, notations).getLine(lineIndex);
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("insertRunCases")
     void testCanInsertRunAtComposesInsertionAndBreathMarkRules(InsertRunCase testCase) {
-        assertThat(insertRunLine.canInsertRunAt(testCase.index(), testCase.run())).isEqualTo(testCase.expected());
+        assertThat(testCase.lineSource().lineOf(this).canInsertRunAt(testCase.index(), testCase.run()))
+            .isEqualTo(testCase.expected());
     }
 
     static Stream<InsertRunCase> insertRunCases() {
         return Stream.of(
+            new InsertRunCase("a run starting with a bar line is refused at index 0 of the first line",
+                lineOfSong(FIRST_LINE, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), false),
+            new InsertRunCase("a run starting with a bar line is refused at index 0 of the second line "
+                + "when the first is empty",
+                lineOfSong(SECOND_LINE, NO_NOTES, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), false),
+            new InsertRunCase("a run starting with a bar line is accepted at index 1 of the first line",
+                lineOfSong(FIRST_LINE, TWO_NOTES), 1, List.of(singleBarline(), crotchet()), true),
+            new InsertRunCase("a run starting with a bar line is accepted at index 0 of a line "
+                + "that follows a line with elements",
+                lineOfSong(SECOND_LINE, TWO_NOTES, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), true),
+            new InsertRunCase("a run starting with a note is accepted at index 0 of the first line",
+                lineOfSong(FIRST_LINE, TWO_NOTES), 0, List.of(crotchet(), singleBarline()), true),
             new InsertRunCase("a breath mark leading a run after a barline is refused",
                 AFTER_BARLINE, List.of(breathMark()), false),
             new InsertRunCase("a breath mark leading a run at index 0 is refused",
@@ -417,16 +459,35 @@ class StaffElementRunTest extends UnitTest {
      * @param index       the element note entry would write over
      * @param expected    whether it may
      */
-    private record ReplaceCase(String description, int index, boolean expected) {}
+    private record ReplaceCase(
+        String description, LineSource lineSource, int index, ElementType incoming, boolean expected
+    ) {
+
+        /** A case on {@link #pairingLine}, replaced by an element that is not a bar line. */
+        ReplaceCase(String description, int index, boolean expected) {
+            this(description, PAIRING_LINE, index, ElementType.CROTCHET, expected);
+        }
+    }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("replaceCases")
-    void testAnElementMayBeReplacedUnlessItIsHalfOfAPair(ReplaceCase testCase) {
-        assertThat(pairingLine.canReplaceElementAt(testCase.index())).isEqualTo(testCase.expected());
+    void testAnElementMayBeReplacedUnlessItIsHalfOfAPairOrABarLineWouldStartTheSong(ReplaceCase testCase) {
+        assertThat(testCase.lineSource().lineOf(this).canReplaceElementAt(testCase.index(), testCase.incoming()))
+            .isEqualTo(testCase.expected());
     }
 
     static Stream<ReplaceCase> replaceCases() {
         return Stream.of(
+            new ReplaceCase("an incoming bar line is refused at index 0 of the first line",
+                lineOfSong(FIRST_LINE, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, false),
+            new ReplaceCase("an incoming bar line is refused at index 0 of the second line when the first is empty",
+                lineOfSong(SECOND_LINE, NO_NOTES, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, false),
+            new ReplaceCase("an incoming bar line is accepted at index 1 of the first line",
+                lineOfSong(FIRST_LINE, TWO_NOTES), 1, ElementType.SINGLE_BARLINE, true),
+            new ReplaceCase("an incoming bar line is accepted at index 0 of a line that follows a line with elements",
+                lineOfSong(SECOND_LINE, TWO_NOTES, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, true),
+            new ReplaceCase("an incoming note is accepted at index 0 of the first line",
+                lineOfSong(FIRST_LINE, TWO_NOTES), 0, ElementType.CROTCHET, true),
             new ReplaceCase("a note paired with nothing may be replaced", PAIRING_LONE_NOTE, true),
             new ReplaceCase("a grace note may not", PAIRING_GRACE, false),
             new ReplaceCase("a key change may not", PAIRING_KEY_CHANGE, false),

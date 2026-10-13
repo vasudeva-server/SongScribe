@@ -36,6 +36,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.BeamMetrics;
@@ -270,10 +271,10 @@ public class LayoutEngine {
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
         verticalCalculator.calculate(columns, line, builder, tempoMark);
 
-        // Step 7b: Compute lyric box and connector geometry, for the same verse step 1 built the
+        // Step 7b: Compute lyric box and connector geometry, for the same script step 1 built the
         // columns for — what makes their cached syllable widths reusable there.
         buildLyricLayout(
-            columns, line.getSong().getActiveVerse(), builder, hasLeadingLyricContinuation);
+            columns, line.getSong().getActiveScript(), builder, hasLeadingLyricContinuation);
 
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
@@ -281,13 +282,13 @@ public class LayoutEngine {
 
     private void buildLyricLayout(
         List<ElementColumn> columns,
-        int activeVerse,
+        Song.Script activeScript,
         LayoutResultBuilder builder,
         boolean hasLeadingLyricContinuation) {
 
         var lyricResult = LyricLayoutBuilder.build(
             columns,
-            activeVerse,
+            activeScript,
             lyricRenderMetrics,
             hasLeadingLyricContinuation,
             staffRightMarginSs);

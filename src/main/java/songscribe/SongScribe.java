@@ -30,11 +30,15 @@ import net.engio.mbassy.bus.MBassador;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
+import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.io.musicxml.MusicXmlSerializer;
+import songscribe.layout.PageModel;
 import songscribe.message.DebugMBassador;
 import songscribe.message.MessageCenter;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.score.PreviewElementManager;
+import songscribe.util.UIUtils;
 
 public final class SongScribe {
 
@@ -196,8 +200,6 @@ public final class SongScribe {
         truncateLogIfRequested();
         logBanner("SongScribe");
 
-        setBus();
-
         warmMusicXmlSerializer();
 
         // macOS system properties are already set above on the main thread.
@@ -206,12 +208,43 @@ public final class SongScribe {
     }
 
     /**
-     * Sets the application's message bus, and with it the publication-error policy. Call it once
-     * for the life of the process, before anything can post or subscribe. Every entry point that
-     * builds the main window calls it: {@link #main}, and the e2e harness, which builds the window
-     * without {@link #main}.
+     * Sets the message bus and builds the main window without showing it. Every process that
+     * builds the main window builds it here, so the window the end-to-end suite drives is the
+     * window the application shows.
+     *
+     * <p>Requires {@link UIUtils#initMinimalTheme} to have run. Call it once per process: the bus,
+     * the main window and the preview element manager all live for the life of the process, and
+     * a second call would replace the bus under the listeners the first one subscribed.
+     *
+     * <p>Whatever runs before this — the minimal theme, the splash, and the start of MIDI
+     * initialization — runs before the bus exists, so it must not post or subscribe. Everything
+     * this method does after setting the bus may.
+     *
+     * @effects sets the message bus; installs the remaining font faces; keeps tooltips open while
+     *          the pointer hovers their item; subscribes the process's preview element manager;
+     *          supplies the page's default line width to every new {@link Song}; builds and wires
+     *          the main window. Must run on the event dispatch thread.
+     * @return the main window, built and not yet visible
      */
-    public static void setBus() {
+    public static MainFrame buildMainWindow() {
+        setBus();
+        UIUtils.installEagerFonts();
+        UIUtils.keepToolTipsOpenWhileHovered();
+
+        // The bus holds the listener strongly, so nothing here needs to keep it.
+        new PreviewElementManager();
+        Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
+
+        var mainFrame = MainFrame.getInstance();
+        mainFrame.initFrame();
+        return mainFrame;
+    }
+
+    /**
+     * Sets the application's message bus, and with it the publication-error policy. Call it once
+     * for the life of the process, before anything can post or subscribe.
+     */
+    private static void setBus() {
         if (System.getenv("DEBUG") != null) {
             MessageCenter.setBus(new DebugMBassador<>(MessageCenter::exitOnPublicationError));
         } else {

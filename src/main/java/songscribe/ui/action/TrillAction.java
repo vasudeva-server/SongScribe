@@ -29,8 +29,8 @@ import songscribe.Strings;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Trill;
+import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.ElementSelection;
@@ -94,11 +94,11 @@ public final class TrillAction extends SelectableUIAction {
 
     @Override
     @Handler
-    public void songDidChange(SongDidChangeNotification message) {
+    public void linting(LintingNotification message) {
         // A trill added/removed by undo/redo leaves the selection range intact,
         // so no MusicSelectionDidChangeNotification fires; recompute the checked
         // state here as well, or the menu item stays stale after undo.
-        super.songDidChange(message);
+        super.linting(message);
         refreshSelectedState();
     }
 

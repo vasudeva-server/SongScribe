@@ -106,8 +106,7 @@ public final class MutationReplayer {
      * @param mutations the whole batch of one edit, whose effect is the song's most recent
      *                  unreplayed change
      * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
-     *     that {@link Song#replay} posts, carrying the inverse changes and an empty change
-     *     report
+     *     that {@link Song#replay} posts, carrying the inverse changes
      * @throws RuntimeException if a record cannot be applied — an index it names no longer
      *                          exists, or an element it names is gone. This means the batch
      *                          was replayed out of turn, incompletely, or against the wrong
@@ -136,8 +135,7 @@ public final class MutationReplayer {
      * @param mutations the whole batch of one edit, whose effect is the song's next
      *                  unreplayed change
      * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
-     *     that {@link Song#replay} posts, carrying the re-applied changes and an empty change
-     *     report
+     *     that {@link Song#replay} posts, carrying the re-applied changes
      * @throws RuntimeException under the conditions given for {@link #undoBatch}
      */
     public static void redoBatch(Song song, FontTarget fonts, List<Mutation> mutations) {

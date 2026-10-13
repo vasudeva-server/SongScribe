@@ -20,6 +20,7 @@
 
 package songscribe.ui.component;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -27,7 +28,6 @@ import java.util.Set;
 import java.util.function.Function;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
@@ -42,9 +42,12 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
 import songscribe.dom.KeyChangeStranding;
 import songscribe.dom.Line;
 import songscribe.dom.ProjectedEdit;
+import songscribe.dom.RecordedChange;
+import songscribe.dom.SongStart;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
 import songscribe.dom.Tempo;
@@ -855,19 +858,17 @@ public final class ScoreViewController {
     void handleDelete() {
         var song = score.getSong();
 
-        if (selectionCoordinator.getSelectedTarget() instanceof HitTarget.Lyric(var element, var verse)) {
-            var line = element.getParentLine();
+        if (selectionCoordinator.getSelectedTarget() instanceof HitTarget.Lyric(var element, var script)) {
+            // The selection layer clears a selection that is no longer live, so a selected
+            // lyric's element is in a line.
+            var line = element.requireParentLine();
+            var index = line.getElementIndex(element);
 
-            // An element in no line has no index, so there is nothing to delete.
-            if (line != null) {
-                var index = line.getElementIndex(element);
-
-                song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
-                    line.modifyElement(index, ElementField.LYRIC, () ->
-                        line.getElement(index).removeLyricForVerse(verse));
-                    line.adjustNeighborsForLyricDeletion(index, verse);
-                });
-            }
+            song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
+                line.modifyElement(index, ElementField.LYRIC, () ->
+                    line.getElement(index).removeLyricForScript(script));
+                line.adjustNeighborsForLyricDeletion(index, script);
+            });
 
             selectionCoordinator.getActionReflector().restoreSelectedActionStates();
             selectionCoordinator.clearSelection();
@@ -1216,6 +1217,20 @@ public final class ScoreViewController {
      * elements may not be inserted before a breath mark" alert and {@code DECLINED_BY_ALERT}.
      * Both refusals leave the line untouched.
      *
+     * <p><b>No bar line stands first in the song</b> ({@link SongStart}). When {@code insertIndex}
+     * is the song-start slot ({@link StaffElementRun#isSongStartAt}) and the fragment starts with
+     * one or more bar lines, the paste drops each of them, with the key change that may sit
+     * behind one, and pastes the rest. The drop happens before the breath-mark test and the fit
+     * gate, so every later step sees the run that lands. It asks nothing: once the paste is
+     * certain to happen, it records one {@link SongStart#removedEntry} for {@code line} into the
+     * open bracket's report, and a fragment span with an endpoint on a dropped element is not
+     * pasted and is reported with the other spans the paste leaves out. When the drop takes a key
+     * change, the key of the last one it takes becomes {@code line}'s own key
+     * ({@link Line#setKey}), set inside the caller's bracket ahead of the fragment, so the paste
+     * and the key move are one undo step; the key reaches the lines inheriting from {@code line}
+     * as a key set by hand does, and the paste sweeps each key change it then leaves restating
+     * the key in effect.
+     *
      * <p>Must be called inside a modification bracket — both paste-replace and
      * paste-mode placement supply their own, so delete + insert form one undo step.
      *
@@ -1223,6 +1238,11 @@ public final class ScoreViewController {
      * projection of the destination line with the clones in place, so the fit check measures each
      * clone as it will sound where it lands and every later note whose chain the paste changes —
      * on this line and, through {@link AccidentalFitGate}, on any other line a restamp widens.
+     * The projection ({@link ProjectedEdit}) starts the line in the key the paste leaves it
+     * starting in — the moved key when the drop at the song start takes a key change, and the
+     * line's running key otherwise — so the walk decides each accidental, and the fit check
+     * measures the line's opening key signature, in that key, although the key itself moves only
+     * once the paste lands.
      *
      * <p><b>A fragment carrying a key change re-keys more than this line.</b> The key it
      * leaves the destination line in reaches every line inheriting past it, so the paste removes
@@ -1247,8 +1267,10 @@ public final class ScoreViewController {
      *     point and the notator may pick another; {@code CANCELLED} when the notator declined a
      *     confirm; and {@code INSERTED} when the paste happened. {@code INSERTED} also covers the
      *     case where the fragment reduced to nothing because every key change it carried restates
-     *     the key already running here — the gesture is spent and the caller should complete it,
-     *     even though no element was placed. Only {@code INSERTED} means the line was mutated
+     *     the key already running here, or because it held nothing but bar lines dropped at the
+     *     start of the song — the gesture is spent and the caller should complete it, even though
+     *     no element was placed; a paste-replace has still deleted its range, and a dropped key
+     *     change has still moved its key. Only {@code INSERTED} means the line was mutated
      */
     public FragmentInsertOutcome tryInsertFragment(Line line, StaffElementRun.InsertionTarget target) {
         var fragment = clipboardManager.getFragment();
@@ -1279,14 +1301,34 @@ public final class ScoreViewController {
         // than deleted after the insertion, so the chain walk, the fit measurement and the
         // span reconciliation all see the run that actually lands.
         var reduction = fragment.instantiate().withoutRedundantKeyChanges(keyAtInsertion);
+
+        // No bar line stands first in the song, so at the song-start slot the bar lines that
+        // start the fragment are dropped — each with the key change it may carry, which cannot
+        // outlive it — and the paste goes ahead with the rest, as one more thing the song changed
+        // on its own. Dropped here rather than after the insertion, for the same reason the
+        // redundant key changes are.
+        //
+        // A key change dropped with its bar line set the key the rest of the fragment sounds in,
+        // so that key becomes the line's own key when the paste lands.
+        var songChanges = new ArrayList<RecordedChange>();
+        @Nullable Key movedKey = null;
+
+        if (line.isSongStartAt(insertIndex) && leadsWithBar(reduction.fragment())) {
+            var drop = reduction.withoutLeadingBars();
+            reduction = drop.reduction();
+            movedKey = drop.movedKey();
+            songChanges.add(SongStart.removedEntry(line, movedKey));
+        }
+
         var instantiated = reduction.fragment();
 
         // A fragment of nothing but a key change restating the key already running here, and the
-        // barline behind it, leaves nothing to place. What is left of the paste is the deletion a
-        // paste-replace owes; a pure insertion has nothing left to do at all. Either way the
-        // gesture is spent, not declined.
+        // barline behind it, or of nothing but bar lines dropped at the start of the song, leaves
+        // nothing to place. What is left of the paste is the deletion a paste-replace owes, and
+        // the key a dropped key change moves; a pure insertion moving no key has nothing left to
+        // do at all. Either way the gesture is spent, not declined.
         if (instantiated.elements().isEmpty()) {
-            FragmentPaste.paste(line, target, reduction);
+            landFragment(line, target, reduction, new SongChanges(songChanges, movedKey));
             return FragmentInsertOutcome.INSERTED;
         }
 
@@ -1313,7 +1355,7 @@ public final class ScoreViewController {
             // that actually lands. A breath mark anchors no span, so every fragment span survives.
             var elements = instantiated.elements();
             instantiated = new Fragment(elements.subList(1, elements.size()), instantiated.spans());
-            reduction = new Fragment.KeyChangeReduction(instantiated, reduction.strandedSpans());
+            reduction = new Fragment.Reduction(instantiated, reduction.strandedSpans());
         }
 
         var clones = instantiated.elements();
@@ -1324,10 +1366,14 @@ public final class ScoreViewController {
             return FragmentInsertOutcome.DECLINED_BY_ALERT;
         }
 
-        // The line as the paste will leave it: the deleted range swapped for the clones.
-        var restamps = (rawDeleteRange == null)
-            ? ProjectedEdit.inserting(line, insertIndex, clones).walk()
-            : ProjectedEdit.replacing(line, rawDeleteRange, clones).walk();
+        // The line as the paste will leave it: the deleted range swapped for the clones, starting
+        // in the key a dropped key change moves onto it. The key moves only once the paste lands,
+        // so the walk and the fit measurement read it from the projection.
+        var startKey = (movedKey != null) ? movedKey : line.getRunningKey();
+        var edit = (rawDeleteRange == null)
+            ? ProjectedEdit.inserting(line, insertIndex, clones, startKey)
+            : ProjectedEdit.replacing(line, rawDeleteRange, clones, startKey);
+        var restamps = edit.walk();
 
         // The LINE_FULL refusal leaves the line exactly as it was (C1), so it lives inside the
         // fit gate: it stamps the walk's accidentals, runs this check with them in place so the
@@ -1337,7 +1383,7 @@ public final class ScoreViewController {
 
         var verdict = AccidentalFitGate.judge(
             line, restamps, clones, lyricRenderMetrics,
-            () -> InsertionSpacingCalculator.calculateFragmentInsertion(line, clones, target, lyricRenderMetrics)
+            () -> InsertionSpacingCalculator.calculateFragmentInsertion(edit, lyricRenderMetrics)
                 .fitsWithinLine(line.getSong().getLineWidthSs().value()));
 
         var committed = FitRefusals.accepts(
@@ -1349,9 +1395,52 @@ public final class ScoreViewController {
             return FragmentInsertOutcome.LINE_FULL;
         }
 
-        FragmentPaste.paste(line, target, reduction);
+        landFragment(line, target, reduction, new SongChanges(songChanges, movedKey));
 
         return FragmentInsertOutcome.INSERTED;
+    }
+
+    /** Whether the first element of {@code fragment} is a bar line; {@code false} when it is empty. */
+    private static boolean leadsWithBar(Fragment fragment) {
+        var elements = fragment.elements();
+
+        return !elements.isEmpty() && elements.getFirst().getType().isBar();
+    }
+
+    /**
+     * What a paste changes in the song on its own, beyond landing its fragment.
+     *
+     * @param entries  the change-report entries to record
+     * @param movedKey the key a dropped key change moves onto the destination line, or
+     *                 {@code null} when the paste moves none
+     */
+    private record SongChanges(List<RecordedChange> entries, @Nullable Key movedKey) {
+    }
+
+    /**
+     * Records {@code songChanges} into the open bracket's report, makes their moved key the
+     * destination line's own key, then lands what is left of a paste through
+     * {@link FragmentPaste#paste}. The changes are made only here, once the paste is certain to
+     * happen, so a refused paste leaves the bracket empty.
+     *
+     * <p>The key is set before the fragment lands, so the paste measures the key changes it
+     * strands — on the line from where the fragment ends, and on every line inheriting past it —
+     * against the key the line now starts in, and sweeps them as a key set by hand sweeps them.
+     */
+    private static void landFragment(
+        Line line, StaffElementRun.InsertionTarget target, Fragment.Reduction reduction,
+        SongChanges songChanges
+    ) {
+        var song = line.getSong();
+        songChanges.entries().forEach(song::report);
+
+        var movedKey = songChanges.movedKey();
+
+        if (movedKey != null) {
+            line.setKey(movedKey);
+        }
+
+        FragmentPaste.paste(line, target, reduction);
     }
 
     private void handlePaste() {

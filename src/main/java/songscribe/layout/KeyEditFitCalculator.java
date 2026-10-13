@@ -322,7 +322,7 @@ public final class KeyEditFitCalculator {
 
         if (line.needsBarlineBeforeKeyChangeAt(insertionIndex)) {
             columns.add(columnBuilder.buildDetachedColumn(
-                ElementType.SINGLE_BARLINE.newInstance(), line.getSong().getActiveVerse()));
+                ElementType.SINGLE_BARLINE.newInstance(), line.getSong().getActiveScript()));
         }
 
         columns.add(keySignatureColumn(line, insertionIndex, key, columnBuilder));
@@ -374,6 +374,6 @@ public final class KeyEditFitCalculator {
 
         return columnBuilder.buildDetachedColumn(
             KeyChangeElement.forMeasurement(key, line.keyBefore(index)),
-            line.getSong().getActiveVerse());
+            line.getSong().getActiveScript());
     }
 }

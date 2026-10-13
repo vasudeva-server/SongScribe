@@ -33,17 +33,14 @@ import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.dom.Tie;
 import songscribe.engraving.EngravingConstants;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.CautionaryKeySignature;
-import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.NoteGeometry;
-import songscribe.lint.Linter;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.ScoreView;
@@ -170,14 +167,14 @@ class LineRenderer {
         var score = lc.getScoreView();
         var activeEditor = score.getActiveLyricEditor();
 
-        // The edited element and verse are only meaningful as a pair, so derive both from one
+        // The edited element and script are only meaningful as a pair, so derive both from one
         // check rather than letting two conditions drift apart.
         StaffElement editedElement = null;
-        Integer editedVerse = null;
+        Song.Script editedScript = null;
 
         if (activeEditor != null) {
             editedElement = activeEditor.getActiveElement();
-            editedVerse = activeEditor.getActiveVerse();
+            editedScript = activeEditor.getActiveScript();
         }
 
         return LineInvariants.builder(song, score, score.getViewScale())
@@ -187,10 +184,10 @@ class LineRenderer {
             .setLayoutResult(layoutResult)
             .setLyricRenderMetrics(score.getLyricRenderMetrics())
             .setActivelyEditedElement(editedElement)
-            .setActivelyEditedVerse(editedVerse)
+            .setActivelyEditedScript(editedScript)
             .setSelectionProvider(lc.getSelectionProvider())
             .setPlaying(lc.getPlaying())
-            .setLintReport(Linter.getReport())
+            .setLintReport(song.getLinter().getReport())
             .build();
     }
 

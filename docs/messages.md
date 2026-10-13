@@ -15,6 +15,15 @@ and cleared after it genuinely covers the whole delivery. Ordering between
 handlers is decided entirely by priority, because there is no other source of
 ordering.
 
+## A handler receives the subtypes of its parameter type
+
+A handler is matched to a message by the type of its parameter, and that match
+includes subtypes: a message is delivered to every handler that takes its own
+type or any of its supertypes, unless the handler sets `rejectSubtypes`. A
+family of messages can therefore share an abstract supertype, and a subscriber
+that reacts the same way to every member of the family has one handler that
+takes the supertype, rather than one handler per member.
+
 ## Subscribers are held weakly, which is not enough
 
 The bus does not keep its subscribers alive by default, so **a subscriber needs a

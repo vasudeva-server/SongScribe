@@ -43,6 +43,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -72,15 +73,15 @@ import songscribe.io.LoadWarning;
 import songscribe.io.SongFileLoader;
 import songscribe.io.SongLoadResult;
 import songscribe.layout.LayoutResult;
-import songscribe.lint.Linter;
 import songscribe.layout.LineLayoutProvider;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
+import songscribe.message.notification.ActiveScriptDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.message.notification.LintReportDidChangeNotification;
+import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -95,7 +96,7 @@ import songscribe.ui.ZoomController;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LineOverlayComponent;
-import songscribe.ui.component.score.LintCallout;
+import songscribe.ui.component.score.LintCalloutController;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.OverlayHost;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -198,7 +199,7 @@ public final class ScoreView
     private final Bindings bindings = new Bindings();
 
     // Called when a file is successfully opened (e.g. to update the window title)
-    private final @Nullable Consumer<? super File> onFileOpened;
+    private final Consumer<? super File> onFileOpened;
 
     private final ScoreViewState viewState;
 
@@ -224,10 +225,6 @@ public final class ScoreView
     // Coordinates selection state across lines
     private final SelectionCoordinator selectionCoordinator;
 
-    // Handles music editing operations
-    @Nullable
-    private MusicEditOperations operations = null;
-
     // Manages clipboard state for copy/paste operations
     private final ClipboardManager clipboardManager;
 
@@ -239,14 +236,11 @@ public final class ScoreView
     @Nullable
     private ScoreViewController controller = null;
 
-    // Navigates the component hierarchy (null in headless mode)
-    private final @Nullable ComponentHierarchyNavigator hierarchyNavigator;
+    // Navigates the component hierarchy
+    private final ComponentHierarchyNavigator hierarchyNavigator;
 
-    // Handles mouse and keyboard input (null in headless mode)
-    private final @Nullable ScoreInputHandler inputHandler;
-
-    // True after init() has been called (interactive mode only)
-    private boolean initialized = false;
+    // Handles mouse and keyboard input
+    private final ScoreInputHandler inputHandler;
 
     // Owns the document fonts and the lyric render metrics derived from them.
     private final DocumentFontManager documentFontManager;
@@ -255,24 +249,23 @@ public final class ScoreView
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
     @Nullable private LyricEditor activeLyricEditor;
 
-    private final LintCallout lintCallout = new LintCallout(this);
+    // Created by init(), after the scroll pane whose viewport it listens to.
+    @Nullable
+    private LintCalloutController lintCalloutController = null;
 
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
 
     /**
-     * Creates a ScoreView with core infrastructure (SAX parser, selection, clipboard,
-     * edit mode). This is sufficient for headless use (converters pass {@code null}).
+     * Creates a ScoreView with core infrastructure (selection, clipboard, edit mode, input).
      * <p>
-     * For interactive use, call {@link #init()} after construction to create the
-     * UI components (view, panels, message coordinator) and the initial Song.
+     * Call {@link #init()} after construction to create the UI components (view, panels,
+     * message coordinator) and the initial Song.
      *
-     * @param onFileOpened callback invoked when a file is successfully opened,
-     *                     or {@code null} for headless (converter) use
+     * @param onFileOpened callback invoked when a file is successfully opened
      */
-    public ScoreView(@Nullable Consumer<? super File> onFileOpened) {
+    public ScoreView(Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
-        var headless = onFileOpened == null;
         viewState = new ScoreViewState();
 
         selectionCoordinator = new SelectionCoordinator(this);
@@ -280,53 +273,40 @@ public final class ScoreView
         documentFontManager = new DocumentFontManager(this);
         EditModeManager.init(selectionCoordinator, this, this);
 
-        if (headless) {
-            hierarchyNavigator = null;
-            inputHandler = null;
-        } else {
-            hierarchyNavigator = new ComponentHierarchyNavigator(this);
-            hierarchyNavigator.setScoreView(this);
-            var handler = new ScoreInputHandler(this);
-            inputHandler = handler;
-            setLayout(new BorderLayout());
-            setFocusable(true);
-            addKeyListener(handler);
-            bindings.onNotify(zoomPercent, this::refreshOverlayBounds);
-        }
+        hierarchyNavigator = new ComponentHierarchyNavigator(this);
+        hierarchyNavigator.setScoreView(this);
+        inputHandler = new ScoreInputHandler(this);
+        setLayout(new BorderLayout());
+        setFocusable(true);
+        addKeyListener(inputHandler);
+        bindings.onNotify(zoomPercent, this::refreshOverlayBounds);
     }
 
     /**
      * Initializes the interactive UI: view, panels, message coordinator,
-     * and the initial Song. Must be called exactly once after construction
-     * for interactive (non-converter) use. Not needed for headless converters.
+     * and the initial Song. Must be called exactly once after construction.
+     *
+     * @effects installs a new, empty song through {@link #setSong}, as the last step
      */
     public void init() {
         setName(ComponentNames.SCORE);
 
-        // Create initial song
-        song = new Song();
-
-        // Linting the first song creates the linter, so it is subscribed before the first edit.
-        Linter.lint(song);
         documentFontManager.installFonts(DocumentFonts.defaultFonts());
 
         // Initialize UI components
         initScorePanel();
         initMainPanel();
+        lintCalloutController = new LintCalloutController(this);
 
         // The install above could not cascade — there was no main panel yet.
         documentFontManager.applyFonts();
 
-        updatePageLayout(song.getLineWidthSs());
+        addMouseMotionListener(inputHandler);
+        addMouseListener(inputHandler);
+        addMouseWheelListener(inputHandler);
 
-        if (inputHandler != null) {
-            addMouseMotionListener(inputHandler);
-            addMouseListener(inputHandler);
-            addMouseWheelListener(inputHandler);
-
-            if (SystemInfo.isMacOS) {
-                PinchZoomGesture.installOn(this);
-            }
+        if (SystemInfo.isMacOS) {
+            PinchZoomGesture.installOn(this);
         }
 
         selectionChanged();
@@ -341,10 +321,9 @@ public final class ScoreView
 
         MessageSubscription.addProcessListener(this);
         syncPlaybackPrefs();
-        song.setModified(false);
 
         // Create operations and message coordinator (requires mainPanel to be set)
-        operations = new MusicEditOperations(selectionCoordinator);
+        var operations = new MusicEditOperations(selectionCoordinator);
         controller = new ScoreViewController(
             this,
             operations,
@@ -352,13 +331,13 @@ public final class ScoreView
             clipboardManager
         );
 
-        initialized = true;
+        // Last, so the controller and every other subscriber sees the first song as it sees any
+        // other.
+        setSong(new Song(), ChangeReport.EMPTY);
     }
 
     private void initKeys() {
-        if (inputHandler != null) {
-            scoreKeyBindings.putAll(inputHandler.installKeyBindings(this));
-        }
+        scoreKeyBindings.putAll(inputHandler.installKeyBindings(this));
     }
 
 
@@ -393,7 +372,6 @@ public final class ScoreView
     private void initMainPanel() {
         mainPanel = new MainPanel();
         mainPanel.setScoreView(this);
-        mainPanel.setSong(getSong());
         mainPanel.setVisible(true);
         add(mainPanel, BorderLayout.CENTER);
         setupLineComponentState();
@@ -406,9 +384,7 @@ public final class ScoreView
      * note coloring in the component-based rendering.
      */
     void setupLineComponentState() {
-        if (hierarchyNavigator != null) {
-            hierarchyNavigator.setupLineComponentState(this, this);
-        }
+        hierarchyNavigator.setupLineComponentState(this, this);
 
         // The line components the overlays point at may have just been recreated.
         retargetOverlays();
@@ -424,6 +400,16 @@ public final class ScoreView
         return mainPanel;
     }
 
+    private MainPanel requireMainPanel() {
+        var result = mainPanel;
+
+        if (result == null) {
+            throw RuntimeError.exit("mainPanel not initialized");
+        }
+
+        return result;
+    }
+
     public boolean isDragDisabled() {
         return dragDisabled;
     }
@@ -433,7 +419,32 @@ public final class ScoreView
      */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
-        return hierarchyNavigator != null ? hierarchyNavigator.getLineComponent(lineIndex) : null;
+        return hierarchyNavigator.getLineComponent(lineIndex);
+    }
+
+    /**
+     * Returns the component drawing {@code line}, for a caller that holds a line it knows the
+     * score draws: a line of the song this score shows, reached while the score is on screen.
+     * The score has a component for every line of its song from the time the song is shown;
+     * a line is without one only while the score is being built, or once the song no longer
+     * holds it, and a caller that may hold such a line asks {@link #getLineComponent} instead.
+     *
+     * @param line a line of the song this score shows
+     * @return the component drawing {@code line}
+     * @throws IllegalStateException when {@code line} is not one of its song's lines, as
+     *     {@link Line#index()} throws
+     * @effects exits the program through {@link RuntimeError#exit(String)} when the score has no
+     *     component for {@code line}
+     */
+    public LineComponent requireLineComponent(Line line) {
+        var lineIndex = line.index();
+        var lineComponent = getLineComponent(lineIndex);
+
+        if (lineComponent == null) {
+            throw RuntimeError.exit("no line component for line " + lineIndex);
+        }
+
+        return lineComponent;
     }
 
     /**
@@ -478,9 +489,7 @@ public final class ScoreView
 
                 setSong(success.song(), success.report());
 
-                if (onFileOpened != null) {
-                    onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
-                }
+                onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
 
                 for (var warning : success.warnings()) {
                     if (warning.type() == LoadWarning.Type.INVALID_LYRICS_DATE) {
@@ -920,48 +929,25 @@ public final class ScoreView
         // Reset zoom to 100% for the new/opened song before laying out at the old zoom.
         ZoomController.resetZoom();
 
-        // Core setup needed for both headless and interactive modes. Passing the song's own
-        // width leaves the model untouched — setLineWidthSs early-returns on an equal value.
+        // Passing the song's own width leaves the model untouched — setLineWidthSs early-returns
+        // on an equal value.
         updatePageLayout(song.getLineWidthSs());
 
         song.setModified(false);
 
-        if (!initialized) {
-            return;
-        }
-
-        // Interactive-only setup below
-
-        if (operations == null) {
-            operations = new MusicEditOperations(selectionCoordinator);
-        }
-
-        if (controller == null) {
-            controller = new ScoreViewController(
-                this,
-                operations,
-                selectionCoordinator,
-                clipboardManager
-            );
-        }
-
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
 
-        if (mainPanel == null) {
-            throw RuntimeError.exit("mainPanel not initialized");
-        }
-
-        mainPanel.setSong(getSong());
+        // init() builds the main panel before it installs the first song.
+        requireMainPanel().setSong(song);
         setupLineComponentState();
 
         syncPlaybackPrefs();
 
         // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
         // that the song has been fully replaced. This must happen after all
-        // ScoreView state is consistent. The song is linted first, so every subscriber to the
-        // load reads the new song's lint report.
-        Linter.lint(song);
+        // ScoreView state is consistent. Building the notification lints the song, so every
+        // subscriber to the load reads the new song's lint report.
         MessageCenter.post(new DocumentDidLoadNotification(song, report));
 
         // Reset scroll position to top-left for the new/opened song
@@ -1204,30 +1190,47 @@ public final class ScoreView
     }
 
     /**
-     * Runs before any other {@link ZoomDidChangeNotification} handler so the zoom is already
-     * applied by the time they react — see the priority requirement documented on {@link
-     * ZoomDidChangeNotification}.
-     */
-    private static final int ZOOM_APPLY_PRIORITY = Message.HIGH_PRIORITY;
-
-    /**
      * Applies a {@link ZoomDidChangeNotification} to this view. The sole handler responsible
-     * for actually performing a zoom change — see {@link #applyZoomPercent}.
+     * for actually performing a zoom change — see {@link #applyZoomPercent}. It runs at
+     * {@link ZoomDidChangeNotification#APPLY_PRIORITY}, so the zoom is already applied by the
+     * time the other handlers react.
      */
-    @Handler(priority = ZOOM_APPLY_PRIORITY)
+    @Handler(priority = ZoomDidChangeNotification.APPLY_PRIORITY)
     public void zoomDidChangeApplyZoom(ZoomDidChangeNotification message) {
         applyZoomPercent(message.getNewZoomPercent(), message.getAnchorPoint());
     }
 
-    /** Repaints the score, so it draws the findings of the new lint report. */
+    /**
+     * Lays the score out again and repaints it, because the active script decides which lyrics
+     * the lines show.
+     */
     @Handler
-    public void lintReportDidChange(LintReportDidChangeNotification message) {
+    public void activeScriptDidChange(ActiveScriptDidChangeNotification message) {
+        for (var linePanel : requireMainPanel().getStaffPanel().getLinePanels()) {
+            linePanel.getLineComponent().invalidateLayout();
+        }
+
         repaint();
     }
 
-    /** The tooltip this score shows for a lint mark on request rather than on hover. */
-    public LintCallout getLintCallout() {
-        return lintCallout;
+    /**
+     * Repaints the score, so it draws the findings of the song's current lint report. The
+     * notification's construction has already linted the song.
+     */
+    @Handler
+    public void linting(LintingNotification message) {
+        repaint();
+    }
+
+    /** The controller that decides when this score's lint tooltips show and hide. */
+    public LintCalloutController requireLintCalloutController() {
+        var result = lintCalloutController;
+
+        if (result == null) {
+            throw RuntimeError.exit("lint callout controller not initialized");
+        }
+
+        return result;
     }
 
     /**
@@ -1255,9 +1258,8 @@ public final class ScoreView
      * the viewport around {@code anchorPoint}, a point in this ScoreView's local
      * (content) coordinate space — e.g. the cursor position for wheel/pinch zoom.
      * When {@code anchorPoint} is null, anchors at the viewport's horizontal
-     * center and top edge instead (menu/keyboard zoom). A view with no viewport — the
-     * headless converters build one and never call {@link #init()} — takes the zoom and
-     * the re-layout, and has no scroll position to re-anchor.
+     * center and top edge instead (menu/keyboard zoom). A view with no viewport yet takes
+     * the zoom and the re-layout, and has no scroll position to re-anchor.
      * <p>
      * Called only from {@link #zoomDidChangeApplyZoom}, which is this view's own
      * high-priority handler of {@link ZoomDidChangeNotification} — see that message's
@@ -1289,9 +1291,8 @@ public final class ScoreView
      * Replaces this view's {@link ViewScale} with one at {@code newPercent} and re-lays out
      * the score at it, leaving the scroll position alone.
      * <p>
-     * This is the whole of a zoom change for a view with no viewport — the headless
-     * converters build one and never call {@link #init()} — and the first half of one for a
-     * view that has a viewport to re-anchor.
+     * This is the whole of a zoom change for a view with no viewport yet, and the first
+     * half of one for a view that has a viewport to re-anchor.
      *
      * @effects replaces {@link #getViewScale()} and invalidates and re-lays out the score
      *     tree, so that sizes read after it returns are the ones the new zoom produces

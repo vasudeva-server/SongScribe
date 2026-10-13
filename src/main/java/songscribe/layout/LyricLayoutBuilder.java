@@ -31,7 +31,10 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.HorizontalSpacingCalculator.GraceSyllable;
+import songscribe.layout.HorizontalSpacingCalculator.PairMelisma;
 
 /**
  * Computes lyric box and connector geometry from per-element {@link Lyric} records.
@@ -92,7 +95,7 @@ public final class LyricLayoutBuilder {
     /**
      * @param boxes                   the syllable boxes, by the element that carries each
      * @param placeholders            for every note that can bear a syllable but has none in
-     *                                the verse laid out, a box of {@link #PLACEHOLDER_TEXT}
+     *                                the script laid out, a box of {@link #PLACEHOLDER_TEXT}
      *                                placed exactly as a syllable of that text would be. A
      *                                placeholder takes no space and touches no connector; the
      *                                renderer decides whether to draw it
@@ -109,26 +112,26 @@ public final class LyricLayoutBuilder {
     /**
      * Builds lyric boxes and connectors for a single line.
      * <p>
-     * Only {@code activeVerse} is laid out. A song's other verses are the same lyrics in other
+     * Only {@code activeScript} is laid out. A song's other scripts are the same lyrics in other
      * languages, held in the document but never shown alongside the one the user picked, so they
      * produce no boxes, no connectors and no second row to make space for.
      * <p>
-     * {@code activeVerse} stamps the boxes and connectors this emits. The lyrics themselves come
-     * off the columns, which {@link ElementColumnBuilder} already resolved for that verse and
+     * {@code activeScript} stamps the boxes and connectors this emits. The lyrics themselves come
+     * off the columns, which {@link ElementColumnBuilder} already resolved for that script and
      * measured the cached syllable widths against, so text and widths cannot come from different
-     * verses.
+     * scripts.
      *
      * @param columns                per-element columns in line order (X positions already finalized)
-     * @param activeVerse            the verse to lay out, from {@link songscribe.dom.Song#getActiveVerse()}
+     * @param activeScript            the script to lay out, from {@link songscribe.dom.Song#getActiveScript()}
      * @param lyricRenderMetrics     metrics used to measure syllable text widths
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
      * @param lineWidthSs            width of the line in staff spaces (reserved for future use)
-     * @return the boxes and connectors for that verse, and whether an extender runs off the line
+     * @return the boxes and connectors for that script, and whether an extender runs off the line
      */
     public static Result build(
         List<ElementColumn> columns,
-        int activeVerse,
+        Song.Script activeScript,
         LyricRenderMetrics lyricRenderMetrics,
         boolean hasLeadingContinuation,
         double lineWidthSs) {
@@ -153,7 +156,7 @@ public final class LyricLayoutBuilder {
             if (isHostOfPairedGraceColumn(columns, columnIndex)) {
                 if (extend == Lyric.Extend.STOP) {
                     state.closeGraceHostExtender(
-                        connectors, activeVerse, column.getNoteheadRightEdgeXSs(), columnIndex);
+                        connectors, activeScript, column.getNoteheadRightEdgeXSs(), columnIndex);
                 }
 
                 continue;
@@ -166,7 +169,7 @@ public final class LyricLayoutBuilder {
                 // a STOP carrier, which ends past the rest's notehead-equivalent right edge on
                 // the LilyPond LyricExtender minimum-length rule (see MIN_MELISMA_LENGTH_SS).
                 if (extend == Lyric.Extend.STOP) {
-                    state.closeExtenderPastHead(connectors, activeVerse, column.getNoteheadRightEdgeXSs());
+                    state.closeExtenderPastHead(connectors, activeScript, column.getNoteheadRightEdgeXSs());
                 }
 
                 continue;
@@ -175,17 +178,17 @@ public final class LyricLayoutBuilder {
             if (lyric == null) {
                 // Note with no lyric: extender (if active) continues silently through this column.
                 // A note that can bear a syllable gets a placeholder where its syllable would go.
-                if (element.getType().bearsSyllableText()) {
-                    var placeholderXSs = computeLyricBoxLeftXSs(
+                if (columnCanBearSyllable(columns, columnIndex)) {
+                    var placeholderXSs = computeLyricBoxLeftXSs(new BoxPlacement(
                         column,
+                        placeholderWidthSs,
                         // The placeholder text is one grapheme, so its first grapheme is all of it.
                         placeholderWidthSs,
+                        graceUnionWidthSs(columns, columnIndex),
                         // A note with no lyric starts no melisma, so its pair carries none.
-                        false,
-                        placeholderWidthSs,
-                        graceUnionWidthSs(columns, columnIndex));
+                        PairMelisma.NONE));
                     placeholders.put(
-                        element, new LyricBoxLayout(placeholderXSs, placeholderWidthSs, activeVerse, PLACEHOLDER_TEXT));
+                        element, new LyricBoxLayout(placeholderXSs, placeholderWidthSs, activeScript, PLACEHOLDER_TEXT));
                 }
 
                 continue;
@@ -198,7 +201,7 @@ public final class LyricLayoutBuilder {
 
             if (extend == Lyric.Extend.STOP) {
                 // STOP carrier: ends active extender past this note's notehead, no box.
-                state.closeExtenderPastHead(connectors, activeVerse, column.getNoteheadRightEdgeXSs());
+                state.closeExtenderPastHead(connectors, activeScript, column.getNoteheadRightEdgeXSs());
                 continue;
             }
 
@@ -209,13 +212,13 @@ public final class LyricLayoutBuilder {
             var hostColumn = graceHostColumn(columns, columnIndex);
             var hostLyric = hostColumn != null ? hostColumn.getLyric() : null;
             var graceUnionWidthSs = graceUnionWidthSs(columns, columnIndex);
-            var boxXSs = computeLyricBoxLeftXSs(
+            var boxXSs = computeLyricBoxLeftXSs(new BoxPlacement(
                 column,
-                lyricRenderMetrics.firstGraphemeWidthSs(text),
-                HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric),
                 widthSs,
-                graceUnionWidthSs);
-            var box = new LyricBoxLayout(boxXSs, widthSs, activeVerse, text);
+                lyricRenderMetrics.firstGraphemeWidthSs(text),
+                graceUnionWidthSs,
+                HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric)));
+            var box = new LyricBoxLayout(boxXSs, widthSs, activeScript, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
             // Close any pending hyphen at the start of this syllable.
@@ -225,14 +228,14 @@ public final class LyricLayoutBuilder {
                 connectors.add(new LyricConnectorLayout(
                     pendingHyphen.startXSs(),
                     boxXSs,
-                    activeVerse,
+                    activeScript,
                     LyricConnectorLayout.Kind.HYPHEN,
                     pendingHyphen.columnIndex()));
                 state.pendingHyphen = null;
             }
 
             // Close any active extender at the start of this syllable.
-            state.closeExtender(connectors, activeVerse, boxXSs);
+            state.closeExtender(connectors, activeScript, boxXSs);
 
             var syllableEndXSs = boxXSs + widthSs;
             var opensHyphen = Lyric.syllabicContinues(lyric.syllabic());
@@ -255,12 +258,12 @@ public final class LyricLayoutBuilder {
         // Any START that reaches the end of the line without being closed by a STOP or a
         // text-bearing note continues the melisma onto the next line.
         if (state.activeExtender != null) {
-            emitDanglingExtender(connectors, columns, state.activeExtender, activeVerse);
+            emitDanglingExtender(connectors, columns, state.activeExtender, activeScript);
             hasTrailingContinuation = true;
         }
 
         if (state.pendingHyphen != null) {
-            emitDanglingHyphen(connectors, columns, state.pendingHyphen, activeVerse);
+            emitDanglingHyphen(connectors, columns, state.pendingHyphen, activeScript);
         }
 
         // Always the lyric space width: a melisma is sung on a single (non-hyphenated) syllable,
@@ -297,7 +300,7 @@ public final class LyricLayoutBuilder {
      * follows it, so a melisma keeps the same gap from the next syllable that separates adjacent
      * words. An extender closed by a STOP carrier ends past that carrier per the
      * {@value #MIN_MELISMA_LENGTH_SS}-ss minimum-length rule, and the next syllable's box is not
-     * known at that point, so the clamp has to run once the whole verse is laid out.
+     * known at that point, so the clamp has to run once the whole script is laid out.
      * DANGLING_EXTENDER connectors have no following syllable on this line and are left untouched.
      */
     private static void clampExtendersToFollowingSyllable(
@@ -324,7 +327,7 @@ public final class LyricLayoutBuilder {
                 connectors.set(i, new LyricConnectorLayout(
                     connector.startXSs(),
                     maxEndXSs,
-                    connector.verseIndex(),
+                    connector.script(),
                     connector.kind(),
                     connector.sourceElementIndex()));
             }
@@ -366,34 +369,50 @@ public final class LyricLayoutBuilder {
      * grace carries the lyric, the host never does. The offset from the grace's origin comes from
      * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator also
      * reads to reserve the neighbor space, so the box is drawn where space was reserved. The pair's
-     * own melisma is part of what that offset places, so whether the pair carries one
-     * ({@link HorizontalSpacingCalculator#pairCarriesGraceHostMelisma}) is passed along, as is
-     * {@code graceUnionWidthSs}, the union as this line was actually spaced, which is the one input
-     * the reservation cannot share (see {@link #spacedGraceHostUnionWidthSs}).
-     * <p>
-     * {@code firstGraphemeWidthSs} is the width of the box text's first grapheme, measured in the
-     * font the box is drawn in.
+     * own melisma is part of what that offset places, so whether the pair carries one is passed
+     * along, as is the union as this line was actually spaced, which is the one input the
+     * reservation cannot share (see {@link #spacedGraceHostUnionWidthSs}).
+     *
+     * @param placement the box to place and the column it is placed on
+     * @return the box's left edge, in staff spaces
      */
-    private static double computeLyricBoxLeftXSs(
-        ElementColumn column,
-        double firstGraphemeWidthSs,
-        boolean pairCarriesGraceHostMelisma,
-        double widthSs,
-        double graceUnionWidthSs) {
+    private static double computeLyricBoxLeftXSs(BoxPlacement placement) {
+        var column = placement.column();
 
         if (column.isGraceNote()) {
-            return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
-                widthSs,
-                firstGraphemeWidthSs,
-                graceUnionWidthSs,
-                column,
-                pairCarriesGraceHostMelisma);
+            var syllable = new GraceSyllable(
+                placement.widthSs(),
+                placement.firstGraphemeWidthSs(),
+                placement.graceUnionWidthSs(),
+                placement.pairMelisma());
+
+            return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(syllable, column);
         }
 
         // Center the syllable on the notehead, which excludes the flag and augmentation dots
         // (getNoteheadCenterXSs) so neither shifts the lyric.
-        return column.getNoteheadCenterXSs() - widthSs / 2.0;
+        return column.getNoteheadCenterXSs() - placement.widthSs() / 2.0;
     }
+
+    /**
+     * What {@link #computeLyricBoxLeftXSs} places: a box of text on one column.
+     *
+     * @param column               the column the box is placed on
+     * @param widthSs              the box's width
+     * @param firstGraphemeWidthSs the width of the box text's first grapheme, measured in the font
+     *                             the box is drawn in
+     * @param graceUnionWidthSs    the grace–host union as this line was spaced
+     *                             ({@link #graceUnionWidthSs}); 0 when {@code column} is not a grace
+     *                             note
+     * @param pairMelisma          whether the grace–host pair carries its own melisma
+     */
+    private record BoxPlacement(
+        ElementColumn column,
+        double widthSs,
+        double firstGraphemeWidthSs,
+        double graceUnionWidthSs,
+        PairMelisma pairMelisma
+    ) {}
 
     /**
      * Returns the width of the grace–host lyric union this grace's syllable is laid out on, measured
@@ -479,7 +498,7 @@ public final class LyricLayoutBuilder {
         List<? super LyricConnectorLayout> connectors,
         List<ElementColumn> columns,
         ActiveExtender extender,
-        int verse
+        Song.Script script
     ) {
         var startColumnIndex = extender.sourceColumnIndex();
         var endXSs = startColumnIndex != null
@@ -512,7 +531,7 @@ public final class LyricLayoutBuilder {
         connectors.add(new LyricConnectorLayout(
             extender.startXSs(),
             endXSs,
-            verse,
+            script,
             LyricConnectorLayout.Kind.DANGLING_EXTENDER,
             startColumnIndex));
     }
@@ -531,7 +550,7 @@ public final class LyricLayoutBuilder {
         List<? super LyricConnectorLayout> connectors,
         List<ElementColumn> columns,
         PendingHyphen hyphen,
-        int verse
+        Song.Script script
     ) {
         for (var i = hyphen.columnIndex() + 1; i < columns.size(); i++) {
             var column = columns.get(i);
@@ -540,15 +559,15 @@ public final class LyricLayoutBuilder {
                 connectors.add(new LyricConnectorLayout(
                     hyphen.startXSs(),
                     column.getLeftEdgeXSs(),
-                    verse,
+                    script,
                     LyricConnectorLayout.Kind.DANGLING_HYPHEN,
                     hyphen.columnIndex()));
                 return;
             }
         }
 
-        LOG.error("Dangling hyphen at column {} in verse {} has no following eligible element on line",
-            hyphen.columnIndex(), verse);
+        LOG.error("Dangling hyphen at column {} in script {} has no following eligible element on line",
+            hyphen.columnIndex(), script);
     }
 
     /**
@@ -582,7 +601,7 @@ public final class LyricLayoutBuilder {
      */
     private record PendingHyphen(double startXSs, int columnIndex) {}
 
-    /** Mutable scratch state for tracking the active extender and pending hyphen during one verse pass. */
+    /** Mutable scratch state for tracking the active extender and pending hyphen during one script pass. */
     private static final class ExtenderState {
         @Nullable ActiveExtender activeExtender;
         @Nullable PendingHyphen pendingHyphen = null;
@@ -592,12 +611,12 @@ public final class LyricLayoutBuilder {
         }
 
         /** If an extender is active, emit it ending at endXSs and clear it. */
-        void closeExtender(List<? super LyricConnectorLayout> connectors, int verse, double endXSs) {
+        void closeExtender(List<? super LyricConnectorLayout> connectors, Song.Script script, double endXSs) {
             if (activeExtender != null) {
                 connectors.add(new LyricConnectorLayout(
                     activeExtender.startXSs(),
                     endXSs,
-                    verse,
+                    script,
                     LyricConnectorLayout.Kind.EXTENDER,
                     activeExtender.sourceColumnIndex()));
                 activeExtender = null;
@@ -612,12 +631,12 @@ public final class LyricLayoutBuilder {
          * first term collapses to {@code MIN_MELISMA_LENGTH_SS}; {@code headRightEdgeXSs}, an
          * absolute X position on this line, always dominates that {@code max()}.
          */
-        void closeExtenderPastHead(List<? super LyricConnectorLayout> connectors, int verse, double headRightEdgeXSs) {
+        void closeExtenderPastHead(List<? super LyricConnectorLayout> connectors, Song.Script script, double headRightEdgeXSs) {
             if (activeExtender == null) {
                 return;
             }
 
-            closeExtender(connectors, verse, Math.max(activeExtender.startXSs() + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs));
+            closeExtender(connectors, script, Math.max(activeExtender.startXSs() + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs));
         }
 
         /**
@@ -639,7 +658,7 @@ public final class LyricLayoutBuilder {
          */
         void closeGraceHostExtender(
             List<? super LyricConnectorLayout> connectors,
-            int verse,
+            Song.Script script,
             double headRightEdgeXSs,
             int hostColumnIndex) {
 
@@ -652,7 +671,7 @@ public final class LyricLayoutBuilder {
                 }
             }
 
-            closeExtenderPastHead(connectors, verse, headRightEdgeXSs);
+            closeExtenderPastHead(connectors, script, headRightEdgeXSs);
         }
     }
 }

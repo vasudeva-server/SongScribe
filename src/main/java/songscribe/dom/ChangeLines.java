@@ -31,7 +31,12 @@ package songscribe.dom;
  * @param first the line the change starts on
  * @param last  the line the change ends on
  * @invariant {@code first} and {@code last} are lines of one song
- * @invariant {@code last} is {@code first} or a later line of the song
+ * @invariant {@code last} is {@code first} or a later line of the song. The record does not
+ *     check it, because every producer guarantees it: {@link #on} names one line; the tie rule
+ *     names a tie's anchor line and the line its walk reaches, which is that line or the one
+ *     after it; and the MusicXML reader names a span's start mark's line and the line of the
+ *     stop mark that its forward walk reaches after the start. No line moves relative to
+ *     another once a change on it is recorded
  */
 public record ChangeLines(Line first, Line last) {
 

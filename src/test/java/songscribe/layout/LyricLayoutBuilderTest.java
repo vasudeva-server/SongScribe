@@ -33,7 +33,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.Key;
 import songscribe.dom.Lyric;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementFactory;
 
@@ -42,15 +44,13 @@ import static org.assertj.core.api.Assertions.within;
 
 /**
  * How far a melisma and a hyphen reach past the column they start on — the promise that a column
- * bearing no syllable is passed over rather than treated as the end of the chain. See
- * {@code docs/lyrics.md}.
+ * bearing no syllable is passed over rather than treated as the end of the chain — and which
+ * columns get a missing-lyric placeholder and where it sits. See {@code docs/lyrics.md}.
  */
 class LyricLayoutBuilderTest extends UnitTest {
 
     /** One element standing between two syllables, with the name its row reports. */
     private record InterveningElement(String description, Supplier<StaffElement> element) {}
-
-    private static final int VERSE = Lyric.FIRST_VERSE;
 
     /** Uniform column geometry: every fixture column is one staff space of ink, two apart. */
     private static final double COLUMN_WIDTH_SS = 1.0;
@@ -66,6 +66,21 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final double UNREAD_LINE_WIDTH_SS = 100.0;
 
     private static final double TOLERANCE_SS = 0.0001;
+
+    private static final int LYRICS_FONT_SIZE = 12;
+
+    private static final int SCALED_LYRICS_FONT_SIZE = 13;
+
+    private static final int PLACEHOLDER_FONT_SIZE = 14;
+
+    /** Narrower than the one staff space of notehead every fixture column has. */
+    private static final double NARROW_PLACEHOLDER_WIDTH_SS = 0.5;
+
+    /** Wider than a notehead, narrower than the three staff spaces a grace and its host span. */
+    private static final double MID_PLACEHOLDER_WIDTH_SS = 2.0;
+
+    /** Wider than the three staff spaces a grace and its host span. */
+    private static final double WIDE_PLACEHOLDER_WIDTH_SS = 5.0;
 
     private static final String FIRST_SYLLABLE = "hal";
 
@@ -109,11 +124,8 @@ class LyricLayoutBuilderTest extends UnitTest {
      */
     @Test
     void testAHyphenOpenedOnAGraceNoteReachesPastTheHostThatCanBearNoSyllable() {
-        var grace = StaffElementFactory.graceQuaver();
-        grace.setSlide(Slide.GLISSANDO);
-
-        var opening = column(0, grace,
-            new Lyric(VERSE, FIRST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        var opening = column(0, pairedGraceNote(),
+            new Lyric(Song.Script.LATIN, FIRST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
         var host = bareColumn(1, StaffElementFactory.crotchet());
         var slot = bareColumn(2, StaffElementFactory.crotchet());
 
@@ -135,7 +147,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         var start = syllableColumn(0, FIRST_SYLLABLE, Lyric.Syllabic.SINGLE, Lyric.Extend.START);
         var barline = bareColumn(1, StaffElementFactory.singleBarline());
         var carrier = column(2, StaffElementFactory.crotchet(),
-            new Lyric(VERSE, CARRIER_TEXT, Lyric.Extend.CONTINUE, null, false));
+            new Lyric(Song.Script.LATIN, CARRIER_TEXT, Lyric.Extend.CONTINUE, null, false));
 
         var result = build(List.of(start, barline, carrier));
         var extender = onlyConnector(result, LyricConnectorLayout.Kind.DANGLING_EXTENDER);
@@ -143,6 +155,173 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(extender.endXSs())
             .as("the melisma runs over the barline to the carrier beyond it")
             .isCloseTo(carrier.getRightEdgeXSs(), within(TOLERANCE_SS));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("placeholderCases")
+    void testOnlyAnElementThatCanBearASyllableButHasNoLyricGetsAPlaceholder(PlaceholderCase testCase) {
+        var result = build(testCase.columns());
+
+        var expectedBearers = testCase.bearerIndexes().stream()
+            .map(index -> testCase.columns().get(index).getElement())
+            .toList();
+
+        assertThat(result.placeholders().keySet()).containsExactlyInAnyOrderElementsOf(expectedBearers);
+        assertThat(result.placeholders().values())
+            .allSatisfy(box -> assertThat(box.text()).isEqualTo(LyricLayoutBuilder.PLACEHOLDER_TEXT));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("placementCases")
+    void testAPlaceholderSitsWhereASyllableOfItsWidthWould(PlacementCase testCase) {
+        var result = build(testCase.columns(), testCase.placeholderWidthSs());
+
+        var placeholder = result.placeholders().get(testCase.columns().get(testCase.bearerIndex()).getElement());
+
+        assertThat(placeholder).isNotNull();
+        assertThat(placeholder.widthSs()).isEqualTo(testCase.placeholderWidthSs());
+        assertThat(placeholder.xSs()).isCloseTo(testCase.expectedLeftXSs(), within(TOLERANCE_SS));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("openingSyllables")
+    void testAPlaceholderTakesNoSpaceAndTouchesNoConnector(OpeningSyllable testCase) {
+        var opening = StaffElementFactory.crotchet();
+        var closing = StaffElementFactory.crotchet();
+        var openingLyric = new Lyric(
+            Song.Script.LATIN, FIRST_SYLLABLE, testCase.extend(), testCase.syllabic(), false);
+        var closingLyric = new Lyric(
+            Song.Script.LATIN, LAST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+        var withPlaceholder = build(List.of(
+            column(0, opening, openingLyric),
+            bareColumn(1, StaffElementFactory.crotchet()),
+            column(2, closing, closingLyric)));
+        var withoutPlaceholder = build(List.of(
+            column(0, opening, openingLyric),
+            bareColumn(1, StaffElementFactory.crotchetRest()),
+            column(2, closing, closingLyric)));
+
+        assertThat(withPlaceholder.placeholders()).hasSize(1);
+        assertThat(withoutPlaceholder.placeholders()).isEmpty();
+        assertThat(withPlaceholder.connectors()).isNotEmpty();
+        assertThat(withPlaceholder.boxes()).isEqualTo(withoutPlaceholder.boxes());
+        assertThat(withPlaceholder.connectors()).isEqualTo(withoutPlaceholder.connectors());
+    }
+
+    /**
+     * One line, and which of its columns get a placeholder.
+     *
+     * @param description   the case, which doubles as the parameterized display name
+     * @param columns       the line's columns
+     * @param bearerIndexes the indexes of the columns that get a placeholder
+     */
+    private record PlaceholderCase(String description, List<ElementColumn> columns, List<Integer> bearerIndexes) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    /**
+     * One line, and where the placeholder of one of its columns goes.
+     *
+     * @param description         the case, which doubles as the parameterized display name
+     * @param columns             the line's columns
+     * @param bearerIndex         the index of the column whose placeholder is measured
+     * @param placeholderWidthSs  the width of the placeholder
+     * @param expectedLeftXSs     the left edge of the placeholder's box
+     */
+    private record PlacementCase(
+        String description,
+        List<ElementColumn> columns,
+        int bearerIndex,
+        double placeholderWidthSs,
+        double expectedLeftXSs
+    ) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    /**
+     * The syllable that opens a chain, which a placeholder after it must leave alone.
+     *
+     * @param description the case, which doubles as the parameterized display name
+     * @param syllabic    whether the syllable opens a hyphen
+     * @param extend      whether the syllable opens a melisma
+     */
+    private record OpeningSyllable(String description, Lyric.Syllabic syllabic, Lyric.Extend extend) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    /** A grace note paired with the note after it, which hosts it. */
+    private static NoteElement pairedGraceNote() {
+        var grace = StaffElementFactory.graceQuaver();
+        grace.setSlide(Slide.GLISSANDO);
+
+        return grace;
+    }
+
+    private static Lyric lyricOf(String text) {
+        return new Lyric(Song.Script.LATIN, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+    }
+
+    static Stream<PlaceholderCase> placeholderCases() {
+        var graceColumn = bareColumn(0, pairedGraceNote());
+        var hostColumn = bareColumn(1, StaffElementFactory.crotchet());
+
+        return Stream.of(
+            new PlaceholderCase("a note with no lyric", List.of(bareColumn(0, StaffElementFactory.crotchet())),
+                List.of(0)),
+            new PlaceholderCase("a note with a lyric",
+                List.of(column(0, StaffElementFactory.crotchet(), lyricOf(FIRST_SYLLABLE))), List.of()),
+            new PlaceholderCase("a rest", List.of(bareColumn(0, StaffElementFactory.crotchetRest())), List.of()),
+            new PlaceholderCase("a barline", List.of(bareColumn(0, StaffElementFactory.singleBarline())), List.of()),
+            new PlaceholderCase("a breath mark", List.of(bareColumn(0, StaffElementFactory.breathMark())), List.of()),
+            new PlaceholderCase("a key change",
+                List.of(bareColumn(0, StaffElementFactory.keyChange(Key.NO_ACCIDENTALS))), List.of()),
+            new PlaceholderCase("a grace note and its host, the placeholder going to the grace",
+                List.of(graceColumn, hostColumn), List.of(0))
+        );
+    }
+
+    static Stream<PlacementCase> placementCases() {
+        return Stream.of(
+            new PlacementCase("a note's placeholder is centered on its notehead",
+                List.of(bareColumn(0, StaffElementFactory.crotchet())), 0, NARROW_PLACEHOLDER_WIDTH_SS,
+                (COLUMN_WIDTH_SS - NARROW_PLACEHOLDER_WIDTH_SS) / 2.0),
+            new PlacementCase("a grace note's placeholder narrower than its notehead is centered on it",
+                pairedGraceAndHost(), 0, NARROW_PLACEHOLDER_WIDTH_SS,
+                (COLUMN_WIDTH_SS - NARROW_PLACEHOLDER_WIDTH_SS) / 2.0),
+            new PlacementCase("a grace note's placeholder wider than its notehead starts centered on it",
+                pairedGraceAndHost(), 0, MID_PLACEHOLDER_WIDTH_SS,
+                (COLUMN_WIDTH_SS - MID_PLACEHOLDER_WIDTH_SS) / 2.0),
+            new PlacementCase("a grace note's placeholder wider than the pair is centered on the pair",
+                pairedGraceAndHost(), 0, WIDE_PLACEHOLDER_WIDTH_SS,
+                -(WIDE_PLACEHOLDER_WIDTH_SS - (COLUMN_PITCH_SS + COLUMN_WIDTH_SS)) / 2.0)
+        );
+    }
+
+    static Stream<OpeningSyllable> openingSyllables() {
+        return Stream.of(
+            new OpeningSyllable("a melisma", Lyric.Syllabic.SINGLE, Lyric.Extend.START),
+            new OpeningSyllable("a hyphen", Lyric.Syllabic.BEGIN, Lyric.Extend.NONE)
+        );
+    }
+
+    /** A paired grace note and its host, the pair spanning {@code COLUMN_PITCH_SS + COLUMN_WIDTH_SS}. */
+    private static List<ElementColumn> pairedGraceAndHost() {
+        return List.of(
+            bareColumn(0, pairedGraceNote()),
+            bareColumn(1, StaffElementFactory.crotchet()));
     }
 
     static Stream<InterveningElement> interveningElements() {
@@ -156,7 +335,12 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     private static LyricLayoutBuilder.Result build(List<ElementColumn> columns) {
-        return LyricLayoutBuilder.build(columns, VERSE, metrics(), false, UNREAD_LINE_WIDTH_SS);
+        return build(columns, NARROW_PLACEHOLDER_WIDTH_SS);
+    }
+
+    private static LyricLayoutBuilder.Result build(List<ElementColumn> columns, double placeholderWidthSs) {
+        return LyricLayoutBuilder.build(
+            columns, Song.Script.LATIN, metrics(placeholderWidthSs), false, UNREAD_LINE_WIDTH_SS);
     }
 
     /**
@@ -181,7 +365,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         Lyric.Extend extend
     ) {
         return column(index, StaffElementFactory.crotchet(),
-            new Lyric(VERSE, text, extend, syllabic, false));
+            new Lyric(Song.Script.LATIN, text, extend, syllabic, false));
     }
 
     private static ElementColumn bareColumn(int index, StaffElement element) {
@@ -206,9 +390,19 @@ class LyricLayoutBuilderTest extends UnitTest {
         return column.getNoteheadCenterXSs() - SYLLABLE_WIDTH_SS / 2.0;
     }
 
-    private static LyricRenderMetrics metrics() {
-        var font = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+    /** Metrics whose three fonts differ in face and size, so no one is mistaken for another. */
+    private static LyricRenderMetrics metrics(double placeholderWidthSs) {
+        var lyricsFont = new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE);
+        var scaledLyricsFont = new Font(Font.SERIF, Font.ITALIC, SCALED_LYRICS_FONT_SIZE);
+        var placeholderFont = new Font(Font.MONOSPACED, Font.BOLD, PLACEHOLDER_FONT_SIZE);
 
-        return new LyricRenderMetrics(font, font, font, SPACE_WIDTH_SS, SPACE_WIDTH_SS, 0.0);
+        return new LyricRenderMetrics(
+            lyricsFont,
+            scaledLyricsFont,
+            placeholderFont,
+            SPACE_WIDTH_SS,
+            SPACE_WIDTH_SS,
+            placeholderWidthSs,
+            0.0);
     }
 }

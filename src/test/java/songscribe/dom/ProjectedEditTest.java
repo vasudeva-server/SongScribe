@@ -88,7 +88,11 @@ class ProjectedEditTest extends UnitTest {
         return Stream.of(
             new ProjectionCase("a note replaced by a key change", ProjectedEditTest::replacementCase),
             new ProjectionCase("a fragment holding a key change past its first element, inserted",
-                ProjectedEditTest::fragmentWithKeyChangeCase));
+                ProjectedEditTest::fragmentWithKeyChangeCase),
+            new ProjectionCase("a fragment inserted at the start of the song under a new starting key",
+                ProjectedEditTest::newStartingKeyCase),
+            new ProjectionCase("a line emptied under a new starting key",
+                ProjectedEditTest::emptiedUnderNewStartingKeyCase));
     }
 
     private static Fixture replacementCase() {
@@ -97,7 +101,7 @@ class ProjectedEditTest extends UnitTest {
         var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
 
         return new Fixture(song,
-            ProjectedEdit.replacing(line, ElementRange.single(2), List.of(keyChange)),
+            ProjectedEdit.replacing(line, ElementRange.single(2), List.of(keyChange), line.getRunningKey()),
             () -> line.setElement(2, keyChange));
     }
 
@@ -114,8 +118,46 @@ class ProjectedEditTest extends UnitTest {
             StaffElementFactory.keyChange(Key.ONE_SHARP), StaffElementFactory.note(F, Accidental.NATURAL));
 
         return new Fixture(song,
-            ProjectedEdit.inserting(line, 1, fragment),
+            ProjectedEdit.inserting(line, 1, fragment, line.getRunningKey()),
             () -> line.insertRun(1, fragment));
+    }
+
+    /**
+     * A paste at the start of the song whose dropped key change moves its key onto the line: the
+     * projection starts the line in that key, and the paste lands it as the line's own key ahead
+     * of the fragment. The fragment carries nothing that ends what is in force, so only the moved
+     * key carries the walk past it, to every note on this line and the line that inherits.
+     */
+    private static Fixture newStartingKeyCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + " " + OTHER + " " + F + "s", OTHER + " " + F);
+        var line = song.getLine(0);
+        var fragment = List.<StaffElement>of(StaffElementFactory.note(F), StaffElementFactory.note(OTHER));
+
+        return new Fixture(song,
+            ProjectedEdit.inserting(line, 0, fragment, Key.ONE_SHARP),
+            () -> {
+                line.setKey(Key.ONE_SHARP);
+                line.insertRun(0, fragment);
+            });
+    }
+
+    /**
+     * An edit that empties its line and moves the key the line starts in: the scan view answers
+     * the moved key for the edited line, and the line after it, which inherits, starts in that key
+     * too, so its notes are walked in the new key though no element of the edited line is left to
+     * carry the walk there.
+     */
+    private static Fixture emptiedUnderNewStartingKeyCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, String.valueOf(F), OTHER + " " + F);
+        var line = song.getLine(0);
+        var emptied = ElementRange.single(0);
+
+        return new Fixture(song,
+            ProjectedEdit.replacing(line, emptied, List.of(), Key.ONE_SHARP),
+            () -> {
+                line.setKey(Key.ONE_SHARP);
+                line.removeRange(emptied);
+            });
     }
 
     private static Stream<StaffElement> elementsOf(Song song) {

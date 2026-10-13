@@ -45,7 +45,10 @@ import static songscribe.dom.SpanFactory.ratioOf;
 class TupletLoadPassTest extends UnitTest {
 
     private static final int PITCH = 3;
-    private static final int LINE = 0;
+
+    /** The line under test: the second, behind a line of one note. */
+    private static final int LINE = 1;
+    private static final String LEADING_LINE = String.valueOf(PITCH);
 
     private static final int TRIPLET_GRADE = TupletGrade.TRIPLET.number();
 
@@ -85,7 +88,7 @@ class TupletLoadPassTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("addedCases")
     void testAPendingTupletIsAddedWithItsRatioAndOffset(AddedCase testCase) {
-        var song = compactSong(Key.NO_ACCIDENTALS, THREE_NOTES);
+        var song = songOfThreeNotes();
         var line = song.getLine(LINE);
 
         var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
@@ -116,7 +119,7 @@ class TupletLoadPassTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("droppedCases")
     void testAPendingTupletTheValidatorRejectsIsDroppedWithItsReason(DroppedCase testCase) {
-        var song = compactSong(Key.NO_ACCIDENTALS, THREE_NOTES);
+        var song = songOfThreeNotes();
         var line = song.getLine(LINE);
 
         var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
@@ -135,7 +138,12 @@ class TupletLoadPassTest extends UnitTest {
         );
     }
 
-    /** The range every report entry of this class names: the one line. */
+    /** A song whose {@link #LINE} holds {@link #THREE_NOTES}, behind a line of one note. */
+    private static Song songOfThreeNotes() {
+        return compactSong(Key.NO_ACCIDENTALS, LEADING_LINE, THREE_NOTES);
+    }
+
+    /** The range every report entry of this class names: the line under test. */
     private static LineRange lineRange() {
         return new LineRange(LINE, LINE);
     }

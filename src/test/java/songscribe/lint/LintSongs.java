@@ -121,38 +121,38 @@ final class LintSongs {
     }
 
     /**
-     * A crotchet that carries {@code text} as its syllable in {@code verse}.
+     * A crotchet that carries {@code text} as its syllable in {@code script}.
      *
      * @return the note
      */
-    static NoteElement sung(int verse, String text, Lyric.Extend extend, Lyric.Syllabic syllabic) {
+    static NoteElement sung(Song.Script script, String text, Lyric.Extend extend, Lyric.Syllabic syllabic) {
         var note = StaffElementFactory.crotchet();
-        note.putLyric(new Lyric(verse, text, extend, syllabic, false));
+        note.putLyric(new Lyric(script, text, extend, syllabic, false));
 
         return note;
     }
 
     /**
-     * A crotchet that carries a melisma carrier in {@code verse}.
+     * A crotchet that carries a melisma carrier in {@code script}.
      *
      * @return the note
      */
-    static NoteElement carrier(int verse, Lyric.Extend extend) {
+    static NoteElement carrier(Song.Script script, Lyric.Extend extend) {
         var note = StaffElementFactory.crotchet();
-        note.putLyric(Lyric.carrier(verse, extend));
+        note.putLyric(Lyric.carrier(script, extend));
 
         return note;
     }
 
     /**
-     * A grace note paired with the note after it, sung on {@code text} in {@code verse}.
+     * A grace note paired with the note after it, sung on {@code text} in {@code script}.
      *
      * @return the grace note
      */
-    static NoteElement pairedGraceNote(int verse, String text) {
+    static NoteElement pairedGraceNote(Song.Script script, String text) {
         var grace = StaffElementFactory.graceQuaver();
         grace.setSlide(Slide.GLISSANDO);
-        grace.putLyric(new Lyric(verse, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        grace.putLyric(new Lyric(script, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
         return grace;
     }
@@ -183,8 +183,15 @@ final class LintSongs {
         return positions;
     }
 
-    /** A violation as a test reads it: where it sits in song order and what it says. */
-    record Found(int position, String description) {
+    /**
+     * A violation as a test reads it: where it sits in song order, the heading and the text it
+     * says, and the kind of mark it carries.
+     */
+    record Found(int position, String heading, String description, Class<? extends LintMark> markType) {
+    }
+
+    /** What one expected violation says: the {@code Strings} keys of its heading and its text. */
+    record Reason(String headingKey, String descriptionKey) {
     }
 
     /**
@@ -197,32 +204,41 @@ final class LintSongs {
     static List<Found> found(Song song, List<Violation> violations) {
         return violations.stream()
                          .map(violation -> new Found(
-                             positionOf(song, violation.mark().element()), violation.description()))
+                             positionOf(song, violation.mark().element()),
+                             violation.heading(),
+                             violation.description(),
+                             violation.mark().getClass()))
                          .toList();
     }
 
     /**
-     * The violations that {@code notations} mark as expected, each with the text of its reason.
+     * The violations that {@code notations} mark as expected, each with the text of its heading
+     * and of its reason.
      *
-     * @param reasonKeys the {@code Strings} key of each violation's reason, one per mark of
-     *                   {@code notations} and in the same order
-     * @param notations  the notations of {@link #song}, one per line
+     * @param markType the kind of mark every expected violation carries
+     * @param reasons  the heading and reason of each violation, one per mark of {@code notations}
+     *                 and in the same order
+     * @param notations the notations of {@link #song}, one per line
      * @return one {@link Found} per mark
      * @throws IllegalArgumentException when the marks and the reasons differ in number
      */
-    static List<Found> expected(List<String> reasonKeys, String... notations) {
+    static List<Found> expected(Class<? extends LintMark> markType, List<Reason> reasons, String... notations) {
         var positions = markedPositions(notations);
 
-        if (positions.size() != reasonKeys.size()) {
+        if (positions.size() != reasons.size()) {
             throw new IllegalArgumentException(
-                positions.size() + " marks in " + Arrays.toString(notations) + " but " + reasonKeys.size()
+                positions.size() + " marks in " + Arrays.toString(notations) + " but " + reasons.size()
                     + " reasons");
         }
 
         var expected = new ArrayList<Found>();
 
         for (var i = 0; i < positions.size(); i++) {
-            expected.add(new Found(positions.get(i), Strings.get(reasonKeys.get(i))));
+            var reason = reasons.get(i);
+            expected.add(new Found(positions.get(i),
+                                   Strings.get(reason.headingKey()),
+                                   Strings.get(reason.descriptionKey()),
+                                   markType));
         }
 
         return expected;

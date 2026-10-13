@@ -488,7 +488,7 @@ public enum ElementType {
      *
      * @return {@code true} for every type but a repeat
      */
-    public boolean bearsLyricChain() {
+    boolean bearsLyricChain() {
         return !isRepeat();
     }
 
@@ -663,21 +663,21 @@ public enum ElementType {
      * back to starts just after it.
      *
      * @return {@code true} for a left repeat and a left-right repeat
-     * @see Song#repeatSectionStart
+     * @see RepeatSections
      */
     public boolean opensRepeatSection() {
         return this == REPEAT_LEFT || this == REPEAT_LEFT_RIGHT;
     }
 
     /**
-     * Whether a bar of this type ends any repeat section open before it, so that a {@code :|}
-     * after it finds no section to play back to unless another bar opens one. This is wider
-     * than {@link #closesRepeat()}: a {@code ||} and a final barline end a section without
-     * sending playback back.
+     * Whether a bar of this type ends a repeat section open before it. This is wider than
+     * {@link #closesRepeat()}: a {@code ||} and a final barline end every open section without
+     * sending playback back, so that a {@code :|} after them finds no section to play back to
+     * unless another bar opens one.
      *
      * @return {@code true} for every type {@link #closesRepeat()} accepts, a double barline and
      *     a final double barline
-     * @see Song#repeatSectionStart
+     * @see RepeatSections
      */
     public boolean closesRepeatSection() {
         return closesRepeat() || this == DOUBLE_BARLINE || this == FINAL_DOUBLE_BARLINE;

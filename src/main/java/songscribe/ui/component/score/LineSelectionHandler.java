@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
@@ -38,18 +39,18 @@ import songscribe.hit.HitRegion;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.LyricBoxLayout;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.SweepRange;
 import songscribe.lint.LintMark;
 import songscribe.lint.LintReport;
-import songscribe.lint.Linter;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
-import songscribe.ui.renderer.LyricTextRenderer;
+import songscribe.ui.renderer.LineInvariants;
 
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
@@ -251,10 +252,14 @@ class LineSelectionHandler {
      * <p>
      * A "?" has no region in the hit registry. Layout places a placeholder under every slot that
      * lacks a syllable, but the lint report decides which of them are drawn, and layout never
-     * reads the lint report. This test therefore asks the renderer which placeholders it draws,
-     * and tests each against the region a syllable in its place would have.
+     * reads the lint report. This test therefore looks only at the elements of the line that
+     * carry a {@link LintMark.MissingLyric} mark, keeps those for which
+     * {@link LineInvariants#drawnLyricPlaceholder} draws a "?", and tests the point against the
+     * box {@link #markBoundsSs} gives each.
      *
-     * @return the "?" under the point, or {@code null} when the point is not over one
+     * @param viewPoint the point, in this component's view pixels
+     * @return the "?" under the point, or {@code null} when the point is not over one or this
+     *         component has no line laid out
      */
     @Nullable MissingLyricHit hitTestMissingLyricViewPoint(Point viewPoint) {
         var ready = lc.readyLayout();
@@ -263,15 +268,24 @@ class LineSelectionHandler {
             return null;
         }
 
+        var line = ready.line();
         var layoutResult = ready.layoutResult();
+        var report = line.getSong().getLinter().getReport();
         var lyricRenderMetrics = lc.getLyricRenderMetrics();
         var pointSs = new Point2D.Double(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
-        for (var element : ready.line().getElements()) {
-            var placeholder = drawnLyricPlaceholder(ready, element);
+        for (var element : line.getElements()) {
+            for (var mark : report.marksOn(element)) {
+                if (!(mark instanceof LintMark.MissingLyric missingLyric)
+                    || LineInvariants.drawnLyricPlaceholder(missingLyric, layoutResult) == null) {
+                    continue;
+                }
 
-            if (placeholder != null && layoutResult.lyricBoxContains(placeholder, lyricRenderMetrics, pointSs)) {
-                return new MissingLyricHit(element, layoutResult.lyricBoxRectSs(placeholder, lyricRenderMetrics));
+                var boundsSs = markBoundsSs(missingLyric, layoutResult, lyricRenderMetrics);
+
+                if (boundsSs.contains(pointSs)) {
+                    return new MissingLyricHit(missingLyric, boundsSs);
+                }
             }
         }
 
@@ -279,157 +293,150 @@ class LineSelectionHandler {
     }
 
     /**
-     * Returns the placeholder the renderer draws a "?" on for {@code element}, from the current
-     * lint report and the song's active verse.
-     *
-     * @return the drawn placeholder, or {@code null} when no "?" is drawn on the element
-     */
-    private static @Nullable LyricBoxLayout drawnLyricPlaceholder(LineComponent.ReadyLayout ready, StaffElement element) {
-        var activeVerse = ready.line().getSong().getActiveVerse();
-        return LyricTextRenderer.drawnLyricPlaceholder(ready.layoutResult(), Linter.getReport(), activeVerse, element);
-    }
-
-    /**
-     * Returns the lint mark under a point: its "?", or else the target a click there gets, when the
-     * lint report marks that target.
+     * Returns the lint mark under a point: its "?", or else the mark {@code report} puts on the
+     * target a click there gets.
      * <p>
      * The "?" comes first because it stands in the lyric row, and a lyric outranks every other
      * target.
      *
-     * @param region       the point's {@link #hitRegionAtViewPoint} result
-     * @param missingLyric the point's {@link #hitTestMissingLyricViewPoint} result
-     * @return the mark under the point, with the box of the "?" or of the winning region, or
-     *         {@code null} when the point is on no mark
+     * @param region       the point's {@link #hitRegionAtViewPoint} result; {@code null} means
+     *                     the point is on no region, or this component has no line laid out
+     * @param missingLyric the point's {@link #hitTestMissingLyricViewPoint} result; {@code null}
+     *                     means the point is on no "?"
+     * @param report       the song's current lint report
+     * @param layoutResult the current layout of this component's line, which both hit tests read
+     * @return the mark under the point, with the box {@link #markBoundsSs} gives it; {@code null}
+     *         when the point is on no "?" and {@code report} puts no mark on the region's target,
+     *         or both hit tests found nothing
      */
-    @Nullable LintMarkHit lintMarkAt(@Nullable HitRegion region, @Nullable MissingLyricHit missingLyric) {
-        var line = lc.getLine();
-
-        if (missingLyric != null && line != null) {
-            var mark = new LintMark.MissingLyric(missingLyric.element(), line.getSong().getActiveVerse());
-            return new LintMarkHit(mark, missingLyric.boundsSs());
+    @Nullable LintMarkHit lintMarkAt(
+        @Nullable HitRegion region,
+        @Nullable MissingLyricHit missingLyric,
+        LintReport report,
+        LayoutResult layoutResult
+    ) {
+        if (missingLyric != null) {
+            return new LintMarkHit(missingLyric.mark(), missingLyric.boundsSs());
         }
 
         if (region == null) {
             return null;
         }
 
-        var mark = lintMarkOf(region.target(), Linter.getReport());
+        var mark = lintMarkOf(region.target(), report);
 
         if (mark == null) {
             return null;
         }
 
-        return new LintMarkHit(mark, region.shapeSs().getBounds2D());
+        return new LintMarkHit(mark, markBoundsSs(mark, layoutResult, lc.getLyricRenderMetrics()));
     }
 
     /**
-     * Returns the lint mark under a point, as {@link #lintMarkAt(HitRegion, MissingLyricHit)}
-     * does for the point's own hit tests.
+     * Returns where this line draws a lint mark of the current report, with the box
+     * {@link #markBoundsSs} gives it in this line's current layout.
      *
-     * @return the mark under the point and its box, or {@code null} when the point is on no mark
+     * @param mark a mark of the song's current lint report whose element is on this component's
+     *             line
+     * @return the mark and its box
      */
-    @Nullable LintMarkHit lintMarkAt(Point viewPoint) {
-        return lintMarkAt(hitRegionAtViewPoint(viewPoint), hitTestMissingLyricViewPoint(viewPoint));
+    LintMarkHit lintMarkHit(LintMark mark) {
+        return new LintMarkHit(mark, markBoundsSs(mark, lc.requireLayoutResult(), lc.getLyricRenderMetrics()));
     }
 
     /**
-     * Returns where this line draws a lint mark: the inverse of {@link #lintMarkAt(Point)}.
+     * Returns the box of the item {@code mark} is drawn on. Each kind of mark is one keyed lookup
+     * in {@code layoutResult}, through the method that also builds the box the pointer is tested
+     * against:
+     * <ul>
+     *   <li>{@link LintMark.Flagged}: the element's hit box, {@link LayoutResult#elementHitRectSs},
+     *       which the hit registry holds for the element;</li>
+     *   <li>{@link LintMark.FlaggedAnnotation}: the annotation's ink box,
+     *       {@link LayoutResult.DecorationLayout#inkRectSs}, which the hit registry holds for the
+     *       annotation;</li>
+     *   <li>{@link LintMark.MissingLyric}: the box of the placeholder the "?" is drawn in
+     *       ({@link LineInvariants#drawnLyricPlaceholder}), {@link LayoutResult#lyricBoxRectSs},
+     *       which {@link #hitTestMissingLyricViewPoint} tests.</li>
+     * </ul>
+     * The registry widens its boxes by {@code HitRegionBuilder}'s inclusive edge margin; the box
+     * returned here is the one before that margin.
      *
-     * @return the mark with the box of its "?", or with the union of the boxes of the regions whose
-     *         target {@link #lintMarkAt(Point)} answers with the mark; {@code null} when this line
-     *         does not draw the mark, because the mark's element is on another line or the current
-     *         report does not hold the mark
+     * @param mark               a mark of the song's current lint report, whose element
+     *                           {@code layoutResult} laid out
+     * @param layoutResult       the current layout of the line that holds the mark's element
+     * @param lyricRenderMetrics the lyric render metrics {@code layoutResult} was laid out with
+     * @return a new box, in the hit registry's line-local, midline-relative staff spaces
+     * @throws IllegalStateException if {@code layoutResult} draws no item for {@code mark}: no
+     *         annotation for a {@link LintMark.FlaggedAnnotation}, or no "?" for a
+     *         {@link LintMark.MissingLyric}. The score draws every mark of the current report on
+     *         the current layout of its line, so this means the caller passed a mark of another
+     *         report or a layout that is not current.
      */
-    @Nullable LintMarkHit lintMarkHit(LintMark mark) {
-        var ready = lc.readyLayout();
+    static Rectangle2D markBoundsSs(LintMark mark, LayoutResult layoutResult, LyricRenderMetrics lyricRenderMetrics) {
+        return switch (mark) {
+            case LintMark.Flagged flagged -> layoutResult.elementHitRectSs(flagged.element());
 
-        if (ready == null) {
-            return null;
-        }
+            case LintMark.FlaggedAnnotation flaggedAnnotation -> {
+                var annotationLayout = layoutResult.decorationLayouts()
+                    .findAttachmentDecorationLayout(flaggedAnnotation.element(), AnnotationAttachment.class);
 
-        var boundsSs = switch (mark) {
-            case LintMark.MissingLyric missingLyric -> missingLyricBoundsSs(ready, missingLyric);
-            case LintMark.Flagged _, LintMark.FlaggedAnnotation _ -> regionBoundsSs(ready, mark);
+                if (annotationLayout == null) {
+                    throw new IllegalStateException("layout has no annotation for lint mark: " + mark);
+                }
+
+                yield annotationLayout.inkRectSs();
+            }
+
+            case LintMark.MissingLyric missingLyric -> {
+                var placeholder = LineInvariants.drawnLyricPlaceholder(missingLyric, layoutResult);
+
+                if (placeholder == null) {
+                    throw new IllegalStateException("layout draws no \"?\" for lint mark: " + mark);
+                }
+
+                yield layoutResult.lyricBoxRectSs(placeholder, lyricRenderMetrics);
+            }
         };
-
-        return boundsSs == null ? null : new LintMarkHit(mark, boundsSs);
-    }
-
-    /** The box of the "?" drawn for {@code mark}, or {@code null} when none is drawn. */
-    private @Nullable Rectangle2D missingLyricBoundsSs(LineComponent.ReadyLayout ready, LintMark.MissingLyric mark) {
-        if (mark.verse() != ready.line().getSong().getActiveVerse()) {
-            return null;
-        }
-
-        var placeholder = drawnLyricPlaceholder(ready, mark.element());
-
-        if (placeholder == null) {
-            return null;
-        }
-
-        return ready.layoutResult().lyricBoxRectSs(placeholder, lc.getLyricRenderMetrics());
-    }
-
-    /**
-     * The union of the boxes of the regions whose target is {@code mark}'s item, or {@code null}
-     * when no region's target is.
-     */
-    private static @Nullable Rectangle2D regionBoundsSs(LineComponent.ReadyLayout ready, LintMark mark) {
-        var report = Linter.getReport();
-        Rectangle2D boundsSs = null;
-
-        for (var region : ready.layoutResult().getHitRegistry().regions()) {
-            if (!mark.equals(lintMarkOf(region.target(), report))) {
-                continue;
-            }
-
-            var regionBoundsSs = region.shapeSs().getBounds2D();
-
-            if (boundsSs == null) {
-                boundsSs = regionBoundsSs;
-            } else {
-                boundsSs.add(regionBoundsSs);
-            }
-        }
-
-        return boundsSs;
     }
 
     /**
      * Returns the lint mark a hit target shows: a flagged element, or the annotation of an element
      * whose annotation is flagged.
      *
-     * @return the mark, or {@code null} when {@code report} marks nothing on the target
+     * @return the mark, or {@code null} when {@code report} puts no such mark on the target
      */
     private static @Nullable LintMark lintMarkOf(HitTarget target, LintReport report) {
-        if (target instanceof HitTarget.Element(var element) && report.isFlagged(element)) {
-            return new LintMark.Flagged(element);
+        LintMark mark = null;
+
+        if (target instanceof HitTarget.Element(var element)) {
+            mark = new LintMark.Flagged(element);
+        } else if (target instanceof HitTarget.Attachment(AnnotationAttachment annotation)
+            && annotation.owner() instanceof StaffElement owner) {
+            mark = new LintMark.FlaggedAnnotation(owner);
         }
 
-        if (target instanceof HitTarget.Attachment(AnnotationAttachment annotation)
-            && annotation.owner() instanceof StaffElement owner
-            && report.isAnnotationFlagged(owner)) {
-            return new LintMark.FlaggedAnnotation(owner);
+        if (mark == null || !report.marksOn(mark.element()).contains(mark)) {
+            return null;
         }
 
-        return null;
+        return mark;
     }
 
     /**
      * A "?" under the pointer.
      *
-     * @param element  the slot that lacks a lyric
+     * @param mark     the mark the "?" is drawn for
      * @param boundsSs the box the "?" is hit in, in the hit registry's midline-relative staff
      *                 spaces
      */
-    record MissingLyricHit(StaffElement element, Rectangle2D boundsSs) { }
+    record MissingLyricHit(LintMark.MissingLyric mark, Rectangle2D boundsSs) { }
 
     /**
-     * A lint mark under the pointer, and where the item under the pointer is.
+     * A lint mark, and the box of the item it is drawn on.
      *
      * @param mark     the mark
-     * @param boundsSs the box of the "?" or of the hit region the pointer is on, in the hit
-     *                 registry's midline-relative staff spaces
+     * @param boundsSs the box {@link #markBoundsSs} gives the mark, in the hit registry's
+     *                 midline-relative staff spaces
      */
     record LintMarkHit(LintMark mark, Rectangle2D boundsSs) { }
 
@@ -493,7 +500,7 @@ class LineSelectionHandler {
         pressHandled = switch (hitTarget) {
             case null -> false;
 
-            case HitTarget.Lyric(var element, var verse) -> selectLyric(element, verse);
+            case HitTarget.Lyric(var element, var script) -> selectLyric(element, script);
 
             case HitTarget.Element(var element) -> selectAndPlayElement(element);
 
@@ -577,8 +584,8 @@ class LineSelectionHandler {
             return false;
         }
 
-        var selected = target instanceof HitTarget.Lyric(var element, var verse)
-            && selectLyric(element, verse);
+        var selected = target instanceof HitTarget.Lyric(var element, var script)
+            && selectLyric(element, script);
 
         if (selected) {
             lc.repaint();
@@ -697,7 +704,7 @@ class LineSelectionHandler {
     }
 
     /**
-     * Makes the lyric on {@code element} in verse {@code verse} the sole selection.
+     * Makes the lyric on {@code element} in script {@code script} the sole selection.
      * <p>
      * Unlike every other target, a lyric names the line it belongs to, so the coordinator
      * resolves and activates that line itself: there is no registration this can find missing,
@@ -707,9 +714,9 @@ class LineSelectionHandler {
      *         target, which can fail on an unregistered line
      */
     @SuppressWarnings("SameReturnValue")
-    private boolean selectLyric(StaffElement element, int verse) {
+    private boolean selectLyric(StaffElement element, Song.Script script) {
         var scoreView = lc.getScoreView();
-        scoreView.getSelectionCoordinator().selectLyric(element, verse);
+        scoreView.getSelectionCoordinator().selectLyric(element, script);
         scoreView.selectionChanged();
         return true;
     }

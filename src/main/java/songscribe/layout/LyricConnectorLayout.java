@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Song;
+
 /**
  * Line-level lyric span connector (a hyphen between syllables or a melisma extender line).
  * <p>
@@ -40,7 +42,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @param startXSs           left edge of the connector in staff spaces
  * @param endXSs             right edge of the connector in staff spaces
- * @param verseIndex         1-based verse number
+ * @param script             the script the connector joins syllables of
  * @param kind               connector kind
  * @param sourceElementIndex index of the element that opened this connector within its line,
  *                           or {@code null} when the connector is a leading continuation
@@ -49,7 +51,7 @@ import org.jspecify.annotations.Nullable;
 public record LyricConnectorLayout(
     double startXSs,
     double endXSs,
-    int verseIndex,
+    Song.Script script,
     Kind kind,
     @Nullable Integer sourceElementIndex
 ) {

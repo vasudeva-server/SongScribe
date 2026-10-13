@@ -20,6 +20,7 @@
 
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
@@ -56,6 +57,36 @@ class ChangeReportResolutionTest extends UnitTest {
     }
 
     @Test
+    void testALineRemovedInFrontOfARecordedLineMovesTheReportedIndexDown() {
+        var song = songOfEmptyLines();
+        var recordedLine = song.getLine(SECOND_LINE);
+        var builder = new ChangeReport.Builder(song);
+
+        builder.record(changeOn(ChangeLines.on(recordedLine)));
+        song.withoutMutationTracking(() -> song.removeLine(FIRST_LINE));
+
+        var reported = builder.build().changes();
+
+        assertThat(reported).singleElement()
+            .extracting(ReportedChange::where)
+            .isEqualTo(new LineRange(FIRST_LINE, FIRST_LINE));
+    }
+
+    @Test
+    void testAnEntryWithNoPlaceHasNoLineRange() {
+        var song = songOfEmptyLines();
+        var builder = new ChangeReport.Builder(song);
+
+        builder.record(changeOn(null));
+
+        var reported = builder.build().changes();
+
+        assertThat(reported).singleElement()
+            .extracting(ReportedChange::where)
+            .isNull();
+    }
+
+    @Test
     void testATieAcrossALineBreakReportsBothLines() {
         var song = songOfEmptyLines();
         var builder = new ChangeReport.Builder(song);
@@ -73,7 +104,7 @@ class ChangeReportResolutionTest extends UnitTest {
         return SongFactory.compactSong(Key.NO_ACCIDENTALS, NO_NOTES, NO_NOTES);
     }
 
-    private static RecordedChange changeOn(ChangeLines where) {
+    private static RecordedChange changeOn(@Nullable ChangeLines where) {
         return new RecordedChange(Strings.REPORT_TIES_REMOVED, Strings.get(Strings.REPORT_REASON_TIE_NOT_HELD), where);
     }
 }

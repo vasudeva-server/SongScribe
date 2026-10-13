@@ -116,6 +116,17 @@ public interface StaffElementRun {
     }
 
     /**
+     * Whether {@code index} is the song-start slot: an element inserted there becomes the first
+     * element of a song. {@link SongStart} states the rule this answers for, and no bar line may
+     * be written there.
+     *
+     * @param index an insertion index of this run
+     * @return {@code true} when an element inserted at {@code index} would stand first in the
+     *     song this run belongs to; always {@code false} for a run that belongs to no song
+     */
+    boolean isSongStartAt(int index);
+
+    /**
      * Returns the note at {@code index}, for a caller whose index is known to name one: a beam
      * member, the owner of a slide, the anchor of a pitch shift. The question a caller asks when
      * it already knows the answer's kind and wants the element narrowed rather than tested.
@@ -400,31 +411,42 @@ public interface StaffElementRun {
     }
 
     /**
-     * Whether the element at {@code index} may be replaced in place — clicked through with
-     * another element in note entry, which swaps the new element in and keeps the index.
+     * Whether the element at {@code index} may be replaced in place by an element of type
+     * {@code incoming} — clicked through with another element in note entry, which swaps the new
+     * element in and keeps the index.
      *
-     * <p>Two things are refused, both because they are half of a pair that only means anything
-     * whole: a <b>grace note</b>, which belongs to the host that follows it, and either half of a
-     * <b>key change and the barline it sits behind</b> — the pair rule in
-     * {@code docs/key-changes.md}, which {@link #effectiveBegin} deletes whole for the same
-     * reason.
+     * <p>Two things are refused whatever {@code incoming} is, both because they are half of a
+     * pair that only means anything whole: a <b>grace note</b>, which belongs to the host that
+     * follows it, and either half of a <b>key change and the barline it sits behind</b> — the pair
+     * rule in {@code docs/key-changes.md}, which {@link #effectiveBegin} deletes whole for the
+     * same reason.
+     *
+     * <p>A <b>bar line</b> — an {@code incoming} whose {@link ElementType#isBar()} is true — is
+     * also refused where it would stand first in the song ({@link SongStart}): at the song-start
+     * slot, or on the host of a paired grace note at that slot. A replacement by anything but a
+     * pitched note takes the paired grace note in front of it along, so the bar line would then
+     * stand where the grace note stood; {@link #effectiveBegin} is that reach.
      *
      * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
      * the element's place, while an insertion lands in front of it.
      * {@link #canInsertElementAt} is the insertion-side question.
      *
-     * @param index element index; out of range yields true, since nothing stands there to
-     *     protect and the caller's own bounds decide what happens next
-     * @return {@code true} when note entry may write over the element at {@code index}
+     * @param index    element index; out of range yields true, since nothing stands there to
+     *                 protect and the caller's own bounds decide what happens next
+     * @param incoming the type of the element that would take the place of the one at
+     *                 {@code index}
+     * @return {@code true} when note entry may write an element of type {@code incoming} over the
+     *     element at {@code index}
      */
-    default boolean canReplaceElementAt(int index) {
+    default boolean canReplaceElementAt(int index, ElementType incoming) {
         if (!hasIndex(index)) {
             return true;
         }
 
         return !getElement(index).getType().isGraceNote()
             && !isKeyChangeAt(index)
-            && !isKeyChangeBarlineAt(index);
+            && !isKeyChangeBarlineAt(index)
+            && !(incoming.isBar() && isSongStartAt(effectiveBegin(index)));
     }
 
     /**
@@ -462,8 +484,12 @@ public interface StaffElementRun {
 
     /**
      * Whether a run of elements may be inserted in front of the element at {@code index}: the
-     * rule {@link #canInsertElementAt} states for a single element, plus the breath-mark
-     * placement rule for the run's two ends.
+     * rule {@link #canInsertElementAt} states for a single element, the song-start rule for the
+     * run's first element, and the breath-mark placement rule for the run's two ends.
+     *
+     * <p><b>No bar line stands first in the song</b> ({@link SongStart}), so a run whose first
+     * element is a bar line — its {@link ElementType#isBar()} is true — is refused at the
+     * song-start slot, {@link #isSongStartAt}.
      *
      * <p><b>A breath mark stands only immediately after a duration element</b> — a pitched note
      * or a rest, the types whose {@link ElementType#isDuration()} is true. {@code canInsertElementAt}
@@ -478,10 +504,13 @@ public interface StaffElementRun {
      *       {@link #canTrailRunAt}.</li>
      * </ul>
      *
-     * <p>Two routes ask the halves rather than this. A paste asks each half separately, because
-     * each half has a dialog of its own to raise. {@link #canInsertKeyChangeAt} asks only
-     * {@link #canTrailRunAt} of the two: its run never begins with a breath mark, and the slot
-     * rules it adds are its own. Every other way a run lands on a line asks this.
+     * <p>Two routes ask the parts rather than this. A paste asks each breath-mark half
+     * separately, because each half has a dialog of its own to raise, and asks
+     * {@link #isSongStartAt} itself, because it drops the bar lines that start its fragment
+     * there rather than refusing. {@link #canInsertKeyChangeAt} asks only {@link #canTrailRunAt}
+     * of the breath-mark halves: its run never begins with a breath mark, and the slot rules it
+     * adds are its own — index 0 among them, so its barline never lands in the song-start slot.
+     * Every other way a run lands on a line asks this.
      *
      * @param index the slot the run would be inserted at, so that its first element lands in
      *     front of the element currently at {@code index}
@@ -493,7 +522,13 @@ public interface StaffElementRun {
             return false;
         }
 
-        if (run.getFirst().getType().isBreathMark() && !canLeadRunAt(index)) {
+        var firstType = run.getFirst().getType();
+
+        if (firstType.isBar() && isSongStartAt(index)) {
+            return false;
+        }
+
+        if (firstType.isBreathMark() && !canLeadRunAt(index)) {
             return false;
         }
 
@@ -624,7 +659,7 @@ public interface StaffElementRun {
      * asking {@link StaffElement#canBearSyllable}, which states the rule and which
      * {@code LyricLayoutBuilder} asks of the columns it is laying out instead.
      *
-     * <p>Does not vary by verse: an element that can hold a syllable can hold one in every verse.
+     * <p>Does not vary by script: an element that can hold a syllable can hold one in every script.
      *
      * @param index element index
      * @return {@code true} when a syllable may be written on the element at {@code index}

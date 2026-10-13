@@ -249,6 +249,11 @@ public final class StaffElementIO {
         // song opens modified. Read out via sawLegacyAccidental().
         private boolean sawLegacyAccidental = false;
 
+        // True when the current element lost a <lyric> whose number names no script.
+        // LineIO.LineReader reads this after each note and records the element's line, so each
+        // line that lost one is reported once.
+        private boolean droppedLyric = false;
+
         // State for the lyric currently being parsed (valid while where == LYRIC)
         private int lyricNumber;
         private String lyricSyllabic = "";
@@ -271,11 +276,22 @@ public final class StaffElementIO {
             return sawLegacyAccidental;
         }
 
+        /**
+         * Returns true if the most recently completed element lost a lyric whose number names no
+         * script. Such a lyric is dropped rather than refusing the file, and its line is reported
+         * with {@link songscribe.dom.ParsedSong#lyricDroppedEntry}. Valid only after
+         * {@code endElement11} returns a non-null element.
+         */
+        public boolean droppedLyric() {
+            return droppedLyric;
+        }
+
         public boolean startElement10(String qName, Attributes attributes) throws SAXException {
             if (qName.equals(XML_NOTE)) {
                 lastTag = null;
                 where = Where.ELEMENT;
                 trillFlagged = false;
+                droppedLyric = false;
                 stemForced = false;
                 stemUp = false;
                 var type = attributes.getValue(XML_TYPE);
@@ -311,6 +327,7 @@ public final class StaffElementIO {
                 lastTag = null;
                 where = Where.ELEMENT;
                 trillFlagged = false;
+                droppedLyric = false;
                 stemForced = false;
                 stemUp = false;
 
@@ -431,11 +448,15 @@ public final class StaffElementIO {
                         compound = stripped.hadMarker();
                     }
 
-                    if (!Lyric.isCarrier(lyricExtend) && lyricText.isBlank()) {
+                    var script = LyricNumbers.toScript(lyricNumber);
+
+                    if (script == null) {
+                        droppedLyric = true;
+                    } else if (!Lyric.isCarrier(lyricExtend) && lyricText.isBlank()) {
                         LOG.warn("Dropping blank lyric syllable for verse {}", lyricNumber);
                     } else {
                         element.putLyric(
-                            new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
+                            new Lyric(script, lyricText, lyricExtend, syllabic, compound)
                         );
                     }
 

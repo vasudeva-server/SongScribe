@@ -28,12 +28,13 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.ProjectedEdit;
 import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElementRun;
 
 /**
  * Spacing calculations for element insertion operations.
@@ -127,15 +128,18 @@ public final class InsertionSpacingCalculator {
 
     /**
      * Result of a fragment insertion spacing calculation: the projected spring chain its fit gate
-     * solves. The multi-element analogue of {@link InsertionResult}.
+     * solves, and the keys it solves against. The multi-element analogue of
+     * {@link InsertionResult}.
      *
      * @param line             The line the fragment lands on
      * @param projectedColumns The line's columns as {@link LayoutEngine} will build them after the
      *                         operation — the surviving columns with the fragment's clones spliced
      *                         in, including the terminal barline — what {@link #fitsWithinLine}
      *                         solves
+     * @param projectedKeys    The line's keys as the operation leaves them: the key it starts in,
+     *                         the key it leaves off in, and the key the line after it begins in
      */
-    public record FragmentInsertionResult(Line line, List<ElementColumn> projectedColumns) {
+    public record FragmentInsertionResult(Line line, List<ElementColumn> projectedColumns, LineKeys projectedKeys) {
         public FragmentInsertionResult {
             projectedColumns = List.copyOf(projectedColumns);
         }
@@ -147,11 +151,12 @@ public final class InsertionSpacingCalculator {
          * rejected.
          *
          * @param staffRightMarginSs The maximum allowed line width in staff spaces
-         * @return {@code true} unless the projected spring chain solves INFEASIBLE
+         * @return {@code true} unless the projected spring chain solves INFEASIBLE against
+         *         {@link #projectedKeys}
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
             return !HorizontalSpacingCalculator
-                .solveLine(projectedColumns, line, staffRightMarginSs).isInfeasible();
+                .solveLine(projectedColumns, line, staffRightMarginSs, projectedKeys).isInfeasible();
         }
     }
 
@@ -352,86 +357,99 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Calculates the fit for inserting a multi-element fragment at {@code target}, optionally
-     * replacing a deleted range first (paste-replace). Pure measurement — the line and the
-     * fragment elements are never mutated; the projection is built on lightweight columns.
+     * Calculates the fit of {@code edit}, the paste of a multi-element fragment: its inserted
+     * elements spliced into its line at its index, in place of the elements it removes when it is
+     * a paste-replace. Pure measurement — the line and the fragment elements are never mutated;
+     * the projection is built on lightweight columns.
      * <p>
      * The multi-element analogue of {@link #calculateInsertion}: it builds the projected line the
      * commit will produce — surviving predecessors, the fragment's clones, then the surviving
      * successors. Fit is the same compress-to-fit solve over the same chain the layout engine
      * runs, including the terminal barline, so an insert the gate accepts always lays out.
      * <p>
+     * The solve reads the line in the keys the edit leaves it in. The line's opening key
+     * signature is measured at the width of {@link ProjectedEdit#startKey()}; every key change
+     * on the projected line moves the key on from there, which gives each pasted key signature
+     * the key it cancels, the key the line leaves off in, and so the key the line after it begins
+     * in unless that line has its own.
+     * <p>
      * The surrounding columns and the fragment's own clones carry their real syllable widths
      * whenever a {@link LyricRenderMetrics} is supplied, mirroring {@link #calculateInsertion}.
      * Callers with no lyric metrics to hand may pass {@code null}, which falls back to
      * syllable-less columns for both.
      *
-     * @param fragment           The elements to be inserted, in order (must be non-empty)
-     * @param target             Where the fragment lands: a plain index, or the effective range
-     *                           this paste-replace deletes first and the index it leaves the
-     *                           fragment at
+     * @param edit               The paste as the edit leaves its line; it inserts at least one
+     *                           element, and removes none of the line's auto-maintained terminal
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
-     * @return A {@link FragmentInsertionResult} with the projected spring chain its fit gate solves
+     * @return A {@link FragmentInsertionResult} with the projected spring chain its fit gate
+     *         solves and the projected keys it solves against
+     * @throws IllegalArgumentException if {@code edit} inserts nothing, or removes the line's
+     *     auto-maintained terminal
      */
     public static FragmentInsertionResult calculateFragmentInsertion(
-        Line line,
-        List<? extends StaffElement> fragment,
-        StaffElementRun.InsertionTarget target,
-        @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        ProjectedEdit edit, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
+        var fragment = edit.inserted();
 
         if (fragment.isEmpty()) {
             throw new IllegalArgumentException("fragment must not be empty");
         }
 
-        var insertIndex = target.insertIndex();
-        var deleteRange = target.deleteRange() == null ? null : target.deleteRange().range();
+        var line = edit.line();
+        var insertIndex = edit.index();
         var effectiveCount = line.effectiveElementCount();
 
-        if (insertIndex < 0 || insertIndex > effectiveCount) {
-            throw new IllegalArgumentException(
-                "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']');
-        }
+        // A paste-replace drops the deleted range by skipping straight from the predecessors to
+        // the element past the range.
+        var successorIndex = insertIndex + edit.removed().size();
 
-        if (deleteRange != null && (deleteRange.begin() < 0 || deleteRange.end() >= effectiveCount)) {
-            throw new IllegalArgumentException("invalid deleteRange " + deleteRange);
+        if (successorIndex > effectiveCount) {
+            throw new IllegalArgumentException(
+                "edit at " + insertIndex + " removing " + edit.removed().size()
+                    + " elements runs past the effective end " + effectiveCount);
         }
 
         // The projected chain: surviving predecessors, the fragment's clones, then the surviving
-        // successors — the line as it will read after delete+insert. A paste-replace drops the
-        // deleted range by skipping straight from the predecessors to the element past the range.
-        var successorIndex = deleteRange == null ? insertIndex : deleteRange.end() + 1;
+        // successors — the line as it will read after delete+insert.
         var columns = new ArrayList<ElementColumn>();
         var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
 
+        // The key in effect at each projected element, starting from the key the edit leaves the
+        // line starting in.
+        var runningKey = edit.startKey();
+
         for (var i = 0; i < insertIndex; i++) {
-            columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
+            var element = line.getElement(i);
+            runningKey = keyAfter(element, runningKey);
+            columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
         }
 
-        var activeVerse = line.getSong().getActiveVerse();
+        var activeScript = line.getSong().getActiveScript();
 
         // A key signature's width depends on the key it cancels as well as the key it establishes,
         // and a fragment element sits on no line to read that from. The projected sequence is what
         // knows it: the key in effect just before the insertion point, moved on by each key
         // change the fragment itself carries. Each one is measured through a stand-in told that
         // key, so a pasted or inserted signature reserves the room its naturals actually need.
-        var runningKey = line.keyBefore(insertIndex);
-
         for (var element : fragment) {
             var measured = element;
 
             if (element instanceof KeyChangeElement keyChange) {
                 measured = KeyChangeElement.forMeasurement(keyChange.getKey(), runningKey);
-                runningKey = keyChange.getKey();
             }
 
+            runningKey = keyAfter(element, runningKey);
+
             columns.add(columnBuilder != null
-                ? columnBuilder.buildDetachedColumn(measured, activeVerse)
+                ? columnBuilder.buildDetachedColumn(measured, activeScript)
                 : ElementColumnBuilder.buildLightweightColumn(measured));
         }
 
         for (var i = successorIndex; i < effectiveCount; i++) {
-            columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
+            var element = line.getElement(i);
+            runningKey = keyAfter(element, runningKey);
+            columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
         }
 
         // The fit gate solves the SAME chain LayoutEngine will after the commit — the projected
@@ -439,7 +457,30 @@ public final class InsertionSpacingCalculator {
         // exactly as calculateInsertion does for a single element.
         appendTerminalIfPresent(columns, line, columnBuilder);
 
-        return new FragmentInsertionResult(line, columns);
+        var keys = new LineKeys(edit.startKey(), runningKey, nextRunningKey(line, runningKey));
+
+        return new FragmentInsertionResult(line, columns, keys);
+    }
+
+    /** The key in effect after {@code element}, when {@code key} is in effect before it. */
+    private static Key keyAfter(StaffElement element, Key key) {
+        return (element instanceof KeyChangeElement keyChange) ? keyChange.getKey() : key;
+    }
+
+    /**
+     * The key the line after {@code line} begins in once {@code line} leaves off in
+     * {@code keyAtEndOfLine}: its own key when it has one, and otherwise the key it inherits.
+     *
+     * @return the key, or null when {@code line} is its song's last line
+     */
+    private static @Nullable Key nextRunningKey(Line line, Key keyAtEndOfLine) {
+        if (line.isLast()) {
+            return null;
+        }
+
+        var nextOwnKey = line.getSong().getLine(line.index() + 1).getKey();
+
+        return (nextOwnKey != null) ? nextOwnKey : keyAtEndOfLine;
     }
 
     /**

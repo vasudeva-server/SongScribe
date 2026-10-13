@@ -30,7 +30,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
  * A SMuFL line segment glyph tiled {@code count} times along one baseline, as a trill's wavy
- * extension or a missing-lyric squiggle is drawn.
+ * extension or the lint squiggle under a flagged annotation's text is drawn.
  * <p>
  * Every glyph is drawn at the {@link ScaledGlyph}'s own scale and advance. The run is never
  * stretched or squeezed to fit a span, so a span that is not a whole number of glyphs wide
@@ -45,29 +45,62 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  */
 record GlyphRun(ScaledGlyph tile, double startXSs, int count, double baselineYSs) {
 
+    // A span is built from two edges, so a span exactly n glyphs wide can measure a rounding
+    // error short of n advances. A count this close to the next whole number counts as whole.
+    private static final double WHOLE_GLYPH_TOLERANCE = 1e-9;
+
     /**
-     * The run of as many whole glyphs as fit between {@code startXSs} and {@code endXSs}, at
-     * least one, with the first glyph's pen origin at {@code startXSs}.
+     * A horizontal stretch of a line that a run is fitted to, in staff spaces.
+     *
+     * @param leftXSs  the span's left edge
+     * @param rightXSs the span's right edge
      */
-    static GlyphRun startingAt(ScaledGlyph tile, double startXSs, double endXSs, double baselineYSs) {
-        return new GlyphRun(tile, startXSs, fittingCount(tile, endXSs - startXSs), baselineYSs);
+    record Span(double leftXSs, double rightXSs) {
+
+        /**
+         * Returns the span's width.
+         *
+         * @return {@link #rightXSs} minus {@link #leftXSs}, in staff spaces
+         */
+        double widthSs() {
+            return rightXSs - leftXSs;
+        }
     }
 
     /**
-     * The run of as many whole glyphs as fit between {@code leftXSs} and {@code rightXSs}, at
-     * least one, centered on that span. A run wider than the span overflows it equally on both
-     * sides.
+     * The run of as many whole glyphs as fit in {@code span}, at least one, with the first
+     * glyph's pen origin at the span's left edge.
+     *
+     * @param tile        the glyph to tile
+     * @param span        the stretch the run is fitted to
+     * @param baselineYSs the Y every glyph is drawn at
+     * @return a run of {@code tile} whose first glyph starts at {@code span}'s left edge, holding
+     *     the most whole glyphs that fit in {@code span}, and one when none fits
      */
-    static GlyphRun centeredOn(ScaledGlyph tile, double leftXSs, double rightXSs, double baselineYSs) {
-        var count = fittingCount(tile, rightXSs - leftXSs);
+    static GlyphRun startingAt(ScaledGlyph tile, Span span, double baselineYSs) {
+        return new GlyphRun(tile, span.leftXSs(), fittingCount(tile, span.widthSs()), baselineYSs);
+    }
+
+    /**
+     * The run of as many whole glyphs as fit in {@code span}, at least one, centered on it. A run
+     * wider than the span overflows it equally on both sides.
+     *
+     * @param tile        the glyph to tile
+     * @param span        the stretch the run is fitted to
+     * @param baselineYSs the Y every glyph is drawn at
+     * @return a run of {@code tile} holding the most whole glyphs that fit in {@code span}, and
+     *     one when none fits, whose center is {@code span}'s center
+     */
+    static GlyphRun centeredOn(ScaledGlyph tile, Span span, double baselineYSs) {
+        var count = fittingCount(tile, span.widthSs());
         var runWidthSs = count * tile.advanceSs();
-        var startXSs = (leftXSs + rightXSs - runWidthSs) / 2;
+        var startXSs = span.leftXSs() + (span.widthSs() - runWidthSs) / 2;
 
         return new GlyphRun(tile, startXSs, count, baselineYSs);
     }
 
     private static int fittingCount(ScaledGlyph tile, double lengthSs) {
-        return Math.max(1, (int) Math.floor(lengthSs / tile.advanceSs()));
+        return Math.max(1, (int) Math.floor(lengthSs / tile.advanceSs() + WHOLE_GLYPH_TOLERANCE));
     }
 
     /**

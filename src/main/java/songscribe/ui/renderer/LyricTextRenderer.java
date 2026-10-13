@@ -24,6 +24,7 @@ import java.awt.Graphics2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.error.RuntimeError;
 import songscribe.layout.LayoutResult;
@@ -42,11 +43,11 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  * Renders per-element lyric syllable text beneath the staff.
  * <p>
  * Reads {@link LyricBoxLayout} entries from the current
- * {@link LayoutResult} and draws each syllable at the verse
+ * {@link LayoutResult} and draws each syllable at the lyric
  * baseline provided by that line's own {@link LayoutResult}. It also draws the
- * {@link LintMark.MissingLyric} mark: the element's placeholder box
- * ({@link LayoutResult#getLyricPlaceholder}), in {@link LyricRenderMetrics#placeholderFont()}
- * and {@link ScoreView#getLintColor()}, so the mark
+ * {@link LintMark.MissingLyric} mark: the placeholder box
+ * {@link LineInvariants#lintOn} says a "?" is drawn in, in
+ * {@link LyricRenderMetrics#placeholderFont()} and {@link ScoreView#getLintColor()}, so the mark
  * stands exactly where the missing syllable would. Stateless.
  */
 public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
@@ -75,8 +76,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
 
         var layoutResult = invariants.getLayoutResult();
         var boxes = layoutResult.getLyricBoxes(element);
-        var placeholder = drawnLyricPlaceholder(
-            layoutResult, invariants.getLintReport(), invariants.getSong().getActiveVerse(), element);
+        var placeholder = invariants.lintOn(element).lyricPlaceholder();
 
         if (boxes.isEmpty() && placeholder == null) {
             return;
@@ -109,7 +109,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             g2.setFont(viewScale.zoomedFont(lyricRenderMetrics.lyricsFont()));
 
             for (var box : boxes) {
-                g2.setColor(invariants.getLyricColor(elementIndex, element, box.verseIndex()));
+                g2.setColor(invariants.getLyricColor(elementIndex, element, box.script()));
                 drawBox(g2, box, viewPxPerSs, yPx);
             }
 
@@ -119,32 +119,6 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
                 drawBox(g2, placeholder, viewPxPerSs, yPx);
             }
         }
-    }
-
-    /**
-     * Returns the placeholder this renderer draws a "?" for on {@code element}: the one layout
-     * gave it, when the lint report marks it as lacking a lyric in the active verse. Only the
-     * active verse counts, because the lyric row shows that verse alone.
-     * <p>
-     * The pointer tests ask this too, so a "?" is hovered and clicked exactly where it is drawn.
-     *
-     * @param layoutResult the layout of the element's line
-     * @param lintReport   the lint report whose findings are drawn
-     * @param activeVerse  the song's active verse, 1-based as {@code Song.getActiveVerse()} is
-     * @param element      the element to look up
-     * @return the drawn placeholder, or null when no "?" is drawn on the element
-     */
-    public static @Nullable LyricBoxLayout drawnLyricPlaceholder(
-        LayoutResult layoutResult,
-        LintReport lintReport,
-        int activeVerse,
-        StaffElement element
-    ) {
-        if (!lintReport.missingLyricVerses(element).contains(activeVerse)) {
-            return null;
-        }
-
-        return layoutResult.getLyricPlaceholder(element);
     }
 
     private static void drawBox(Graphics2D g2, LyricBoxLayout box, double viewPxPerSs, int yPx) {

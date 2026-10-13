@@ -41,7 +41,10 @@ import static songscribe.dom.SongFactory.compactSong;
 class HairpinLoadPassTest extends UnitTest {
 
     private static final int PITCH = 3;
-    private static final int LINE = 0;
+
+    /** The line under test: the second, behind a line of one note. */
+    private static final int LINE = 1;
+    private static final String LEADING_LINE = String.valueOf(PITCH);
 
     /** The three elements every single-hairpin case spans. */
     private static final ElementRange SPAN = new ElementRange(0, 2);
@@ -74,7 +77,7 @@ class HairpinLoadPassTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("addedCases")
     void testAPendingHairpinIsAddedWithItsKindAndBothOffsets(AddedCase testCase) {
-        var song = compactSong(Key.NO_ACCIDENTALS, PITCH + " " + PITCH + " " + PITCH);
+        var song = songOf(PITCH + " " + PITCH + " " + PITCH);
         var line = song.getLine(LINE);
         var report = settle(song, List.of(pending(testCase.kind(), line, SPAN)));
 
@@ -95,7 +98,7 @@ class HairpinLoadPassTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("droppedCases")
     void testAPendingHairpinTheFactoryRefusesIsDroppedWithItsReason(DroppedCase testCase) {
-        var song = compactSong(Key.NO_ACCIDENTALS, testCase.notation());
+        var song = songOf(testCase.notation());
         var line = song.getLine(LINE);
         var report = settle(song, List.of(pending(Hairpin.Kind.CRESCENDO, line, SPAN)));
 
@@ -116,7 +119,7 @@ class HairpinLoadPassTest extends UnitTest {
     @ParameterizedTest(name = "{0} first")
     @MethodSource("oppositeKindOrders")
     void testOfTwoOverlappingPendingHairpinsOfOppositeKindsTheLaterIsDropped(Hairpin.Kind first) {
-        var song = compactSong(Key.NO_ACCIDENTALS, FOUR_NOTES);
+        var song = songOf(FOUR_NOTES);
         var line = song.getLine(LINE);
         var second = first.opposite();
 
@@ -134,6 +137,11 @@ class HairpinLoadPassTest extends UnitTest {
 
     static Stream<Hairpin.Kind> oppositeKindOrders() {
         return Stream.of(Hairpin.Kind.values());
+    }
+
+    /** A song whose {@link #LINE} is {@code notation}, behind a line of one note. */
+    private static Song songOf(String notation) {
+        return compactSong(Key.NO_ACCIDENTALS, LEADING_LINE, notation);
     }
 
     /** Settles {@code song} with {@code hairpins} as the only pending spans the reader found. */

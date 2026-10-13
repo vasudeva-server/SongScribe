@@ -26,7 +26,6 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.engraving.StaffPosition;
-import songscribe.error.RuntimeError;
 import songscribe.smufl.Notehead;
 import songscribe.smufl.StemmedNotehead;
 
@@ -409,25 +408,6 @@ public final class NoteElement extends StaffElement implements Dottable {
         }
 
         return chain;
-    }
-
-    /**
-     * Returns the line this note is in, for a caller that holds a note it knows is in one: a
-     * note it reached through a tie ({@link #tie()}, {@link #incomingTie()},
-     * {@link #tieChain()}), each of which reaches only notes in lines.
-     *
-     * <p>Exits the program when this note is in no line, which no tie produces.
-     *
-     * @return the line holding this note
-     */
-    public Line requireParentLine() {
-        var line = getParentLine();
-
-        if (line == null) {
-            throw RuntimeError.exit("a note reached through a tie is in no line: " + this);
-        }
-
-        return line;
     }
 
     /**

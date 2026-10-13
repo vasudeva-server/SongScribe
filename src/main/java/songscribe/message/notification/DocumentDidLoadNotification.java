@@ -22,7 +22,6 @@ package songscribe.message.notification;
 
 import songscribe.dom.ChangeReport;
 import songscribe.dom.Song;
-import songscribe.message.Message;
 
 /**
  * Posted when a document is installed as the one being edited: File &gt; Open, File &gt; New and
@@ -32,7 +31,7 @@ import songscribe.message.Message;
  * <p>Carries the report of what the load changed in the song on its own
  * ({@link #getReport()}), which is empty for File &gt; New, since no file was read.
  */
-public class DocumentDidLoadNotification extends Message {
+public class DocumentDidLoadNotification extends LintingNotification {
 
     /** Whether the load left the song as its file holds it. */
     public enum LoadChange {
@@ -54,7 +53,6 @@ public class DocumentDidLoadNotification extends Message {
         }
     }
 
-    private final Song song;
     private final ChangeReport report;
 
     /**
@@ -62,12 +60,8 @@ public class DocumentDidLoadNotification extends Message {
      *               for a song no file holds yet
      */
     public DocumentDidLoadNotification(Song song, ChangeReport report) {
-        this.song = song;
+        super(song);
         this.report = report;
-    }
-
-    public Song getSong() {
-        return song;
     }
 
     /**

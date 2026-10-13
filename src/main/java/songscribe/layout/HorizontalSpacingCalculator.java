@@ -872,19 +872,18 @@ public final class HorizontalSpacingCalculator {
      * place the box, and the extent methods below derive the neighbour reservations from the same
      * formula.
      * <p>
-     * The one input the two callers cannot share is {@code unionWidthSs}. The reservation runs while
+     * The one input the two callers cannot share is the union width. The reservation runs while
      * the line is still being solved, so it has to pass the ideal {@link #idealGraceHostUnionWidthSs};
      * the placement runs afterwards and passes the union the solver actually produced, which differs
      * from the ideal by the optical correction and by any strut that clamped the gap. Centering on
      * the ideal width while a different width is drawn is what left a grace syllable and its melisma
      * sitting off their own two notes.
      * <p>
-     * The grace and its host are one unioned column for lyric layout, {@code unionWidthSs}
-     * wide. The syllable is not the whole of what is drawn: a pair that carries its own melisma
-     * ({@code hasMelisma}) draws an extender at least
+     * The grace and its host are one unioned column for lyric layout, the union width wide. The
+     * syllable is not the whole of what is drawn: a pair that carries its own melisma
+     * ({@link PairMelisma#CARRIED}) draws an extender at least
      * {@link LyricLayoutBuilder#MIN_MELISMA_LENGTH_SS} long past the syllable, and that extender is
-     * part of the content being placed. The widths are parameters rather than read off the grace so
-     * callers can supply a per-verse box width.
+     * part of the content being placed.
      * <ul>
      *   <li>syllable narrower than the grace notehead → center the whole syllable on the notehead;
      *   <li>syllable alone spanning the union → the melisma is not drawn at all
@@ -896,14 +895,15 @@ public final class HorizontalSpacingCalculator {
      *   <li>syllable plus melisma wider than the union → center the two together on the union, so
      *       the pair keeps its syllable and its extender balanced over its own two notes.
      * </ul>
+     *
+     * @param syllable the grace's syllable, the union it is laid out on, and the pair's melisma
+     * @param grace    the grace's column, whose notehead the syllable is placed against
+     * @return the offset from {@code grace}'s origin to the syllable box's left edge, in staff
+     *     spaces
      */
-    public static double graceLyricLeftOffsetSs(
-        double syllableWidthSs,
-        double firstGraphemeWidthSs,
-        double unionWidthSs,
-        ElementColumn grace,
-        boolean hasMelisma) {
-
+    public static double graceLyricLeftOffsetSs(GraceSyllable syllable, ElementColumn grace) {
+        var syllableWidthSs = syllable.syllableWidthSs();
+        var unionWidthSs = syllable.unionWidthSs();
         var noteheadWidthSs = grace.getNoteheadWidthSs();
 
         if (syllableWidthSs < noteheadWidthSs) {
@@ -914,12 +914,12 @@ public final class HorizontalSpacingCalculator {
             return -(syllableWidthSs - unionWidthSs) / 2;
         }
 
-        var contentWidthSs = hasMelisma
+        var contentWidthSs = syllable.pairMelisma() == PairMelisma.CARRIED
             ? syllableWidthSs + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS
             : syllableWidthSs;
 
         if (contentWidthSs <= unionWidthSs) {
-            return (noteheadWidthSs - firstGraphemeWidthSs) / 2;
+            return (noteheadWidthSs - syllable.firstGraphemeWidthSs()) / 2;
         }
 
         return -(contentWidthSs - unionWidthSs) / 2;
@@ -975,18 +975,52 @@ public final class HorizontalSpacingCalculator {
      * the melisma onward ({@link Lyric.Extend#CONTINUE}) ends it somewhere past the pair, so neither
      * is the pair's own.
      *
-     * @param graceLyric the grace's lyric for the verse being laid out, or null if it has none
-     * @param hostLyric  the host's lyric for the same verse, or null if it has none
+     * @param graceLyric the grace's lyric for the script being laid out, or null if it has none
+     * @param hostLyric  the host's lyric for the same script, or null if it has none
+     * @return {@link PairMelisma#CARRIED} when the pair carries that melisma, otherwise
+     *     {@link PairMelisma#NONE}
      */
-    public static boolean pairCarriesGraceHostMelisma(
+    public static PairMelisma pairCarriesGraceHostMelisma(
         @Nullable Lyric graceLyric, @Nullable Lyric hostLyric) {
 
-        return graceLyric != null
+        var carried = graceLyric != null
             && graceLyric.extend() == Lyric.Extend.START
             && !Lyric.syllabicContinues(graceLyric.syllabic())
             && hostLyric != null
             && hostLyric.extend() == Lyric.Extend.STOP;
+
+        return carried ? PairMelisma.CARRIED : PairMelisma.NONE;
     }
+
+    /**
+     * Whether a grace–host pair carries the melisma of its own that
+     * {@link #pairCarriesGraceHostMelisma} describes. Only a syllable on a grace note reads it.
+     */
+    public enum PairMelisma {
+        /** The pair carries its own melisma, which is placed together with the syllable. */
+        CARRIED,
+        /** The pair carries no melisma of its own; only the syllable is placed. */
+        NONE
+    }
+
+    /**
+     * A grace note's syllable as {@link #graceLyricLeftOffsetSs} places it: the syllable, the
+     * grace–host union it is laid out on, and whether the pair draws a melisma of its own past
+     * it. The widths are given rather than read off the grace so a caller can supply a per-script
+     * box width.
+     *
+     * @param syllableWidthSs      the syllable's width
+     * @param firstGraphemeWidthSs the width of the syllable's first grapheme, measured in the font
+     *                             the syllable is drawn in
+     * @param unionWidthSs         the width of the grace–host union the syllable is laid out on
+     * @param pairMelisma          whether the grace–host pair carries its own melisma
+     */
+    public record GraceSyllable(
+        double syllableWidthSs,
+        double firstGraphemeWidthSs,
+        double unionWidthSs,
+        PairMelisma pairMelisma
+    ) {}
 
     /**
      * Returns the glyph-ink component a gap starting at {@code prev} carries: the span from
@@ -1133,16 +1167,23 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the offset from {@code grace}'s origin to its syllable box, for the verse the columns
+     * Returns the offset from {@code grace}'s origin to its syllable box, for the script the columns
      * were built for — the one {@link ElementColumn#getSyllableWidthSs()} was measured for.
      */
     private static double graceLyricLeftOffsetSs(ElementColumn grace, ElementColumn host) {
-        return graceLyricLeftOffsetSs(
+        return graceLyricLeftOffsetSs(idealGraceSyllable(grace, host), grace);
+    }
+
+    /**
+     * Returns the grace's syllable as the reservation places it: measured for the script the
+     * columns were built for, on the ideal union ({@link #idealGraceHostUnionWidthSs}).
+     */
+    private static GraceSyllable idealGraceSyllable(ElementColumn grace, ElementColumn host) {
+        return new GraceSyllable(
             grace.getSyllableWidthSs(),
             grace.getSyllableFirstGraphemeWidthSs(),
             idealGraceHostUnionWidthSs(grace, host),
-            grace,
-            hasGraceHostMelisma(grace, host));
+            graceHostPairMelisma(grace, host));
     }
 
     /**
@@ -1156,17 +1197,12 @@ public final class HorizontalSpacingCalculator {
      * the minimum length that makes it read as a line at all.
      */
     private static double graceLyricRightInkSs(ElementColumn grace, ElementColumn host) {
-        var syllableWidthSs = grace.getSyllableWidthSs();
-        var unionWidthSs = idealGraceHostUnionWidthSs(grace, host);
-        var hasMelisma = hasGraceHostMelisma(grace, host);
-        var syllableEndSs = graceLyricLeftOffsetSs(
-            syllableWidthSs,
-            grace.getSyllableFirstGraphemeWidthSs(),
-            unionWidthSs,
-            grace,
-            hasMelisma) + syllableWidthSs;
+        var syllable = idealGraceSyllable(grace, host);
+        var syllableWidthSs = syllable.syllableWidthSs();
+        var syllableEndSs = graceLyricLeftOffsetSs(syllable, grace) + syllableWidthSs;
 
-        if (!hasMelisma || graceSyllableSpansUnion(syllableWidthSs, unionWidthSs)) {
+        if (syllable.pairMelisma() == PairMelisma.NONE
+            || graceSyllableSpansUnion(syllableWidthSs, syllable.unionWidthSs())) {
             return syllableEndSs;
         }
 
@@ -1174,11 +1210,11 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * {@link #pairCarriesGraceHostMelisma} for the verse the columns were built for. Read off the
+     * {@link #pairCarriesGraceHostMelisma} for the script the columns were built for. Read off the
      * columns rather than their elements so the melisma this reserves space for belongs to the same
-     * verse the syllable widths were measured for.
+     * script the syllable widths were measured for.
      */
-    private static boolean hasGraceHostMelisma(ElementColumn grace, ElementColumn host) {
+    private static PairMelisma graceHostPairMelisma(ElementColumn grace, ElementColumn host) {
         return pairCarriesGraceHostMelisma(grace.getLyric(), host.getLyric());
     }
 

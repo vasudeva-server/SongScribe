@@ -23,7 +23,7 @@ on its own during the edit, beyond what the user asked for. How the batch and th
 report are delivered is stated once, on `ModificationSession.deliver`: the change
 notification that carries the batch carries the edit's report, empty when the edit
 changed nothing on its own. See
-[change-report.md](change-report.md).
+[The Change Report](../guides/subsystems/change-report.md).
 
 The record types form a closed set, so the inventory is checkable and a new kind
 cannot be introduced without appearing in it. Span changes are recorded by one

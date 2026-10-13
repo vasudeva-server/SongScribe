@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
 /**
@@ -64,7 +65,7 @@ public final class LyricEditFitCalculator {
 
     /**
      * Returns whether the line would still fit if element {@code index}'s lyric were replaced by
-     * {@code candidate} (the verse slot is taken from {@code candidate}). The candidate is written
+     * {@code candidate} (the script slot is taken from {@code candidate}). The candidate is written
      * onto the element only for the duration of the solve and restored before returning, so the
      * model is never left changed — nothing observes the transient state on the single-threaded EDT,
      * and no mutation is recorded.
@@ -77,7 +78,7 @@ public final class LyricEditFitCalculator {
      *
      * @param line               the line containing the edited element
      * @param index              the element index on the line
-     * @param candidate          the candidate lyric to probe; its {@code verse} selects the slot
+     * @param candidate          the candidate lyric to probe; its {@code script} selects the slot
      * @param lyricRenderMetrics metrics for measuring the line's syllables
      * @param staffRightMarginSs the maximum allowed line width in staff spaces
      * @return {@code true} when the line fits with the candidate lyric in place
@@ -90,24 +91,24 @@ public final class LyricEditFitCalculator {
         double staffRightMarginSs) {
 
         var element = line.getElement(index);
-        var verse = candidate.verse();
-        var before = element.getLyricForVerse(verse);
+        var script = candidate.script();
+        var before = element.getLyricForScript(script);
 
         try {
-            applyLyric(element, verse, candidate);
+            applyLyric(element, script, candidate);
             return lineFits(line, lyricRenderMetrics, staffRightMarginSs);
         } finally {
-            applyLyric(element, verse, before);
+            applyLyric(element, script, before);
         }
     }
 
     /**
-     * Writes {@code lyric} onto the element's verse slot, or clears the slot when {@code lyric} is
+     * Writes {@code lyric} onto the element's script slot, or clears the slot when {@code lyric} is
      * {@code null}. Used symmetrically to install the probe candidate and to restore the prior lyric.
      */
-    private static void applyLyric(StaffElement element, int verse, @Nullable Lyric lyric) {
+    private static void applyLyric(StaffElement element, Song.Script script, @Nullable Lyric lyric) {
         if (lyric == null) {
-            element.removeLyricForVerse(verse);
+            element.removeLyricForScript(script);
         } else {
             element.putLyric(lyric);
         }

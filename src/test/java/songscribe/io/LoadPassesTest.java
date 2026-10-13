@@ -64,10 +64,14 @@ class LoadPassesTest extends UnitTest {
 
     private static final String ACCIDENTAL_FIXTURE = "accidental-load";
 
+    /** The accidental fixture's line. */
     private static final int LINE_INDEX = 0;
 
-    /** Every change in the fixture song is made on its one line. */
-    private static final LineRange THE_LINE = new LineRange(LINE_INDEX, LINE_INDEX);
+    /** The line the report test's changes are made on, behind a line of its own. */
+    private static final int REPORTED_LINE_INDEX = 1;
+
+    /** Every change in the report test's song is made on its second line. */
+    private static final LineRange THE_LINE = new LineRange(REPORTED_LINE_INDEX, REPORTED_LINE_INDEX);
 
     /** The notes of the accidental fixture's line, in line order. */
     private static final int LEADING_FLAT_INDEX = 0;
@@ -94,17 +98,19 @@ class LoadPassesTest extends UnitTest {
 
     @Test
     void testTheReportHoldsOneEntryForEachChangeTheLoadMade() {
-        var song = buildSong(line -> {
-            for (var i = 0; i < BARLINE_INDEX; i++) {
-                line.addElement(crotchet());
-            }
+        var song = buildSong(
+            leadingLine -> leadingLine.addElement(crotchet()),
+            line -> {
+                for (var i = 0; i < BARLINE_INDEX; i++) {
+                    line.addElement(crotchet());
+                }
 
-            line.addElement(singleBarline());
-            line.addElement(breathMark());
-            line.addElement(crotchet());
-            line.addElement(crotchetRest());
-        });
-        var line = song.getLine(LINE_INDEX);
+                line.addElement(singleBarline());
+                line.addElement(breathMark());
+                line.addElement(crotchet());
+                line.addElement(crotchetRest());
+            });
+        var line = song.getLine(REPORTED_LINE_INDEX);
         var grade = TupletGrade.TRIPLET;
         var sameCount = ratioOf(grade.number(), NoteValue.QUARTER);
         var derivedTuplet = pendingTuplet(line.getElements(), DERIVED_TUPLET, grade, null);

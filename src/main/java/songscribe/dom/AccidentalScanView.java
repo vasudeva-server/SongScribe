@@ -22,17 +22,19 @@ package songscribe.dom;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The song as the chain walk reads it: its lines by index, the elements on each, and the key
- * each line establishes of its own. {@link AccidentalChain} reads nothing about the song
- * except through one of these, so a walk over the live song and a walk over a projection of
- * an edit that has not happened yet cannot disagree about a note. {@link Live} is the song as
- * it stands; {@link ProjectedEdit} holds the one projection, so that a projected view is never
- * paired with an edit on another line.
+ * The song as the chain walk reads it: its lines by index, the elements on each, the key each
+ * line establishes of its own, and the key each line starts in. {@link AccidentalChain} reads
+ * nothing about the song except through one of these, so a walk over the live song and a walk
+ * over a projection of an edit that has not happened yet cannot disagree about a note.
+ * {@link Live} is the song as it stands; {@link ProjectedEdit} holds the one projection, so that
+ * a projected view is never paired with an edit on another line.
  *
- * <p>The key a line starts in is never answered here. The walk asks it only of the line an edit
- * starts on, and a projection changes neither that line's own key nor any line before it, so the
- * live line's running key is the answer under every view. A projection never changes a line's own
- * key: an edit to that is a {@link ChainEdit#lineRekeyed rekey} of the live line.
+ * <p>The key a line starts in is the view's answer, not the live line's, because a projection can
+ * move it: an edit can leave its line starting in another key, and every line after it that
+ * inherits then starts in whatever key the projected lines before it end in. A view answers
+ * {@link #ownKey}, {@link #startKey} and the line's elements consistently: a line with its own key
+ * starts in it, and a line without one starts in the key in force at the end of the line before
+ * it as this view sees that line.
  *
  * <p>Every method takes a line index in {@code 0..lineCount() - 1}; a view is never asked
  * about a line outside its song.
@@ -82,6 +84,36 @@ interface AccidentalScanView {
     @Nullable Key ownKey(int lineIndex);
 
     /**
+     * The key the line at {@code lineIndex} starts in, as this view sees the song.
+     *
+     * @param lineIndex the line's index
+     * @return {@link #ownKey} when it is non-null; otherwise the key in force at the end of the
+     *     line before, as this view sees that line; {@link Key#DEFAULT} for a first line with no
+     *     key of its own
+     */
+    Key startKey(int lineIndex);
+
+    /**
+     * The key in force just before {@code cursor}, as this view sees the song: the key of the last
+     * key change on the cursor's line before its index, else the key that line
+     * {@link #startKey starts in}. An element standing at {@code cursor} is in this key.
+     *
+     * @param cursor a place in the song; its index in {@code 0..elementCount(lineIndex)}
+     * @return the key in force just before that place
+     */
+    default Key keyBefore(Cursor cursor) {
+        var lineIndex = cursor.lineIndex();
+
+        for (var index = cursor.index() - 1; index >= 0; index--) {
+            if (elementAt(lineIndex, index) instanceof KeyChangeElement keyChange) {
+                return keyChange.getKey();
+            }
+        }
+
+        return startKey(lineIndex);
+    }
+
+    /**
      * The live song as it stands.
      *
      * @param song the song viewed
@@ -111,6 +143,11 @@ interface AccidentalScanView {
         @Override
         public @Nullable Key ownKey(int lineIndex) {
             return song.getLine(lineIndex).getKey();
+        }
+
+        @Override
+        public Key startKey(int lineIndex) {
+            return song.getLine(lineIndex).getRunningKey();
         }
     }
 }

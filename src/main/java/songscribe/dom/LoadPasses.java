@@ -32,15 +32,24 @@ import songscribe.util.LoadStage;
  * <p>The order is fixed by what each pass reads:
  * <ul>
  *   <li>The accidental stamp runs after the tuplet pass, because a tuplet it drops or adds changes
- *       which notes the chain walk reads.</li>
+ *       which notes the chain walk reads, and after the leading-bar pass, because a bar line it
+ *       removes changes the measures the chain walk reads.</li>
+ *   <li>The leading-bar pass runs after the tuplet, ending and hairpin passes for the reason the
+ *       breath-mark pass does, below: it removes elements. A removal can remove an ending that
+ *       starts on the bar line, and that removal is not reported, because tracking is
+ *       suspended.</li>
+ *   <li>The leading-bar pass runs after the breath-mark pass, so no later pass sees a bar line
+ *       first in the song: a breath mark that stands first is removed, and can leave a bar line
+ *       first. Removing a bar line cannot leave a breath mark first in its turn, because the
+ *       breath-mark pass has already removed every breath mark that follows a bar line.</li>
  *   <li>The tuplet, ending and hairpin passes run before the breath-mark pass. A pending span
  *       names its endpoints as elements of the line the reader built, and the breath-mark pass
  *       removes elements, so a pending span judged after it could name an endpoint that is no
  *       longer in its line. No ending or hairpin the rule accepts has a breath mark as an
  *       endpoint, so the breath-mark pass cannot break one. A removal can remove a tuplet that
  *       holds the mark, and that removal is not reported, because tracking is suspended.</li>
- *   <li>Every entry names the lines its change was made on — a removed breath mark's entry
- *       names the line the breath mark was on — and no pass adds or removes a line, so the order
+ *   <li>Every entry names the lines its change was made on — a removed breath mark's or bar
+ *       line's entry names the line it was on — and no pass adds or removes a line, so the order
  *       of the passes leaves every entry's place right.</li>
  *   <li>The reader's entries are recorded last, so the heading of the reader's last entry — the
  *       accidentals-converted entry, when the reader made one — comes last in the report, which
@@ -87,6 +96,7 @@ final class LoadPasses {
         pending(ParsedSong::pendingEndings, SpanLoadPass::run),
         pending(ParsedSong::pendingHairpins, SpanLoadPass::run),
         run -> BreathMarkLoadPass.run(run.song(), run.report()),
+        run -> LeadingBarLoadPass.run(run.song(), run.report()),
         run -> run.song().stampAccidentalsAfterParsing(),
         run -> run.parsed().readerEntries().forEach(run.report()::record));
 

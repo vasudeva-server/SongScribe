@@ -31,6 +31,9 @@ public class StaffAnnotationPopupButton extends PopupMenuButton {
         super(Actions.STAFF_ANNOTATION_ACTIONS, null);
         setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
         UIUtils.setToolTipText(
-            this, Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS_TITLE), Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS));
+            this,
+            new UIUtils.ToolTipSection(
+                Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS_TITLE), null, Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS))
+        );
     }
 }

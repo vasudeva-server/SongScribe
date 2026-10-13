@@ -21,7 +21,6 @@
 package songscribe.ui.renderer;
 
 import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.font.GlyphVector;
@@ -102,7 +101,7 @@ public final class LyricConnectorRenderer {
         var lyricRenderMetrics = invariants.getLyricRenderMetrics();
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
         var chainPreviewEndXSs = hyphenChainPreviewEndXSs(invariants);
-        var editedVerse = invariants.getActivelyEditedVerse();
+        var editedScript = invariants.getActivelyEditedScript();
         var ySs = layoutResult.lyricBaselineYSsInLine(lyricRenderMetrics);
 
         try (var _ = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
@@ -111,7 +110,7 @@ public final class LyricConnectorRenderer {
 
             for (var connector : connectors) {
                 g2.setColor(invariants.getLyricConnectorColor(
-                    connector.sourceElementIndex(), connector.verseIndex()));
+                    connector.sourceElementIndex(), connector.script()));
 
                 switch (connector.kind()) {
                     case HYPHEN -> drawHyphens(
@@ -121,8 +120,8 @@ public final class LyricConnectorRenderer {
                         // While the lyric editor is open past the syllable that opened this chain, engrave
                         // the chain up to the edited element instead of parking a single hyphen in the first
                         // gap, so the chain visibly grows as the user hyphenates their way along the line.
-                        var previewsChain = editedVerse != null
-                            && connector.verseIndex() == editedVerse
+                        var previewsChain = editedScript != null
+                            && connector.script() == editedScript
                             && !Double.isNaN(chainPreviewEndXSs)
                             && chainPreviewEndXSs > connector.startXSs();
 

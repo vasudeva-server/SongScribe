@@ -29,11 +29,10 @@ import songscribe.dom.StaffElement;
  * The clickable rectangle of a note head, in layout space: X in line-local staff spaces, Y in
  * staff spaces relative to the staff midline.
  * <p>
- * One function with two callers, deliberately. {@code HitRegionBuilder} registers the
- * <em>expanded</em> rect, so a thin or short element is still comfortably clickable, while the
- * drag-selection path asks for the unexpanded one, so dragging a rubber band across the staff
- * catches exactly the elements it visually covers. Storing both rects would mean keeping two
- * copies of the same geometry in step; one function with a flag cannot drift.
+ * Production code reaches it through {@link LayoutResult#elementHitRectSs}, which places the
+ * <em>expanded</em> rect at the element's column, so a thin or short element is still comfortably
+ * clickable. The hit registry holds that rect for the element, and the score points at a flagged
+ * element with the same one.
  */
 public final class ElementHitGeometry {
 
@@ -51,23 +50,18 @@ public final class ElementHitGeometry {
     }
 
     /**
-     * Builds the hit rectangle for {@code element} into {@code out}.
+     * Builds the hit rectangle for {@code element} into {@code out}: the element's note head,
+     * expanded symmetrically to at least {@value #MIN_HIT_SIZE_PX} px in each dimension, so a
+     * narrow or short element stays clickable and the rectangle stays centered on what is drawn.
      *
-     * @param elementXSs      the element column's origin X, in line-local staff spaces
-     * @param element         the element to measure
-     * @param out             the rectangle to write into; reused across a loop to avoid
-     *                        allocating one rect per element
-     * @param expandToMinimum true to expand narrow or short elements symmetrically to
-     *                        {@value #MIN_HIT_SIZE_PX} px — use this for click hit testing;
-     *                        false for drag-selection intersection, which wants the element's
-     *                        true extent
+     * @param elementXSs the element column's origin X, in line-local staff spaces
+     * @param element    the element to measure
+     * @param out        the rectangle to write into; reused across a loop to avoid allocating
+     *                   one rect per element
+     * @effects overwrites {@code out} with the rectangle, in line-local, midline-relative staff
+     *     spaces
      */
-    public static void elementHitRectSs(
-        double elementXSs,
-        StaffElement element,
-        Rectangle2D.Double out,
-        boolean expandToMinimum) {
-
+    public static void elementHitRectSs(double elementXSs, StaffElement element, Rectangle2D.Double out) {
         var elementType = element.getType();
 
         // From the element, not from its type: a mid-line key change's type width is only a
@@ -80,12 +74,6 @@ public final class ElementHitGeometry {
         // alone — the same quantity the UI hit test read from LineComponent.getMiddleLineYSs().
         var elementYSs = NoteGeometry.noteStaffPositionToCoordinateSs(ElementSeat.seatSp(element).value(), 0);
         var topOffsetSs = elementType.getNoteheadTopOffsetSs();
-
-        if (!expandToMinimum) {
-            out.setRect(elementXSs, elementYSs + topOffsetSs, naturalWidthSs, naturalHeightSs);
-            return;
-        }
-
         var minHitSizeSs = DocumentScale.pxToSs(MIN_HIT_SIZE_PX);
 
         // Expand symmetrically: distribute the extra width and height evenly on both sides, so

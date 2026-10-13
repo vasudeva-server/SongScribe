@@ -29,16 +29,25 @@ import songscribe.message.Message;
 /**
  * Posted by {@link songscribe.ui.ZoomController} to both request and report a zoom change.
  * <p>
- * {@code ScoreView} applies the change itself, from a {@code @Handler(priority =
- * Message.HIGH_PRIORITY)} handler of this same message — see {@code
- * ScoreView.zoomDidChangeApplyZoom}. Every other handler (status bar, action enablement,
- * overlay bounds) reacts to an already-applied change, so <b>any new
- * listener to this message MUST use a handler priority strictly less than
- * {@code Message.HIGH_PRIORITY}</b> — a bare {@code @Handler} (priority 0) satisfies this. A
- * handler at {@code HIGH_PRIORITY} or above races {@code ScoreView}'s and may run before the
- * zoom is actually applied.
+ * {@code ScoreView} applies the change itself, from a handler of this same message at
+ * {@link #APPLY_PRIORITY} — see {@code ScoreView.zoomDidChangeApplyZoom}. Every other handler
+ * (status bar, action enablement, overlay bounds) reacts to an already-applied change, so
+ * <b>any new listener to this message MUST use a handler priority strictly less than
+ * {@link #APPLY_PRIORITY}</b> — a bare {@code @Handler} (priority 0) satisfies this. A handler
+ * at {@code APPLY_PRIORITY} races {@code ScoreView}'s and may run before the zoom is actually
+ * applied.
+ * <p>
+ * The one handler that must see the score before the zoom runs at {@link #BEFORE_APPLY_PRIORITY}:
+ * {@code LintCalloutController} hides the lint tooltips, whose arrows point at items the zoom
+ * moves.
  */
 public class ZoomDidChangeNotification extends Message {
+
+    /** The priority of the handler that applies the zoom to the score. */
+    public static final int APPLY_PRIORITY = Message.HIGH_PRIORITY;
+
+    /** The priority of the handler that runs before the zoom is applied. */
+    public static final int BEFORE_APPLY_PRIORITY = APPLY_PRIORITY + 1;
 
     private final int oldZoomPercent;
     private final int newZoomPercent;

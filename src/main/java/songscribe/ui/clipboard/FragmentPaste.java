@@ -89,8 +89,11 @@ public final class FragmentPaste {
      * <p>The fragment's elements and spans are taken as they are: a fresh instantiation, which
      * this paste consumes, already reduced by {@link Fragment#withoutRedundantKeyChanges} for the
      * key in effect at {@code target}, and without a leading breath mark the line cannot take
-     * there. The paste is not fit-gated here; the caller has already decided that the fragment
-     * fits.
+     * there. At the start of the song the caller has also dropped the fragment's leading bar
+     * lines ({@link Fragment.Reduction#withoutLeadingBars}) and already made the key of a key
+     * change it dropped {@code line}'s own key, so the key in effect at {@code target} — which
+     * every stranding here is measured from — is the one the fragment's elements sound in. The
+     * paste is not fit-gated here; the caller has already decided that the fragment fits.
      *
      * @param line      the destination line, one of its song's lines
      * @param target    where the fragment lands, and the range a paste-replace deletes first;
@@ -103,13 +106,13 @@ public final class FragmentPaste {
      *     with {@link PasteSpanReconciliation.LostSpan#reasonKey}; deletes {@code target}'s
      *     range when it has one; inserts the fragment's elements at {@code target}'s insert
      *     index; records through {@link songscribe.dom.Song#report} one entry per span of
-     *     {@link Fragment.KeyChangeReduction#strandedSpans} and one per entry of
+     *     {@link Fragment.Reduction#strandedSpans} and one per entry of
      *     {@link PasteSpanReconciliation.Settlement#reports}; adds every span of
      *     {@link PasteSpanReconciliation.Settlement#spansToAdd}
      * @invariant a stranded span's entry names {@code line} when some element it covered landed,
      *     and has no place when none did
      */
-    public static void paste(Line line, StaffElementRun.InsertionTarget target, Fragment.KeyChangeReduction reduction) {
+    public static void paste(Line line, StaffElementRun.InsertionTarget target, Fragment.Reduction reduction) {
         var fragment = reduction.fragment();
         var clones = fragment.elements();
         var insertIndex = target.insertIndex();

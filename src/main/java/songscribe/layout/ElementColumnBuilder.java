@@ -31,6 +31,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -124,7 +125,7 @@ public class ElementColumnBuilder {
         // note sitting inside a beam span is not a member: the beam passes over it and it
         // keeps its own short stem and flag.
         var beam = line.spanRegistry().findBeamJoining(elementIndex);
-        return buildColumnForBeam(element, beam, line.getSong().getActiveVerse());
+        return buildColumnForBeam(element, beam, line.getSong().getActiveScript());
     }
 
     /**
@@ -133,15 +134,15 @@ public class ElementColumnBuilder {
      * lyric rules as the committed layout) but no beam membership, since beam grouping is
      * determined by position on a line the element does not yet occupy.
      * <p>
-     * The verse is passed in for the same reason: an element off a line cannot be asked which song
-     * it belongs to, so it cannot find the active verse on its own.
+     * The script is passed in for the same reason: an element off a line cannot be asked which song
+     * it belongs to, so it cannot find the active script on its own.
      *
      * @param element     The element to process (not necessarily on any line)
-     * @param activeVerse The verse being laid out, from {@link songscribe.dom.Song#getActiveVerse()}
+     * @param activeScript The script being laid out, from {@link songscribe.dom.Song#getActiveScript()}
      * @return The constructed ElementColumn, unbeamed
      */
-    public ElementColumn buildDetachedColumn(StaffElement element, int activeVerse) {
-        return buildColumnForBeam(element, null, activeVerse);
+    public ElementColumn buildDetachedColumn(StaffElement element, Song.Script activeScript) {
+        return buildColumnForBeam(element, null, activeScript);
     }
 
     /**
@@ -150,10 +151,10 @@ public class ElementColumnBuilder {
      *
      * @param element     The element to process
      * @param beam        The beam {@code element} belongs to, or null if it is unbeamed
-     * @param activeVerse The verse being laid out — the only one this column knows about
+     * @param activeScript The script being laid out — the only one this column knows about
      * @return The constructed ElementColumn
      */
-    private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam, int activeVerse) {
+    private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam, Song.Script activeScript) {
         var beaming = Beaming.of(beam);
         var extents = new ElementColumn.Extents(
             calculateLeftExtentSs(element),
@@ -162,7 +163,7 @@ public class ElementColumnBuilder {
             calculateStemTopSs(element),
             calculateStemBottomSs(element));
 
-        var lyric = element.getLyricForVerse(activeVerse);
+        var lyric = element.getLyricForScript(activeScript);
         var measuredLyric = lyric != null
             ? new ElementColumn.MeasuredLyric(lyric, measureSyllableWidthSs(lyric.text()))
             : null;

@@ -56,11 +56,13 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Stem;
 import songscribe.engraving.PitchOutOfRangeException;
 import songscribe.io.DocumentValidation;
 import songscribe.io.LegacyAccidentals;
+import songscribe.io.LyricNumbers;
 
 /**
  * Maps one unmarshalled {@code <note>} onto a {@link StaffElement} appended to a
@@ -93,18 +95,21 @@ final class NoteMapper {
     private NoteMapper() {}
 
     /**
-     * The result of mapping one {@code <note>}: the appended element plus the two
+     * The result of mapping one {@code <note>}: the appended element plus the three
      * facts about the note that its own element cannot carry.
      *
      * @param element               the element appended to the line
      * @param usedLegacyAccidental  true when the {@code <accidental>} token was a
      *                              retired one converted to its replacement
+     * @param droppedLyric          true when a {@code <lyric>} was dropped because its
+     *                              number names no script
      * @param hasBreathMark         true when a {@code BREATH_MARK} element must be
      *                              appended immediately after this note
      */
     record MappedNote(
         StaffElement element,
         boolean usedLegacyAccidental,
+        boolean droppedLyric,
         boolean hasBreathMark
     ) {}
 
@@ -135,7 +140,9 @@ final class NoteMapper {
      * Maps {@code pmNote} to a {@link StaffElement}, appends it to {@code line},
      * and resolves its non-span attachments (articulations, fermata, dynamic,
      * fall) and its lyrics. {@code relative-x} is taken as the user's horizontal offset
-     * only when {@code features} declares it.
+     * only when {@code features} declares it. A {@code <lyric>} whose number names no
+     * script does not refuse the document: it is dropped, and the result says so, for the
+     * caller to report with {@link songscribe.dom.ParsedSong#lyricDroppedEntry}.
      *
      * @throws SAXException if the note is missing its {@code <type>} element, or carries an
      *                      unrecognised one; a {@code <pitch>} that is unspellable or lies
@@ -205,9 +212,9 @@ final class NoteMapper {
 
         var notations = readNotations(pmNote);
         applyNotationAttachments(notations, element);
-        putLyrics(pmNote, element);
+        var droppedLyric = putLyrics(pmNote, element);
 
-        return new MappedNote(element, usedLegacyAccidental, notations.hasBreathMark());
+        return new MappedNote(element, usedLegacyAccidental, droppedLyric, notations.hasBreathMark());
     }
 
     // -------------------------------------------------------------------------
@@ -546,26 +553,39 @@ final class NoteMapper {
 
     /**
      * Maps this note's {@code <lyric>} children onto {@code element}, one {@link Lyric} per
-     * verse. Mirrors {@code StaffElementIO.endElement11}'s lyric-close branch: a carrier
+     * script. Mirrors {@code StaffElementIO.endElement11}'s lyric-close branch: a carrier
      * ({@code <extend type="stop|continue"/>} with no text of its own) gets a null
      * syllabic and empty text; for a BEGIN/MIDDLE syllabic a trailing compound-word
      * marker is stripped and {@code compound} set, so the word boundary
      * round-trips. The {@link Lyric} constructor re-validates the
      * carrier/syllabic contract. A blank text-bearing syllable carries nothing a user wrote,
-     * so {@link #mapLyric} drops it rather than the whole document.
+     * so {@link #mapLyric} drops it rather than the whole document. A {@code <lyric>} whose
+     * number names no script is dropped here, whatever it holds, and reported.
+     *
+     * @return true if a {@code <lyric>} was dropped because its number names no script
      */
-    private static void putLyrics(Note pmNote, StaffElement element) {
+    private static boolean putLyrics(Note pmNote, StaffElement element) {
+        var droppedLyric = false;
+
         for (var pmLyric : pmNote.getLyric()) {
-            var lyric = mapLyric(pmLyric);
+            var script = LyricNumbers.toScript(ProxyMusicAccess.lyricVerse(pmLyric));
+
+            if (script == null) {
+                droppedLyric = true;
+                continue;
+            }
+
+            var lyric = mapLyric(pmLyric, script);
 
             if (lyric != null) {
                 element.putLyric(lyric);
             }
         }
+
+        return droppedLyric;
     }
 
-    private static @Nullable Lyric mapLyric(org.audiveris.proxymusic.Lyric pmLyric) {
-        var verse = ProxyMusicAccess.lyricVerse(pmLyric);
+    private static @Nullable Lyric mapLyric(org.audiveris.proxymusic.Lyric pmLyric, Song.Script script) {
         var syllabicToken = "";
         var text = "";
 
@@ -616,10 +636,10 @@ final class NoteMapper {
         }
 
         if (!Lyric.isCarrier(extend) && text.isBlank()) {
-            LOG.warn("Dropping blank lyric syllable for verse {}", verse);
+            LOG.warn("Dropping blank lyric syllable for script {}", script);
             return null;
         }
 
-        return new Lyric(verse, text, extend, syllabic, compound);
+        return new Lyric(script, text, extend, syllabic, compound);
     }
 }

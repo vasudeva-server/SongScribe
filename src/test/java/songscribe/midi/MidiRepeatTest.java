@@ -49,10 +49,11 @@ import static songscribe.midi.MidiSequences.playbackOf;
 
 /**
  * {@code MidiSequenceBuilder.buildSequenceWithRepeats}: a {@code :|} or {@code :|:} replays the
- * section {@link songscribe.dom.Song#repeatSectionStart} names once, then plays on; a {@code :|}
- * with no open section plays on as an ordinary bar; a jump to an earlier line continues on that
- * line. With repeats taken the replay skips a first ending for the second; with repeats off the
- * first ending is skipped and the section plays once.
+ * section {@link songscribe.dom.RepeatSections#sectionStart} names once, then plays on; a
+ * {@code :|} with no open section is an unbalanced repeat, which the linter reports, and playback
+ * plays past it without a replay; a jump to an earlier line continues on that line. With repeats
+ * taken the replay skips a first ending for the second; with repeats off the first ending is
+ * skipped and the section plays once.
  */
 class MidiRepeatTest extends UnitTest {
 

@@ -29,58 +29,54 @@ import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * {@link StaffElement}'s invariant that {@link StaffElement#getLyrics()} holds at most one lyric
- * per verse, kept across every write a caller can make to it: {@link StaffElement#putLyric} and
- * {@link StaffElement#removeLyricForVerse}.
+ * per script, kept across every write a caller can make to it: {@link StaffElement#putLyric} and
+ * {@link StaffElement#removeLyricForScript}.
  */
 class StaffElementLyricsTest extends UnitTest {
 
-    private static final int VERSE_1 = 1;
-
-    private static final int VERSE_2 = 2;
-
     @Test
-    void testAtMostOneLyricPerVerseSurvivesPutAndRemoveSequence() {
+    void testAtMostOneLyricPerScriptSurvivesPutAndRemoveSequence() {
         var element = crotchet();
 
-        var verse1First = new Lyric(VERSE_1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
-        var verse2 = new Lyric(VERSE_2, "le", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
-        var verse1Replacement =
-            new Lyric(VERSE_1, "lo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+        var script1First = new Lyric(Song.Script.LATIN, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+        var script2 = new Lyric(Song.Script.BENGALI, "le", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+        var script1Replacement =
+            new Lyric(Song.Script.LATIN, "lo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
 
-        element.putLyric(verse1First);
-        assertThat(element.getLyricForVerse(VERSE_1))
-            .as("verse 1 holds the lyric just put")
-            .isEqualTo(verse1First);
-        assertThat(element.getLyricForVerse(VERSE_2))
-            .as("verse 2 has never been written")
+        element.putLyric(script1First);
+        assertThat(element.getLyricForScript(Song.Script.LATIN))
+            .as("the Latin script holds the lyric just put")
+            .isEqualTo(script1First);
+        assertThat(element.getLyricForScript(Song.Script.BENGALI))
+            .as("the Bengali script has never been written")
             .isNull();
-        assertThat(element.getLyrics()).extracting(Lyric::verse).doesNotHaveDuplicates();
+        assertThat(element.getLyrics()).extracting(Lyric::script).doesNotHaveDuplicates();
 
-        element.putLyric(verse2);
-        assertThat(element.getLyricForVerse(VERSE_1))
-            .as("verse 1 is unaffected by a put for a different verse")
-            .isEqualTo(verse1First);
-        assertThat(element.getLyricForVerse(VERSE_2))
-            .as("verse 2 holds the lyric just put")
-            .isEqualTo(verse2);
-        assertThat(element.getLyrics()).extracting(Lyric::verse).doesNotHaveDuplicates();
+        element.putLyric(script2);
+        assertThat(element.getLyricForScript(Song.Script.LATIN))
+            .as("the Latin script is unaffected by a put for a different script")
+            .isEqualTo(script1First);
+        assertThat(element.getLyricForScript(Song.Script.BENGALI))
+            .as("the Bengali script holds the lyric just put")
+            .isEqualTo(script2);
+        assertThat(element.getLyrics()).extracting(Lyric::script).doesNotHaveDuplicates();
 
-        element.putLyric(verse1Replacement);
-        assertThat(element.getLyricForVerse(VERSE_1))
-            .as("a second put for verse 1 replaces the first rather than adding to it")
-            .isEqualTo(verse1Replacement);
-        assertThat(element.getLyricForVerse(VERSE_2))
-            .as("verse 2 is unaffected by a replacement put for a different verse")
-            .isEqualTo(verse2);
-        assertThat(element.getLyrics()).extracting(Lyric::verse).doesNotHaveDuplicates();
+        element.putLyric(script1Replacement);
+        assertThat(element.getLyricForScript(Song.Script.LATIN))
+            .as("a second put for the Latin script replaces the first rather than adding to it")
+            .isEqualTo(script1Replacement);
+        assertThat(element.getLyricForScript(Song.Script.BENGALI))
+            .as("the Bengali script is unaffected by a replacement put for a different script")
+            .isEqualTo(script2);
+        assertThat(element.getLyrics()).extracting(Lyric::script).doesNotHaveDuplicates();
 
-        element.removeLyricForVerse(VERSE_1);
-        assertThat(element.getLyricForVerse(VERSE_1))
-            .as("the removed verse now holds no lyric")
+        element.removeLyricForScript(Song.Script.LATIN);
+        assertThat(element.getLyricForScript(Song.Script.LATIN))
+            .as("the removed script now holds no lyric")
             .isNull();
-        assertThat(element.getLyricForVerse(VERSE_2))
-            .as("verse 2 is unaffected by removing a different verse")
-            .isEqualTo(verse2);
-        assertThat(element.getLyrics()).extracting(Lyric::verse).doesNotHaveDuplicates();
+        assertThat(element.getLyricForScript(Song.Script.BENGALI))
+            .as("the Bengali script is unaffected by removing a different script")
+            .isEqualTo(script2);
+        assertThat(element.getLyrics()).extracting(Lyric::script).doesNotHaveDuplicates();
     }
 }

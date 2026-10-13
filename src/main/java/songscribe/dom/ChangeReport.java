@@ -21,7 +21,6 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -76,6 +75,15 @@ public record ChangeReport(List<ReportedChange> changes) {
      * line's index, and resolving any earlier would make the entry name the wrong line.
      *
      * <p>EDT-only, like the model it reports on; no locking.
+     *
+     * @invariant every line a recorded entry names is still a line of the song when
+     *     {@link #build()} runs. No edit or load records a change on a line and then removes
+     *     that line. A line is removed only by deleting it, which sweeps the key changes it
+     *     strands on other lines and takes the removed line whole, with its spans, unreported,
+     *     and by the undo or redo of a line's insertion or deletion, whose batch records
+     *     nothing on that line. The modification rules remove spans and ties, never lines, and
+     *     no load pass removes a line. {@link #build()} therefore resolves every recorded line
+     *     to an index, never to an absent one
      */
     public static final class Builder {
 
@@ -114,11 +122,8 @@ public record ChangeReport(List<ReportedChange> changes) {
 
         /**
          * Returns the report of the entries recorded so far, each entry's lines resolved to
-         * their indices in the song as it stands when this method runs.
-         *
-         * <p>Every line an entry names is still a line of the song when the report is built:
-         * removing a line takes the spans on it with it unreported, so nothing records a change
-         * on a line that the same edit or load later removes.
+         * their indices in the song as it stands when this method runs, which the builder's
+         * invariant guarantees exist.
          *
          * @return a report holding one {@link ReportedChange} per recorded entry, in the order
          *     recorded, which entries recorded into this builder afterwards do not reach
@@ -139,17 +144,16 @@ public record ChangeReport(List<ReportedChange> changes) {
          *
          * @param where the lines to resolve, or {@code null} for a change with no place
          * @return the range of {@code where}'s lines, or {@code null} when {@code where} is
+         *     {@code null}
          */
         private @Nullable LineRange resolve(@Nullable ChangeLines where) {
             if (where == null) {
                 return null;
             }
 
-            return new LineRange(indexOf(where.first()), indexOf(where.last()));
-        }
+            var lines = song.getLines();
 
-        private int indexOf(Line line) {
-            return Objects.requireNonNull(song.indexOfLine(line), "a recorded change names a line the song no longer holds");
+            return new LineRange(lines.indexOf(where.first()), lines.indexOf(where.last()));
         }
     }
 }

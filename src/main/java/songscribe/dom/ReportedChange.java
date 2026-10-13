@@ -27,9 +27,9 @@ import org.jspecify.annotations.Nullable;
  * accidental a load converted.
  *
  * <p>The code that made the change builds the text, because it holds the domain knowledge of
- * what happened and why. The view that shows a {@link ChangeReport} only groups entries by
- * {@link #headingKey} and shows each one's {@link #description} at its {@link #where}; it never
- * interprets a change.
+ * what happened and why. The view that shows a {@link ChangeReport} shows each entry's heading
+ * ({@link #headingKey}), place ({@link #where}) and {@link #description} as that code wrote
+ * them; it never interprets a change.
  *
  * <p>A finished entry holds line indices only, resolved from its {@link RecordedChange} when the
  * report was built, and holds no model object, so it can outlive any change to the song.

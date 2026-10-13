@@ -21,8 +21,10 @@ package songscribe.io;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -108,6 +110,10 @@ public final class LineIO {
         // converted. Accumulated here because noteReader is replaced for each <line>, so
         // its own flag does not survive to the end of the document.
         private boolean sawLegacyAccidental = false;
+
+        // Each line, in document order, on which a note dropped a lyric whose number has no
+        // script. Kept here for the same reason as sawLegacyAccidental.
+        private final Set<Line> linesThatDroppedLyrics = new LinkedHashSet<>();
 
         @Nullable
         private Where where = null;
@@ -230,6 +236,16 @@ public final class LineIO {
          */
         public boolean sawLegacyAccidental() {
             return sawLegacyAccidental;
+        }
+
+        /**
+         * Returns each line read so far on which a note dropped a lyric whose number has no
+         * script, once each, in document order.
+         *
+         * @return the lines; empty when no lyric was dropped
+         */
+        public List<Line> linesThatDroppedLyrics() {
+            return List.copyOf(linesThatDroppedLyrics);
         }
 
         /**
@@ -549,6 +565,10 @@ public final class LineIO {
 
                     if (noteReader.sawLegacyAccidental()) {
                         sawLegacyAccidental = true;
+                    }
+
+                    if (noteReader.droppedLyric()) {
+                        linesThatDroppedLyrics.add(line);
                     }
 
                     line.addElement(n);

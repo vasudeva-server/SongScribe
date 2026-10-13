@@ -67,6 +67,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.FileExtensions;
+import songscribe.SongScribe;
 import songscribe.Strings;
 import songscribe.dom.ChangeReport;
 import songscribe.dom.Song;
@@ -168,10 +169,10 @@ public class MainFrame extends JFrame {
     @Nullable
     private JLabel titleBarLabel = null;
 
-    // The Messages panel, below the score in the content split
+    // The Messages panel, to the right of the score in the content split
     private final ReportPanel reportPanel = new ReportPanel(this);
 
-    // The score on top and the Messages panel below; holds the window's content area
+    // The score on the left and the Messages panel on the right; holds the window's content area
     private final JSplitPane contentSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     /**
@@ -275,7 +276,6 @@ public class MainFrame extends JFrame {
             // Initialize the minimal theme (Regular font face + preferred family)
             // before showing the splash so it renders in Source Sans, not a fallback.
             UIUtils.initMinimalTheme();
-            UIUtils.keepToolTipsOpenWhileHovered();
             showSplash();
 
             // Force a synchronous first paint so the splash appears immediately.
@@ -293,17 +293,9 @@ public class MainFrame extends JFrame {
             // installation and window construction.
             midiReadyLatch = MidiController.openMidiAsync();
 
-            // Install remaining fonts while MIDI initializes in the background.
-            UIUtils.installEagerFonts();
-
-            // The bus holds the listener strongly, so nothing here needs to keep it.
-            new PreviewElementManager();
-            Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
-
-            // Build the main window but do NOT show it — reveal() will show it
-            // after the gate fires on the EDT.
-            var instance = getInstance();
-            instance.initFrame();
+            // Build the main window while MIDI initializes in the background, but do NOT
+            // show it — reveal() will show it after the gate fires on the EDT.
+            var instance = SongScribe.buildMainWindow();
 
             // Capture the startup action to run after the window is shown.
             var recents = RecentDocumentsManager.getRecents();
@@ -1219,49 +1211,20 @@ public class MainFrame extends JFrame {
 
     @Handler
     public void handleSaveAs(SaveAsCommand message) {
-        if (refuseBlockedSave()) {
-            return;
-        }
-
         saveAsNewFile();
     }
 
     /**
      * Saves the document to its file, asking for one first when it has none.
      *
-     * @return true on success; false when a lint finding blocks the save, the write fails, or
-     *     the user cancels the file chooser
+     * @return true on success; false when the user cancels the file chooser, declines to save
+     *     a song with errors (see {@link #writeSong}), or the write fails
      */
     public boolean save() {
-        if (refuseBlockedSave()) {
-            return false;
-        }
-
         return (currentFile == null) ? saveAsNewFile() : saveCurrentFile();
     }
 
-    /**
-     * Refuses a save while a lint finding blocks it. The lint report is current, because the
-     * linter lints after every change to the song.
-     *
-     * @return true when the save is refused
-     * @effects when refused, shows the Messages panel and an error alert
-     */
-    private boolean refuseBlockedSave() {
-        if (!Linter.hasFlag(LintRule.Flag.BLOCKS_SAVE)) {
-            return false;
-        }
-
-        showMessagesPanel();
-        OptionDialogs.showErrorMessage(
-            this,
-            Strings.ALERT_TITLE_SAVE_BLOCKED,
-            Strings.ERROR_SAVE_BLOCKED_BY_LINT
-        );
-        return true;
-    }
-
-    boolean saveCurrentFile() {
+    private boolean saveCurrentFile() {
         if (currentFile == null) {
             return false;
         }
@@ -1270,11 +1233,19 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Writes the document to {@code file}, leaving the window's current file alone.
+     * Writes the document to {@code file}, leaving the window's current file alone. Every save
+     * reaches the file through this method, so it is the one place a save is gated: when the
+     * song has a finding that carries {@link LintRule.Flag#BLOCKS_EXPORT}, it first asks the
+     * user to confirm, with Yes as the default answer; where dialogs are suppressed, the
+     * default answer is taken and the file is written. The lint report is current, because
+     * the song lints after every change.
      *
-     * @return true when the file was written
-     * @effects on success, marks the song unmodified and posts
-     *     {@link DocumentWasSavedNotification}; on failure, shows an error alert
+     * @param file the file to write
+     * @return true when the file was written; false when the user declines to save a song
+     *     with errors or the write fails
+     * @effects asks for confirmation while a finding blocks export, and on No writes nothing;
+     *     on success, marks the song unmodified and posts {@link DocumentWasSavedNotification};
+     *     on a failed write, shows an error alert. The Messages panel is left as it is.
      */
     private boolean writeSong(File file) {
         if (scoreView == null) {
@@ -1282,6 +1253,21 @@ public class MainFrame extends JFrame {
         }
 
         var song = scoreView.getSong();
+
+        if (song.getLinter().hasFlag(LintRule.Flag.BLOCKS_EXPORT)) {
+            var answer = OptionDialogs.showConfirmDialog(
+                this,
+                Strings.CONFIRM_TITLE_SONG_HAS_ERRORS,
+                Strings.CONFIRM_SAVE_WITH_ERRORS,
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE,
+                JOptionPane.YES_OPTION
+            );
+
+            if (answer != JOptionPane.YES_OPTION) {
+                return false;
+            }
+        }
 
         try {
             // scoreView is both the document fonts holder and the line layout provider: saved

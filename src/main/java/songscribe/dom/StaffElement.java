@@ -26,6 +26,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
+
 /**
  * An element occupying a column of a staff line: a note, a rest, a barline, a breath mark, a
  * mid-line key change. Abstract, and instantiated only through one of its leaves, one per
@@ -38,10 +40,10 @@ import org.jspecify.annotations.Nullable;
  * <p>Abstract because every element is one of those leaves: the root states what all of them
  * share and is never an element on its own.
  *
- * <p>What every element carries besides its type: lyrics, at most one per verse, and
+ * <p>What every element carries besides its type: lyrics, at most one per script, and
  * attachments, at most one of any one class. Both bounds are object invariants that hold
  * between calls. The lyric bound is kept by every write to the lyric list — {@link #putLyric}
- * and {@link #removeLyricForVerse} element by element, {@link #applyConversionFrom} and
+ * and {@link #removeLyricForScript} element by element, {@link #applyConversionFrom} and
  * {@link #copyStateFrom} by taking a whole list that already satisfies it; the attachment
  * bound is a precondition of {@link #addAttachment}, which the file readers enforce at the
  * boundary and the interactive paths keep by asking {@link #findAttachment} before adding.
@@ -63,8 +65,8 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     private @Nullable Line parentLine;
 
     /**
-     * This element's lyrics, at most one per verse. {@link #putLyric} and
-     * {@link #removeLyricForVerse} write it element by element; {@link #applyConversionFrom}
+     * This element's lyrics, at most one per script. {@link #putLyric} and
+     * {@link #removeLyricForScript} write it element by element; {@link #applyConversionFrom}
      * and {@link #copyStateFrom} write it by {@code addAll} from a list that already satisfies
      * the bound.
      */
@@ -233,6 +235,27 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
+     * Returns the line this element is in, for a caller that holds an element it knows is in
+     * one: an element reached through a line, the song, the selection, a tie, or a lint
+     * finding, each of which reaches only elements in lines. An element is in no line only
+     * between its construction and its addition to a line, and after a removal detaches it;
+     * a caller that may hold such an element asks {@link #getParentLine()} instead.
+     *
+     * @return the line holding this element
+     * @effects exits the program through {@link RuntimeError#exit(String)} when this element is
+     *     in no line
+     */
+    public Line requireParentLine() {
+        var line = parentLine;
+
+        if (line == null) {
+            throw RuntimeError.exit("an element expected in a line is in no line: " + this);
+        }
+
+        return line;
+    }
+
+    /**
      * Returns the line {@code element} is in, for a caller holding an element that may be
      * absent — the host of something hung on an element, which has none until it is added.
      *
@@ -386,13 +409,13 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Returns the position of the given verse's lyric in {@link #lyrics}, or {@code null} if
-     * none is set. The single place the verse lookup is written: {@link #getLyricForVerse}
+     * Returns the position of the given script's lyric in {@link #lyrics}, or {@code null} if
+     * none is set. The single place the script lookup is written: {@link #getLyricForScript}
      * reads the lyric off it, and {@link #putLyric} replaces the lyric at it.
      */
-    private @Nullable Integer indexOfLyricForVerse(int verse) {
+    private @Nullable Integer indexOfLyricForScript(Song.Script script) {
         for (var i = 0; i < lyrics.size(); i++) {
-            if (lyrics.get(i).verse() == verse) {
+            if (lyrics.get(i).script() == script) {
                 return i;
             }
         }
@@ -401,36 +424,36 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Returns this element's lyric for {@code verse}.
+     * Returns this element's lyric for {@code script}.
      *
-     * @param verse the verse number, {@link Lyric#FIRST_VERSE} or above
-     * @return the lyric, or {@code null} when nothing is written on this element in that verse
+     * @param script the script whose lyric is wanted
+     * @return the lyric, or {@code null} when nothing is written on this element in that script
      */
-    public @Nullable Lyric getLyricForVerse(int verse) {
-        var index = indexOfLyricForVerse(verse);
+    public @Nullable Lyric getLyricForScript(Song.Script script) {
+        var index = indexOfLyricForScript(script);
         return index == null ? null : lyrics.get(index);
     }
 
     /**
-     * Returns every lyric written on this element, across all verses.
+     * Returns every lyric written on this element, across all scripts.
      *
-     * @return an unmodifiable view holding at most one lyric per verse, in no promised order
+     * @return an unmodifiable view holding at most one lyric per script, in no promised order
      */
     public List<Lyric> getLyrics() {
         return Collections.unmodifiableList(lyrics);
     }
 
     /**
-     * Stores {@code lyric} as this element's lyric for {@link Lyric#verse()}, replacing the
-     * one held for that verse if there is one. Afterwards
-     * {@link #getLyricForVerse getLyricForVerse(lyric.verse())} returns {@code lyric}.
+     * Stores {@code lyric} as this element's lyric for {@link Lyric#script()}, replacing the
+     * one held for that script if there is one. Afterwards
+     * {@link #getLyricForScript getLyricForScript(lyric.script())} returns {@code lyric}.
      *
      * <p>Which combinations of text, extend and syllabic are legal is {@code Lyric}'s own
      * content model, enforced by its constructor — a text-bearing lyric always bears text, so
-     * an erased syllable is a {@link #removeLyricForVerse} rather than a lyric stored here with
+     * an erased syllable is a {@link #removeLyricForScript} rather than a lyric stored here with
      * blank text. This is the write every writer of a syllable shares — the interactive paths
-     * through {@link LyricRun#writeLyricForVerse}, the file readers, and the chain repairs in
-     * {@link LyricRun} that rewrite one verse's lyric.
+     * through {@link LyricRun#writeLyricForScript}, the file readers, and the chain repairs in
+     * {@link LyricRun} that rewrite one script's lyric.
      *
      * <p><b>Mutation contract:</b> production callers must invoke this from inside a
      * {@code Line.modifyElement} bracket so an {@code ElementModification} is recorded with the
@@ -438,11 +461,11 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
      * (no notification, no undo entry) and is permitted only for a reader running with mutation
      * tracking suspended, and for test setup that mirrors {@code song.withoutMutationTracking}.
      *
-     * @param lyric the lyric to hold for its verse
-     * @invariant {@link #getLyrics()} holds at most one lyric per verse
+     * @param lyric the lyric to hold for its script
+     * @invariant {@link #getLyrics()} holds at most one lyric per script
      */
     public void putLyric(Lyric lyric) {
-        var index = indexOfLyricForVerse(lyric.verse());
+        var index = indexOfLyricForScript(lyric.script());
 
         if (index == null) {
             lyrics.add(lyric);
@@ -452,15 +475,15 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Removes this element's lyric for {@code verse}. No effect when there is none.
-     * Afterwards {@link #getLyricForVerse getLyricForVerse(verse)} returns {@code null}.
+     * Removes this element's lyric for {@code script}. No effect when there is none.
+     * Afterwards {@link #getLyricForScript getLyricForScript(script)} returns {@code null}.
      *
      * <p><b>Mutation contract:</b> as for {@link #putLyric}.
      *
-     * @param verse the verse whose lyric is removed
+     * @param script the script whose lyric is removed
      */
-    public void removeLyricForVerse(int verse) {
-        lyrics.removeIf(lyric -> lyric.verse() == verse);
+    public void removeLyricForScript(Song.Script script) {
+        lyrics.removeIf(lyric -> lyric.script() == script);
     }
 
     /**

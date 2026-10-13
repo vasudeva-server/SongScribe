@@ -20,14 +20,23 @@
 
 package songscribe.lint;
 
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
 /**
  * Where a lint finding sits in the score, and what the score view draws there.
  *
- * <p>Every consumer that draws a mark switches over this type without a {@code default}
- * branch, so a new mark fails to compile until each consumer draws it. A consumer that needs
- * only the element calls {@link #element()}.
+ * <p>A mark says only which element and which kind of mark; where it stands in the score is
+ * worked out from the line's layout. Exactly two consumers switch over this type: drawing, in
+ * {@code LineInvariants}, which decides what the score draws for each mark on an element, and
+ * geometry, in {@code LineSelectionHandler}, which finds the box of the item a mark is drawn
+ * on. Neither switch has a {@code default} branch, so a new kind of mark fails to compile in
+ * both until it is drawn and placed. Every other reader treats a mark as a value: it compares
+ * marks, or it calls {@link #element()}.
+ *
+ * <p>Only a {@link Flagged} mark competes for its element's color, where playing, selection and
+ * hover each win over the lint color ({@code ColorPriority}). A squiggle and a question mark are
+ * always drawn in the lint color.
  */
 public sealed interface LintMark {
 
@@ -57,12 +66,12 @@ public sealed interface LintMark {
     }
 
     /**
-     * A question mark is drawn in the lint color in the lyric row of {@code verse}, where the
+     * A question mark is drawn in the lint color in the lyric row of {@code script}, where the
      * element's syllable would stand.
      *
      * @param element the slot that lacks a lyric
-     * @param verse   the verse that lacks it, 1-based as {@code Lyric.verse()} is
+     * @param script  the script that lacks it
      */
-    record MissingLyric(StaffElement element, int verse) implements LintMark {
+    record MissingLyric(StaffElement element, Song.Script script) implements LintMark {
     }
 }

@@ -39,7 +39,7 @@ import static songscribe.util.GraphicsState.Property.FONT;
  * <p>
  * Annotations are text labels that appear above or below notes,
  * typically used for performance instructions or other markings. An annotation that a lint
- * finding names ({@link songscribe.lint.LintReport#isAnnotationFlagged}) keeps its own color
+ * finding names ({@link LineInvariants.ElementLint#annotationFlagged()}) keeps its own color
  * and gets a sawtooth squiggle under its text in {@link ScoreView#getLintColor()}, whatever
  * color the text is drawn in, with the squiggle's ink top {@value #SQUIGGLE_GAP_DOC_PX}
  * document pixels below the text baseline.
@@ -98,14 +98,13 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
             g2.setColor(RenderingUtils.decorationColor(new HitTarget.Attachment(attachment), element, invariants, frame));
             g2.drawString(text, (float) xSs, (float) baselineYSs);
 
-            if (invariants.getLintReport().isAnnotationFlagged(element)) {
+            if (invariants.lintOn(element).annotationFlagged()) {
                 var widthSs = TextMeasurement.textWidthSs(annotationFont, text).value();
 
                 g2.setColor(ScoreView.getLintColor());
                 GlyphRun.centeredOn(
                     SQUIGGLE,
-                    xSs,
-                    xSs + widthSs,
+                    new GlyphRun.Span(xSs, xSs + widthSs),
                     baselineYSs + SQUIGGLE_GAP_SS - SQUIGGLE.inkTopYSs()
                 ).draw(g2);
             }

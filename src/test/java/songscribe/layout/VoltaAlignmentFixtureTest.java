@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Song;
 import songscribe.dom.SongFactory;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
@@ -381,7 +382,7 @@ class VoltaAlignmentFixtureTest extends UnitTest {
 
             if (type.isDuration() && !type.isRest()) {
                 element.putLyric(
-                    new Lyric(Lyric.FIRST_VERSE, label, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+                    new Lyric(Song.Script.LATIN, label, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
                 return;
             }

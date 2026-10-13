@@ -23,9 +23,6 @@ package songscribe.layout;
 import java.awt.Shape;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
-import java.util.function.DoubleUnaryOperator;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Articulation;
@@ -34,13 +31,11 @@ import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.Ending;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.NoteElement;
-import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -174,12 +169,8 @@ public final class HitRegionBuilder {
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
-        for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
-            var element = line.getElement(elementIndex);
-            var rectSs = new Rectangle2D.Double();
-            ElementHitGeometry.elementHitRectSs(
-                layoutResult.getElementXSs(element), element, rectSs, true);
-            addRegion(builder, rectSs, new HitTarget.Element(element));
+        for (var element : line.getElements()) {
+            addRegion(builder, layoutResult.elementHitRectSs(element), new HitTarget.Element(element));
         }
     }
 
@@ -195,7 +186,7 @@ public final class HitRegionBuilder {
         for (var element : line.getElements()) {
             for (var box : layoutResult.getLyricBoxes(element)) {
                 var rectSs = layoutResult.lyricBoxRectSs(box, lyricRenderMetrics);
-                addRegion(builder, rectSs, new HitTarget.Lyric(element, box.verseIndex()));
+                addRegion(builder, rectSs, new HitTarget.Lyric(element, box.script()));
             }
         }
     }
@@ -291,7 +282,7 @@ public final class HitRegionBuilder {
         HitRegistry.Builder builder) {
 
         for (var entry : layoutResult.decorationLayouts().<T>getDecorationLayoutsByType(type)) {
-            addRegion(builder, decorationInkRectSs(entry.getValue()), new HitTarget.Attachment(entry.getKey()));
+            addRegion(builder, entry.getValue().inkRectSs(), new HitTarget.Attachment(entry.getKey()));
         }
     }
 
@@ -372,7 +363,7 @@ public final class HitRegionBuilder {
      */
     private static void addAttribution(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.decorationLayouts().<Attribution>getDecorationLayoutsByType(Attribution.class)) {
-            addRegion(builder, decorationInkRectSs(entry.getValue()), new HitTarget.Attribution());
+            addRegion(builder, entry.getValue().inkRectSs(), new HitTarget.Attribution());
         }
     }
 
@@ -405,25 +396,10 @@ public final class HitRegionBuilder {
      * {@link #addAttachments}.
      */
     private static Rectangle2D.Double decorationHitRectSs(LayoutResult.DecorationLayout layout) {
-        var rectSs = decorationInkRectSs(layout);
+        var rectSs = layout.inkRectSs();
         rectSs.height += layout.marginSs();
 
         return rectSs;
-    }
-
-    /**
-     * The drawn box of a decoration, with nothing added.
-     * <p>
-     * Every decoration reaching this point is flat, so {@code ySs} is the box top outright. The
-     * tuplet bracket is the one decoration whose layout carries a slope, and it does not come
-     * through here: an axis-aligned rect is the wrong shape for it — see {@link #tupletHitShapeSs}.
-     */
-    private static Rectangle2D.Double decorationInkRectSs(LayoutResult.DecorationLayout layout) {
-        return new Rectangle2D.Double(
-            layout.xSs(),
-            layout.ySs(),
-            layout.widthSs(),
-            layout.heightSs());
     }
 
     /**
@@ -559,7 +535,7 @@ public final class HitRegionBuilder {
     }
 
     /** @see #addRegion */
-    static Shape inclusiveOf(Shape shapeSs) {
+    private static Shape inclusiveOf(Shape shapeSs) {
         if (!(shapeSs instanceof Rectangle2D rectSs)) {
             return shapeSs;
         }

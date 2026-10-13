@@ -52,6 +52,7 @@ interface LintCheck {
      * Visits every element of {@code song} once, in song order: line by line, each line's
      * elements in order, the terminal included.
      *
+     * @param song    the song to walk; read only, never changed
      * @param visitor receives each element with its position, which counts from 0 across the
      *                whole song and so orders elements of different lines
      */
@@ -80,7 +81,8 @@ interface LintCheck {
         /**
          * Adds a violation found on the element at {@code position}.
          *
-         * @param position the element's position from {@link #walk}
+         * @param position  the element's position from {@link #walk}
+         * @param violation the violation found on that element
          */
         void add(int position, Violation violation) {
             found.add(new Positioned(position, violation));

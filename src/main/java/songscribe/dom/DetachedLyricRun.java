@@ -57,6 +57,15 @@ public record DetachedLyricRun(List<StaffElement> elements) implements LyricRun 
     }
 
     /**
+     * Always {@code false}. A detached run is in no song, so no element of it can stand first in
+     * one; where a fragment lands in a song is the destination line's question.
+     */
+    @Override
+    public boolean isSongStartAt(int index) {
+        return false;
+    }
+
+    /**
      * Runs {@code mutator} and records nothing. A detached run belongs to no document: there
      * is no open modification bracket to record into, and nothing an undo entry could point
      * at — these elements are clones no line holds.

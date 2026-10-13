@@ -140,8 +140,8 @@ final class PreviewElementInserter {
         }
 
         // A grace note, a key change and the barline a key change sits behind may never be
-        // replaced — ignore the click.
-        if (overElementX && !line.canReplaceElementAt(insertionIndex)) {
+        // replaced, and a bar line may not take the first place in the song — ignore the click.
+        if (overElementX && !line.canReplaceElementAt(insertionIndex, previewElement.getType())) {
             return;
         }
 
@@ -300,7 +300,7 @@ final class PreviewElementInserter {
      */
     private static boolean replacementFits(LineComponent lc, Line line, int index, StaffElement replacement) {
         var edit = ProjectedEdit.replacing(
-            line, StaffElementRun.ElementRange.single(index), List.of(replacement));
+            line, StaffElementRun.ElementRange.single(index), List.of(replacement), line.getRunningKey());
         var restamps = edit.walk();
 
         // The auto-maintained terminal barline is not measured: layout pins it flush-right, and
@@ -380,7 +380,7 @@ final class PreviewElementInserter {
     private static boolean walkAndCalculateInsertion(
         LineComponent lc, Line line, StaffElement previewElement, int index) {
 
-        var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement)).walk();
+        var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement), line.getRunningKey()).walk();
 
         // The insertion's own check runs inside the fit gate, with the walk's accidentals stamped
         // so the projection measures the right widths.

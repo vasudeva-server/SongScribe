@@ -159,7 +159,7 @@ public final class AccidentalChain {
      *
      * <p>A walk keeps: {@code key}, the key in force at the current element, seeded at the
      * edit's start from the nearest key change before it on its line, else the key the line
-     * starts in; {@code inForce[p]}, what is in force at staff position {@code p}, seeded the
+     * starts in, both as the view answers them; {@code inForce[p]}, what is in force at staff position {@code p}, seeded the
      * first time the walk meets {@code p} by scanning back from the edit's start for the nearest
      * note at {@code p} and taking its sounding — the scan stops at a key change or the start of
      * a line with its own key, and finding no note gives {@code key}'s alteration for {@code p};
@@ -386,12 +386,12 @@ public final class AccidentalChain {
         }
 
         /**
-         * The key in force just before {@code cursor}, read from the live line: a projection
-         * changes nothing before the edit's start, so the live line's key changes there are the
-         * view's.
+         * The key in force just before {@code cursor}, read wholly from the view — the key its line
+         * starts in and the key changes before it on that line — since a projection can move the
+         * key a line starts in, and the live line would then answer the key it starts in now.
          */
         private Key keyBefore(Cursor cursor) {
-            return view.line(cursor.lineIndex()).keyBefore(cursor.index());
+            return view.keyBefore(cursor);
         }
 
         private @Nullable StaffElement previousBefore(Cursor cursor) {

@@ -57,10 +57,10 @@ public final class ElementColumn {
 
     private final StaffElement element;
     private final Extents extents;
-    // The element's lyric for the verse this column was built for — the song's active verse, and
-    // the one its width measures. Null when the element carries no lyric in that verse. The
+    // The element's lyric for the script this column was built for — the song's active script, and
+    // the one its width measures. Null when the element carries no lyric in that script. The
     // syllable text is read off the lyric rather than stored alongside it, so the text and the
-    // verse it came from cannot drift apart.
+    // script it came from cannot drift apart.
     private final @Nullable MeasuredLyric lyric;
     // The beam this column belongs to, or null when not beamed. Kept so the spacing calculator
     // can keep adjacent beam groups separate rather than merging them.
@@ -94,7 +94,7 @@ public final class ElementColumn {
      *
      * @param element The primary element (note, rest, barline, etc.)
      * @param extents The element's geometry extents
-     * @param lyric   The element's lyric for the verse being laid out and its measured width, or
+     * @param lyric   The element's lyric for the script being laid out and its measured width, or
      *                null when it carries none there
      * @param beam    The beam this element belongs to, or null when it is unbeamed
      */
@@ -133,7 +133,7 @@ public final class ElementColumn {
         double stemBottomSs) {}
 
     /**
-     * An element's lyric for the verse being laid out, with the width its syllable measures.
+     * An element's lyric for the script being laid out, with the width its syllable measures.
      *
      * @param lyric   the lyric
      * @param widthSs the syllable text's measured width in staff spaces; 0 when the text is empty
@@ -450,7 +450,7 @@ public final class ElementColumn {
 
     /**
      * Returns the associated lyric syllable text, read off {@link #getLyric()} so it always
-     * belongs to the verse {@link #getSyllableWidthSs()} was measured for.
+     * belongs to the script {@link #getSyllableWidthSs()} was measured for.
      *
      * @return Syllable text, or null if no syllable
      */
@@ -493,10 +493,10 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the element's lyric for the verse this column was built for, or null if it carries
+     * Returns the element's lyric for the script this column was built for, or null if it carries
      * none there. Reading the lyric off the column rather than off the element is what keeps every
-     * later pass on the same verse the syllable width was measured for — the element itself holds
-     * every verse and cannot say which one is being laid out.
+     * later pass on the same script the syllable width was measured for — the element itself holds
+     * every script and cannot say which one is being laid out.
      */
     public @Nullable Lyric getLyric() {
         return lyric != null ? lyric.lyric() : null;

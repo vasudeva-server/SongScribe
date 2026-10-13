@@ -27,7 +27,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ChangeReport;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
-import songscribe.message.Message;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.Mutation;
 
@@ -46,10 +45,9 @@ import songscribe.message.mutation.Mutation;
  * without synchronization; subscribers must call it from the event-dispatch thread.
  * This matches MBassador's synchronous dispatch and the rest of the SongScribe UI.
  */
-public class SongDidChangeNotification extends Message {
+public class SongDidChangeNotification extends LintingNotification {
 
     private final List<Mutation> mutations;
-    private final Song song;
     private final ChangeReport report;
 
     // Op-name declared by the initiator of this edit (Tier A/B), or null when the
@@ -74,18 +72,14 @@ public class SongDidChangeNotification extends Message {
      */
     public SongDidChangeNotification(List<Mutation> mutations, Song song, ChangeReport report,
                                      @Nullable String opName) {
+        super(song);
         this.mutations = mutations;
-        this.song = song;
         this.report = report;
         this.opName = opName;
     }
 
     public List<Mutation> getMutations() {
         return mutations;
-    }
-
-    public Song getSong() {
-        return song;
     }
 
     /**

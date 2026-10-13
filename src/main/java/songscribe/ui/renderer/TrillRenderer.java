@@ -102,8 +102,7 @@ public final class TrillRenderer {
             if (!TrillGeometry.isSingleNote(trill)) {
                 GlyphRun.startingAt(
                     ScaledGlyph.atDesignSize(SMuFLGlyph.WIGGLE_TRILL_FASTER),
-                    xSs + TRILL_ADVANCE_WIDTH_SS,
-                    xSs + layout.widthSs(),
+                    new GlyphRun.Span(xSs + TRILL_ADVANCE_WIDTH_SS, xSs + layout.widthSs()),
                     y
                 ).draw(g2);
             }

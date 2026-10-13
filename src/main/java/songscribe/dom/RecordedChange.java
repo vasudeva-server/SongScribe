@@ -25,6 +25,10 @@ import org.jspecify.annotations.Nullable;
  * One change the song made on its own, as a recorder hands it to a {@link ChangeReport.Builder}
  * while an edit or a load runs.
  *
+ * <p>A change names lines, never elements: it describes something that is gone, a span removed
+ * or a mark dropped, so no element is left to point at, and the elements around it may have
+ * moved by the time the user reads the entry.
+ *
  * <p>A recorder names the place by the {@link Line} objects the change was made on, never by
  * line or element indices. The line numbers the user reads are resolved only when the report is
  * built ({@link ChangeReport.Builder#build()}), so a line added or removed in front of

@@ -22,7 +22,7 @@ package songscribe.ui.renderer;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.util.function.BooleanSupplier;
+import java.util.EnumSet;
 
 import org.jspecify.annotations.Nullable;
 
@@ -40,7 +40,9 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.lint.LintMark;
 import songscribe.lint.LintReport;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
@@ -96,7 +98,7 @@ public final class LineInvariants {
     private final LyricRenderMetrics lyricRenderMetrics;
     @Nullable
     private final StaffElement activelyEditedElement;
-    private final @Nullable Integer activelyEditedVerse;
+    private final Song.@Nullable Script activelyEditedScript;
     private final LineComponent.@Nullable SelectionProvider selectionProvider;
     private final Color selectionColor;
     private final @Nullable Playing playing;
@@ -127,7 +129,7 @@ public final class LineInvariants {
         this.layoutResult = layoutResult;
         this.lyricRenderMetrics = lyricRenderMetrics;
         activelyEditedElement = b.activelyEditedElement;
-        activelyEditedVerse = b.activelyEditedVerse;
+        activelyEditedScript = b.activelyEditedScript;
         selectionProvider = b.selectionProvider;
         selectionColor = b.selectionColor;
         playing = b.playing;
@@ -270,11 +272,11 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns the verse being edited in the lyric overlay, or {@code null}
+     * Returns the script being edited in the lyric overlay, or {@code null}
      * when no editor is open.
      */
-    public @Nullable Integer getActivelyEditedVerse() {
-        return activelyEditedVerse;
+    public Song.@Nullable Script getActivelyEditedScript() {
+        return activelyEditedScript;
     }
 
     /**
@@ -295,9 +297,81 @@ public final class LineInvariants {
         return selectionColor;
     }
 
-    /** Returns the lint report this render pass draws findings from. */
-    public LintReport getLintReport() {
-        return lintReport;
+    // ==========================================================================
+    // Lint marks
+    // ==========================================================================
+
+    /**
+     * What this pass draws on one element for the lint marks the report puts on it.
+     *
+     * @param flagged           whether the element itself is drawn in the lint color, when
+     *                          no fact that outranks {@link ColorPriority#LINT} holds for it
+     * @param annotationFlagged whether a squiggle is drawn under the element's annotation text
+     * @param lyricPlaceholder  the placeholder box a "?" is drawn in, or {@code null} when no
+     *                          "?" is drawn on the element
+     */
+    public record ElementLint(boolean flagged, boolean annotationFlagged, @Nullable LyricBoxLayout lyricPlaceholder) {
+
+        /** Nothing drawn: the element carries no mark. */
+        static final ElementLint NONE = new ElementLint(false, false, null);
+    }
+
+    /**
+     * Returns what this pass draws for the lint marks on {@code element}.
+     *
+     * @param element an element of this line, compared by identity
+     * @return what is drawn; all {@code false} and no placeholder when the report puts no mark
+     *         on the element
+     */
+    public ElementLint lintOn(StaffElement element) {
+        var marks = lintReport.marksOn(element);
+
+        if (marks.isEmpty()) {
+            return ElementLint.NONE;
+        }
+
+        var flagged = false;
+        var annotationFlagged = false;
+        LyricBoxLayout lyricPlaceholder = null;
+
+        for (var mark : marks) {
+            switch (mark) {
+                case LintMark.Flagged _ -> flagged = true;
+                case LintMark.FlaggedAnnotation _ -> annotationFlagged = true;
+                case LintMark.MissingLyric missingLyric -> {
+                    var placeholder = drawnLyricPlaceholder(missingLyric, layoutResult);
+
+                    if (placeholder != null) {
+                        lyricPlaceholder = placeholder;
+                    }
+                }
+            }
+        }
+
+        return new ElementLint(flagged, annotationFlagged, lyricPlaceholder);
+    }
+
+    /**
+     * Returns the placeholder a "?" is drawn in for {@code mark}: the one layout gave the mark's
+     * element, when that placeholder is in the mark's script. Layout lays out the active script
+     * only, so a "?" stands only for a mark in the script the lyric row shows.
+     * <p>
+     * The one statement of where a "?" is drawn. The renderer draws by it, through
+     * {@link #lintOn}, and the pointer code hit-tests by it, so a "?" is hovered and clicked
+     * exactly where it is drawn.
+     *
+     * @param mark         a mark of the song's current lint report
+     * @param layoutResult the layout of the line that holds the mark's element
+     * @return the placeholder, or {@code null} when no "?" is drawn for the mark
+     */
+    public static @Nullable LyricBoxLayout drawnLyricPlaceholder(LintMark.MissingLyric mark, LayoutResult layoutResult) {
+        var placeholder = layoutResult.getLyricPlaceholder(mark.element());
+
+        if (placeholder == null || placeholder.script() != mark.script()) {
+            return null;
+        }
+
+        return placeholder;
     }
 
     // ==========================================================================
@@ -319,23 +393,29 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns the rendering color for the element at the given index, through
-     * {@link #resolveColor}: the element or its tie playing, then a range selection that
+     * Returns the rendering color for the element at the given index, decided by
+     * {@link ColorPriority}: the element or its tie playing, then a range selection that
      * covers it, then the hover highlight, then a lint finding on it.
      * <p>
      * Does not include grace-cancel coloring (handled in LineRenderer).
      */
     public Color getElementColor(int elementIndex) {
-        return resolveColor(
-            elementIndex,
-            () -> isElementOrTiePlaying(elementIndex),
-            () -> isElementRangeSelected(elementIndex)
-        );
+        var facts = positionFacts(elementIndex);
+
+        if (isElementOrTiePlaying(elementIndex)) {
+            facts.add(ColorPriority.PLAYING);
+        }
+
+        if (isElementRangeSelected(elementIndex)) {
+            facts.add(ColorPriority.SELECTED);
+        }
+
+        return colorOf(facts);
     }
 
     /**
      * Returns the rendering color for a lyric syllable attached to the element at
-     * {@code elementIndex}, for the given verse. Differs from {@link #getElementColor} in its
+     * {@code elementIndex}, for the given script. Differs from {@link #getElementColor} in its
      * playing test, described below, and in its selection test, which also holds when the
      * syllable itself is selected.
      * <p>
@@ -345,18 +425,23 @@ public final class LineInvariants {
      * anchor stays highlighted while in-between unlyriced notes play, up to (but not
      * including) the next text-bearing syllable.
      */
-    public Color getLyricColor(int elementIndex, StaffElement element, int verseIndex) {
-        return resolveColor(
-            elementIndex,
-            () -> isLyricSpanPlaying(elementIndex, element, verseIndex),
-            () -> isSelected(new HitTarget.Lyric(element, verseIndex))
-                || isElementRangeSelected(elementIndex)
-        );
+    public Color getLyricColor(int elementIndex, StaffElement element, Song.Script script) {
+        var facts = positionFacts(elementIndex);
+
+        if (isLyricSpanPlaying(elementIndex, element, script)) {
+            facts.add(ColorPriority.PLAYING);
+        }
+
+        if (isSelected(new HitTarget.Lyric(element, script)) || isElementRangeSelected(elementIndex)) {
+            facts.add(ColorPriority.SELECTED);
+        }
+
+        return colorOf(facts);
     }
 
     /**
      * Returns the rendering color for a lyric connector (hyphen run or melisma extender)
-     * anchored at {@code sourceElementIndex} for {@code verseIndex}. Tracks the same
+     * anchored at {@code sourceElementIndex} for {@code script}. Tracks the same
      * span-aware playing highlight as the anchor syllable so that the connector stays
      * highlighted while the in-between or extender carrier notes are playing.
      *
@@ -364,7 +449,7 @@ public final class LineInvariants {
      *                           continuation, whose source element sits on the previous line and
      *                           so has no playing state here
      */
-    public Color getLyricConnectorColor(@Nullable Integer sourceElementIndex, int verseIndex) {
+    public Color getLyricConnectorColor(@Nullable Integer sourceElementIndex, Song.Script script) {
         if (sourceElementIndex == null) {
             return Color.BLACK;
         }
@@ -375,12 +460,17 @@ public final class LineInvariants {
             return getElementColor(anchorIndex);
         }
 
-        var anchor = currentLine.getElement(anchorIndex);
-        return resolveColor(
-            anchorIndex,
-            () -> isLyricSpanPlaying(anchorIndex, anchor, verseIndex),
-            () -> isElementRangeSelected(anchorIndex)
-        );
+        var facts = positionFacts(anchorIndex);
+
+        if (isLyricSpanPlaying(anchorIndex, currentLine.getElement(anchorIndex), script)) {
+            facts.add(ColorPriority.PLAYING);
+        }
+
+        if (isElementRangeSelected(anchorIndex)) {
+            facts.add(ColorPriority.SELECTED);
+        }
+
+        return colorOf(facts);
     }
 
     /**
@@ -396,13 +486,19 @@ public final class LineInvariants {
      * @return the selection color when {@code target} is selected, otherwise the default color
      */
     public Color colorFor(HitTarget target) {
-        return isSelected(target) ? selectionColor : Color.BLACK;
+        var facts = EnumSet.noneOf(ColorPriority.class);
+
+        if (isSelected(target)) {
+            facts.add(ColorPriority.SELECTED);
+        }
+
+        return colorOf(facts);
     }
 
     /**
      * Returns the rendering color for the element {@code target} addresses, the target-keyed
-     * counterpart of {@link #getElementColor(int)}, resolved through {@link #resolveColor}
-     * with selection of this exact target as its selection test.
+     * counterpart of {@link #getElementColor(int)}, decided by {@link ColorPriority} with
+     * selection of this exact target as its selection test.
      * <p>
      * Playback, hover and lint are asked by position, so an element that has no position in
      * the line — a preview being dragged — is colored by selection alone.
@@ -413,8 +509,8 @@ public final class LineInvariants {
      * @param target       the element being drawn, as a click would address it
      * @param elementIndex that element's index within the line, or {@code null} when the
      *     element is not in the line
-     * @return what {@link #resolveColor} returns; for a {@code null} index, what
-     *     {@link #colorFor(HitTarget)} returns
+     * @return the color of the fact {@link ColorPriority#decide} picks; for a {@code null}
+     *     index, what {@link #colorFor(HitTarget)} returns
      */
     public Color colorFor(HitTarget.Element target, @Nullable Integer elementIndex) {
         if (elementIndex == null) {
@@ -422,7 +518,17 @@ public final class LineInvariants {
         }
 
         int index = elementIndex;
-        return resolveColor(index, () -> isElementOrTiePlaying(index), () -> isSelected(target));
+        var facts = positionFacts(index);
+
+        if (isElementOrTiePlaying(index)) {
+            facts.add(ColorPriority.PLAYING);
+        }
+
+        if (isSelected(target)) {
+            facts.add(ColorPriority.SELECTED);
+        }
+
+        return colorOf(facts);
     }
 
     /** Returns whether the selection provider holds exactly {@code target} on this line. */
@@ -431,58 +537,48 @@ public final class LineInvariants {
     }
 
     /**
-     * The color chain every element-keyed lookup here resolves through. The first step that
-     * holds decides the color:
-     * <ol>
-     *   <li><b>playing</b> — {@code isPlaying} holds: the playing-note color;</li>
-     *   <li><b>selection</b> — {@code isSelected} holds: the selection color;</li>
-     *   <li><b>hover</b> — the element is the preview's replacement target: the
-     *       replaced-element highlight;</li>
-     *   <li><b>lint</b> — the lint report flags the element ({@link LintReport#isFlagged}):
-     *       {@link ScoreView#getLintColor()};</li>
-     *   <li>otherwise black.</li>
-     * </ol>
-     * Selection wins over hover and lint because the selection is what the next Delete
-     * removes; the user is never left guessing at that because something else colors the
-     * element.
-     * <p>
-     * Each caller supplies only its playing test and its selection test; the order is held
-     * here once.
+     * Returns a new, mutable set of the facts asked by the element's position on this line —
+     * {@link ColorPriority#HOVERED} and {@link ColorPriority#LINT} — for the caller to add its
+     * own playing and selection facts to.
      *
-     * @param elementIndex the element's index within this line; hover and lint are asked by it
-     * @param isPlaying    whether the thing being drawn reads as playing
-     * @param isSelected   whether the thing being drawn reads as selected
-     * @return the color of the first step that holds
+     * @param elementIndex the element's index within this line
+     * @return the position facts that hold for the element
      */
-    private Color resolveColor(
-        int elementIndex,
-        BooleanSupplier isPlaying,
-        BooleanSupplier isSelected
-    ) {
-        if (isPlaying.getAsBoolean()) {
-            return ScoreView.getPlayingNoteColor();
-        }
-
-        if (isSelected.getAsBoolean()) {
-            return selectionColor;
-        }
+    private EnumSet<ColorPriority> positionFacts(int elementIndex) {
+        var facts = EnumSet.noneOf(ColorPriority.class);
 
         if (isElementHovered(elementIndex)) {
-            return REPLACED_ELEMENT_COLOR;
+            facts.add(ColorPriority.HOVERED);
         }
 
         if (isElementFlagged(elementIndex)) {
-            return ScoreView.getLintColor();
+            facts.add(ColorPriority.LINT);
         }
 
-        return Color.BLACK;
+        return facts;
+    }
+
+    /**
+     * Returns the color of the fact {@link ColorPriority#decide} picks from {@code facts}.
+     *
+     * @param facts every fact that holds for the thing being drawn
+     * @return the color the deciding fact draws in; black when no fact holds
+     */
+    private Color colorOf(EnumSet<ColorPriority> facts) {
+        return switch (ColorPriority.decide(facts)) {
+            case PLAYING -> ScoreView.getPlayingNoteColor();
+            case SELECTED -> selectionColor;
+            case HOVERED -> REPLACED_ELEMENT_COLOR;
+            case LINT -> ScoreView.getLintColor();
+            case DEFAULT -> Color.BLACK;
+        };
     }
 
     /** Returns whether the lint report flags the element at {@code elementIndex} on this line. */
     private boolean isElementFlagged(int elementIndex) {
         return currentLine != null
             && currentLine.hasIndex(elementIndex)
-            && lintReport.isFlagged(currentLine.getElement(elementIndex));
+            && lintOn(currentLine.getElement(elementIndex)).flagged();
     }
 
     /** Returns whether the element at {@code elementIndex} or the tie through it is playing. */
@@ -556,12 +652,12 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns whether the lyric anchored at {@code anchorIndex} for {@code verseIndex}
+     * Returns whether the lyric anchored at {@code anchorIndex} for {@code script}
      * should render in the playing-note color: either its own element is playing (or
      * tied to the playing note), or the playing note falls inside the span the anchor's
      * lyric opens on this line ({@link LyricRun#lyricSpanEnd}).
      */
-    private boolean isLyricSpanPlaying(int anchorIndex, StaffElement element, int verseIndex) {
+    private boolean isLyricSpanPlaying(int anchorIndex, StaffElement element, Song.Script script) {
         if (isElementOrTiePlaying(anchorIndex)) {
             return true;
         }
@@ -570,13 +666,13 @@ public final class LineInvariants {
             return false;
         }
 
-        var lyric = element.getLyricForVerse(verseIndex);
+        var lyric = element.getLyricForScript(script);
 
         if (lyric == null || !LyricRun.opensLyricSpan(lyric)) {
             return false;
         }
 
-        var spanEnd = currentLine.lyricSpanEnd(anchorIndex + 1, verseIndex);
+        var spanEnd = currentLine.lyricSpanEnd(anchorIndex + 1, script);
         return playing.noteIndex() <= spanEnd.lastCoveredIndex();
     }
 
@@ -603,7 +699,7 @@ public final class LineInvariants {
         private LyricRenderMetrics lyricRenderMetrics;
         @Nullable
         private StaffElement activelyEditedElement;
-        private @Nullable Integer activelyEditedVerse;
+        private Song.@Nullable Script activelyEditedScript;
         private LineComponent.@Nullable SelectionProvider selectionProvider;
         private Color selectionColor = ScoreView.getSelectionColor();
         private @Nullable Playing playing;
@@ -646,9 +742,9 @@ public final class LineInvariants {
             return this;
         }
 
-        /** Sets the verse being edited, or {@code null} when no editor is open. */
-        public Builder setActivelyEditedVerse(@Nullable Integer activelyEditedVerse) {
-            this.activelyEditedVerse = activelyEditedVerse;
+        /** Sets the script being edited, or {@code null} when no editor is open. */
+        public Builder setActivelyEditedScript(Song.@Nullable Script activelyEditedScript) {
+            this.activelyEditedScript = activelyEditedScript;
             return this;
         }
 

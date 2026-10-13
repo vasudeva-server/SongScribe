@@ -257,8 +257,7 @@ public final class UndoController {
      * Otherwise the document's modified flag is recomputed against the save point (see
      * {@link #documentWasSaved}) and {@link UndoStateDidChangeNotification} is posted. The
      * replay itself posts a {@link SongDidChangeNotification} describing the inverse
-     * mutations — which is how the score repaints — without recording a new step. Its change
-     * report is empty, because nothing in a replay records.
+     * mutations — which is how the score repaints — without recording a new step.
      *
      * <p>Never throws. A replay that fails is an engine bug, not a caller error: the model
      * is then mid-step and matches neither stack, so both stacks are cleared and the
@@ -284,7 +283,7 @@ public final class UndoController {
      *
      * <p>A no-op, posting nothing, when {@link #canRedo()} is false or no document is open.
      * In every other respect — in-place restoration, the recomputed modified flag, the posted
-     * notifications with their empty change report, and the never-throws fail-safe — it
+     * notifications, and the never-throws fail-safe — it
      * matches {@link #undo()}.
      *
      * <p>EDT only.

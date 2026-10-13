@@ -40,6 +40,8 @@ record ScaledGlyph(SMuFLGlyph glyph, double scale) {
     /**
      * The distance in staff spaces from one glyph's pen origin to the next in a tiled run, after
      * scaling.
+     *
+     * @return the glyph's design advance width times {@link #scale}, in staff spaces
      */
     double advanceSs() {
         return SMuFLMetadata.advanceWidthSs(glyph) * scale;
@@ -48,6 +50,9 @@ record ScaledGlyph(SMuFLGlyph glyph, double scale) {
     /**
      * The Y of the glyph's ink top relative to its baseline, in staff spaces, after scaling.
      * Negative when the ink rises above the baseline.
+     *
+     * @return the top of the glyph's design bounding box times {@link #scale}, in staff spaces
+     *     from the baseline
      */
     double inkTopYSs() {
         return SMuFLMetadata.bboxSs(glyph).topSs() * scale;

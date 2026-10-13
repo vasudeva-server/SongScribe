@@ -139,7 +139,7 @@ public final class Line implements EditableRun {
 
     /**
      * The vertical position of this line's lyric rows below the staff, in staff spaces, shared
-     * by every verse on the line.
+     * by every script on the line.
      */
     private double lyricsYPosSs = LYRICS_DEFAULT_Y_SS;
 
@@ -947,6 +947,19 @@ public final class Line implements EditableRun {
     }
 
     /**
+     * Whether {@code index} is the song-start slot, as {@link SongStart} states it: index 0 of a
+     * line of the song every line before which is empty.
+     *
+     * @param index an insertion index of this line
+     * @return {@code true} when an element inserted at {@code index} would stand first in the
+     *     song; {@code false} when this line is not one of its song's lines
+     */
+    @Override
+    public boolean isSongStartAt(int index) {
+        return SongStart.isSlot(this, index);
+    }
+
+    /**
      * Returns whether {@code element} is one of this line's elements.
      * <p>
      * This is the query a caller asks when it does not know whether the element is on this line;
@@ -1012,7 +1025,7 @@ public final class Line implements EditableRun {
      * The change posts through {@link #applyChange}, under {@link Song#applyChange}'s bracket
      * rule.
      *
-     * @param lyricsYPosSs the new vertical position of every verse's row on this line, in staff
+     * @param lyricsYPosSs the new vertical position of every script's row on this line, in staff
      *     spaces below the staff
      */
     public void setLyricsYPosSs(double lyricsYPosSs) {

@@ -27,13 +27,14 @@ import org.slf4j.LoggerFactory;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.LyricRun;
+import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.message.mutation.ElementField;
 import songscribe.util.LogUtils;
 
 /**
  * The hyphen-chain and melisma-chain algebra an open {@link LyricEditor} session performs on
- * one verse of one {@link Line}. Every operation here is expressed in element indices and
+ * one script of one {@link Line}. Every operation here is expressed in element indices and
  * reads or writes only the model, so it can be exercised without a Swing component.
  *
  * <p>This is a level above the repairs on {@link LyricRun}, not a replacement for them: those
@@ -54,12 +55,12 @@ final class LyricChainEditor {
 
     private final Line line;
 
-    /** The verse the owning editor session captured when it opened. */
-    private final int verse;
+    /** The script the owning editor session captured when it opened. */
+    private final Song.Script script;
 
-    LyricChainEditor(Line line, int verse) {
+    LyricChainEditor(Line line, Song.Script script) {
         this.line = line;
-        this.verse = verse;
+        this.script = script;
     }
 
     /**
@@ -70,21 +71,21 @@ final class LyricChainEditor {
      * dismiss adjustment to repair.
      */
     boolean isInsideHyphenChain(int currentIndex) {
-        if (line.getElement(currentIndex).getLyricForVerse(verse) != null) {
+        if (line.getElement(currentIndex).getLyricForScript(script) != null) {
             return false;
         }
 
-        var backIndex = line.previousLyricBearingIndex(currentIndex, verse);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, script);
 
         if (backIndex == null) {
             return false;
         }
 
-        var backLyric = line.getElement(backIndex).getLyricForVerse(verse);
+        var backLyric = line.getElement(backIndex).getLyricForScript(script);
 
         return backLyric != null
             && Lyric.syllabicContinues(backLyric.syllabic())
-            && line.hasFollowingTextBearingLyric(currentIndex, verse);
+            && line.hasFollowingTextBearingLyric(currentIndex, script);
     }
 
     /**
@@ -96,14 +97,14 @@ final class LyricChainEditor {
      * <p>Must be called inside an open modification bracket.
      */
     void breakHyphenChain(int currentIndex) {
-        var backIndex = line.previousLyricBearingIndex(currentIndex, verse);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, script);
 
         if (backIndex == null) {
             trace("breakHyphenChain: no predecessor to end the word at");
             return;
         }
 
-        var backLyric = line.getElement(backIndex).getLyricForVerse(verse);
+        var backLyric = line.getElement(backIndex).getLyricForScript(script);
 
         // The chain may have been broken from elsewhere while the editor was open.
         if (backLyric == null || !Lyric.syllabicContinues(backLyric.syllabic())) {
@@ -113,7 +114,7 @@ final class LyricChainEditor {
         }
 
         trace("breakHyphenChain: ending the word at {}", backIndex);
-        line.setSyllableBoundary(backIndex, verse, true, false);
+        line.setSyllableBoundary(backIndex, script, true, false);
     }
 
     /**
@@ -129,7 +130,7 @@ final class LyricChainEditor {
 
         var currentElement = line.getElement(currentIndex);
         line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-            currentElement.removeLyricForVerse(verse));
+            currentElement.removeLyricForScript(script));
         breakChainAtCurrentElement(currentIndex);
     }
 
@@ -152,13 +153,13 @@ final class LyricChainEditor {
     }
 
     private void terminatePrecedingContinueChain(int currentIndex) {
-        var backIndex = line.previousLyricBearingIndex(currentIndex, verse);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, script);
 
         if (backIndex == null) {
             return;
         }
 
-        var backLyric = line.getElement(backIndex).getLyricForVerse(verse);
+        var backLyric = line.getElement(backIndex).getLyricForScript(script);
 
         if (backLyric == null) {
             return;
@@ -187,7 +188,7 @@ final class LyricChainEditor {
 
         for (var i = currentIndex + 1; i < effectiveCount; i++) {
             var forwardElement = line.getElement(i);
-            var forwardLyric = forwardElement.getLyricForVerse(verse);
+            var forwardLyric = forwardElement.getLyricForScript(script);
 
             if (forwardLyric == null) {
                 continue;
@@ -203,7 +204,7 @@ final class LyricChainEditor {
 
             trace("clearForwardCarriers: clearing the {} carrier on {}", extend, i);
             line.modifyElement(i, ElementField.LYRIC, () ->
-                forwardElement.removeLyricForVerse(verse));
+                forwardElement.removeLyricForScript(script));
 
             if (extend == Lyric.Extend.STOP) {
                 return;
@@ -222,11 +223,11 @@ final class LyricChainEditor {
      */
     void buildBackwardChain(int currentIndex, int backIndex) {
         var backElement = line.getElement(backIndex);
-        var backLyric = backElement.getLyricForVerse(verse);
+        var backLyric = backElement.getLyricForScript(script);
 
         // Invariant: previousLyricBearingIndex only returns indices with non-null lyrics.
         if (backLyric == null) {
-            throw RuntimeError.exit("Predecessor at " + backIndex + " lost verse " + verse + " lyric between scan and rewrite");
+            throw RuntimeError.exit("Predecessor at " + backIndex + " lost script " + script + " lyric between scan and rewrite");
         }
 
         trace("extendChainBackward: chain root {} ({}), carrier at {}",
@@ -240,7 +241,7 @@ final class LyricChainEditor {
             if (backExtend == Lyric.Extend.STOP) {
                 // STOP carrier: flip back to CONTINUE so the new chain extends through it.
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.putLyric(Lyric.carrier(verse, Lyric.Extend.CONTINUE)));
+                    backElement.putLyric(Lyric.carrier(script, Lyric.Extend.CONTINUE)));
             } else if (backExtend != Lyric.Extend.CONTINUE) {
                 // Text-bearing (NONE or START): rewrite extend to START, preserving the text.
                 // The syllable it hyphenated to is now a carrier, so the word ends here — and a
@@ -250,21 +251,21 @@ final class LyricChainEditor {
                 var backSyllabic = wordFinalSyllabic(backLyric.syllabic());
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
                     backElement.putLyric(
-                        new Lyric(verse, backLyric.text(), Lyric.Extend.START, backSyllabic, false)));
+                        new Lyric(script, backLyric.text(), Lyric.Extend.START, backSyllabic, false)));
             }
             // CONTINUE carrier: leave unchanged — the chain already extends through it.
 
             for (var i = backIndex + 1; i < currentIndex; i++) {
                 var midElement = line.getElement(i);
                 line.modifyElement(i, ElementField.LYRIC, () ->
-                    midElement.putLyric(Lyric.carrier(verse, Lyric.Extend.CONTINUE)));
+                    midElement.putLyric(Lyric.carrier(script, Lyric.Extend.CONTINUE)));
             }
 
             line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-                currentElement.putLyric(Lyric.carrier(verse, Lyric.Extend.STOP)));
+                currentElement.putLyric(Lyric.carrier(script, Lyric.Extend.STOP)));
 
             // Any syllable this element hyphenated to now follows a melisma, so it starts a word.
-            line.adjustSuccessorAfterMelismaCarrier(currentIndex, verse);
+            line.adjustSuccessorAfterMelismaCarrier(currentIndex, script);
         });
     }
 
@@ -282,21 +283,21 @@ final class LyricChainEditor {
         for (var i = currentIndex + 1; i < nextIndex; i++) {
             var midElement = line.getElement(i);
 
-            if (midElement.getLyricForVerse(verse) == null) {
+            if (midElement.getLyricForScript(script) == null) {
                 continue;
             }
 
             line.modifyElement(i, ElementField.LYRIC, () ->
-                midElement.putLyric(Lyric.carrier(verse, Lyric.Extend.CONTINUE)));
+                midElement.putLyric(Lyric.carrier(script, Lyric.Extend.CONTINUE)));
         }
 
         var nextElement = line.getElement(nextIndex);
         line.modifyElement(nextIndex, ElementField.LYRIC, () ->
-            nextElement.putLyric(Lyric.carrier(verse, Lyric.Extend.STOP)));
+            nextElement.putLyric(Lyric.carrier(script, Lyric.Extend.STOP)));
 
         // The commit's boundary fix stops at the carrier; the first syllable past the chain
         // still has to lose any word continuation that ran through it.
-        line.adjustSuccessorAfterMelismaCarrier(nextIndex, verse);
+        line.adjustSuccessorAfterMelismaCarrier(nextIndex, script);
     }
 
     private void rewriteLyricExtend(int index, Lyric existing, Lyric.Extend newExtend) {
@@ -325,7 +326,7 @@ final class LyricChainEditor {
     }
 
     /**
-     * A one-line rendering of every element's lyric in the edited verse, for the editor's trace.
+     * A one-line rendering of every element's lyric in the edited script, for the editor's trace.
      * Each element appears as its index followed by its state: {@code -} for no lyric, {@code ~}
      * for a carrier (no syllable of its own), otherwise the quoted text and its syllabic. The
      * extender state and the compound flag follow when they are set. For example:
@@ -345,7 +346,7 @@ final class LyricChainEditor {
             }
 
             description.append(i).append('=');
-            var lyric = elements.get(i).getLyricForVerse(verse);
+            var lyric = elements.get(i).getLyricForScript(script);
 
             if (lyric == null) {
                 description.append('-');

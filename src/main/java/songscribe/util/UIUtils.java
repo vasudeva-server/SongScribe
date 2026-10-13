@@ -79,15 +79,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.Strings;
-import songscribe.error.RuntimeError;
 import songscribe.font.LocalFonts;
 import songscribe.font.MusescoreIconFont;
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.renderer.RenderingUtils;
 
@@ -137,6 +134,19 @@ public final class UIUtils {
     // Tooltips
     //
 
+    /**
+     * Gives {@code component} the tooltip of {@code action}: one section, in the form
+     * {@link #toolTipHtml} gives, headed by the action's name and its keyboard shortcut over its
+     * short description. The name, the shortcut and the description are plain text, and are
+     * escaped, so a {@code <}, {@code >} or {@code &} in any of them shows as itself.
+     *
+     * @param component the component the tooltip is for
+     * @param action    the action whose name, shortcut and short description the tooltip shows,
+     *                  or {@code null} for no tooltip
+     * @effects sets {@code component}'s tooltip; when {@code action} is {@code null} it has none,
+     *     and when the action's short description is {@code null} or empty the tooltip is that
+     *     description, unchanged
+     */
     public static void setToolTipText(JComponent component, @Nullable Action action) {
         if (action == null) {
             component.setToolTipText(null);
@@ -165,13 +175,15 @@ public final class UIUtils {
 
     /**
      * Gives {@code component} a tooltip of one section, in the form {@link #toolTipHtml} gives.
+     * The section's heading, description and shortcut are plain text, and are escaped, so a
+     * {@code <}, {@code >} or {@code &} in any of them shows as itself, and a line break shows
+     * as a line break.
      *
-     * @param component   the component the tooltip is for
-     * @param heading     the bold first line, as plain text
-     * @param description the text under the heading, as plain text
+     * @param component the component the tooltip is for
+     * @param section   the tooltip's only section
      */
-    public static void setToolTipText(JComponent component, String heading, String description) {
-        component.setToolTipText(toolTipHtml(List.of(new ToolTipSection(heading, null, description))));
+    public static void setToolTipText(JComponent component, ToolTipSection section) {
+        component.setToolTipText(toolTipHtml(List.of(section)));
     }
 
     /**
@@ -194,7 +206,8 @@ public final class UIUtils {
 
     /**
      * One section of a tooltip: a heading in bold, optionally followed by a keyboard shortcut,
-     * over a description. All three are plain text; {@link #toolTipHtml} escapes them.
+     * over a description. All three are plain text; {@link #toolTipHtml} escapes them and shows
+     * each line break in them as a line break.
      *
      * @param heading     the bold first line
      * @param accelerator the keyboard shortcut shown after the heading, or {@code null} for none
@@ -203,34 +216,40 @@ public final class UIUtils {
     public record ToolTipSection(String heading, @Nullable KeyStroke accelerator, String description) {
 
         private String html() {
-            var html = "<strong>" + escapeHtml(heading) + "</strong>";
+            var html = "<strong>" + plainTextHtml(heading) + "</strong>";
 
             if (accelerator != null) {
                 var modifiers = Utils.getPlatformModifiersString(accelerator);
                 var keyName = Utils.getPlatformKeyString(accelerator);
-                html += "&nbsp;&nbsp;(" + escapeHtml(modifiers + keyName) + ')';
+                html += "&nbsp;&nbsp;(" + plainTextHtml(modifiers + keyName) + ')';
             }
 
-            return html + "<br>" + escapeHtml(description);
+            return html + "<br>" + plainTextHtml(description);
         }
     }
 
     /**
-     * Escapes the characters Swing's HTML renderer would otherwise treat as markup.
+     * Returns the HTML that shows {@code text} as written, or an empty string for {@code null}.
+     * <p>
+     * It escapes the characters Swing's HTML renderer would otherwise treat as markup.
      * Without this, an accelerator or action name containing {@code <} — the staccato
      * shortcut, for one — opens what the renderer reads as a tag, so the character and
      * everything after it vanish from the tooltip.
+     * <p>
+     * Each line break becomes a {@code <br>}, because the renderer shows a line break as a space.
      */
-    private static String escapeHtml(@Nullable String text) {
+    private static String plainTextHtml(@Nullable String text) {
         if (text == null) {
             return "";
         }
 
-        // Ampersand first, so the ampersands introduced below are not escaped again.
+        // Ampersand first, so the ampersands introduced below are not escaped again. The line
+        // breaks come last, so their tags are not escaped.
         return text
             .replace("&", "&amp;")
             .replace("<", "&lt;")
-            .replace(">", "&gt;");
+            .replace(">", "&gt;")
+            .replace("\n", "<br>");
     }
 
     //

@@ -71,6 +71,13 @@ class EndingSectionRuleTest extends UnitTest {
     private static final String ENDING_LINE = "3 3 :| 3 3";
     private static final int ENDING_LINE_ANCHOR_INDEX = 1;
 
+    /**
+     * A fixture with a nested section: {@code |: |: A :| B :|} and the ending whose split is the
+     * last {@code :|}, which closes the outer section.
+     */
+    private static final String NESTED_LINE = "|: |: 3 :| 3 3 :| 3 3";
+    private static final int NESTED_ANCHOR_INDEX = 5;
+
     /** Between an ending's anchor and its end, in a line where nothing else stands in between. */
     private static final int END_OFFSET_FROM_ANCHOR = 3;
 
@@ -168,6 +175,10 @@ class EndingSectionRuleTest extends UnitTest {
             new SectionCase("an opening repeat on an earlier line keeps the ending through an edit to its line",
                 ENDING_LINE_ANCHOR_INDEX, new String[] {":| |: 3", ENDING_LINE},
                 song -> song.getLine(SECOND_LINE).addElement(0, crotchet()),
+                null),
+            new SectionCase("a split that is the last :| of |: |: :| :| closes the outer section and keeps the ending",
+                NESTED_ANCHOR_INDEX, new String[] {NESTED_LINE},
+                song -> song.getLine(FIRST_LINE).addElement(0, crotchet()),
                 null)
         );
     }

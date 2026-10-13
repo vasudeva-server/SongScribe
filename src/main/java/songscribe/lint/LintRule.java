@@ -40,27 +40,43 @@ import songscribe.dom.Song;
  */
 public enum LintRule {
 
-    /** Every repeat section is opened and closed exactly once, and none is nested. */
-    BALANCED_REPEATS(new BalancedRepeatsCheck(), EnumSet.of(Flag.BLOCKS_SAVE, Flag.BLOCKS_PLAYBACK)),
-
-    /** Every slot carries a lyric in the active verse, or an open lyric chain covers it. */
-    MISSING_LYRIC(new MissingLyricCheck(), EnumSet.of(Flag.BLOCKS_SAVE)),
-
-    /** Every Fine stands on a bar, before the end, with a later reference to it, and the reverse. */
-    UNBALANCED_FINE(new UnbalancedFineCheck(), EnumSet.of(Flag.BLOCKS_SAVE));
+    /**
+     * No bar line or repeat stands first in the song; the song's terminal is exempt. It blocks
+     * playback so that playback never meets a leading repeat, which closes a section that holds
+     * nothing. A leading plain bar line blocks playback too, because one rule covers every bar
+     * type.
+     */
+    LEADING_BAR(new LeadingBarCheck(), EnumSet.of(Flag.BLOCKS_EXPORT, Flag.BLOCKS_PLAYBACK)),
 
     /**
-     * What a finding of a rule prevents the user from doing until the finding is fixed.
+     * Every repeat section is opened and closed exactly once, and none is nested. It blocks
+     * playback because playback cannot follow repeats that this rule found broken.
+     */
+    BALANCED_REPEATS(new BalancedRepeatsCheck(), EnumSet.of(Flag.BLOCKS_EXPORT, Flag.BLOCKS_PLAYBACK)),
+
+    /** Every slot carries a lyric in the active script, or an open lyric chain covers it. */
+    MISSING_LYRIC(new MissingLyricCheck(), EnumSet.of(Flag.BLOCKS_EXPORT)),
+
+    /** Every Fine stands on a bar, before the end, with a later reference to it, and the reverse. */
+    UNBALANCED_FINE(new UnbalancedFineCheck(), EnumSet.of(Flag.BLOCKS_EXPORT));
+
+    /**
+     * What a finding of a rule prevents the user from doing until the finding is fixed. This
+     * is the one statement of what each flag blocks; the code that enforces a flag links here.
      */
     public enum Flag {
 
-        /** Every save is refused: a song with this finding is never written to a file. */
-        BLOCKS_SAVE,
+        /**
+         * An export of a song with this finding is refused. A save of it asks the user for
+         * confirmation first, and writes only when the user confirms: the saved file keeps the
+         * work, and the finding stays for the user to fix.
+         */
+        BLOCKS_EXPORT,
 
         /**
-         * Play is disabled while the playback settings play repeats, because the song's repeats
-         * cannot be followed. With repeats off, or while playback already runs, Play is not
-         * affected.
+         * Play is disabled while playback is stopped and the playback settings play repeats.
+         * With repeats off, or while playback already runs, Play is not affected, so a running
+         * playback can always be stopped. Why a rule carries this flag is stated on the rule.
          */
         BLOCKS_PLAYBACK
     }
@@ -76,6 +92,7 @@ public enum LintRule {
     /**
      * Whether a finding of this rule blocks what {@code flag} names.
      *
+     * @param flag the flag to look for
      * @return {@code true} when this rule carries {@code flag}
      */
     public boolean hasFlag(Flag flag) {

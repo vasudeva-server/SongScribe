@@ -30,9 +30,8 @@ import songscribe.dom.TupletGrade;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleTupletCommand;
-import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 
@@ -111,17 +110,7 @@ public final class TupletAction extends UIAction {
 
     @Override
     @Handler
-    public void songDidChange(SongDidChangeNotification message) {
-        var ctrl = getScoreViewController();
-
-        if (ctrl != null) {
-            handleChange(ctrl);
-        }
-    }
-
-    @Override
-    @Handler
-    public void documentDidLoad(DocumentDidLoadNotification message) {
+    public void linting(LintingNotification message) {
         var ctrl = getScoreViewController();
 
         if (ctrl != null) {

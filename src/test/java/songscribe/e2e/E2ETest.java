@@ -159,21 +159,10 @@ public abstract class E2ETest {
             OptionDialogs.setSuppressDialogs(false);
             FailOnThreadViolationRepaintManager.install();
             SongScribe.logBanner("SongScribe (E2E Tests)");
-            SongScribe.setBus();
 
             GuiActionRunner.execute(() -> {
                 UIUtils.initMinimalTheme();
-                UIUtils.installEagerFonts();
-
-                // Production does this in MainFrame.main() before initFrame(). Without it
-                // the provider stays at its 0.0 fallback, so every `new Song()` gets a zero
-                // line width, no content can ever fit the staff, and layout raises the
-                // lines-do-not-fit warning on each reset/fixture load.
-                Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
-
-                var mainFrame = MainFrame.getInstance();
-                mainFrame.initFrame();
-                return mainFrame;
+                return SongScribe.buildMainWindow();
             });
 
             frameInitialized = true;
@@ -521,9 +510,7 @@ public abstract class E2ETest {
             var layoutResult = lc.getLayoutResult();
             assertThat(layoutResult).isNotNull();
 
-            var hitRect = new Rectangle2D.Double();
-            ElementHitGeometry.elementHitRectSs(
-                layoutResult.getElementXSs(note), note, hitRect, true);
+            var hitRect = layoutResult.elementHitRectSs(note);
 
             // The hit rect is in layout space, whose Y origin is the staff midline; a click
             // position is relative to the top of the component, so put the origin back.

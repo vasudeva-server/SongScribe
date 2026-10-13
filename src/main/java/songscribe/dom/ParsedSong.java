@@ -58,8 +58,9 @@ public record ParsedSong(
 
     /**
      * Returns the entry a reader makes when it converted a retired accidental to the accidental
-     * that sounds the same. One entry stands for every conversion in the file, and a reader adds
-     * it after every other entry it makes.
+     * that sounds the same. One entry stands for every conversion in the file. A reader adds it
+     * after every entry for a damaged mark it dropped, and before its
+     * {@linkplain #lyricDroppedEntry lyric-dropped entries}.
      *
      * @return the entry under {@link Strings#REPORT_ACCIDENTALS_CONVERTED}, with no place
      */
@@ -68,6 +69,23 @@ public record ParsedSong(
             Strings.REPORT_ACCIDENTALS_CONVERTED,
             Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
             null);
+    }
+
+    /**
+     * Returns the entry a reader makes for a line that lost a lyric. A song holds lyrics only in
+     * the scripts {@link Song.Script} names, so a reader drops every lyric whose number names no
+     * script, rather than refusing the file. Each line that lost one gets one entry, however many
+     * lyrics it lost. A reader adds these last, in the order of the lines, after
+     * {@link #accidentalsConvertedEntry()}.
+     *
+     * @param line the line that lost a lyric
+     * @return the entry under {@link Strings#REPORT_LYRICS_REMOVED}, placed on {@code line}
+     */
+    public static RecordedChange lyricDroppedEntry(Line line) {
+        return new RecordedChange(
+            Strings.REPORT_LYRICS_REMOVED,
+            Strings.get(Strings.REPORT_LYRICS_DETAIL),
+            ChangeLines.on(line));
     }
 
     /**

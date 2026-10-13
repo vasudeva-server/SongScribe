@@ -66,6 +66,7 @@ import songscribe.Strings;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.LyricRun;
+import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.error.RuntimeError;
@@ -82,7 +83,7 @@ import songscribe.util.LogUtils;
 import songscribe.util.UIUtils;
 
 /**
- * In-place lyric editor overlay parented to {@link ScoreView}. Edits the active-verse lyric
+ * In-place lyric editor overlay parented to {@link ScoreView}. Edits the active-script lyric
  * of a single {@link StaffElement} with width and baseline matching the rendered lyric box.
  *
  * <p>An {@code EditLyricAction}, Enter, or a double-click constructs the editor, sizes it to the
@@ -231,17 +232,17 @@ public final class LyricEditor extends MyJTextField {
     private final ScoreView score;
     private final Line line;
     private final StaffElement element;
-    private final @Nullable LineComponent lineComponent;
+    private final LineComponent lineComponent;
 
     /**
-     * The verse this session edits: the song's active verse, captured when the editor opened.
+     * The script this session edits: the song's active script, captured when the editor opened.
      * Held rather than re-read because an editor session must write every syllable, hyphen and
-     * melisma it touches into the one verse it started in — the active verse changing underneath
+     * melisma it touches into the one script it started in — the active script changing underneath
      * an open editor would split a single edit across two languages.
      */
-    private final int activeVerse;
+    private final Song.Script activeScript;
 
-    /** The chain rewrites this session performs on {@link #line}'s {@link #activeVerse} lyrics. */
+    /** The chain rewrites this session performs on {@link #line}'s {@link #activeScript} lyrics. */
     private final LyricChainEditor chainEditor;
 
     private boolean focused;
@@ -303,9 +304,7 @@ public final class LyricEditor extends MyJTextField {
         // A mutation that triggered this open (e.g. committing a lyric before advancing)
         // may have invalidated the line's layout. Force a synchronous layout pass so
         // recomputeBounds sees fresh anchor positions on the first paint.
-        if (editor.lineComponent != null) {
-            editor.lineComponent.ensureLayout();
-        }
+        editor.lineComponent.ensureLayout();
 
         editor.recomputeBounds();
         editor.attachListeners();
@@ -323,15 +322,15 @@ public final class LyricEditor extends MyJTextField {
         this.score = score;
         this.line = line;
         this.element = element;
-        activeVerse = line.getSong().getActiveVerse();
-        chainEditor = new LyricChainEditor(line, activeVerse);
+        activeScript = line.getSong().getActiveScript();
+        chainEditor = new LyricChainEditor(line, activeScript);
 
-        var openingLyric = element.getLyricForVerse(activeVerse);
+        var openingLyric = element.getLyricForScript(activeScript);
         var openingExtend = openingLyric != null ? openingLyric.extend() : null;
         openedAsExtender = openingExtend == Lyric.Extend.CONTINUE
             || openingExtend == Lyric.Extend.STOP;
 
-        lineComponent = score.getLineComponent(line.index());
+        lineComponent = score.requireLineComponent(line);
 
         configureLAF();
 
@@ -426,7 +425,7 @@ public final class LyricEditor extends MyJTextField {
      * apart if the {@link CommitKind}/{@link Lyric.Extend} mapping ever changes.
      *
      * <p>The write itself does not use this — it passes {@code kind} and {@code extend} straight
-     * to {@link LyricRun#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
+     * to {@link LyricRun#writeLyricForScript(int, Song.Script, String, Lyric.Extend, boolean, boolean)}, which
      * applies the same mapping to decide the stored syllabic and compound flag.
      *
      * <p><b>Assumed by {@code wantsContinues}:</b> a non-{@link CommitKind#WORD_FINAL} commit
@@ -541,9 +540,9 @@ public final class LyricEditor extends MyJTextField {
         return line;
     }
 
-    /** Returns the verse this editor session is editing. */
-    public int getActiveVerse() {
-        return activeVerse;
+    /** Returns the script this editor session is editing. */
+    public Song.Script getActiveScript() {
+        return activeScript;
     }
 
     @Override
@@ -881,10 +880,6 @@ public final class LyricEditor extends MyJTextField {
      * ScoreView-local coordinates.
      */
     public void recomputeBounds() {
-        if (lineComponent == null) {
-            return;
-        }
-
         var layoutResult = lineComponent.getLayoutResult();
 
         if (layoutResult == null) {
@@ -937,7 +932,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #activeVerse}
+     * Writes the editor's current text into the active element's lyric for {@link #activeScript}
      * as a word-final syllable with {@code extend = NONE}. Same-text commits and
      * empty-on-empty commits emit zero mutations — the modification bracket is skipped.
      */
@@ -991,7 +986,7 @@ public final class LyricEditor extends MyJTextField {
         var marginSs = line.getSong().getLineWidthSs().value();
 
         var index = line.getElementIndex(element);
-        var candidate = new Lyric(activeVerse, text, extend, probeSyllabic, intent.wantsCompound());
+        var candidate = new Lyric(activeScript, text, extend, probeSyllabic, intent.wantsCompound());
 
         // Probe the candidate first: it accepts almost every real edit, and returning here spares the
         // already-overflowing check below its own full rebuild-and-solve of the line.
@@ -1041,7 +1036,7 @@ public final class LyricEditor extends MyJTextField {
      * 0->1 transition — a nested bracket never re-captures.
      */
     private String commitOpName() {
-        var existingLyric = element.getLyricForVerse(activeVerse);
+        var existingLyric = element.getLyricForScript(activeScript);
         var beforeText = existingLyric != null ? existingLyric.text() : "";
         return OpNames.lyricLabel(beforeText, commitText());
     }
@@ -1063,7 +1058,7 @@ public final class LyricEditor extends MyJTextField {
 
     /**
      * Traces one step of a lyric edit: what the editor is about to do, the field state it acts
-     * from, and the whole verse's lyric row, so consecutive entries can be diffed to see what
+     * from, and the whole script's lyric row, so consecutive entries can be diffed to see what
      * a keystroke actually changed. Guarded because rendering the row walks the entire line.
      */
     private void logState(String action) {
@@ -1125,8 +1120,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #activeVerse}
-     * via {@link LyricRun#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
+     * Writes the editor's current text into the active element's lyric for {@link #activeScript}
+     * via {@link LyricRun#writeLyricForScript(int, Song.Script, String, Lyric.Extend, boolean, boolean)}, which
      * derives the syllabic from chain context and propagates to the next lyric-bearing element
      * where needed. Every commit therefore produces exactly one {@code ElementModification} for
      * this element, plus at most one more for the following syllable when it has to be
@@ -1141,7 +1136,7 @@ public final class LyricEditor extends MyJTextField {
      */
     private void commitInner(CommitKind kind, Lyric.Extend extend) {
         var text = commitText();
-        var existingLyric = element.getLyricForVerse(activeVerse);
+        var existingLyric = element.getLyricForScript(activeScript);
 
         if (LogUtils.isTracingLyrics(LOG)) {
             logState("commit " + kind + '/' + extend);
@@ -1201,7 +1196,7 @@ public final class LyricEditor extends MyJTextField {
             chainEditor.clearForwardCarriers(index);
         }
 
-        line.writeLyricForVerse(index, activeVerse, text, extend,
+        line.writeLyricForScript(index, activeScript, text, extend,
             kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
 
         // A syllable on a paired grace note implies a melisma across its host, so the
@@ -1295,7 +1290,7 @@ public final class LyricEditor extends MyJTextField {
      * user typed over.
      */
     private CommitSpec neutralCommitSpec() {
-        var lyric = element.getLyricForVerse(activeVerse);
+        var lyric = element.getLyricForScript(activeScript);
 
         if (lyric == null) {
             trace("neutralCommitSpec: no stored shape to keep, committing as a plain word-final syllable");
@@ -1407,15 +1402,15 @@ public final class LyricEditor extends MyJTextField {
 
         // Lone '-' on empty editor, not a carrier.
 
-        if (element.getLyricForVerse(activeVerse) != null) {
+        if (element.getLyricForScript(activeScript) != null) {
             reject("lone hyphen on an element that already has a lyric");
             return;
         }
 
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeScript);
         var backLyric = backIndex != null
-            ? line.getElement(backIndex).getLyricForVerse(activeVerse)
+            ? line.getElement(backIndex).getLyricForScript(activeScript)
             : null;
 
         if (backLyric == null) {
@@ -1508,7 +1503,7 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        var nextLyric = line.getElement(nextIndex).getLyricForVerse(activeVerse);
+        var nextLyric = line.getElement(nextIndex).getLyricForScript(activeScript);
 
         if (nextLyric != null && !nextLyric.text().isEmpty()) {
             reject(() -> "underscore blocked: element " + nextIndex + " already has a syllable");
@@ -1530,7 +1525,7 @@ public final class LyricEditor extends MyJTextField {
      */
     private void replaceLyricWithMelisma() {
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeScript);
 
         if (backIndex == null) {
             reject("no preceding lyric for this element to carry a melisma from");
@@ -1586,7 +1581,7 @@ public final class LyricEditor extends MyJTextField {
      */
     private void extendChainBackward() {
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeScript);
 
         if (backIndex == null) {
             reject("no preceding lyric to extend a chain from");
@@ -1676,7 +1671,7 @@ public final class LyricEditor extends MyJTextField {
         // Common case: repair any dangling chain marker left on a predecessor. The repair reads
         // this element as having given up its syllable, so it must not run when the commit just
         // wrote one here — it would undo that syllable's own chain markers.
-        var lyric = element.getLyricForVerse(activeVerse);
+        var lyric = element.getLyricForScript(activeScript);
 
         if (lyric != null && lyric.syllabic() != null) {
             trace("dismissAdjustment: {} kept a syllable of its own, nothing to repair",
@@ -1685,7 +1680,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         trace("dismissAdjustment: repairing neighbors of {}", currentIndex);
-        line.adjustNeighborsForLyricDeletion(currentIndex, activeVerse);
+        line.adjustNeighborsForLyricDeletion(currentIndex, activeScript);
     }
 
     /**
@@ -1729,8 +1724,6 @@ public final class LyricEditor extends MyJTextField {
      * with a lone hyphen writes nothing to the model, so no mutation-driven repaint follows either.
      */
     private void repaintHyphenChainPreview() {
-        if (lineComponent != null) {
-            lineComponent.repaint();
-        }
+        lineComponent.repaint();
     }
 }

@@ -51,7 +51,10 @@ public class TupletPopupButton extends PopupMenuButton {
         super.configureButtonFromAction(action);
 
         // Used a fixed tooltip for the button
-        UIUtils.setToolTipText(this, Strings.get(Strings.TOOLTIP_TUPLET_TITLE), Strings.get(Strings.TOOLTIP_TUPLET));
+        UIUtils.setToolTipText(
+            this,
+            new UIUtils.ToolTipSection(Strings.get(Strings.TOOLTIP_TUPLET_TITLE), null, Strings.get(Strings.TOOLTIP_TUPLET))
+        );
     }
 
     /**

@@ -122,7 +122,7 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Adds a lyric box for an element. One verse is laid out at a time, so an element gets at
+     * Adds a lyric box for an element. One script is laid out at a time, so an element gets at
      * most one box; insertion order is preserved.
      *
      * @param element the element the box is anchored to
@@ -135,7 +135,7 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Sets the placeholder box for an element that can bear a syllable but has none in the verse
+     * Sets the placeholder box for an element that can bear a syllable but has none in the script
      * laid out ({@link LyricLayoutBuilder.Result#placeholders()}).
      *
      * @param element     the element the placeholder is anchored to

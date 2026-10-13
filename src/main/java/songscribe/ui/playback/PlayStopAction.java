@@ -44,10 +44,6 @@ public final class PlayStopAction extends SequencerAction {
 
     private static final int ICON_SIZE = 20;
 
-    // The tooltip of the current Play or Stop state, shown whenever a lint finding does not
-    // block playback.
-    private String stateTooltip = PLAY_TOOLTIP;
-
     public static PlayStopAction createAction(MainFrame mainFrame) {
         return new PlayStopAction(mainFrame);
     }
@@ -103,18 +99,30 @@ public final class PlayStopAction extends SequencerAction {
     private void toggleToPlay() {
         setName(PLAY_NAME);
         setIcon(PLAY_ICON, ICON_SIZE);
-        stateTooltip = PLAY_TOOLTIP;
         applyTooltip();
     }
 
     private void toggleToStop() {
         setName(STOP_NAME);
         setIcon(STOP_ICON, ICON_SIZE);
-        stateTooltip = STOP_TOOLTIP;
         applyTooltip();
     }
 
+    /**
+     * Sets the tooltip: why Play is disabled when a lint finding blocks playback, otherwise the
+     * text of the Play or Stop state.
+     */
     private void applyTooltip() {
-        putValue(SHORT_DESCRIPTION, enableFromPlaybackBlock() ? stateTooltip : BLOCKED_TOOLTIP);
+        String tooltip;
+
+        if (PlaybackController.isPlaying()) {
+            tooltip = STOP_TOOLTIP;
+        } else if (enableFromPlaybackBlock()) {
+            tooltip = PLAY_TOOLTIP;
+        } else {
+            tooltip = BLOCKED_TOOLTIP;
+        }
+
+        putValue(SHORT_DESCRIPTION, tooltip);
     }
 }

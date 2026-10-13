@@ -260,9 +260,9 @@ public abstract class UnitTest {
         when(songMock.isMutationTrackingSuspended()).thenReturn(true);
         when(songMock.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
         when(songMock.getLineWidthSs()).thenReturn(new Ss(UNCONSTRAINED_LINE_WIDTH_SS));
-        // An unstubbed mock reports verse 0, which no lyric ever carries, so every lyric on
+        // An unstubbed mock reports script 0, which no lyric ever carries, so every lyric on
         // every fixture element would read as absent to layout and to the editor.
-        when(songMock.getActiveVerse()).thenReturn(Lyric.FIRST_VERSE);
+        when(songMock.getActiveScript()).thenReturn(Song.Script.LATIN);
         doAnswer(answerVoid(Runnable::run))
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(answerVoid((String label, Runnable body) -> body.run()))

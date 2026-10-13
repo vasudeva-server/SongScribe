@@ -35,6 +35,7 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -43,6 +44,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.ListCellRenderer;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.DefaultStyledDocument;
@@ -58,16 +60,19 @@ import songscribe.Strings;
 import songscribe.dom.ChangeReport;
 import songscribe.dom.LineRange;
 import songscribe.dom.ReportedChange;
+import songscribe.dom.Song;
 import songscribe.font.MusescoreIconFont;
 import songscribe.lint.LintFinding;
 import songscribe.lint.LintMark;
-import songscribe.lint.LintReport;
-import songscribe.lint.Linter;
+import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
+import songscribe.message.notification.ActiveScriptDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.message.notification.LintReportDidChangeNotification;
+import songscribe.message.notification.LintCalloutWasDismissedNotification;
+import songscribe.message.notification.LintMarkSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.FlatLafKey;
+import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
 /**
@@ -78,9 +83,8 @@ import songscribe.util.UIUtils;
  * the rows of the other:
  * <ul>
  *   <li>The lint report, a state: every {@link LintFinding} for the song as it is now. The panel
- *       reads it from {@link Linter#getReport()} on every
- *       {@link LintReportDidChangeNotification} and every load, so its rows stay until a lint
- *       run no longer finds them.</li>
+ *       reads it from {@code song.getLinter().getReport()} on every load, edit and script
+ *       change, so its rows stay until a lint run no longer finds them.</li>
  *   <li>The last {@link ChangeReport}, an event: the changes of the latest edit, undo, redo or
  *       load. Every {@link SongDidChangeNotification} and every load replaces it, so its rows
  *       describe the latest change only; an undo or a redo carries an empty report and clears
@@ -94,25 +98,35 @@ import songscribe.util.UIUtils;
  * heading, its location, and its finished text, which the code that found the problem or made
  * the change wrote. Every change cell comes before every lint cell, and the cells of each source
  * are in song order, by line and then by element. A change names lines only, so it sorts as
- * element 0 of its first line, and a change with no place sorts before the first line. A lint
- * heading starts with {@value #LINT_HEADING_PREFIX} and a change heading with
- * {@value #CHANGE_HEADING_PREFIX}.
+ * element 0 of its first line, and a change with no place sorts before the first line. A badge at
+ * the left of each cell shows its source.
  *
  * <p>At most one row is selected. Selecting a lint row scrolls its mark's item into view in the
  * score and shows the mark's tooltip there; clearing the selection, or selecting a change row,
- * hides the tooltip. The selection also clears when the score dismisses the tooltip on its own,
- * when the panel is hidden, and, while the list has focus, when the pointer leaves the list.
+ * hides the tooltip. The panel only announces the selected mark; the score decides how the
+ * tooltip shows and hides. The selection also clears when the score dismisses the tooltip on its own,
+ * when the panel is hidden, and when the pointer leaves the list, so
+ * a selected lint row always has its tooltip on screen.
  *
  * <p>It lives for the process, as the main window does, so it registers with the bus for the
  * process and is never disposed.
  */
 public final class ReportPanel extends JPanel {
 
-    /** The start of every lint row's heading. */
-    private static final String LINT_HEADING_PREFIX = "❗ ";
+    /** The badge of every lint cell, in {@code icons/}. */
+    private static final String LINT_BADGE = "lint-error.svg";
 
-    /** The start of every change row's heading. */
-    private static final String CHANGE_HEADING_PREFIX = "💬 ";
+    /** The badge of every change cell, in {@code icons/}. */
+    private static final String CHANGE_BADGE = "change-report.svg";
+
+    /** The width and height of a change report cell's badge, in pixels. */
+    private static final int CHANGE_BADGE_SIZE = 20;
+
+    /** The width and height of a lint report cell's badge, in pixels. */
+    private static final int LINT_BADGE_SIZE = 16;
+
+    /** Space between a cell's badge and its text, in pixels. */
+    private static final int BADGE_GAP = 6;
 
     /** The {@link MusescoreIconFont} glyph on the button that hides the panel. */
     private static final String HIDE_ICON = "";
@@ -151,7 +165,6 @@ public final class ReportPanel extends JPanel {
     private final JList<Row> list = new ReportList(model, Strings.get(Strings.REPORT_NONE));
 
     private ChangeReport changeReport = ChangeReport.EMPTY;
-    private LintReport lintReport = LintReport.EMPTY;
 
     /**
      * @param mainFrame the window that holds the panel, which shows it after a load that left
@@ -178,14 +191,10 @@ public final class ReportPanel extends JPanel {
             }
         });
 
-        // Only while the list has focus: a row selected before focus moved to the score stays
-        // selected when the pointer crosses the list.
         list.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseExited(MouseEvent e) {
-                if (list.hasFocus()) {
-                    list.clearSelection();
-                }
+                list.clearSelection();
             }
         });
 
@@ -219,21 +228,22 @@ public final class ReportPanel extends JPanel {
 
     /**
      * Replaces the change rows with the report of an edit, an undo or a redo; an empty report
-     * clears them. The lint rows stay.
+     * clears them. The lint rows are rebuilt from the song's report, which the notification
+     * has already refreshed.
      */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
         changeReport = message.getReport();
-        showRows();
+        showRows(message.getSong());
     }
 
     /**
-     * Replaces the lint rows with the linter's current report. The change rows stay.
+     * Rebuilds the lint rows from the song's report, which the notification has already
+     * refreshed. The change rows stay.
      */
     @Handler
-    public void lintReportDidChange(LintReportDidChangeNotification message) {
-        lintReport = Linter.getReport();
-        showRows();
+    public void activeScriptDidChange(ActiveScriptDidChangeNotification message) {
+        showRows(message.getSong());
     }
 
     /**
@@ -243,28 +253,23 @@ public final class ReportPanel extends JPanel {
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
         changeReport = message.getReport();
-        lintReport = Linter.getReport();
-        showRows();
+        showRows(message.getSong());
 
-        if (!changeReport.isEmpty() || !lintReport.isEmpty()) {
+        if (!model.isEmpty()) {
             mainFrame.showMessagesPanel();
         }
     }
 
-    /**
-     * Shows the selected lint row's mark in the score, with its tooltip; with no row selected, or
-     * a change row, hides the tooltip. A tooltip the score dismisses on its own deselects the row.
-     */
-    private void showSelectedMark() {
-        var row = list.getSelectedValue();
-        var mark = row == null ? null : row.mark();
-        var lintCallout = mainFrame.requireScoreView().getLintCallout();
+    /** Clears the selection, whose mark the score no longer shows. */
+    @Handler
+    public void lintCalloutWasDismissed(LintCalloutWasDismissedNotification message) {
+        list.clearSelection();
+    }
 
-        if (mark == null) {
-            lintCallout.hide();
-        } else {
-            lintCallout.show(mark, list::clearSelection);
-        }
+    /** Announces the mark of the selected lint row, or no mark for a change row or no row. */
+    private void showSelectedMark() {
+        var mark = list.getSelectedValue() instanceof LintRow lintRow ? lintRow.mark() : null;
+        MessageCenter.post(new LintMarkSelectionDidChangeNotification(mark));
     }
 
     /**
@@ -275,7 +280,8 @@ public final class ReportPanel extends JPanel {
      *     {@link #SONG_ORDER}, rows at one position in the order of their report; a lint finding
      *     whose element is no longer in the song has no row
      */
-    private void showRows() {
+    private void showRows(Song song) {
+        var selected = list.getSelectedValue();
         var changeRows = new ArrayList<Row>();
 
         for (var change : changeReport.changes()) {
@@ -284,7 +290,7 @@ public final class ReportPanel extends JPanel {
 
         var lintRows = new ArrayList<Row>();
 
-        for (var finding : lintReport.findings()) {
+        for (var finding : song.getLinter().getReport().findings()) {
             var row = lintRow(finding);
 
             if (row != null) {
@@ -299,32 +305,38 @@ public final class ReportPanel extends JPanel {
         model.clear();
         model.addAll(changeRows);
         model.addAll(lintRows);
+
+        if (selected != null) {
+            var index = model.indexOf(selected);
+
+            if (index >= 0) {
+                list.setSelectedIndex(index);
+            }
+        }
     }
 
     /**
      * Returns the row of a change entry.
      *
-     * @return a row headed {@value #CHANGE_HEADING_PREFIX} and the entry's heading, with no
-     *     location when the entry has no lines
+     * @return a row headed with the entry's heading, with no location when the entry has no lines
      */
     private static Row changeRow(ReportedChange change) {
-        var heading = CHANGE_HEADING_PREFIX + Strings.get(change.headingKey());
+        var heading = Strings.get(change.headingKey());
         var where = change.where();
 
         if (where == null) {
-            return new Row(heading, null, change.description(), new Position(BEFORE_FIRST_LINE, LINE_START), null);
+            return new ChangeRow(heading, null, change.description(), new Position(BEFORE_FIRST_LINE, LINE_START));
         }
 
-        return new Row(
-            heading, lineLocation(where), change.description(), new Position(where.firstIndex(), LINE_START), null);
+        return new ChangeRow(
+            heading, lineLocation(where), change.description(), new Position(where.firstIndex(), LINE_START));
     }
 
     /**
      * Returns the row of a lint finding, its element's position resolved in the song as it is
      * now.
      *
-     * @return a row headed {@value #LINT_HEADING_PREFIX} and the finding's heading, or
-     *     {@code null} when the finding's element is in no line of its song: an edit removed it,
+     * @return a row headed with the finding's heading, or {@code null} when the finding's element is in no line of its song: an edit removed it,
      *     and the next lint run replaces the report
      */
     private static @Nullable Row lintRow(LintFinding finding) {
@@ -341,9 +353,7 @@ public final class ReportPanel extends JPanel {
 
         // Indices are 0-based in the model and shown 1-based, as the user counts them.
         var location = Strings.get(Strings.REPORT_LOCATION_ELEMENT, lineIndex + 1, elementIndex + 1);
-        var heading = LINT_HEADING_PREFIX + Strings.get(finding.headingKey());
-
-        return new Row(heading, location, finding.description(), new Position(lineIndex, elementIndex), mark);
+        return new LintRow(finding.heading(), location, finding.description(), new Position(lineIndex, elementIndex), mark);
     }
 
     /** The indices are stored 0-based and shown 1-based, as the user counts them. */
@@ -360,23 +370,38 @@ public final class ReportPanel extends JPanel {
 
     /**
      * One cell of the list: a change entry or a lint finding, as finished text, and the position
-     * it sorts on.
-     *
-     * @param heading     the first line of the cell, starting with the prefix of its source
-     * @param location    the line or element the row names, shown 1-based; {@code null} for a
-     *                    change with no place
-     * @param description what changed or what is wrong
-     * @param position    where the row sorts
-     * @param mark        the finding's mark, which selecting the row shows in the score;
-     *                    {@code null} for a change
+     * it sorts on. A reader that needs more than these switches over the two records.
      */
-    private record Row(
-        String heading,
-        @Nullable String location,
-        String description,
-        Position position,
-        @Nullable LintMark mark
-    ) { }
+    private sealed interface Row permits ChangeRow, LintRow {
+
+        /** The first line of the cell. */
+        String heading();
+
+        /** The line or element the row names, shown 1-based; {@code null} when it names none. */
+        @Nullable String location();
+
+        /** What changed or what is wrong. */
+        String description();
+
+        /** Where the row sorts. */
+        Position position();
+    }
+
+    /**
+     * The row of a change entry.
+     *
+     * @param location {@code null} for a change with no place
+     */
+    private record ChangeRow(String heading, @Nullable String location, String description, Position position)
+        implements Row { }
+
+    /**
+     * The row of a lint finding.
+     *
+     * @param mark the finding's mark, which selecting the row shows in the score
+     */
+    private record LintRow(String heading, String location, String description, Position position, LintMark mark)
+        implements Row { }
 
     /**
      * The place a row sorts on.
@@ -385,6 +410,63 @@ public final class ReportPanel extends JPanel {
      * @param elementIndex the 0-based element; {@value #LINE_START} for a change
      */
     private record Position(int lineIndex, int elementIndex) { }
+
+    /**
+     * A text pane that shows text the way a label does, but wraps it at word boundaries: not
+     * editable, not opaque, and with no border or margin.
+     *
+     * <p>Each text gets a new document. Once a document holds text that needs complex layout,
+     * such as a character outside the Basic Multilingual Plane, it lays out all later text with
+     * complex layout too. A pane that one renderer shares by all cells would then lay out each
+     * cell after such a cell differently from the same cell shown first.
+     */
+    private static final class WrappingText extends JTextPane {
+
+        private final float lineSpacing;
+
+        /**
+         * @param lineSpacing the extra space between two of its lines, as a fraction of the line
+         *                    height
+         */
+        WrappingText(float lineSpacing) {
+            this.lineSpacing = lineSpacing;
+            setEditable(false);
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder());
+            setAlignmentX(LEFT_ALIGNMENT);
+        }
+
+        /**
+         * Shows {@code text} in a new document, with each line break shown as a space. A line
+         * break in a string places a line of a tooltip; this pane wraps the text to its own width.
+         *
+         * @param text the text to show; {@code null} shows no text
+         */
+        @Override
+        public void setText(@Nullable String text) {
+            setStyledDocument(newDocument());
+            super.setText(text == null ? null : text.replace('\n', ' '));
+        }
+
+        /**
+         * Returns an empty document whose text draws with this pane's own font, not one rebuilt
+         * from its family and size, and whose paragraphs have this pane's line spacing.
+         */
+        private DefaultStyledDocument newDocument() {
+            var document = new DefaultStyledDocument(new StyleContext() {
+                @Override
+                public Font getFont(AttributeSet attributes) {
+                    return WrappingText.this.getFont();
+                }
+            });
+
+            // The default style is the base of every paragraph, so the spacing applies to the text
+            // that setText inserts.
+            var defaultStyle = document.getStyle(StyleContext.DEFAULT_STYLE);
+            StyleConstants.setLineSpacing(defaultStyle, lineSpacing);
+            return document;
+        }
+    }
 
     /**
      * The list, which is always as wide as its viewport so that its cells wrap their text to the
@@ -470,12 +552,14 @@ public final class ReportPanel extends JPanel {
     }
 
     /**
-     * One row: its heading in semibold, then its location, then its description, each starting on
-     * its own line at the list's font size with no space between the lines, and a separator line
-     * above every cell but the first. A row with no location shows no location line.
+     * One row: the badge of its source at the left, centered on the first line of the heading, and
+     * to its right a column with its heading
+     * in semibold, then its location, then its description, each starting on its own line at the
+     * list's font size with no space between the lines, and a separator line above every cell but
+     * the first. A row with no location shows no location line.
      *
-     * <p>Each part wraps at word boundaries to the list's width, so a cell is as tall as its
-     * wrapped text and never wider than the list.
+     * <p>Each part wraps at word boundaries to the width of the column, so a cell is as tall as
+     * its wrapped text, or its badge when that is taller, and never wider than the list.
      *
      * <p>The theme's fonts and colors are read on every call, so a theme change needs nothing
      * here.
@@ -485,44 +569,31 @@ public final class ReportPanel extends JPanel {
      */
     private static final class CellRenderer extends JPanel implements ListCellRenderer<Row> {
 
-        private final JTextPane headingText = wrappingText(HEADING_LINE_SPACING);
-        private final JTextPane locationText = wrappingText(BODY_LINE_SPACING);
-        private final JTextPane descriptionText = wrappingText(BODY_LINE_SPACING);
-        private final List<JTextPane> parts = List.of(headingText, locationText, descriptionText);
+        private final WrappingText headingText = new WrappingText(HEADING_LINE_SPACING);
+        private final WrappingText locationText = new WrappingText(BODY_LINE_SPACING);
+        private final WrappingText descriptionText = new WrappingText(BODY_LINE_SPACING);
+        private final List<WrappingText> parts = List.of(headingText, locationText, descriptionText);
+        private final JPanel textPanel = new JPanel();
+        private final JLabel badgeLabel = new JLabel();
+        private final Icon lintBadge = GraphicUtils.getScaledSVGIcon(LINT_BADGE, LINT_BADGE_SIZE);
+
+        // The themed badge takes the color of the label's foreground, so it follows the selection.
+        private final Icon changeBadge = GraphicUtils.getScaledSVGIcon(CHANGE_BADGE,
+            CHANGE_BADGE_SIZE, true);
 
         private int cellWidth = 0;
 
         CellRenderer() {
-            setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-            parts.forEach(this::add);
-        }
+            super(new BorderLayout());
 
-        /**
-         * Returns a text pane that shows text the way a label does, but wraps it at word
-         * boundaries: not editable, not opaque, and with no border or margin.
-         *
-         * @param lineSpacing the extra space between two of its lines, as a fraction of the line
-         *                    height
-         */
-        private static JTextPane wrappingText(float lineSpacing) {
-            var text = new JTextPane();
+            badgeLabel.setVerticalAlignment(SwingConstants.TOP);
 
-            // The text draws with the pane's own font, not one rebuilt from its family and size.
-            text.setStyledDocument(new DefaultStyledDocument(new StyleContext() {
-                @Override
-                public Font getFont(AttributeSet attributes) {
-                    return text.getFont();
-                }
-            }));
-            text.setEditable(false);
-            text.setOpaque(false);
-            text.setBorder(BorderFactory.createEmptyBorder());
-            text.setAlignmentX(LEFT_ALIGNMENT);
+            textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+            textPanel.setOpaque(false);
+            parts.forEach(textPanel::add);
 
-            // The default style is the base of every paragraph, so the spacing outlasts setText.
-            var defaultStyle = text.getStyledDocument().getStyle(StyleContext.DEFAULT_STYLE);
-            StyleConstants.setLineSpacing(defaultStyle, lineSpacing);
-            return text;
+            add(badgeLabel, BorderLayout.WEST);
+            add(textPanel, BorderLayout.CENTER);
         }
 
         /**
@@ -550,18 +621,28 @@ public final class ReportPanel extends JPanel {
             locationText.setVisible(location != null);
             descriptionText.setText(row.description());
 
+            var badge = switch (row) {
+                case LintRow _ -> lintBadge;
+                case ChangeRow _ -> changeBadge;
+            };
+
+            badgeLabel.setIcon(badge);
+
+            var headingFont = UIManager.getFont("semibold.font");
+            centerBadgeOnHeadingLine(badge, headingText.getFontMetrics(headingFont).getHeight());
+
             var font = list.getFont();
             // The active selection colors come from the theme, not from the list: FlatLaf sets the
-            // list's own selection colors to the inactive ones while it lacks focus, and a row stays
-            // selected after focus moves to the score.
+            // list's own selection colors to the inactive ones while it lacks focus.
             var foreground = isSelected ? UIManager.getColor("List.selectionForeground") : list.getForeground();
             setBackground(isSelected ? UIManager.getColor("List.selectionBackground") : list.getBackground());
+            badgeLabel.setForeground(foreground);
 
             // A wrapped text area answers its preferred height for the width it has, so each part
             // is given the width it is drawn at before the list asks the cell for its size.
             cellWidth = list.getWidth();
 
-            var textWidth = Math.max(0, cellWidth - 2 * LABEL_INSET);
+            var textWidth = Math.max(0, cellWidth - 2 * LABEL_INSET - badgeLabel.getPreferredSize().width);
 
             for (var part : parts) {
                 part.setFont(font);
@@ -569,7 +650,7 @@ public final class ReportPanel extends JPanel {
                 part.setSize(textWidth, Short.MAX_VALUE);
             }
 
-            headingText.setFont(UIManager.getFont("semibold.font"));
+            headingText.setFont(headingFont);
 
             // The side space matches the title's, so the cell text lines up with it.
             var padding = BorderFactory.createEmptyBorder(CELL_PADDING, LABEL_INSET, CELL_PADDING, LABEL_INSET);
@@ -585,10 +666,25 @@ public final class ReportPanel extends JPanel {
 
             // The list measures its cells one after the other and never validates this panel between
             // them. Swing then does not discard the sizes that the box layout cached for the previous
-            // cell, so a cell would get the height of an earlier cell.
-            invalidate();
+            // cell, so a cell would get the height of an earlier cell. Invalidating the text column
+            // also invalidates this panel.
+            textPanel.invalidate();
 
             return this;
+        }
+
+        /**
+         * Moves the badge or the text column down, so that the center of the badge is at the center
+         * of the heading's first line. The badge moves down when it is shorter than that line, and
+         * the text column when the badge is taller.
+         *
+         * @param badge      the badge the label shows
+         * @param lineHeight the height of one line of the heading, in pixels
+         */
+        private void centerBadgeOnHeadingLine(Icon badge, int lineHeight) {
+            var offset = (lineHeight - badge.getIconHeight()) / 2;
+            badgeLabel.setBorder(BorderFactory.createEmptyBorder(Math.max(offset, 0), 0, 0, BADGE_GAP));
+            textPanel.setBorder(BorderFactory.createEmptyBorder(Math.max(-offset, 0), 0, 0, 0));
         }
     }
 }

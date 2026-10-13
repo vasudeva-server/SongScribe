@@ -20,17 +20,11 @@
 
 package songscribe.layout;
 
-import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
-import java.util.Collections;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
-import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
-import songscribe.layout.LayoutResult.LyricHit;
 
 /**
  * Answers "what is under the mouse?" against a finished {@link LayoutResult}.
@@ -53,31 +47,6 @@ public final class LayoutHitTester {
 
     LayoutHitTester(LayoutResult layoutResult) {
         this.layoutResult = layoutResult;
-    }
-
-    // ==========================================================================
-    // Lyric Hit Testing
-    // ==========================================================================
-
-    public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
-        var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
-        var rowTopYSs = layoutResult.lyricAreaBaseYSs();
-        var pointXSs = DocumentScale.pxToSs(pointPx.getX());
-        var pointYSs = DocumentScale.pxToSs(pointPx.getY());
-
-        for (var element : line.getElements()) {
-            for (var box : layoutResult.getLyricBoxes(element)) {
-                // Matches the ending and note-head hit tests, which also test containment
-                // with Rectangle2D: left and top edges inclusive, right and bottom exclusive.
-                var hitRect = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
-
-                if (hitRect.contains(pointXSs, pointYSs)) {
-                    return new LyricHit(element, box.verseIndex());
-                }
-            }
-        }
-
-        return null;
     }
 
     // ==========================================================================

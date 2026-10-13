@@ -43,9 +43,9 @@ import songscribe.error.RuntimeError;
  * to make an ending for a line; the paths that put an ending on a line, and what keeps every
  * invariant once it is there, are in {@code docs/span-invalidation.md}.
  * <p>
- * Two endings may sit back to back on a line. When no repeat opens between them, the walk
- * back from the later ending's split crosses the earlier ending and reaches the earlier split,
- * which closes the section, so the section rule refuses the later ending.
+ * Two endings may sit back to back on a line. When no repeat opens between them, the earlier
+ * split closes the section, so no section is open at the later split and the section rule
+ * refuses the later ending.
  *
  * @invariant the anchor is a note or a rest ({@link ElementType#isDuration()}) or a
  *            {@link ElementType#SINGLE_BARLINE}; any other bar refuses the ending
@@ -66,8 +66,9 @@ import songscribe.error.RuntimeError;
  *            not a bar; the first element of the next line is not read
  * @invariant each bracket (the first, {@link #firstBracket}, and the second) holds no bar and at
  *            least one note or rest; a grace note, a breath mark or a key change is not content
- * @invariant the split closes an open repeat section: {@link Song#repeatSectionStart} at the
- *            split is not {@code null} ({@link #closesOpenSection}), which reads across lines
+ * @invariant the split closes an open repeat section: {@link RepeatSections#sectionStart} at
+ *            the split is not {@code null} ({@link #closesOpenSection}), which reads across
+ *            lines
  * @invariant the ranges of two endings on a line do not overlap
  */
 public final class Ending extends Span<StaffElement> {
@@ -129,7 +130,9 @@ public final class Ending extends Span<StaffElement> {
             return refused(Strings.REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
         }
 
-        if (!closesOpenSection(line, requireSplitIndex(elements, range))) {
+        var splitIndex = requireSplitIndex(elements, range);
+
+        if (!closesOpenSection(RepeatSections.of(line.getSong()), line, splitIndex)) {
             return refused(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
         }
 
@@ -143,18 +146,23 @@ public final class Ending extends Span<StaffElement> {
 
     /**
      * Whether the split at {@code splitIndex} of {@code line} closes an open repeat section, as
-     * the class invariant requires: {@link Song#repeatSectionStart} at the split is not
+     * the class invariant requires: {@link RepeatSections#sectionStart} at the split is not
      * {@code null}. This is the one statement of the section rule; {@link #spanning} and
      * {@link EndingSectionRule} both apply it.
      *
+     * <p>In {@code |: |: :| :|} a split at the last {@code :|} closes the outer section, which
+     * the first {@code |:} opened, so an ending there is legal and the rule keeps it. The
+     * nested {@code |:} is an error of the song's repeats, not of the ending.
+     *
+     * @param sections   the repeat sections of {@code line}'s song as it is now
      * @param line       a line of its song
      * @param splitIndex the index of an ending's split in {@code line}
      * @return {@code true} when a repeat section is open just before the split, however many
      *     lines back it opened
      * @throws IllegalStateException if {@code line} is not one of its song's lines
      */
-    static boolean closesOpenSection(Line line, int splitIndex) {
-        return line.getSong().repeatSectionStart(new ElementLocation(line.index(), splitIndex)) != null;
+    static boolean closesOpenSection(RepeatSections sections, Line line, int splitIndex) {
+        return sections.sectionStart(new ElementLocation(line.index(), splitIndex)) != null;
     }
 
     /**

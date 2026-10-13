@@ -22,6 +22,7 @@ package songscribe.hit;
 
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 
@@ -99,12 +100,12 @@ public sealed interface HitTarget {
     }
 
     /**
-     * One syllable box of one verse under an element.
+     * One syllable box of one script under an element.
      *
      * @param element the element the syllable is attached to
-     * @param verse   zero-based verse index
+     * @param script  the script the syllable is written in
      */
-    record Lyric(StaffElement element, int verse) implements Selectable {
+    record Lyric(StaffElement element, Song.Script script) implements Selectable {
 
         @Override
         public HitPriority priority() {

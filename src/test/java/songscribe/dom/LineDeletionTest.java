@@ -76,7 +76,7 @@ class LineDeletionTest extends UnitTest {
     }
 
     private static NoteElement syllable(String text, Lyric.Syllabic syllabic, Lyric.Extend extend) {
-        return withLyric(crotchet(), new Lyric(Lyric.FIRST_VERSE, text, extend, syllabic, false));
+        return withLyric(crotchet(), new Lyric(Song.Script.LATIN, text, extend, syllabic, false));
     }
 
     private static NoteElement syllable(String text, Lyric.Syllabic syllabic) {
@@ -84,13 +84,13 @@ class LineDeletionTest extends UnitTest {
     }
 
     private static NoteElement carrier(Lyric.Extend extend) {
-        return withLyric(crotchet(), Lyric.carrier(Lyric.FIRST_VERSE, extend));
+        return withLyric(crotchet(), Lyric.carrier(Song.Script.LATIN, extend));
     }
 
     /** A grace note paired with the note after it, carrying the pair's syllable and its melisma. */
     private static NoteElement pairedGrace(String text, Lyric.Syllabic syllabic) {
         var grace = withLyric(
-            graceQuaver(), new Lyric(Lyric.FIRST_VERSE, text, Lyric.Extend.START, syllabic, false));
+            graceQuaver(), new Lyric(Song.Script.LATIN, text, Lyric.Extend.START, syllabic, false));
         grace.setSlide(Slide.GLISSANDO);
 
         return grace;
@@ -102,10 +102,10 @@ class LineDeletionTest extends UnitTest {
         return note;
     }
 
-    /** The first-verse lyric of every element on {@code line}, in order, one string each. */
+    /** The first-script lyric of every element on {@code line}, in order, one string each. */
     private static List<String> lyricsOf(Line line) {
         return elementsOf(line).stream()
-            .map(element -> element.getLyricForVerse(Lyric.FIRST_VERSE))
+            .map(element -> element.getLyricForScript(Song.Script.LATIN))
             .map(lyric -> {
                 if (lyric == null) {
                     return NO_LYRIC;

@@ -36,6 +36,7 @@ import songscribe.dom.ElementLocation;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.LineSpans;
+import songscribe.dom.RepeatSections;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
@@ -204,10 +205,10 @@ public class MidiSequenceBuilder {
 
     /**
      * Builds a MIDI sequence with repeat handling. A {@code :|} or {@code :|:} plays the
-     * section it closes twice, jumping back to {@link Song#repeatSectionStart} — which may lie
-     * on an earlier line — and playing on past the marker the second time. A {@code :|} with
-     * no open section plays on as an ordinary bar. On the replay pass a first ending is
-     * skipped in favor of the second.
+     * section it closes twice, jumping back to {@link RepeatSections#sectionStart} — which may
+     * lie on an earlier line — and playing on past the marker the second time. A {@code :|}
+     * with no open section is unbalanced; playback plays it as an ordinary bar. On the replay
+     * pass a first ending is skipped in favor of the second.
      *
      * @param track The MIDI track to add to
      * @param startLine The starting line index
@@ -227,6 +228,7 @@ public class MidiSequenceBuilder {
         var ticks = 0;
         var currentTempo = initialTempo;
         var lines = song.getLines();
+        var repeatSections = RepeatSections.of(song);
         var repeating = false;
         var slideHelper = new SlideMidiHelper();
 
@@ -264,10 +266,10 @@ public class MidiSequenceBuilder {
                         // Second time through: exit the repeat and play on.
                         repeating = false;
                     } else {
-                        var sectionStart = song.repeatSectionStart(
+                        var sectionStart = repeatSections.sectionStart(
                             new ElementLocation(lineIndex, noteIndex));
 
-                        // With no open section the marker plays as an ordinary bar.
+                        // An unbalanced marker, with no open section, plays as an ordinary bar.
                         if (sectionStart != null) {
                             repeating = true;
                             lineIndex = sectionStart.lineIndex();

@@ -281,11 +281,7 @@ class NoteDragHandler {
                 continue;
             }
 
-            var lineComponent = scoreView.getLineComponent(entryLine.index());
-
-            if (lineComponent != null) {
-                foreignLineComponents.add(lineComponent);
-            }
+            foreignLineComponents.add(scoreView.requireLineComponent(entryLine));
         }
     }
 

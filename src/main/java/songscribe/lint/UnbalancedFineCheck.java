@@ -46,6 +46,10 @@ import songscribe.dom.StaffElement;
  *       {@code al Fine.} are references; {@code Finest} is not.</li>
  * </ul>
  *
+ * <p>The reference test is deliberately the bare word: any annotation with {@value #FINE_TEXT}
+ * as a whole word, in any case, is taken to refer to a Fine, whatever else it says. So
+ * {@code a fine tone} with no Fine before it is a finding.
+ *
  * <p>Each violation carries the mark {@link LintMark.FlaggedAnnotation} on the annotated
  * element, and one element may carry several. The first three are listed under
  * {@link Strings#LINT_FINE_UNBALANCED}, the last under {@link Strings#LINT_FINE_MISSING}:
@@ -165,8 +169,9 @@ final class UnbalancedFineCheck implements LintCheck {
         }
 
         private void flag(StaffElement element, int position, Problem problem) {
-            found.add(position, new Violation(
-                problem.headingKey, Strings.get(problem.reasonKey), new LintMark.FlaggedAnnotation(element)));
+            found.add(position, new Violation(Strings.get(problem.headingKey),
+                                              Strings.get(problem.reasonKey),
+                                              new LintMark.FlaggedAnnotation(element)));
         }
     }
 

@@ -69,6 +69,12 @@ class TieRuleTest extends UnitTest {
     private static final int FIRST_LINE = 0;
     private static final int SECOND_LINE = 1;
 
+    /** The place of a removal on the one line of {@link #TIED_PAIR}. */
+    private static final LineRange ON_FIRST_LINE = new LineRange(FIRST_LINE, FIRST_LINE);
+
+    /** The place of a removal of the tie that crosses from the first line into the second. */
+    private static final LineRange ACROSS_THE_LINE_BREAK = new LineRange(FIRST_LINE, SECOND_LINE);
+
     /** A line with a tie from its first note to its second, and a note after them. */
     private static final String TIED_PAIR = TIED + " ~ " + TIED + " " + OTHER;
 
@@ -102,7 +108,7 @@ class TieRuleTest extends UnitTest {
             var first = (NoteElement) line.getElement(ANCHOR);
             var expectedEnd = testCase.endIndex();
 
-            assertTieReport(reports, testCase.reasonKey());
+            assertTieReport(reports, testCase.reasonKey(), ON_FIRST_LINE);
 
             if (expectedEnd == null) {
                 assertThat(first.isTiedToNext()).as("the tie is removed, not only broken").isFalse();
@@ -117,10 +123,10 @@ class TieRuleTest extends UnitTest {
     }
 
     /**
-     * Asserts that the reports hold one tie removal under {@code reasonKey}, or none when it is
-     * {@code null}.
+     * Asserts that the reports hold one tie removal under {@code reasonKey}, placed on
+     * {@code where}, or none when {@code reasonKey} is {@code null}.
      */
-    private static void assertTieReport(ReportRecorder reports, @Nullable String reasonKey) {
+    private static void assertTieReport(ReportRecorder reports, @Nullable String reasonKey, @Nullable LineRange where) {
         var tieEntries = reports.reports().stream()
             .flatMap(List::stream)
             .filter(change -> change.headingKey().equals(Strings.REPORT_TIES_REMOVED))
@@ -132,8 +138,8 @@ class TieRuleTest extends UnitTest {
         }
 
         assertThat(tieEntries).singleElement()
-            .extracting(ReportedChange::description)
-            .isEqualTo(Strings.get(reasonKey));
+            .extracting(ReportedChange::description, ReportedChange::where)
+            .containsExactly(Strings.get(reasonKey), where);
     }
 
     static Stream<EditCase> editCases() {
@@ -231,9 +237,12 @@ class TieRuleTest extends UnitTest {
      * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
      *                    {@link Strings#REPORT_TIES_REMOVED}, or {@code null} when the edit
      *                    reports no tie
+     * @param reportedAt  the lines the removal is placed on, or {@code null} when the edit
+     *                    reports no tie
      */
     private record CrossLineCase(
-        String description, String[] lines, Consumer<Song> edit, boolean kept, @Nullable String reasonKey
+        String description, String[] lines, Consumer<Song> edit, boolean kept, @Nullable String reasonKey,
+        @Nullable LineRange reportedAt
     ) {}
 
     @ParameterizedTest(name = "{0}")
@@ -251,7 +260,7 @@ class TieRuleTest extends UnitTest {
             song.withModification(() -> testCase.edit().accept(song));
 
             assertThat(anchor.isTiedToNext()).isEqualTo(testCase.kept());
-            assertTieReport(reports, testCase.reasonKey());
+            assertTieReport(reports, testCase.reasonKey(), testCase.reportedAt());
         });
     }
 
@@ -260,16 +269,16 @@ class TieRuleTest extends UnitTest {
             new CrossLineCase("moving the next line's first note to another pitch removes it",
                 new String[] {TIED + " ~", TIED + " " + OTHER},
                 song -> move(song.getLine(SECOND_LINE), ANCHOR, OTHER), false,
-                Strings.REPORT_REASON_TIE_NOT_HELD),
+                Strings.REPORT_REASON_TIE_NOT_HELD, ACROSS_THE_LINE_BREAK),
             new CrossLineCase("deleting the end note that is the first note of the next line unties it silently",
                 new String[] {TIED + " ~", TIED + " " + OTHER, "" + TIED},
-                song -> song.getLine(SECOND_LINE).removeRange(ElementRange.single(ANCHOR)), false, null),
+                song -> song.getLine(SECOND_LINE).removeRange(ElementRange.single(ANCHOR)), false, null, null),
             new CrossLineCase("deleting the line it ends in, bringing a note at another pitch, unties it silently",
                 new String[] {TIED + " ~", "" + TIED, OTHER + " " + TIED},
-                song -> song.removeLine(SECOND_LINE), false, null),
+                song -> song.removeLine(SECOND_LINE), false, null, null),
             new CrossLineCase("deleting the line it ends in, bringing a note at its pitch, unties it silently",
                 new String[] {TIED + " ~", "" + TIED, TIED + " " + OTHER},
-                song -> song.removeLine(SECOND_LINE), false, null)
+                song -> song.removeLine(SECOND_LINE), false, null, null)
         );
     }
 

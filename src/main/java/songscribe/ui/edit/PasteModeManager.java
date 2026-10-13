@@ -90,7 +90,9 @@ public final class PasteModeManager implements InsertionPointMode.Client {
      * width, which is measured by {@code tryInsertFragment} once a point has been chosen, and
      * a "line full" answer is retryable rather than a reason to refuse to track the point. Nor
      * is the breath-mark placement rule decided here: {@code tryInsertFragment} alerts on the
-     * click, and that answer is retryable in the same way.
+     * click, and that answer is retryable in the same way. The song-start rule is not decided
+     * here either: at the start of the song, {@code tryInsertFragment} drops the bar lines the
+     * fragment starts with and pastes the rest.
      *
      * @param line the line the pointer is over
      * @param index the insertion index under the pointer

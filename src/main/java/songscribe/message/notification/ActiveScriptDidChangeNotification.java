@@ -1,0 +1,38 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.message.notification;
+
+import songscribe.dom.Song;
+
+/**
+ * Posted by {@link Song#setActiveScript} when the song's active script changes. The script a
+ * song shows is what its lines lay out and what its lyric rules check, so a subscriber that
+ * shows either refreshes on this notification.
+ */
+public class ActiveScriptDidChangeNotification extends LintingNotification {
+
+    /**
+     * @param song the song whose active script changed
+     */
+    public ActiveScriptDidChangeNotification(Song song) {
+        super(song);
+    }
+}
