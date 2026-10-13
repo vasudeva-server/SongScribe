@@ -28,7 +28,11 @@ read_only: false
 # list of tool names to exclude.
 # This extends the existing exclusions (e.g. from the global configuration)
 # Find the list of tools here: https://oraios.github.io/serena/01-about/035_tools.html
-excluded_tools: []
+# .claude/rules/serena.md forbids these; edits go through Edit so the user sees a diff.
+excluded_tools:
+  - replace_symbol_body
+  - insert_after_symbol
+  - insert_before_symbol
 
 # list of tools to include that would otherwise be disabled (particularly optional tools that are disabled by default).
 # This extends the existing inclusions (e.g. from the global configuration).
