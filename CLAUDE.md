@@ -39,6 +39,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 - **Accidentals** — the chain walk, the five note states, or the accidental actions: [Accidentals](guides/subsystems/accidentals.md).
 - **Writing or changing a method, class, or package contract** — any new or changed nontrivial API: [Contracts](guides/conventions/contracts.md).
+- **Writing or changing a code comment** (`//` or `/* */`): [Comments](guides/conventions/comments.md).
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](guides/conventions/strings.md).
 - **MusicXML** — reading, writing, the `ScorePartwise` object graph, a builder or mapper, or any question about what a MusicXML file may contain: [MusicXML](guides/subsystems/musicxml.md). Note especially that **only SongScribe-authored files are read** — foreign input is rejected at the provenance gate, so no design effort goes into supporting it.
 - **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics](guides/subsystems/lyrics.md) and [Lyrics concepts](guides/concepts/lyrics.md).
