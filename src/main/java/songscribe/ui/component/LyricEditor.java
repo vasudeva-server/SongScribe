@@ -83,46 +83,12 @@ import songscribe.util.LogUtils;
 import songscribe.util.UIUtils;
 
 /**
- * In-place lyric editor overlay parented to {@link ScoreView}. Edits the active-script lyric
- * of a single {@link StaffElement} with width and baseline matching the rendered lyric box.
- *
- * <p>An {@code EditLyricAction}, Enter, or a double-click constructs the editor, sizes it to the
- * lyric box, prefills it (with the existing lyric, or a placeholder — see below), attaches its
- * listeners, and adds it to the score with focus. While it is open, character edits recompute its
- * width, text longer than {@value #MAX_LENGTH_CHARS} characters is rejected, and newlines are
- * stripped. Tab and Space commit and advance; Enter commits and dismisses; Escape dismisses without
- * committing; focus-lost commits and dismisses. Escape, focus-lost and Enter all run
- * {@code applyDismissAdjustment} to repair a dangling extender or syllable chain. The boundary keys
- * {@code -}, {@code =}/{@code +} and {@code _} each end the syllable and decide what kind of chain
- * it joins, beeping and staying open where the caret position or emptiness makes that impossible.
- * {@code advance()} scans forward for the next element that is not a rest (or is a rest that
- * already has a lyric), reopening the editor there or dismissing if there is none.
- *
- * <p>Each boundary key reads the editor's state to decide what it means, advancing afterwards
- * except where it beeps:
- *
- * <ul>
- *   <li>{@code -} — non-empty commits the text as a syllable; empty advances without committing.
- *   <li>{@code =} or {@code +} — non-empty with the caret at the end commits as a compound;
- *       empty, or a caret mid-text, beeps and stays open.
- *   <li>{@code _} — empty, or non-empty with everything selected, drops any text and extends the
- *       chain backward from the predecessor. Non-empty with the caret at the end commits as an
- *       extender {@code START} and makes the next element its {@code STOP}, advancing past it,
- *       but only when that next element carries no syllable of its own. Any other combination
- *       beeps and stays open.
- * </ul>
+ * In-place lyric editor overlay parented to {@link ScoreView}, editing the active-script lyric
+ * of a single {@link StaffElement}.
  *
  * <p>Invariant: while the editor is active, no external code path may mutate the song or fire any
  * toolbar keystroke. This is enforced by {@code DISABLE_WHEN_EDITING_TEXT} on every toolbar
  * {@code UIAction}; {@code LyricEditorActionAuditTest} locks the whitelist.
- *
- * <p>An element with no syllable of its own opens prefilled with a selected placeholder naming
- * the role it plays for a neighbor: {@code -} when a word's hyphen spans it (given "a" "-" "mi",
- * the middle note), {@code _} when it carries a melisma's extender. A placeholder is not text:
- * while it is intact every state above reads the editor as empty, so committing it leaves the
- * chain as it was. Clearing it — with Space, or by deleting it and committing — is what breaks
- * the chain: a hyphen chain ends the word at the predecessor, a melisma gives up this carrier
- * and closes the chain behind it.
  */
 public final class LyricEditor extends MyJTextField {
 
@@ -131,12 +97,8 @@ public final class LyricEditor extends MyJTextField {
     static final int MAX_LENGTH_CHARS = 32;
 
     /**
-     * Matches the leading word a bulk insertion keeps; see {@link #firstWordOf}.
-     * {@code \p{L}} covers every letter category (upper, lower, title, modifier, and
-     * caseless letters, e.g. CJK ideographs). {@code \p{Mn}} and {@code \p{Mc}} are also
-     * needed, not just letters: in Devanagari and Bengali a vowel sign attaches to the
-     * preceding consonant as a combining mark rather than a standalone letter, so without
-     * them a word would be cut off after its first consonant.
+     * {@code \p{Mn}} and {@code \p{Mc}} are needed: in Devanagari and Bengali a vowel sign is a
+     * combining mark, so without them a word is cut off after its first consonant.
      */
     private static final Pattern FIRST_WORD_PATTERN =
         Pattern.compile("^\\s*([\\p{L}\\p{Mn}\\p{Mc}]+)");
@@ -157,9 +119,8 @@ public final class LyricEditor extends MyJTextField {
     static final String N_TILDE_CAPITAL = "Ñ";
 
     /**
-     * Visible padding from the box edge to the JTextField text allocation. For selected
-     * text, Swing highlights from the allocation origin to the caret advance, so the
-     * editor frame is centered around that same span rather than the glyph ink bounds.
+     * Swing highlights selected text from the allocation origin to the caret advance, so the frame
+     * is centered on that span, not on the glyph ink bounds.
      */
     public static final InsetsSs EDITOR_PADDING_SS = new InsetsSs(0.25, 0.5, 0.25, 0.5);
 
@@ -167,50 +128,37 @@ public final class LyricEditor extends MyJTextField {
     private static final int EXTRA_VERTICAL_PADDING_PX = 1;
 
     /**
-     * {@link BasicTextUI#getVisibleEditorRect()} leaves one
-     * trailing pixel outside the view allocation. Account for it explicitly so the
-     * selected text allocation gets the intended width without growing the visible
-     * right margin.
+     * {@link BasicTextUI#getVisibleEditorRect()} leaves one trailing pixel outside the view
+     * allocation.
      */
     private static final int TEXT_FIELD_RESERVED_TRAILING_PX = 1;
 
     /**
-     * Minimum horizontal room for the caret when the editor is empty. Non-empty text uses
-     * the text advance as the caret/selection end; widening that allocation visually
-     * uncenters the selected text span inside the editor frame.
+     * Widening the allocation for non-empty text uncenters the selected span in the frame.
      */
     private static final int MIN_TRAILING_CARET_ROOM_PX = 1;
 
     /**
-     * Swing's {@link FieldView} clips to the field allocation before text is drawn. Some
-     * rasterized glyph edges can land just outside that allocation even when Java reports
-     * no negative left bearing, so the editor view gives the paint clip a small left guard.
+     * {@link FieldView} clips to the field allocation; some glyph edges land just outside it.
      */
     static final int LEADING_PAINT_SLACK_PX = 1;
 
     /**
-     * Trailing pixel added to the expanded paint clip so the rightmost glyph column is
-     * not lost to {@link FieldView}'s right-edge clipping. Distinct from
-     * {@link #LEADING_PAINT_SLACK_PX}, which guards the left edge.
+     * Right-edge counterpart of {@link #LEADING_PAINT_SLACK_PX}.
      */
     private static final int TRAILING_PAINT_SLACK_PX = 1;
 
     /**
-     * Minimum content-area width when the editor is empty so the caret remains visible
-     * and the box reads as a clickable target rather than collapsing to zero.
+     * Keeps the caret visible and the empty box a clickable target.
      */
     private static final double EMPTY_BOX_MIN_WIDTH_SS = 0.125;  // 1px
 
     /**
-     * A stand-in the editor opens with on an element that has no syllable of its own but plays
-     * a role in a neighboring one. It names that role and gives the user something to delete in
-     * order to end it. A placeholder is never text: while it is intact the editor commits as if
-     * it were empty (see {@link #commitText()}).
+     * Stand-in the editor opens with on an element that plays a role in a neighboring syllable.
+     * Never text: while intact the editor commits as if empty (see {@link #commitText()}).
      */
     private enum Placeholder {
-        /** The hyphen of a word that continues across this element. */
         HYPHEN(LyricEditor.HYPHEN_TEXT),
-        /** The extender of a melisma this element carries. */
         MELISMA(LyricEditor.UNDERSCORE_TEXT);
 
         private final String text;
@@ -235,65 +183,43 @@ public final class LyricEditor extends MyJTextField {
     private final LineComponent lineComponent;
 
     /**
-     * The script this session edits: the song's active script, captured when the editor opened.
-     * Held rather than re-read because an editor session must write every syllable, hyphen and
-     * melisma it touches into the one script it started in — the active script changing underneath
-     * an open editor would split a single edit across two languages.
+     * Captured at open: the active script changing under an open editor would split one edit
+     * across two languages.
      */
     private final Song.Script activeScript;
 
-    /** The chain rewrites this session performs on {@link #line}'s {@link #activeScript} lyrics. */
     private final LyricChainEditor chainEditor;
 
     private boolean focused;
 
     @Nullable private AWTEventListener outsideClickListener;
 
-    /**
-     * {@code true} when the editor was opened on an element that already carried a
-     * {@code CONTINUE} or {@code STOP} extender at construction time (i.e. opened on a
-     * carrier lyric).
-     */
     private final boolean openedAsExtender;
 
     /**
-     * The role the editor was opened on and prefilled with, or {@code null} when it was opened
-     * on a syllable (or on an element with no role to show). Cleared by the paths that rewrite
-     * this element's lyric themselves, since the opening role no longer describes it.
+     * {@code null} when the editor was opened on a syllable or on an element with no role.
      */
     private @Nullable Placeholder placeholder;
 
-    /** Font metrics for the current (zoom-scaled) lyrics font; refreshed by {@link #refreshFont}. */
     private FontMetrics fontMetrics = getFontMetrics(getFont());
 
     /**
-     * When {@code true}, {@link #applyDismissAdjustment()} clears the flag and returns
-     * immediately without walking the chain. Set by {@code extendChainBackward} after
-     * it builds a well-formed chain so the dismiss pass does not tear it down.
+     * Keeps the dismiss pass from tearing down the chain {@code extendChainBackward} built.
      */
     private boolean suppressDismissAdjustment;
 
     /**
-     * Guards against a stacked duplicate of the "lyric will not fit" alert. The alert is modal and
-     * steals focus, which fires {@link #focusLost} and re-enters {@link #ensureLyricFits}; while the
-     * alert is up this stays {@code true} so the re-entrant check refuses without a second dialog.
+     * The modal "lyric will not fit" alert steals focus, which fires {@link #focusLost} and
+     * re-enters {@link #ensureLyricFits}; this stops a second dialog.
      */
     private boolean showingLyricFitAlert;
 
     /**
-     * Set when the Alt-A key press was handled here, so the key typed event it generates
-     * must not also reach the document. macOS treats Option as a printable modifier: the
-     * consumed key press is still followed by a key typed carrying the layout's Option-A
-     * character (å on a US keyboard). Scoping the drop to that one event leaves every other
-     * Option-key character — the accented letters lyrics need — free to be typed.
+     * macOS follows the consumed Alt-A key press with a key typed carrying the layout's Option-A
+     * character (å); this drops that one event and leaves every other Option-key character typeable.
      */
     private boolean dropNextTypedChar;
 
-    /**
-     * Constructs a {@link LyricEditor} on {@code element}, attaches it to {@code score},
-     * and gives it focus. Used by {@link #advance()} and {@link #deselectAndOpenOn} so the
-     * open sequence is centralized; every user gesture arrives through the latter.
-     */
     public static void openOn(ScoreView score, Line line, StaffElement element) {
         var editor = new LyricEditor(score, line, element);
         score.addOverlay(editor);
@@ -389,12 +315,6 @@ public final class LyricEditor extends MyJTextField {
         ));
     }
 
-    /**
-     * Derives the editor's font from the document's base lyrics font scaled by the
-     * current zoom factor, since (unlike canvas-rendered text) this overlay is a real
-     * {@link JComponent} positioned in absolute pixel coordinates rather than drawn
-     * inside a staff-space {@code Graphics2D} transform.
-     */
     void refreshFont() {
         var zoomedFont = score.getViewScale().zoomedFont(score.getDocumentFonts().getLyricsFont());
         setFont(zoomedFont);
@@ -402,9 +322,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * The three legal shapes a committed syllable can have. Only a shape-declaring key picks
-     * one directly; a neutral commit takes whatever shape the lyric already has, via
-     * {@link #neutralCommitSpec()}.
+     * The legal shapes of a committed syllable; a neutral commit keeps the stored shape (see
+     * {@link #neutralCommitSpec()}).
      */
     public enum CommitKind {
         /** Word-final syllable: SINGLE or END, compound = false. */
@@ -418,23 +337,12 @@ public final class LyricEditor extends MyJTextField {
     private record CommitSpec(CommitKind kind, Lyric.Extend extend) {}
 
     /**
-     * The three booleans a {@code (kind, extend)} pair implies, for the two places that must
-     * reason about a commit <em>before</em> it happens: {@link #ensureLyricFits} (which probes
-     * whether the line still lays out) and {@link #commitInner}'s no-op check (which compares the
-     * pending commit against the stored lyric). Derived in one place so those two cannot drift
-     * apart if the {@link CommitKind}/{@link Lyric.Extend} mapping ever changes.
-     *
-     * <p>The write itself does not use this — it passes {@code kind} and {@code extend} straight
-     * to {@link LyricRun#writeLyricForScript(int, Song.Script, String, Lyric.Extend, boolean, boolean)}, which
-     * applies the same mapping to decide the stored syllabic and compound flag.
+     * Derived in one place so {@link #ensureLyricFits} and {@link #commitInner}'s no-op check
+     * cannot drift apart if the {@link CommitKind}/{@link Lyric.Extend} mapping changes.
      *
      * <p><b>Assumed by {@code wantsContinues}:</b> a non-{@link CommitKind#WORD_FINAL} commit
-     * always carries non-blank text and a non-carrier extend. The write applies the stricter
-     * test — it only continues into the next syllable when there is text to continue from — so
-     * the two agree only while that holds. It holds because the hyphen and compound keys are the
-     * only sources of a continuing kind, and both reject an empty editor before committing. A
-     * new continuing commit path must uphold it, or this no-op check would read a real change as
-     * no change and skip the write.
+     * always carries non-blank text and a non-carrier extend. A new continuing commit path must
+     * uphold it, or the no-op check reads a real change as no change and skips the write.
      */
     private record CommitIntent(boolean wantsCarrier, boolean wantsContinues, boolean wantsCompound) {
         static CommitIntent of(CommitKind kind, Lyric.Extend extend) {
@@ -446,8 +354,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Text-field UI used only by the lyric overlay so we can customize its Swing text
-     * view without changing global look-and-feel behavior.
+     * Scopes the text-view customization to this overlay, not the global look-and-feel.
      */
     private static final class LyricTextFieldUI extends BasicTextFieldUI {
         @Override
@@ -457,13 +364,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Single-line text view that gives {@link FieldView#paint(Graphics, Shape)} one
-     * extra pixel of left paint clip. {@code FieldView} clips before {@code PlainView}
-     * draws glyphs; with the lyrics font, the rasterized leading edge of characters
-     * such as "d" can land just outside that clip even when the reported left bearing
-     * is non-negative. Expanding the paint clip exposes that edge, while
-     * {@link #adjustAllocation(Shape)} restores the original text allocation so caret
-     * placement and lyric alignment do not shift.
+     * Gives the paint clip one extra pixel on the left so glyph edges are not clipped; the
+     * original text allocation is restored so caret placement and lyric alignment do not shift.
      */
     static final class LeadingSlackFieldView extends FieldView {
         boolean paintingWithLeadingSlack;
@@ -503,17 +405,6 @@ public final class LyricEditor extends MyJTextField {
         }
     }
 
-    /**
-     * Prevents {@code adjustAllocation} from shifting the allocation to the left of the
-     * original content origin. When {@code super.adjustAllocation} moves the text leftward
-     * to center it in a wide allocation, this clamps the x coordinate back to the input
-     * content origin so lyric alignment and caret placement remain stable.
-     *
-     * @param input    the allocation passed to {@link LeadingSlackFieldView#adjustAllocation}
-     * @param adjusted the result returned by {@code super.adjustAllocation}
-     * @return {@code adjusted} if its x is at or to the right of {@code input.x};
-     *         otherwise {@code adjusted} with x clamped to {@code input.x}
-     */
     static @Nullable Shape keepAllocationAtContentOrigin(@Nullable Shape input, @Nullable Shape adjusted) {
         if (input == null || adjusted == null) {
             return adjusted;
@@ -530,17 +421,14 @@ public final class LyricEditor extends MyJTextField {
         return adjusted;
     }
 
-    /** Returns the element this editor session is bound to. */
     public StaffElement getActiveElement() {
         return element;
     }
 
-    /** Returns the line containing {@link #getActiveElement()}. */
     public Line getActiveLine() {
         return line;
     }
 
-    /** Returns the script this editor session is editing. */
     public Song.Script getActiveScript() {
         return activeScript;
     }
@@ -551,11 +439,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Adds nothing but a trace, and is kept deliberately. Together with the {@code raw} traces
-     * in the key listener and the document filter, it shows the whole path a dead key takes
-     * through the editor — the view that made the Option-N composition bug findable. Alt-N has
-     * only been exercised on macOS so far; these stay until it has been tried on Windows and
-     * Linux, where a different keyboard layout may route the keystroke differently.
+     * Trace only, kept deliberately: with the {@code raw} traces in the key listener and document
+     * filter it shows a dead key's whole path. Stays until Alt-N is tried on Windows and Linux.
      */
     @Override
     protected void processInputMethodEvent(InputMethodEvent event) {
@@ -612,8 +497,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Attaches the document listener that drives live width recompute. Must be called
-     * after construction-time prefill so programmatic prefill does not trigger.
+     * Call after construction-time prefill, so the prefill does not trigger the listeners.
      */
     public void attachListeners() {
         ((AbstractDocument) getDocument()).setDocumentFilter(new DocumentFilter() {
@@ -723,12 +607,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Returns the text to actually insert, or {@code null} when the insertion must be
-     * rejected. Newlines are dropped silently. A bulk insertion — paste, an IME commit,
-     * a drag-and-drop — is trimmed to its first word, since a lyric editor holds a single
-     * syllable; a single typed character is left as is. Insertions that would push the
-     * document past {@link #MAX_LENGTH_CHARS} are rejected with a beep so the user notices
-     * the limit; the length check runs against the trimmed text, not the raw pasted text.
+     * Returns {@code null} when the insertion is rejected (past {@link #MAX_LENGTH_CHARS}).
      */
     @Nullable
     private static String filterInsertion(int currentLength, int replacedLength, String text) {
@@ -747,24 +626,11 @@ public final class LyricEditor extends MyJTextField {
         return candidate;
     }
 
-    /**
-     * Returns the leading run of word characters in {@code text}, after skipping any
-     * leading whitespace, or an empty string when it has none. Word characters are letters
-     * of any script plus the combining marks some scripts attach to them; the first
-     * character outside that set, and everything after it, is discarded.
-     */
     private static String firstWordOf(String text) {
         var matcher = FIRST_WORD_PATTERN.matcher(text);
         return matcher.find() ? matcher.group(1) : "";
     }
 
-    /**
-     * Consumes {@code event}, arranges for the key typed event it generates to be dropped,
-     * and inserts {@code letter} ({@code capitalLetter} when Shift is down) at the caret.
-     * Goes through the document filter, so the length limit still applies. {@code logLabel}
-     * names the shortcut in the trace; it arrives whole so no message is assembled while
-     * tracing is off.
-     */
     private void insertAccentedLetter(KeyEvent event, String logLabel, String letter, String capitalLetter) {
         event.consume();
         dropNextTypedChar = true;
@@ -773,29 +639,20 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Returns {@code true} when {@code event} is the Alt-A the editor turns into a long a.
-     * Ctrl, Meta, and AltGraph are excluded so the mapping never shadows a system shortcut
-     * or an AltGr combination on layouts that build characters from one.
+     * Ctrl, Meta and AltGraph are excluded so the mapping never shadows a system shortcut or an
+     * AltGr combination.
      */
     private static boolean isLongAKeyPress(KeyEvent event) {
         return isAccentShortcutKeyPress(event, KeyEvent.VK_A);
     }
 
     /**
-     * Returns {@code true} when {@code event} is the Alt-N the editor turns into an n with
-     * tilde, bypassing the dead-key composition Option-N normally starts on the US macOS
-     * layout. Ctrl, Meta, and AltGraph are excluded for the same reason as {@link
-     * #isLongAKeyPress}.
+     * Bypasses the dead-key composition Option-N starts on the US macOS layout.
      */
     private static boolean isNTildeKeyPress(KeyEvent event) {
         return isAccentShortcutKeyPress(event, KeyEvent.VK_N);
     }
 
-    /**
-     * Shared guard for the editor's Option-letter shortcuts: {@code keyCode} held with Alt
-     * alone. Ctrl, Meta, and AltGraph are excluded so no shortcut shadows a system command
-     * or an AltGr combination a keyboard layout builds from one of these keys.
-     */
     private static boolean isAccentShortcutKeyPress(KeyEvent event, int keyCode) {
         return event.getKeyCode() == keyCode
             && event.isAltDown()
@@ -804,10 +661,6 @@ public final class LyricEditor extends MyJTextField {
             && !event.isAltGraphDown();
     }
 
-    /**
-     * Binds Tab, Enter, and Escape on the {@code WHEN_FOCUSED} input map. Tab and Enter
-     * would otherwise insert their literal characters; Escape has no default binding.
-     */
     private void installKeyBindings() {
         bindKey(KeyEvent.VK_TAB, 0, ACTION_KEY_TAB, () -> { logState("key TAB"); advance(); });
         bindKey(KeyEvent.VK_TAB, InputEvent.SHIFT_DOWN_MASK, ACTION_KEY_SHIFT_TAB,
@@ -837,14 +690,9 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Installs the global mouse listener that commits and dismisses the editor on any
-     * click outside its bounds. The focusLost handler covers clicks on focusable
-     * components (toolbar buttons, etc.); this covers clicks on the score canvas, which
-     * is not focusable and would not otherwise steal focus.
-     *
-     * <p>Registered alongside the document and key listeners in {@link #attachListeners}
-     * so the AWT listener — which holds a strong reference to this editor — cannot be
-     * installed unless the rest of the listener stack is too.
+     * Covers clicks on the score canvas, which is not focusable so {@code focusLost} never fires.
+     * Registered in {@link #attachListeners} because the AWT listener strongly references this
+     * editor.
      */
     private void installOutsideClickListener() {
         outsideClickListener = event -> {
@@ -875,9 +723,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Recomputes the editor's pixel bounds from the current text using the same width
-     * formula the renderer uses, then translates the resulting line-local rectangle into
-     * ScoreView-local coordinates.
+     * The width formula is the renderer's.
      */
     public void recomputeBounds() {
         var layoutResult = lineComponent.getLayoutResult();
@@ -932,9 +778,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #activeScript}
-     * as a word-final syllable with {@code extend = NONE}. Same-text commits and
-     * empty-on-empty commits emit zero mutations — the modification bracket is skipped.
+     * Same-text and empty-on-empty commits emit no mutations.
      */
     public void commit() {
         commit(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
@@ -949,19 +793,9 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Returns whether committing the current text as {@code kind}/{@code extend} keeps the line
-     * layout feasible. A wider syllable can force spacing past the staff margin, and committing it
-     * anyway leaves the line laid out on its collision floors with its tail clipped at the end of
-     * the staff — quite possibly cutting off the syllable just typed. When that would
-     * happen this warns the user, leaves the model untouched, and returns false so the caller aborts
-     * the commit and keeps the editor open for the user to shorten the lyric.
-     *
-     * <p>An already-overflowing line is never blocked, so the user can still shorten a too-long
-     * syllable to recover; only an edit that turns a fitting line into one that does not fit is
-     * refused.
-     *
-     * <p>A commit of empty text that is not a melisma carrier writes no syllable — it is a no-op,
-     * removes the element's syllable, or ends a placeholder's chain — and is never refused.
+     * Returns false, warning the user and leaving the model untouched, when the commit would turn
+     * a fitting line into one that overflows the staff. An already-overflowing line is never
+     * blocked, nor is a commit of empty non-carrier text.
      */
     private boolean ensureLyricFits(CommitKind kind, Lyric.Extend extend) {
         if (showingLyricFitAlert) {
@@ -1011,11 +845,6 @@ public final class LyricEditor extends MyJTextField {
         return false;
     }
 
-    /**
-     * The syllabic to probe the fit-check with: {@code null} for a melisma carrier, {@code BEGIN}
-     * for a word-continuing syllable (reserves the hyphen cell), {@code SINGLE} otherwise. Only the
-     * continues-status matters to horizontal spacing (see {@link LyricEditFitCalculator}).
-     */
     private static Lyric.@Nullable Syllabic deriveProbeSyllabic(CommitIntent intent) {
         if (intent.wantsCarrier()) {
             return null;
@@ -1029,11 +858,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * The add/edit/delete op-name for committing the editor's current text into
-     * {@code element}'s lyric, derived from before/after text emptiness. Evaluate
-     * this <em>before</em> opening the modification bracket (as the labeled
-     * {@code withModification} argument) so the op-name is captured at the depth
-     * 0->1 transition — a nested bracket never re-captures.
+     * Evaluate before opening the modification bracket: the op-name is captured at the depth
+     * 0->1 transition only.
      */
     private String commitOpName() {
         var existingLyric = element.getLyricForScript(activeScript);
@@ -1042,10 +868,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * The text this editor would write into the model: the empty string while a placeholder is
-     * untouched (it stands for a neighboring syllable's hyphen or extender, not for a syllable
-     * of this element's own), otherwise the field text. Model-facing code reads this; the field
-     * text itself is only for what the user sees and edits.
+     * Empty while a placeholder is untouched. Model-facing code reads this, never the field text.
      */
     private String commitText() {
         return isPlaceholderIntact() ? "" : getText();
@@ -1056,11 +879,6 @@ public final class LyricEditor extends MyJTextField {
         return placeholder != null && getText().equals(placeholder.text());
     }
 
-    /**
-     * Traces one step of a lyric edit: what the editor is about to do, the field state it acts
-     * from, and the whole script's lyric row, so consecutive entries can be diffed to see what
-     * a keystroke actually changed. Guarded because rendering the row walks the entire line.
-     */
     private void logState(String action) {
         if (!LogUtils.isTracingLyrics(LOG)) {
             return;
@@ -1072,17 +890,12 @@ public final class LyricEditor extends MyJTextField {
             chainEditor.lyricRowDescription());
     }
 
-    /**
-     * Records one decision the lyric machinery made. Carries no editor state of its own, so pair
-     * it with {@link #logState} where the state that drove the decision also matters.
-     */
     private static void trace(String format, @Nullable Object... args) {
         if (LogUtils.isTracingLyrics(LOG)) {
             LOG.debug(format, args);
         }
     }
 
-    /** Beeps the keystroke away, recording why it was refused. */
     private void reject(String reason) {
         if (LogUtils.isTracingLyrics(LOG)) {
             logState("reject (" + reason + ')');
@@ -1091,11 +904,6 @@ public final class LyricEditor extends MyJTextField {
         UIUtils.beep();
     }
 
-    /**
-     * Beeps the keystroke away, recording why. Takes the reason as a supplier so a reason that
-     * has to be assembled from surrounding state is never built while tracing is off; use
-     * {@link #reject(String)} for a reason that is already a plain literal.
-     */
     private void reject(Supplier<String> reason) {
         if (LogUtils.isTracingLyrics(LOG)) {
             logState("reject (" + reason.get() + ')');
@@ -1105,9 +913,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * The role to open this element with, or {@code null} when it plays none. A carrier's
-     * extender takes precedence: an element that carries one cannot also be a hyphen gap,
-     * since it holds a lyric of its own.
+     * {@code null} when the element plays no role for a neighbor.
      */
     private @Nullable Placeholder derivePlaceholder() {
         if (openedAsExtender) {
@@ -1120,19 +926,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #activeScript}
-     * via {@link LyricRun#writeLyricForScript(int, Song.Script, String, Lyric.Extend, boolean, boolean)}, which
-     * derives the syllabic from chain context and propagates to the next lyric-bearing element
-     * where needed. Every commit therefore produces exactly one {@code ElementModification} for
-     * this element, plus at most one more for the following syllable when it has to be
-     * re-lettered.
-     *
-     * <p>Same-text/equivalent-state commits and empty-on-empty commits emit zero
-     * mutations — assumes an open modification bracket so zero-mutation early-returns
-     * produce an empty bracket with no notification.
-     *
-     * @param kind   the syllable shape being committed
-     * @param extend melisma extender state for the lyric
+     * Assumes an open modification bracket. Same-state and empty-on-empty commits emit no
+     * mutations.
      */
     private void commitInner(CommitKind kind, Lyric.Extend extend) {
         var text = commitText();
@@ -1211,28 +1006,18 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Commits the editor's text with the given parameters, runs the dismiss-adjustment
-     * pass, then advances to the next eligible element (or dismisses if none exists).
-     * The commit and adjustment are wrapped in a single modification bracket so both
-     * produce one {@link songscribe.message.notification.SongDidChangeNotification}.
+     * The commit and the dismiss adjustment produce one
+     * {@link songscribe.message.notification.SongDidChangeNotification}.
      */
     public void advance(CommitKind kind, Lyric.Extend extend) {
         advanceWithIndex(kind, extend, findNextEligibleIndex());
     }
 
-    /**
-     * Commits the editor's text as a word-final syllable (no compound, no melisma),
-     * runs the dismiss-adjustment pass, then advances to the next eligible element.
-     */
     public void advance() {
         var commitSpec = neutralCommitSpec();
         advance(commitSpec.kind(), commitSpec.extend());
     }
 
-    /**
-     * Commits the editor's text as a word-final syllable (no compound, no melisma),
-     * runs the dismiss-adjustment pass, then retreats to the previous eligible element.
-     */
     public void retreat() {
         var commitSpec = neutralCommitSpec();
         advanceWithIndex(commitSpec.kind(), commitSpec.extend(), findPreviousEligibleIndex());
@@ -1269,25 +1054,9 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * The shape a <em>neutral</em> commit should write.
-     *
-     * <p>Every way of leaving the editor falls into one of two groups:
-     *
-     * <ul>
-     *   <li><b>Shape-declaring</b> — the hyphen, compound ({@code =}/{@code +}), space and
-     *       underscore keys. Each states how the syllable joins its neighbors, so each passes
-     *       its own {@link CommitKind} and {@link Lyric.Extend} explicitly.
-     *   <li><b>Neutral</b> — Tab, Shift-Tab, Enter, focus loss, a click elsewhere. These say
-     *       only "keep what I typed and move on"; they carry no opinion about joining, so they
-     *       come here and must leave the stored syllabic, compound and extend state alone —
-     *       whether or not the text was edited. Editing a syllable and pressing Tab must not
-     *       break its hyphen to the next syllable.
-     * </ul>
-     *
-     * <p>The stored shape is therefore reused for any element that already has a lyric. Three
-     * cases have no shape left to keep and fall back to a plain word-final, no-melisma commit:
-     * an element with no lyric yet, one whose text the user emptied, and a melisma carrier the
-     * user typed over.
+     * A neutral commit (Tab, Shift-Tab, Enter, focus loss, a click elsewhere) leaves the stored
+     * syllabic, compound and extend state alone, edited or not: editing a syllable and pressing
+     * Tab must not break its hyphen to the next syllable.
      */
     private CommitSpec neutralCommitSpec() {
         var lyric = element.getLyricForScript(activeScript);
@@ -1330,7 +1099,6 @@ public final class LyricEditor extends MyJTextField {
         return new CommitSpec(kind, extend);
     }
 
-    /** The commit a neutral exit falls back to when there is no stored shape worth keeping. */
     private static CommitSpec plainWordFinal() {
         return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
     }
@@ -1349,11 +1117,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Deselects and opens the editor on the element at {@code index} in {@code line}.
-     * Every caller that opens the editor in response to a user gesture goes through here,
-     * so the gesture's own selection is always cleared first. Tab/Shift-Tab navigation
-     * within an already-open editor calls {@link #openOn} directly instead: there is no
-     * selection to clear, the editor having taken focus when it opened.
+     * Entry for a user gesture, whose own selection must be cleared first. Tab navigation within
+     * an open editor calls {@link #openOn} directly.
      */
     public static void deselectAndOpenOn(ScoreView score, Line line, int index) {
         score.deselect();
@@ -1463,19 +1228,6 @@ public final class LyricEditor extends MyJTextField {
         advanceWithIndex(CommitKind.WORD_CONTINUING_COMPOUND, Lyric.Extend.NONE, nextIndex);
     }
 
-    /**
-     * Implements the {@code _} keystroke:
-     * <ul>
-     *   <li>Empty editor, or the whole lyric selected — replace this element's lyric with a
-     *       melisma carrier (see {@link #extendChainBackward()}), or beep when no predecessor
-     *       can start the melisma.</li>
-     *   <li>Caret at the end of unselected text and the next eligible element carries no
-     *       syllable — commit the text as a melisma start and make that element the carrier
-     *       (see {@link #startMelismaOnNextElement(int)}).</li>
-     *   <li>Anything else (caret mid-text, partial selection, next element already has a
-     *       syllable) — beep and reject.</li>
-     * </ul>
-     */
     private void handleUnderscore() {
         var text = commitText();
 
@@ -1518,11 +1270,6 @@ public final class LyricEditor extends MyJTextField {
         return getSelectionStart() == 0 && getSelectionEnd() == getText().length();
     }
 
-    /**
-     * Implements {@code _} over a fully selected lyric: the melisma replaces the syllable, so
-     * the text is dropped and the element becomes a carrier of the chain reaching back to its
-     * predecessor. Beeps without mutating when there is no predecessor to start the melisma.
-     */
     private void replaceLyricWithMelisma() {
         var currentIndex = line.getElementIndex(element);
         var backIndex = line.previousLyricBearingIndex(currentIndex, activeScript);
@@ -1535,11 +1282,6 @@ public final class LyricEditor extends MyJTextField {
         extendChainBackward(currentIndex, backIndex);
     }
 
-    /**
-     * Implements {@code _} typed at the end of unselected text: commits the text as a melisma
-     * start, turns the next eligible element into the chain's {@code STOP} carrier, and moves
-     * the editor past that carrier to the following eligible element.
-     */
     private void startMelismaOnNextElement(int nextIndex) {
         if (!ensureLyricFits(CommitKind.WORD_FINAL, Lyric.Extend.START)) {
             return;
@@ -1572,13 +1314,6 @@ public final class LyricEditor extends MyJTextField {
         openIndexOrDismiss(followingIndex);
     }
 
-    /**
-     * Implements the empty-editor {@code _} keystroke: retroactively builds a
-     * {@code CONTINUE} chain from the previous lyric-bearing element through the
-     * current element, then advances. The chain build runs in its own modification
-     * bracket; the subsequent {@link #advance()} suppresses the dismiss adjustment so
-     * the just-built chain is not torn down.
-     */
     private void extendChainBackward() {
         var currentIndex = line.getElementIndex(element);
         var backIndex = line.previousLyricBearingIndex(currentIndex, activeScript);
@@ -1592,11 +1327,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Builds the chain described by {@link #extendChainBackward()}, for callers that have
-     * already located the current element and the lyric-bearing element before it.
-     *
-     * @param currentIndex the element the editor is open on, which becomes the chain's carrier
-     * @param backIndex    the lyric-bearing element the chain runs back to, never negative
+     * @param backIndex never negative
      */
     private void extendChainBackward(int currentIndex, int backIndex) {
         chainEditor.buildBackwardChain(currentIndex, backIndex);
@@ -1683,10 +1414,6 @@ public final class LyricEditor extends MyJTextField {
         line.adjustNeighborsForLyricDeletion(currentIndex, activeScript);
     }
 
-    /**
-     * Removes the editor from its parent, clears the active-editor reference on
-     * {@code ScoreView}, and repaints the vacated region.
-     */
     public void dismiss(boolean isDoneEditing) {
         if (outsideClickListener != null) {
             Toolkit.getDefaultToolkit().removeAWTEventListener(outsideClickListener);
@@ -1718,10 +1445,8 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Repaints the whole line, because an unclosed hyphen chain is engraved up to wherever this
-     * editor sits and so changes shape when the editor opens or closes. That chain starts to the
-     * left of the editor, outside the bounds the open and dismiss paths repaint, and advancing
-     * with a lone hyphen writes nothing to the model, so no mutation-driven repaint follows either.
+     * Repaints the whole line: an unclosed hyphen chain starts left of the editor, outside the
+     * bounds the open and dismiss paths repaint, and a lone hyphen writes no mutation.
      */
     private void repaintHyphenChainPreview() {
         lineComponent.repaint();

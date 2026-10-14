@@ -27,9 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.PartialDate;
 
 /**
- * Parsing of the reduced-precision ISO 8601 date form ({@code YYYY} / {@code YYYY-MM} /
- * {@code YYYY-MM-DD}) that {@link PartialDate#isoDate} writes, shared by the legacy
- * {@code .mssw} reader and the MusicXML reader.
+ * Parsing of the reduced-precision ISO 8601 date form that {@link PartialDate#isoDate} writes.
  */
 public final class DateUtils {
 
@@ -42,18 +40,7 @@ public final class DateUtils {
     private DateUtils() {
     }
 
-    /**
-     * Parses a reduced-precision ISO 8601 date string.
-     *
-     * <p>Accepts the forms {@code YYYY}, {@code YYYY-MM}, and {@code YYYY-MM-DD}
-     * (two-digit month/day only). Validates both bounds ({@code 1 <= month <=
-     * MAX_MONTH}, {@code 1 <= day <= MAX_DAY}). The inverse of
-     * {@link PartialDate#isoDate}.
-     *
-     * <p>Returns {@code null} when the string is malformed or a month/day
-     * component is out of range. Performs no logging and has no side effects —
-     * callers decide how to report failure.
-     */
+    /** Returns {@code null} when the string is malformed or a month/day is out of range. */
     public static @Nullable PartialDate parseIsoDate(String str) {
         var matcher = ISO_DATE_PATTERN.matcher(str);
 

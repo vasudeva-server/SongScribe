@@ -30,10 +30,6 @@ import org.xml.sax.SAXException;
 
 /**
  * Loads a {@link songscribe.dom.Song} from a file without requiring a {@code ScoreView}.
- * <p>
- * Use this for headless operations (MIDI export) that only need
- * the song data. For operations that also need rendering (image, PDF,
- * SVG export), use {@code ScoreView.openFile} instead.
  */
 public final class SongLoader {
 

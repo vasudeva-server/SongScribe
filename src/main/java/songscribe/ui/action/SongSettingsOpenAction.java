@@ -31,11 +31,6 @@ import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
 /**
  * Opens the Song Settings dialog.
- *
- * <p>Whoever opens the dialog supplies its operations, so the dialog itself never reaches for the
- * score. The dialog is built per opening, so a fresh {@link SongSettingsController} is constructed
- * each time; it still resolves the open document on every reading rather than holding it, which is
- * what keeps a dialog left showing across a document change correct.
  */
 public final class SongSettingsOpenAction extends DialogOpenAction<SongSettingsDialog> {
 
@@ -57,14 +52,8 @@ public final class SongSettingsOpenAction extends DialogOpenAction<SongSettingsD
     }
 
     /**
-     * Opens a fresh Song Settings dialog on {@code section}'s tab. The dialog serves one
-     * opening and is disposed on close, which is why it is built per call rather than held.
-     * <p>
-     * The caller must have established that the song is not playing. The action's
-     * {@link Flag#DISABLE_WHEN_PLAYING} greys out the menu item; it does not reach this entry
-     * point, and the dialog it opens is modal.
-     *
-     * @param section the tab to open on
+     * The caller must have established that the song is not playing: {@link Flag#DISABLE_WHEN_PLAYING}
+     * does not guard this entry point, and the dialog it opens is modal.
      */
     public void openAt(SongSettingsDialog.Section section) {
         open(dialog -> dialog.show(section));

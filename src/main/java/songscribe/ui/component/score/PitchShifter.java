@@ -40,19 +40,14 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.playback.PlayThread;
 
 /**
- * Shifts the pitch of a range of notes as a single recorded mutation. This is the
- * one definition of moving a selection's pitch, shared by two callers that differ
- * only in cadence: a mouse drag ({@link NoteDragHandler}) runs the move live across
- * many mouse steps, an arrow-key press runs it once. Housing the logic here — rather
- * than on the drag handler — keeps it independent of mouse dragging, which an arrow
- * press is not.
+ * Shifts the pitch of a range of notes as a single recorded mutation: the one definition of
+ * moving a selection's pitch, shared by the mouse drag ({@link NoteDragHandler}) and the
+ * arrow-key press.
  * <p>
- * A moved note has no pitch of its own at its new staff position: it adopts whatever
- * the song's chain walk decides is in force there once the move is committed. There is
- * no prompt and no fit gate — a pitch shift changes no element's horizontal extent, so
- * nothing it does can widen a line past its fit. The anchor note — the one the user
- * grabbed or pressed an arrow key on — is played only after that walk has run, since
- * only then is its sounding pitch known.
+ * A moved note has no pitch of its own at its new staff position: it adopts whatever the song's
+ * chain walk decides is in force there once the move is committed. There is no prompt and no fit
+ * gate, because a pitch shift changes no element's horizontal extent. The anchor note is played
+ * only after that walk has run, since only then is its sounding pitch known.
  */
 public final class PitchShifter {
 
@@ -60,39 +55,17 @@ public final class PitchShifter {
     }
 
     /**
-     * Captures the original state of a single note in a pitch-shift group.
-     * {@code line} is the note's own line — a group formed across a cross-line tie holds
-     * entries from two different lines, so every entry carries the line {@code index}
-     * resolves into rather than assuming the group's caller-supplied line.
-     * {@code originalStaffPosition} is the staff position the shift delta is added to, and the
-     * one the note is put back to before {@link #commitPitchShift} records its move, so the
-     * {@link ElementModification#beforeElement()} of that record is the note's real prior state.
+     * {@code line} is the note's own line: a group across a cross-line tie holds entries from two
+     * lines. {@code originalStaffPosition} is the one the note is put back to before
+     * {@link #commitPitchShift} records its move, so the record's
+     * {@link ElementModification#beforeElement()} is the note's real prior state.
      */
     record PitchShiftEntry(Line line, int index, StaffPosition originalStaffPosition) {}
 
     /**
-     * Shifts the pitch of every pitched note in {@code range} (tie chains expanded) by
-     * {@code deltaSp} staff positions and commits
-     * the change through the modification mechanism, producing the same recorded
-     * mutation a mouse drag does. This is the entry point for arrow-key pitch
-     * changes on a selection.
-     * <p>
-     * A tie chain that reaches {@code line}'s edge through a cross-line tie pulls the partner
-     * note in the adjacent line into the group as well, so both endpoints move together. The
-     * whole move — both lines — is one modification bracket, so one undo restores every note it
-     * touched (see {@link #moveGroup}).
-     * <p>
-     * {@code deltaSp} is clamped so no note leaves the valid staff range; if the
-     * range holds no notes or the clamped delta is zero, nothing happens.
-     * The original staff positions for the {@link ElementModification} records are captured
-     * before the shift is applied. The move, the commit, and the single note played once the
-     * commit's chain walk has decided its sounding pitch are the exact same operations a mouse
-     * drag performs on release.
-     * <p>
-     * A grace-note/host collapse during the commit removes an element, shifting every
-     * later index down by one. The active selection range is spliced through that removal
-     * by the same mechanism every other structural mutation uses, so this method itself
-     * has nothing to report back to its caller.
+     * A tie chain reaching {@code line}'s edge through a cross-line tie pulls the partner note in
+     * the adjacent line into the group, so both endpoints move together. The whole move, across
+     * both lines, is one modification bracket, so one undo restores every note it touched.
      */
     public static void shiftPitch(Line line, ElementRange range, int deltaSp) {
         var group = buildPitchShiftGroup(line, range);
@@ -126,18 +99,8 @@ public final class PitchShifter {
     }
 
     /**
-     * Moves every note in {@code group} — each on its own entry's line, so a group reaching
-     * across a cross-line tie moves the partner note in the adjacent line right along with it —
-     * to its original staff position plus {@code clampedDelta}. This is the single definition of
-     * moving a selection's pitch, shared by mouse drag (called live for each mouse step) and
-     * arrow keys (called once per keypress). {@code anchorIndex} is always resolved against
-     * {@code line}, since the anchor is the note the caller's own selection or drag grabbed,
-     * which is always on {@code line} itself. {@code clampedDelta} must already be clamped via
-     * {@link #clampDelta}.
-     * <p>
-     * A moved note's accidental is left untouched here: the note has landed at a new staff
-     * position, and what sounds there — and what the moved note itself now sounds — is for the
-     * song's chain walk to decide once the move is committed, not for this method to guess at.
+     * {@code clampedDelta} must already be clamped via {@link #clampDelta}. A moved note's
+     * accidental is left untouched: the song's chain walk decides it once the move is committed.
      */
     static void moveGroup(Line line, List<PitchShiftEntry> group, int anchorIndex, int clampedDelta) {
         for (var entry : group) {
@@ -147,10 +110,8 @@ public final class PitchShifter {
     }
 
     /**
-     * Lets the anchor note last sounded on this move ring for its standard duration, then
-     * stops it. Called once a move is finalized and its chain walk has run — mouse release for
-     * a drag, {@link #shiftPitch} for an arrow shift — because the note-on that sounded the
-     * anchor's post-walk pitch is left sustaining.
+     * Call once a move is finalized and its chain walk has run, because the note-on that sounded
+     * the anchor's post-walk pitch is left sustaining.
      */
     static void scheduleAnchorNoteOff(Line line, int anchorIndex) {
         if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
@@ -159,15 +120,8 @@ public final class PitchShifter {
     }
 
     /**
-     * Builds the pitch-shift group for {@code range} on {@code line}: every note in the range —
-     * grace notes included, since they shift exactly like pitched notes — with each note's
-     * whole tie chain ({@link NoteElement#tieChain()}), so tied notes move together, including
-     * a chain that crosses into an adjacent line through a cross-line tie.
-     *
-     * @param line  the line the range is in
-     * @param range the selected elements of {@code line}
-     * @return one entry per note of the group, each holding the note's own line, its index there
-     *     and its current staff position, with no note twice; empty when the range holds no notes
+     * Every note in the range, grace notes included, comes with its whole tie chain
+     * ({@link NoteElement#tieChain()}), so tied notes move together, across lines too.
      */
     static List<PitchShiftEntry> buildPitchShiftGroup(Line line, ElementRange range) {
         // Collected by note identity, not index arithmetic: a tie's two notes can sit in two
@@ -192,10 +146,6 @@ public final class PitchShifter {
         return group;
     }
 
-    /**
-     * Clamps {@code deltaSp} so that applying it leaves no note in {@code group}
-     * outside {@link StaffPosition#MIN}..{@link StaffPosition#MAX}.
-     */
     static int clampDelta(List<PitchShiftEntry> group, int deltaSp) {
         var minDelta = Integer.MIN_VALUE;
         var maxDelta = Integer.MAX_VALUE;
@@ -209,34 +159,18 @@ public final class PitchShifter {
     }
 
     /**
-     * Commits a pitch shift for every note in {@code group} as a single
-     * SongDidChangeNotification: one PITCH/ACCIDENTAL {@link ElementModification} per note,
-     * then grace-note cleanup — all coalesced into one modification bracket, so the shift and
-     * the accidental restamps the song's chain walk makes for it are one undo step. The staff
-     * positions must already have been mutated before this is called.
+     * The staff positions must already have been mutated. Everything is coalesced into one
+     * modification bracket, so the shift and the accidental restamps the song's chain walk makes
+     * for it are one undo step, across both lines of a cross-line tie group.
      * <p>
-     * Every group note is first put back plainly to its {@code originalStaffPosition}, and only
-     * then is each move recorded through {@link Line#modifyElement}. A move changes only the
-     * staff position, so that puts the note back as it stood before the move. The song walks the chain after
-     * every recorded change and records its restamps between the moves, so a note whose move is
-     * recorded later may already have been restamped by an earlier one; recording from the
-     * restored notes gives each record the note's real prior state, which is what undo puts
-     * back. A note that lands on another staff position has no pitch of its own there and is
-     * recorded {@link AccidentalState.Adopting Adopting}, so the walk gives it what is in force
-     * where it landed.
+     * Every group note is first put back to its {@code originalStaffPosition}, then each move is
+     * recorded: the song restamps between recorded moves, so only the restored notes give each
+     * record the note's real prior state. A note on another staff position is recorded
+     * {@link AccidentalState.Adopting Adopting}.
      * <p>
-     * A connected glissando whose two notes land on the same pitch is removed from the model,
-     * not merely hidden — a same-pitch glissando is not a state the document may hold. The
-     * removal is silent and joins this bracket, so one undo brings both the shift and the
-     * glissando back. A drag commits only on release, so passing through the target's pitch
-     * mid-drag costs nothing; an arrow press commits on every press, so landing on it does
-     * remove the glissando.
-     * <p>
-     * A group reaching across a cross-line tie holds entries from two lines; every step below
-     * runs against each entry's own line, not {@code line}. The whole thing is still one undo
-     * step — a bracket opened on {@code line} delegates to its {@link songscribe.dom.Song}, so
-     * mutations recorded through the adjacent line's own {@code applyChange}/{@code removeElement}
-     * coalesce into the same batch.
+     * A connected glissando whose two notes land on the same pitch is removed, because a
+     * same-pitch glissando is not a state the document may hold. The removal joins this
+     * bracket, so one undo brings back both the shift and the glissando.
      */
     static void commitPitchShift(Line line, List<PitchShiftEntry> group) {
         line.getSong().withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
@@ -330,16 +264,8 @@ public final class PitchShifter {
     }
 
     /**
-     * Removes the glissando owned by the element at {@code ownerIndex} when the shift has left it
-     * {@linkplain Line#isSamePitchAsFollower spanning two notes at one pitch}, so it has nothing
-     * to traverse.
-     * <p>
-     * Recorded through {@link Line#modifyElement} like every other slide strip, so undo restores
-     * it. Only the same-pitch case is handled here: a glissando left pointing at something that
-     * is not a note at all is a structural problem, and its repair belongs to {@link Line}.
-     *
-     * @param line       the line holding both notes
-     * @param ownerIndex index of the note that owns the glissando; out-of-range is a no-op
+     * Only the same-pitch case is handled here; a glissando pointing at a non-note is repaired by
+     * {@link Line}.
      */
     private static void removeSamePitchGlissando(Line line, int ownerIndex) {
         if (ownerIndex < 0 || !line.isSamePitchAsFollower(ownerIndex)) {

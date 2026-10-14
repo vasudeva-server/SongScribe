@@ -29,68 +29,31 @@ import songscribe.dom.StaffElement;
 /**
  * The complete vocabulary of things a click on a staff line can address.
  *
- * <p>Addressing something and selecting it are different questions, and {@link Selectable}
- * is which of the two a kind answers. A kind outside it can be resolved to and acted on —
- * a double-click opens an editor, say — but can never become the selection, so the
- * selection and delete paths never see one.
+ * <p>A kind outside {@link Selectable} can be resolved to and acted on, but never becomes the
+ * selection.
  *
- * <p>Every {@code Selectable} names what it selects <b>by object reference</b>, never by
- * position in the line. An index-addressed target goes silently wrong on mutation: select
- * element 5, delete element 2, and index 5 now names a different but perfectly live
- * element — nothing dangles, the selection simply points at the wrong note. Identity
- * addressing removes that failure mode rather than trying to detect it. Where an index
- * is genuinely needed it is derived at the point of use via
- * {@code Line.getElementIndex(StaffElement)}.
- *
- * <p>There is no {@code Nothing} variant: a query that hits nothing returns
- * {@code null} (see {@link HitRegistry#hitTest}).
+ * <p>Every {@code Selectable} names what it selects by object reference, never by index: an
+ * index silently names a different live element after a mutation.
  */
 public sealed interface HitTarget {
 
-    /**
-     * @return how a region addressing this kind resolves against the regions it overlaps
-     */
     HitPriority priority();
 
-    /**
-     * The kinds a press can make the selection.
-     *
-     * <p>A kind outside this interface is addressable but never selected, which is what makes
-     * the selection layer's liveness check total: it holds only a {@code Selectable}, so
-     * {@link #isLiveOn} is answerable for whatever it holds.
-     */
     sealed interface Selectable extends HitTarget {
 
         /**
-         * Whether this target still names something live on {@code line}: whether a selection
-         * of it, made on {@code line}, still addresses notation that exists there. The selection
-         * layer asks this after an edit, an undo or a redo, and clears a selection that is no
-         * longer live.
-         * <p>
-         * Each kind answers from what records its presence. A staff element, an attachment and
-         * an articulation answer from the line they are on. A span answers from the line's span
-         * registry, because removing a span leaves its endpoints where they were. A tie answers
-         * from both of its notes. The staff line itself is always live.
-         *
-         * @param line the line the selection is on
-         * @return {@code true} when the target is live on {@code line}
+         * Whether a selection of this target made on {@code line} still addresses notation that
+         * exists there. A span answers from the line's span registry, since removing a span
+         * leaves its endpoints in place.
          */
         boolean isLiveOn(Line line);
     }
 
-    /**
-     * Whether {@code line}'s span registry holds {@code span}: the liveness rule every span
-     * target shares. The registry is the only record of a span having been removed, since a
-     * removal leaves the span's endpoints where they were.
-     */
     private static boolean isRegisteredOn(Span<?> span, Line line) {
         return line.spanRegistry().getSpans().contains(span);
     }
 
-    /**
-     * A note head. Addressable but not {@link Selectable}: a note is selected as an index
-     * range rather than as a target, so a press on one produces a {@code Selection.Range}.
-     */
+    /** A note head. Not {@link Selectable}: a note is selected as an index range. */
     record Element(StaffElement element) implements HitTarget {
 
         @Override
@@ -99,12 +62,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /**
-     * One syllable box of one script under an element.
-     *
-     * @param element the element the syllable is attached to
-     * @param script  the script the syllable is written in
-     */
     record Lyric(StaffElement element, Song.Script script) implements Selectable {
 
         @Override
@@ -118,7 +75,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A glissando or fall drawn from {@code owner}. */
     record Slide(NoteElement owner) implements Selectable {
 
         @Override
@@ -132,11 +88,7 @@ public sealed interface HitTarget {
         }
     }
 
-    /**
-     * A glissando owned by a grace note. Grace-note slides are not selectable; this
-     * variant exists so the click can be reported and answered with an explanation
-     * rather than silently ignored.
-     */
+    /** Not selectable; exists so the click can be answered with an explanation. */
     record GraceGlissando(NoteElement owner) implements HitTarget {
 
         @Override
@@ -145,7 +97,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A crescendo or diminuendo. */
     record Hairpin(songscribe.dom.Hairpin hairpin) implements Selectable {
 
         @Override
@@ -159,7 +110,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A volta / ending bracket. */
     record Ending(songscribe.dom.Ending ending) implements Selectable {
 
         @Override
@@ -181,14 +131,12 @@ public sealed interface HitTarget {
             return HitPriority.STAFF_LINE;
         }
 
-        /** Always live: it addresses the staff line itself, not anything on it. */
         @Override
         public boolean isLiveOn(Line line) {
             return true;
         }
     }
 
-    /** A staccato, accent, tenuto and the like. */
     record Articulation(songscribe.dom.Articulation articulation) implements Selectable {
 
         @Override
@@ -202,7 +150,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A fermata, dynamic, tempo change, beat change or annotation. */
     record Attachment(songscribe.dom.Attachment attachment) implements Selectable {
 
         @Override
@@ -216,7 +163,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A tie curve, or the half of one a line draws when the tie crosses a line break. */
     record Tie(songscribe.dom.Tie tie) implements Selectable {
 
         @Override
@@ -224,30 +170,17 @@ public sealed interface HitTarget {
             return HitPriority.TIE;
         }
 
-        /**
-         * Live while its anchor still derives this tie ({@link NoteElement#tie()}) and
-         * {@code line} holds either of its notes. The anchor alone cannot answer: it stays on
-         * its line when the tie is removed, and a tie across a line break can be selected from
-         * either of its two lines while the anchor is on only the first.
-         */
+        /** A tie across a line break can be selected from either of its two lines. */
         @Override
         public boolean isLiveOn(Line line) {
             return tie.equals(tie.anchor().tie()) && isDrawnOn(line);
         }
 
-        /**
-         * Whether {@code line} draws this tie or a half of it: whether it holds either of the
-         * tie's two notes.
-         *
-         * @param line any line of the song
-         * @return {@code true} when {@code line} holds the tie's anchor or its end
-         */
         public boolean isDrawnOn(Line line) {
             return line.placementOf(tie) != null;
         }
     }
 
-    /** A beam group. */
     record Beam(songscribe.dom.Beam beam) implements Selectable {
 
         @Override
@@ -261,7 +194,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A trill — the {@code tr} glyph together with its wavy-line extension, if any. */
     record Trill(songscribe.dom.Trill trill) implements Selectable {
 
         @Override
@@ -275,7 +207,6 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A tuplet bracket and its number, or the number alone when the group is beamed. */
     record Tuplet(songscribe.dom.Tuplet tuplet) implements Selectable {
 
         @Override
@@ -289,15 +220,7 @@ public sealed interface HitTarget {
         }
     }
 
-    /**
-     * The attribution block drawn above the first staff line. It is the one target in this
-     * interface that is not notation. It exists so a double-click can be resolved to it, and
-     * it is not {@link Selectable}: the block is edited in Song Settings, never on the page.
-     *
-     * <p>It carries no reference to the block it addresses, for the same reason
-     * {@link StaffLine} carries none: a song holds exactly one attribution, so naming it
-     * would say nothing the song does not already answer.
-     */
+    /** Not {@link Selectable}: the block is edited in Song Settings, never on the page. */
     record Attribution() implements HitTarget {
 
         @Override

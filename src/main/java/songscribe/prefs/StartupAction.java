@@ -19,7 +19,6 @@
 */
 package songscribe.prefs;
 
-/** The action to perform when the application starts up with no file argument. */
 public enum StartupAction implements PrefsValue {
     DO_NOTHING,
     SHOW_FILE_CHOOSER,

@@ -57,27 +57,15 @@ import songscribe.util.LengthUnit;
 /**
  * The user's preferences: the store, the file behind it, and the observable views of it.
  *
- * <p>Two ways to follow a change, and they are not alternatives. A
- * {@code PrefsDidChangeNotification} on the message bus carries the key that changed, for
- * consequences that are not a value. An observable view — {@link #intProperty},
- * {@link #booleanProperty}, {@link #choiceProperty} — is a {@code Property} a control can
- * be bound to two-way, and it notifies whenever its key changes, whoever changed it. That
- * inward direction is what makes a bound control follow a change it did not itself make.
+ * <p>The views are notified before the {@code PrefsDidChangeNotification} is posted, so code
+ * reacting to both sees bound controls already settled. A view is not a resource: one per key,
+ * kept for the life of the store; the observations a caller takes on it are the caller's to
+ * cancel.
  *
- * <p><b>The views are notified before the message is posted.</b> Code reacting to both
- * sees the bound controls already settled by the time its handler runs.
+ * <p>Writing is EDT-only: every {@code put}, {@code reset} and {@code resetAll} notifies the
+ * views, and {@code songscribe.binding} is unsynchronized. Reads are unrestricted.
  *
- * <p>A view is not a resource. There is one per key, kept for the life of the store, and
- * nothing to unregister when a dialog closes; the observations a caller takes on it are
- * the caller's to cancel, which is what {@code Bindings.dispose} does.
- *
- * <p><b>Threading: writing is EDT-only.</b> Every {@code put}, {@code reset} and
- * {@code resetAll} notifies the views, and {@code songscribe.binding} is unsynchronized by
- * design, so a write from a background thread can lose a notification with nothing
- * reporting it. Reads are unrestricted.
- *
- * <p>See {@code .claude/guides/prefs.md} for the defaults files, the key enums, and how to
- * add or remove a preference.
+ * <p>See {@code .claude/guides/prefs.md}.
  */
 public final class Prefs {
 
@@ -221,16 +209,6 @@ public final class Prefs {
         return constantFor(key, type, getString(key));
     }
 
-    /**
-     * The constant {@code stored} names, or the one {@code key}'s default names.
-     *
-     * @param <E> the enum the preference holds
-     * @param key the preference the value came from, whose default is the fallback
-     * @param type the enum class whose constants are matched against
-     * @param stored the stored string
-     * @return the matching constant, or the one the default names
-     * @throws IllegalStateException if the default names no constant either
-     */
     private static <E extends Enum<E> & PrefsValue> E constantFor(PrefsKey key, Class<E> type, String stored) {
         var found = findConstant(type, stored);
 
@@ -248,12 +226,7 @@ public final class Prefs {
         return fallback;
     }
 
-    /**
-     * @param <E> the enum to search
-     * @param type the enum class
-     * @param stored the stored string to match against each constant's stored value
-     * @return the matching constant, or null if no constant is stored as that
-     */
+    /** @return the matching constant, or null if no constant is stored as that */
     private static <E extends Enum<E> & PrefsValue> @Nullable E findConstant(Class<E> type, String stored) {
         for (var constant : type.getEnumConstants()) {
             if (constant.storedValue().equalsIgnoreCase(stored)) {
@@ -265,19 +238,8 @@ public final class Prefs {
     }
 
     /**
-     * A view of one preference, typed as whatever encoding a caller asked for.
-     *
-     * <p>The typed views are layered over the one stored view rather than each being a
-     * view in its own right, because the type a caller wants is not a property of the
-     * preference: one key can legitimately be read as a string by one caller and as an
-     * enum constant by another, and both have to stay live. Only the stored view is kept,
-     * so there is exactly one thing to notify per key; a converted view registers nothing
-     * of its own and is garbage as soon as the binding that took it is disposed.
-     *
-     * @param <T> the type this view presents
-     * @param stored the view of what the store actually holds for this key
-     * @param decode converts the stored value to this view's type
-     * @param encode converts a written value back to what the store holds
+     * Layered over the one stored view per key, because the type a caller wants is not a
+     * property of the preference; a converted view registers nothing of its own.
      */
     private record ConvertedView<T>(
         ViewProperty<Object> stored,
@@ -302,18 +264,9 @@ public final class Prefs {
     }
 
     /**
-     * Returns the view of what the store holds for {@code key}, creating it on the first
-     * request.
-     *
-     * <p>One per key, because two views of one key would each hold their own observers and
-     * only the one this class notified would report a change.
-     *
-     * <p>{@link WriteNotification#FROM_SOURCE} because a write through the view reaches
-     * {@link #save}, which notifies the view on its way through — the same shape as a
-     * Swing control whose own listener fires on a programmatic write.
-     *
-     * @param key the preference to view
-     * @return the view
+     * One per key, or only the view this class notified would report a change. A write through
+     * the view reaches {@link #save}, which notifies it, hence
+     * {@link WriteNotification#FROM_SOURCE}.
      */
     private static ViewProperty<Object> storedView(PrefsKey key) {
         return INSTANCE.properties.computeIfAbsent(
@@ -351,13 +304,7 @@ public final class Prefs {
         INSTANCE.save(key);
     }
 
-    /**
-     * Returns the map stored at the given key, or an empty map if absent.
-     * <p>
-     * <b>Note:</b> Gson deserializes JSON numbers in nested objects as {@code Double},
-     * so callers must cast numeric values through {@link Number} (e.g.,
-     * {@code ((Number) value).intValue()}) rather than assuming {@code Integer} or {@code Long}.
-     */
+    /** Numeric values in nested objects are {@code Double}; cast through {@link Number}. */
     @SuppressWarnings("unchecked")
     public static Map<String, Object> getMap(PrefsKey key) {
         var value = INSTANCE.store.get(key.key());
@@ -399,18 +346,7 @@ public final class Prefs {
         putValue(key, value);
     }
 
-    /**
-     * Stores {@code value} at {@code key} and saves.
-     *
-     * <p>What every {@code put} overload and every write through a view comes down to;
-     * the overloads exist to fix the stored encoding for each Java type, not to store
-     * differently.
-     *
-     * @param key the preference to write
-     * @param value the value to store, already in its stored encoding
-     * @effects replaces the stored value, writes the file, notifies {@code key}'s view
-     *     and posts {@code PrefsDidChangeNotification}
-     */
+    /** @param value the value to store, already in its stored encoding */
     private static void putValue(PrefsKey key, Object value) {
         INSTANCE.store.put(key.key(), value);
         INSTANCE.save(key);
@@ -502,14 +438,6 @@ public final class Prefs {
         MessageCenter.post(new PrefsDidChangeNotification(changedKey));
     }
 
-    /**
-     * Notifies the views of whatever {@code changedKey} covers, which for
-     * {@link PrefsKey#ALL} is every view there is.
-     *
-     * <p>This is the whole of what makes a bound control follow a change it did not
-     * make. The store is the writer, so the store is what notifies; a view holds no
-     * subscription of its own and there is nothing to unregister when a dialog closes.
-     */
     private void notifyProperties(PrefsKey changedKey) {
         if (changedKey == PrefsKey.ALL) {
             for (var property : List.copyOf(properties.values())) {

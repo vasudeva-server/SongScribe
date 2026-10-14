@@ -25,20 +25,11 @@ import org.jspecify.annotations.Nullable;
  * One change the song made on its own, as a recorder hands it to a {@link ChangeReport.Builder}
  * while an edit or a load runs.
  *
- * <p>A change names lines, never elements: it describes something that is gone, a span removed
- * or a mark dropped, so no element is left to point at, and the elements around it may have
- * moved by the time the user reads the entry.
+ * <p>A change names lines, never elements, and by {@link Line} object rather than index: line
+ * numbers are resolved only when the report is built ({@link ChangeReport.Builder#build()}), so a
+ * line added or removed later in the same edit does not make the entry wrong.
  *
- * <p>A recorder names the place by the {@link Line} objects the change was made on, never by
- * line or element indices. The line numbers the user reads are resolved only when the report is
- * built ({@link ChangeReport.Builder#build()}), so a line added or removed in front of
- * {@code where} later in the same edit does not make the entry wrong.
- *
- * @param headingKey  a {@code Strings} key whose value is plain text naming the kind of change
- *                    for this one entry, such as "A tie was removed"
- * @param description finished user-facing text saying why this change was made
- * @param where       the lines the change was made on, or {@code null} only for a change with no
- *                    place in the song, such as the accidental conversion at load or a reader
- *                    drop of a wedge bound to no note
+ * @param headingKey a {@code Strings} key whose value is plain text
+ * @param where      {@code null} only for a change with no place in the song
  */
 public record RecordedChange(String headingKey, String description, @Nullable ChangeLines where) { }

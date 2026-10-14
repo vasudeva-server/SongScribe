@@ -25,23 +25,14 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Beam;
 
 /**
- * Whether a note belongs to a beam group, which decides whether it draws a flag — and so where its
- * augmentation dots sit.
+ * Whether a note belongs to a beam group, which decides whether it draws a flag.
  */
 public enum Beaming {
 
-    /** The note is a member of a beam group: its flag is suppressed. */
     BEAMED,
 
-    /** The note stands alone: a flagged type draws its flag. */
     UNBEAMED;
 
-    /**
-     * Returns the beaming of a note given the beam it belongs to.
-     *
-     * @param beam the beam the note belongs to, or {@code null} when it belongs to none
-     * @return {@link #BEAMED} when {@code beam} is non-null, otherwise {@link #UNBEAMED}
-     */
     public static Beaming of(@Nullable Beam beam) {
         return beam != null ? BEAMED : UNBEAMED;
     }

@@ -87,18 +87,13 @@ public final class LyricLayoutBuilder {
 
     private LyricLayoutBuilder() {}
 
-    /**
-     * The text of a placeholder box: what stands where a missing syllable would go.
-     */
     public static final String PLACEHOLDER_TEXT = "?";
 
     /**
      * @param boxes                   the syllable boxes, by the element that carries each
      * @param placeholders            for every note that can bear a syllable but has none in
-     *                                the script laid out, a box of {@link #PLACEHOLDER_TEXT}
-     *                                placed exactly as a syllable of that text would be. A
-     *                                placeholder takes no space and touches no connector; the
-     *                                renderer decides whether to draw it
+     *                                the script laid out, a box of {@link #PLACEHOLDER_TEXT}; it
+     *                                takes no space and touches no connector
      * @param connectors              the hyphens and extenders
      * @param hasTrailingContinuation whether an extender runs off the end of the line
      */
@@ -126,15 +121,13 @@ public final class LyricLayoutBuilder {
      * @param lyricRenderMetrics     metrics used to measure syllable text widths
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
-     * @param lineWidthSs            width of the line in staff spaces (reserved for future use)
      * @return the boxes and connectors for that script, and whether an extender runs off the line
      */
     public static Result build(
         List<ElementColumn> columns,
         Song.Script activeScript,
         LyricRenderMetrics lyricRenderMetrics,
-        boolean hasLeadingContinuation,
-        double lineWidthSs) {
+        boolean hasLeadingContinuation) {
 
         var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var placeholders = new HashMap<StaffElement, LyricBoxLayout>(columns.size());
@@ -273,20 +266,14 @@ public final class LyricLayoutBuilder {
         return new Result(boxesByElement, placeholders, connectors, hasTrailingContinuation);
     }
 
-    /**
-     * Returns the column a grace note's syllable shares its placement with: the column immediately
-     * after it. Null for anything but a grace, and for a grace ending the line.
-     */
+    /** Null for anything but a grace, and for a grace ending the line. */
     private static @Nullable ElementColumn graceHostColumn(List<ElementColumn> columns, int columnIndex) {
         return columns.get(columnIndex).isGraceNote() && columnIndex + 1 < columns.size()
             ? columns.get(columnIndex + 1)
             : null;
     }
 
-    /**
-     * Returns the width of the grace–host union a syllable on the column at {@code columnIndex} is
-     * placed on, or 0 when that column is not a grace note.
-     */
+    /** 0 when the column at {@code columnIndex} is not a grace note. */
     private static double graceUnionWidthSs(List<ElementColumn> columns, int columnIndex) {
         var column = columns.get(columnIndex);
 
@@ -296,12 +283,8 @@ public final class LyricLayoutBuilder {
     }
 
     /**
-     * Pulls back any extender that would otherwise run within {@code gapSs} of the syllable that
-     * follows it, so a melisma keeps the same gap from the next syllable that separates adjacent
-     * words. An extender closed by a STOP carrier ends past that carrier per the
-     * {@value #MIN_MELISMA_LENGTH_SS}-ss minimum-length rule, and the next syllable's box is not
-     * known at that point, so the clamp has to run once the whole script is laid out.
-     * DANGLING_EXTENDER connectors have no following syllable on this line and are left untouched.
+     * Runs once the whole script is laid out, since the next syllable's box is not known when a
+     * STOP carrier closes its extender. DANGLING_EXTENDER connectors are left untouched.
      */
     private static void clampExtendersToFollowingSyllable(
         List<LyricConnectorLayout> connectors,
@@ -334,11 +317,7 @@ public final class LyricLayoutBuilder {
         }
     }
 
-    /**
-     * Returns the left edge of the leftmost lyric box that starts to the right of {@code xSs},
-     * or {@link Double#NaN} if there is none. The extender's own source syllable sits to the left
-     * of its start, so it is naturally excluded.
-     */
+    /** {@link Double#NaN} if there is none. */
     private static double firstBoxLeftXSsAfter(
         Map<StaffElement, ? extends List<LyricBoxLayout>> boxesByElement,
         double xSs) {
@@ -359,22 +338,11 @@ public final class LyricLayoutBuilder {
     }
 
     /**
-     * Returns the left-edge X (staff spaces) at which to place a syllable's lyric box.
+     * A syllable is centered on the notehead center, excluding the flag and augmentation dots.
      * <p>
-     * Normal notes / rests: center the entire syllable's advance width on the notehead center,
-     * excluding the flag and augmentation dots (the established Gould/Ross rule — neither the flag
-     * nor the dots are part of the notehead and must not shift the lyric position).
-     * <p>
-     * Grace notes: the grace and its host are treated as one unioned column for lyric layout — the
-     * grace carries the lyric, the host never does. The offset from the grace's origin comes from
-     * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator also
-     * reads to reserve the neighbor space, so the box is drawn where space was reserved. The pair's
-     * own melisma is part of what that offset places, so whether the pair carries one is passed
-     * along, as is the union as this line was actually spaced, which is the one input the
-     * reservation cannot share (see {@link #spacedGraceHostUnionWidthSs}).
-     *
-     * @param placement the box to place and the column it is placed on
-     * @return the box's left edge, in staff spaces
+     * A grace and its host are one unioned column for lyric layout; the offset comes from
+     * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator
+     * also reads, so the box is drawn where space was reserved.
      */
     private static double computeLyricBoxLeftXSs(BoxPlacement placement) {
         var column = placement.column();
@@ -395,16 +363,9 @@ public final class LyricLayoutBuilder {
     }
 
     /**
-     * What {@link #computeLyricBoxLeftXSs} places: a box of text on one column.
-     *
-     * @param column               the column the box is placed on
-     * @param widthSs              the box's width
-     * @param firstGraphemeWidthSs the width of the box text's first grapheme, measured in the font
-     *                             the box is drawn in
-     * @param graceUnionWidthSs    the grace–host union as this line was spaced
-     *                             ({@link #graceUnionWidthSs}); 0 when {@code column} is not a grace
-     *                             note
-     * @param pairMelisma          whether the grace–host pair carries its own melisma
+     * @param graceUnionWidthSs the grace–host union as this line was spaced
+     *                          ({@link #graceUnionWidthSs}); 0 when {@code column} is not a grace
+     *                          note
      */
     private record BoxPlacement(
         ElementColumn column,
@@ -415,24 +376,10 @@ public final class LyricLayoutBuilder {
     ) {}
 
     /**
-     * Returns the width of the grace–host lyric union this grace's syllable is laid out on, measured
-     * from the two columns' final X positions rather than rebuilt from the ideal grace→host gap.
-     * <p>
-     * {@link HorizontalSpacingCalculator#idealGraceHostUnionWidthSs} has to assume that gap is exactly
-     * {@link HorizontalSpacingCalculator#GRACE_HOST_REST_SS}, because it is asked for while the line
-     * is still being solved. The gap the solver produced also carries the {@link OpticalSpacing}
-     * stem correction, any strut that clamped it, and any compression. Lyric layout runs after the
-     * solve, so it can read the union off the notes themselves — and it has to: centering a syllable
-     * and its melisma on the ideal width when a different width was drawn leaves them off the pair by
-     * half the difference, which is a third of a staff space for a stem-up grace against a stem-down
-     * host.
-     * <p>
-     * Measuring needs a host the union really ends at, which is what pairing establishes: an
-     * unpaired grace's neighbor is an ordinary note carrying a lyric of its own, not the far edge of
-     * a union. An unpaired grace therefore keeps the ideal width — which is also the width
-     * {@link HorizontalSpacingCalculator} reserved against, since the reservation path treats the
-     * next column as the grace's host whether or not the two are paired, so the box still lands where
-     * space was made for it.
+     * The width of the grace–host lyric union, measured from the two columns' final X positions
+     * rather than rebuilt from the ideal gap, which the solver's optical correction, struts and
+     * compression all change. An unpaired grace keeps the ideal width, which is also what
+     * {@link HorizontalSpacingCalculator} reserved against.
      */
     private static double spacedGraceHostUnionWidthSs(
         List<ElementColumn> columns,
@@ -447,52 +394,21 @@ public final class LyricLayoutBuilder {
         return HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, hostColumn);
     }
 
-    /**
-     * Whether the column at {@code index} hosts the paired grace note before it —
-     * {@code Line.isHostOfPairedGraceNote} asked of the columns being laid out.
-     * <p>
-     * Asked of the columns, not of a line, because {@code index} is a column index and pairing is
-     * something a grace note carries on its own ({@link NoteElement#isPairedGraceNote}). Reading
-     * it here needs no line, so columns built from elements in no line — a clipboard fragment, a
-     * projected insertion — get the same answer as columns built from a live line.
-     */
+    /** Asked of the columns, not a line, so columns built from no line answer as a live line does. */
     private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {
         return index >= 1 && index <= columns.size()
             && columns.get(index - 1).getElement() instanceof NoteElement note
             && note.isPairedGraceNote();
     }
 
-    /**
-     * Whether a syllable can be written on the column at {@code index} — the columns' way of
-     * asking {@link StaffElement#canBearSyllable}, which states the rule, and which
-     * {@link songscribe.dom.Line#canBearSyllableAt} asks of a line instead.
-     *
-     * <p>Asked of the columns for the reason {@link #isHostOfPairedGraceColumn} is: the neighbor
-     * it needs is the column in front, so a run of elements belonging to no line — a clipboard
-     * fragment, a projected insertion — gets the same answer as a live line.
-     *
-     * @param columns the columns being laid out
-     * @param index   the column to ask about
-     * @return {@code true} when a syllable may be written on that column's element
-     */
     private static boolean columnCanBearSyllable(List<ElementColumn> columns, int index) {
         var predecessor = index >= 1 ? columns.get(index - 1).getElement() : null;
         return columns.get(index).getElement().canBearSyllable(predecessor);
     }
 
     /**
-     * Emits a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER} starting at the syllable end
-     * and walking forward from the START column, extending through elements that explicitly carry
-     * {@link Lyric.Extend#CONTINUE} or {@link Lyric.Extend#STOP} and over the ones that bear a
-     * chain without ever taking a syllable — a rest, a barline, a breath mark, a key change. The
-     * extender ends at the right edge of the last carrier, or at the START element's own right
-     * edge if none follow. A leading continuation (extender carried in from the previous line,
-     * with no START column on this line) extends from x = 0 through the leading run of
-     * CONTINUE/STOP markers.
-     *
-     * <p>Passing over those columns is what keeps this walk saying what the main loop says, where
-     * a column with no lyric leaves an active extender running. Stopping at the first one would
-     * cut a melisma short at the barline before the line end.
+     * Columns with no lyric are passed over, as in the main loop, so an active extender keeps
+     * running; stopping at the first would cut a melisma short.
      */
     private static void emitDanglingExtender(
         List<? super LyricConnectorLayout> connectors,
@@ -537,14 +453,9 @@ public final class LyricLayoutBuilder {
     }
 
     /**
-     * Emits a {@link LyricConnectorLayout.Kind#DANGLING_HYPHEN} centered between the syllable end
-     * and the left edge of the next column that could hold the word's next syllable
-     * ({@link #columnCanBearSyllable}). A barline, a rest or a key change standing in between is
-     * passed over, and so is the host of a paired grace note, whose syllable belongs to the grace:
-     * the hyphen belongs between two syllables, so anchoring it to something that can never carry
-     * one would pull it back from the word it continues into. The lyric editor prevents a
-     * hyphen-opening syllable from being entered without a following eligible element on the line,
-     * so finding none here indicates a layout invariant violation.
+     * A barline, a rest, a key change and the host of a paired grace note are passed over: a hyphen
+     * belongs between two syllables. The lyric editor prevents a hyphen-opening syllable without a
+     * following eligible element, so finding none here is a layout invariant violation.
      */
     private static void emitDanglingHyphen(
         List<? super LyricConnectorLayout> connectors,
@@ -571,12 +482,8 @@ public final class LyricLayoutBuilder {
     }
 
     /**
-     * An extender that has started and not yet closed.
-     *
-     * @param startXSs                    where the extender begins; the end of the syllable that
-     *                                    opened it, or {@code 0.0} for a leading continuation
-     * @param sourceColumnIndex           the column whose syllable opened the extender, or
-     *                                    {@code null} for a leading continuation carried in from
+     * @param startXSs                    {@code 0.0} for a leading continuation
+     * @param sourceColumnIndex           {@code null} for a leading continuation carried in from
      *                                    the previous line
      * @param syllableSpansGraceHostUnion whether the extender starts at a grace whose syllable
      *                                    already spans the grace–host union; such an extender is
@@ -593,15 +500,9 @@ public final class LyricLayoutBuilder {
         }
     }
 
-    /**
-     * A hyphen opened by a syllable and not yet closed by the next one.
-     *
-     * @param startXSs    the end of the syllable that opened the hyphen
-     * @param columnIndex the column whose syllable opened the hyphen
-     */
     private record PendingHyphen(double startXSs, int columnIndex) {}
 
-    /** Mutable scratch state for tracking the active extender and pending hyphen during one script pass. */
+    /** Mutable scratch state for one script pass. */
     private static final class ExtenderState {
         @Nullable ActiveExtender activeExtender;
         @Nullable PendingHyphen pendingHyphen = null;
@@ -610,7 +511,6 @@ public final class LyricLayoutBuilder {
             activeExtender = hasLeadingContinuation ? ActiveExtender.leadingContinuation() : null;
         }
 
-        /** If an extender is active, emit it ending at endXSs and clear it. */
         void closeExtender(List<? super LyricConnectorLayout> connectors, Song.Script script, double endXSs) {
             if (activeExtender != null) {
                 connectors.add(new LyricConnectorLayout(
@@ -624,12 +524,8 @@ public final class LyricLayoutBuilder {
         }
 
         /**
-         * If an extender is active, emit it ending at
-         * {@code max(startXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs)} — LilyPond's
-         * LyricExtender minimum-length rule — and clear it. For a leading continuation
-         * (extender carried in from the previous line), {@code startXSs} is {@code 0.0}, so the
-         * first term collapses to {@code MIN_MELISMA_LENGTH_SS}; {@code headRightEdgeXSs}, an
-         * absolute X position on this line, always dominates that {@code max()}.
+         * The end is {@code max(startXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs)} — LilyPond's
+         * LyricExtender minimum-length rule.
          */
         void closeExtenderPastHead(List<? super LyricConnectorLayout> connectors, Song.Script script, double headRightEdgeXSs) {
             if (activeExtender == null) {
@@ -640,21 +536,11 @@ public final class LyricLayoutBuilder {
         }
 
         /**
-         * Ends at {@code hostColumnIndex}'s host the melisma that reaches it. Normally that is
-         * {@link #closeExtenderPastHead}, but when this host's <em>own</em> grace started the
-         * melisma and that grace's syllable already spans the pair
-         * ({@link HorizontalSpacingCalculator#graceSyllableSpansUnion}) the extender is dropped
-         * instead of emitted: it would start where it was going to end, so there is nothing left for
-         * a reader to see. The melisma stays in the model either way — this decides only whether it
-         * is drawn.
-         * <p>
-         * The melisma reaching this host need not be this pair's own: {@code LyricRun.syncGraceHostMelisma}
-         * leaves a host alone when it already carries an extender onward, so a melisma can start at
-         * one grace, run through its host and several notes, and stop at a second grace's host.
-         * {@link ActiveExtender#syllableSpansGraceHostUnion} describes the grace the melisma
-         * <em>started</em> at, so it only licenses dropping the line when that grace is this host's
-         * own — the column immediately before it. Applied to any other melisma it would erase a line
-         * spanning many notes.
+         * Ends at {@code hostColumnIndex}'s host the melisma that reaches it. The extender is
+         * dropped, not drawn (the melisma stays in the model), only when this host's <em>own</em>
+         * grace started it and that grace's syllable already spans the pair
+         * ({@link HorizontalSpacingCalculator#graceSyllableSpansUnion}). A melisma started at
+         * another grace and running through this host must not be dropped.
          */
         void closeGraceHostExtender(
             List<? super LyricConnectorLayout> connectors,

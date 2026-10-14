@@ -24,22 +24,16 @@ import java.util.function.DoubleConsumer;
 
 /**
  * Which ledger lines a note head needs, where each sits relative to it, and how each
- * is drawn — thickness and length, in staff spaces.
- * <p>
- * A ledger line stands on the grid {@link StaffPosition} defines, continuing the
- * staff's own lines outward at the same spacing, and only for a note the staff cannot
- * reach.
+ * is drawn, in staff spaces.
  */
 public final class LedgerLine {
     private static final double LEDGER_LINE_MULTIPLIER = 2.0;
 
-    /** The thickness a ledger line is drawn with, in staff spaces. */
     public static final double THICKNESS_SS =
         EngravingConstants.LILYPOND_BASE_THICKNESS_SS * LEDGER_LINE_MULTIPLIER;
 
     /**
-     * A dimensionless multiplier on the notehead width that sets how far each ledger line
-     * extends beyond the notehead bbox on each side. LilyPond's {@code LedgerLineSpanner}
+     * Fraction of the notehead width each ledger line extends beyond it on each side; LilyPond's
      * {@code length-fraction} default.
      */
     public static final double LENGTH_FRACTION = 0.25;

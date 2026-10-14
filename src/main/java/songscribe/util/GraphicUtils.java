@@ -98,13 +98,6 @@ public final class GraphicUtils {
         }
     }
 
-    /**
-     * Computes the physical DPI of the default screen.
-     * <p>
-     * On macOS this reads the main display's physical width directly from
-     * CoreGraphics. On other platforms, or when the physical size is unavailable,
-     * it falls back to {@link Toolkit#getScreenResolution()}.
-     */
     private static int computePhysicalDpi(GraphicsDevice gd) {
         var bounds = gd.getDefaultConfiguration().getBounds();
 
@@ -125,12 +118,7 @@ public final class GraphicUtils {
         return fallbackDpi;
     }
 
-    /**
-     * Reads the main display's physical width in millimetres directly from
-     * CoreGraphics ({@code CGDisplayScreenSize(CGMainDisplayID())}) via the FFM
-     * API. Returns {@code 0} if the value is unavailable for any reason (missing
-     * symbols, native error, or a non-macOS host).
-     */
+    /** Returns {@code 0} if the value is unavailable for any reason. */
     private static double macPhysicalWidthMm() {
         try (var arena = Arena.ofConfined()) {
             var linker = Linker.nativeLinker();
@@ -301,21 +289,9 @@ public final class GraphicUtils {
     }
 
     /**
-     * Draws a line of the given thickness with fully rounded ends, at any angle, with the rounded
-     * ends contained within the endpoints (the line spans exactly {@code [start, end]}).
-     *
-     * <p>This is the single rounded-line primitive — staff lines, ledger lines, and glissandos
-     * all go through it. It fills a round rect rather than stroking a {@link Line2D} with
-     * {@code CAP_ROUND}: a round cap bulges half the thickness past each endpoint, making the line
-     * render longer than its coordinates. The round rect is built in the line's own frame and
-     * placed via the {@code g2} transform (translate to the start, rotate to the line angle), so it
-     * spans exactly {@code [start, end]} at any angle ({@code arc == thickness}). Filling the
-     * untransformed rect this way avoids the per-call {@code Path2D} that
-     * {@code createTransformedShape} would otherwise allocate on a hot path.
-     *
-     * <p>For a connected multi-segment path (e.g. tuplet/ending brackets) use {@link #drawPath}
-     * instead, so corners join cleanly. Butt-capped lines (e.g. lyric connectors) must not use
-     * either method.
+     * The rounded ends are contained within the endpoints: the line spans exactly
+     * {@code [start, end]}, at any angle. Connected multi-segment paths use {@link #drawPath};
+     * butt-capped lines must use neither.
      */
     public static void drawRoundedLine(
         Graphics2D g2, double x1, double y1, double x2, double y2, double thicknessSs
@@ -334,22 +310,12 @@ public final class GraphicUtils {
     }
 
     /**
-     * Strokes an open polyline through the given points as a single {@link Path2D}, using
-     * {@code CAP_ROUND} end caps and {@code JOIN_ROUND} corners so connected segments meet cleanly
-     * — unlike separate {@link #drawRoundedLine} calls, whose round caps only overlap at corners.
+     * The path begins and ends exactly at the first and last points. A gap in the path needs
+     * separate calls.
      *
-     * <p>A round cap bulges half the line width past each endpoint. To keep the stroked path
-     * beginning and ending exactly at the first and last points given, those two points are pulled
-     * inward by half the line width along their own segment before stroking. Interior points are
-     * corners (joins), not caps, and are left untouched.
-     *
-     * <p>Callers needing a gap in the path (e.g. a tuplet bracket's number gap) must split it into
-     * separate {@code drawPath} calls.
-     *
-     * @param points at least two points; the path is drawn open (not closed). The first two and the
-     *               last two points should differ — a zero-length first/last segment cannot be
-     *               inset, so that end's round cap bulges half a width past the endpoint instead of
-     *               landing on it. Fewer than two points draws nothing.
+     * @param points at least two points, open path. The first two and the last two should
+     *               differ, or that end's round cap bulges half a width past the endpoint.
+     *               Fewer than two points draws nothing.
      */
     public static void drawPath(Graphics2D g2, Point2D[] points, double thicknessSs) {
         if (points.length < 2) {
@@ -377,12 +343,6 @@ public final class GraphicUtils {
         }
     }
 
-    /**
-     * Returns {@code point} moved {@code halfWidthSs} toward {@code toward}, so a {@code CAP_ROUND}
-     * cap centered on the result reaches back to exactly {@code point}. A zero-length segment
-     * ({@code point} equals {@code toward}) has no direction to inset along, so {@code point} is
-     * returned unchanged rather than producing {@code NaN}.
-     */
     private static Point2D capInset(Point2D point, Point2D toward, double halfWidthSs) {
         var dxSs = toward.getX() - point.getX();
         var dySs = toward.getY() - point.getY();
@@ -397,22 +357,12 @@ public final class GraphicUtils {
             point.getY() + dySs / lengthSs * halfWidthSs);
     }
 
-    /**
-     * Clamps {@code location} so that a window of {@code windowSize} fits entirely
-     * within the screen that contains the point. If no screen contains the point,
-     * the default screen is used.
-     */
+    /** If no screen contains the point, the default screen is used. */
     public static Point clampToScreen(Point location, Dimension windowSize) {
         var clamped = clampToScreen(new Rectangle(location, windowSize));
         return clamped.getLocation();
     }
 
-    /**
-     * Clamps the given rectangle to fit within the screen that contains its
-     * top-left corner. Both size and position are adjusted: size is capped to
-     * screen dimensions, then position is shifted so the rectangle is fully
-     * on-screen.
-     */
     public static Rectangle clampToScreen(Rectangle bounds) {
         var graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
         var screen = graphicsEnvironment.getDefaultScreenDevice().getDefaultConfiguration().getBounds();

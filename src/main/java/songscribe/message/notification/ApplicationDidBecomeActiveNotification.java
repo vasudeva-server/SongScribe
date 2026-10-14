@@ -25,14 +25,10 @@ import songscribe.message.Message;
 /**
  * Posted by {@code songscribe.ui.component.ActivationGate} once the reactivation glass pane
  * actually comes down and mouse events resume reaching the score.
- * <p>
- * This is later than raw window activation: while the app is in the background the glass pane
- * stays up to intercept the reactivating click, and it only comes down once that click arrives
- * or, for keyboard-based activation (e.g. Cmd+Tab), once a short timeout elapses. Until then,
- * {@code Component.getMousePosition()} on anything beneath the glass pane returns null — the
- * glass pane is what a mouse-position lookup finds under the pointer. A listener that needs an
- * accurate mouse position once the app is usable again (e.g. re-showing the hover preview) must
- * react to this message rather than to window activation directly. Pairs with
+ *
+ * <p>This is later than window activation, and until it, {@code Component.getMousePosition()}
+ * beneath the glass pane returns null. A listener that needs an accurate mouse position must
+ * react to this message rather than to window activation. Pairs with
  * {@link ApplicationDidEnterBackgroundNotification}.
  */
 public class ApplicationDidBecomeActiveNotification extends Message {

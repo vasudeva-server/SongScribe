@@ -24,23 +24,14 @@ import java.util.Objects;
 import java.util.function.IntFunction;
 
 /**
- * A read-only view of a line's elements as a pending {@link ElementChange} will leave
- * them: it maps each projected position onto the pre-change line instead of copying the
- * list. Construction and {@link #get} are both O(1), whatever the shape of the change.
- * <p>
+ * A read-only view of a line's elements as a pending {@link ElementChange} will leave them.
  * The view reads the live line, so it is valid only as long as {@link ElementChange}'s class
  * Javadoc states.
- * <p>
- * Each shape of change supplies its own {@code elementAt} mapping, since only the shape
- * knows how positions move; this class holds what every shape shares — the projected size,
- * the bounds check, and the {@link java.util.List} surface {@link AbstractList} derives
- * from those two.
  */
 final class ProjectedElements extends AbstractList<StaffElement> {
 
     private final int size;
 
-    /** Maps a projected position to the element that will occupy it. */
     private final IntFunction<StaffElement> elementAt;
 
     ProjectedElements(int size, IntFunction<StaffElement> elementAt) {

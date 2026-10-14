@@ -32,35 +32,15 @@ import songscribe.engraving.BarStroke;
 import songscribe.engraving.EngravingConstants;
 
 /**
- * The cautionary key signature at the end of a line — the warning to the performer that the next
- * line begins in a different key. This type answers the three questions the feature raises, so that
- * the layout that reserves room, the renderer that paints, and the hit test that finds the glyphs
- * all read one answer instead of each deriving their own. A second derivation would fail silently:
- * a hit target that drifts off the glyphs, or a reserved span the renderer does not fill.
+ * The cautionary key signature at the end of a line — the warning that the next line begins in a
+ * different key. The layout that reserves room, the renderer and the hit test all read one answer
+ * from here; a second derivation would fail silently.
  *
- * <p>A cautionary is a barline followed by a run of accidentals. Its parts sit like this, measured
- * from the ink of the line's last element to the right edge of the staff:
+ * <p>A cautionary is a barline followed by a run of accidentals, the barline drawn only when the
+ * line does not already end in a barline or a repeat. Padding either side of the accidentals is
+ * {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}.
  *
- * <pre>
- *   … last element  [line rest]  |  [padding]  ♯♯  [padding] │ staff right edge
- * </pre>
- *
- * <p>The barline is the same one a mid-line key change stands behind
- * ({@code KeyChangeElement}'s position invariant), and it is drawn on the same rule: only when the
- * line does not already end in a barline or a repeat. A line that does ends in one barline, not
- * two, and the run of accidentals takes its padding from the barline the line already holds — which
- * is then the whole of the lead-in, since the line rest ahead of a drawn barline separates the
- * music from a barline that is not there.
- *
- * <p>The line rest is the song's own, which is what {@code HorizontalSpacingCalculator} gives a
- * mid-line barline, so music clears a barline by the same distance wherever the barline is. The
- * padding either side of the accidentals is {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS} —
- * the same padding {@link HorizontalSpacingCalculator} puts between a mid-line key change and the
- * barline in front of it, so a key signature stands the same distance behind its barline wherever it
- * falls. The barline is {@link BarStroke#THIN} wide — the same barline an element
- * draws.
- *
- * <p>See {@code docs/key-changes.md} for what a cautionary is and why it is stored nowhere.
+ * <p>See {@code docs/key-changes.md}.
  *
  * @param previousKey   the key the line leaves off in — the left-hand side of the change
  * @param nextKey       the key the following line begins in, never equal to {@code previousKey}
@@ -78,43 +58,28 @@ public record CautionaryKeySignature(
 
     /**
      * Where a cautionary's parts are drawn, in the staff-space coordinates of the line.
-     *
-     * <p>A cautionary that stands behind the line's own trailing barline has no barline of its own
-     * to place, and there is therefore no coordinate for one: {@link AccidentalsOnly} carries none.
-     * A single record with a barline position that is meaningful only sometimes would hand a
-     * caller a plausible coordinate landing inside the line's own barline, and a second barline
-     * painted over the first is close enough to right to be missed.
+     * {@link AccidentalsOnly} carries no barline coordinate, so a second barline cannot be painted
+     * over the line's own.
      */
     public sealed interface Placement {
 
-        /**
-         * @return the pen position the first accidental is drawn from
-         */
         double accidentalsXSs();
 
         /**
-         * A cautionary that draws its own barline, because the line does not already end in one.
-         *
          * @param barLineXSs     the left edge of that barline
          * @param accidentalsXSs the pen position the first accidental is drawn from
          */
         record WithBarLine(double barLineXSs, double accidentalsXSs) implements Placement {}
 
         /**
-         * A cautionary standing behind the barline or repeat the line already ends in.
-         *
          * @param accidentalsXSs the pen position the first accidental is drawn from
          */
         record AccidentalsOnly(double accidentalsXSs) implements Placement {}
     }
 
     /**
-     * Returns the cautionary {@code line} ends in as the document stands, or {@code null} when it
-     * ends in none.
-     *
-     * @param line the line whose end is being asked about
-     * @return the cautionary, or {@code null} when {@code line} is the song's last line or the next
-     *         line begins in the key {@code line} leaves off in
+     * @return {@code null} when {@code line} is the song's last line or the next line begins in
+     *         the key {@code line} leaves off in
      */
     public static @Nullable CautionaryKeySignature of(Line line) {
         var elementCount = line.elementCount();
@@ -156,18 +121,13 @@ public record CautionaryKeySignature(
             lineRestSs);
     }
 
-    /** Whether {@code lastElement} is the barline a cautionary would otherwise draw for itself. */
     private static boolean endsAtBarLine(StaffElement lastElement) {
         var type = lastElement.getType();
         return type.isBar();
     }
 
     /**
-     * Returns the accidentals to draw, which is what a key signature between this pair of keys
-     * draws anywhere rather than a second reading of the cancellation policy.
-     *
-     * @return the accidentals in drawing order, never empty — {@link #of} returns null rather than
-     *     a cautionary between two equal keys, which is the only pair that draws nothing
+     * Never empty.
      */
     public List<Key.DrawnAccidental> accidentals() {
         return extent().accidentals();
@@ -182,7 +142,6 @@ public record CautionaryKeySignature(
         return extent().widthSs();
     }
 
-    /** The change this cautionary warns of, which is what it draws and how wide it is. */
     private KeySignatureExtent extent() {
         return new KeySignatureExtent(previousKey, nextKey);
     }
@@ -246,14 +205,6 @@ public record CautionaryKeySignature(
             accidentalsXSs);
     }
 
-    /**
-     * Returns the span from the ink of the line's last element to the first accidental. A cautionary
-     * that draws its own barline separates it from the music by the song's line rest, then pads it
-     * off the accidentals; one that stands behind the line's own trailing barline is that padding
-     * alone, since the rest before that barline is already part of the line's own spacing.
-     *
-     * @return the span in staff spaces, always greater than zero
-     */
     private double leadInSs() {
         if (!drawsBarLine) {
             return EngravingConstants.KEY_SIGNATURE_PADDING_SS;

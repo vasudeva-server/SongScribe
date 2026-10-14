@@ -33,21 +33,12 @@ import songscribe.io.LyricNumbers;
  * Builds the {@code <lyric>} children of a {@link Note} from a {@link StaffElement}'s per-script
  * {@link Lyric}s.
  *
- * <p>A text-bearing lyric emits {@code <syllabic>} then {@code <text>}, plus
- * {@code <extend type="start"/>} when it begins a melisma. A carrier — a text-less note that
- * sustains or ends a melisma — emits only {@code <extend type="stop|continue"/>}.
- *
  * <p>{@code <end-line/>} is deliberately not emitted here.
  */
 final class LyricBuilder {
 
     private LyricBuilder() {}
 
-    /**
-     * Appends one {@code <lyric>} to {@code pmNote} for each of {@code element}'s lyrics, in
-     * the order {@link StaffElement#getLyrics()} returns them. Each is numbered with
-     * {@link LyricNumbers#number}.
-     */
     static void addLyrics(BuildContext context, StaffElement element, Note pmNote) {
         var lyrics = element.getLyrics();
 
@@ -95,7 +86,6 @@ final class LyricBuilder {
         }
     }
 
-    /** Builds an {@code <extend>} carrying {@code extend}'s start/stop/continue type. */
     private static Extend buildExtend(ObjectFactory factory, Lyric.Extend extend) {
         var pmExtend = factory.createExtend();
         pmExtend.setType(StartStopContinue.fromValue(SyllabicMapping.forExtend(extend)));
@@ -103,11 +93,6 @@ final class LyricBuilder {
         return pmExtend;
     }
 
-    /**
-     * Returns the text to emit for a text-bearing lyric: the syllable, with
-     * {@link Lyric#COMPOUND_WORD_MARKER} appended when the syllable joins the next through a
-     * compound-word boundary.
-     */
     private static String syllableText(Lyric lyric) {
         var text = lyric.text();
 

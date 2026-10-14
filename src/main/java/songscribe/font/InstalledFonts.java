@@ -38,18 +38,13 @@ import songscribe.util.UIUtils;
 /**
  * The faces installed on the host system, and the resolution of a stored font name to one of them.
  * <p>
- * Every face handed out from here has kerning switched on, so text drawn anywhere in the
- * application is spaced the way its designer intended without each caller asking for it.
+ * Every face handed out from here has kerning switched on.
  * <p>
  * The set of installed faces is read once, on first use, and never re-read: a face installed
- * while the application is running is not seen. Local faces the application ships are registered
- * by {@link LocalFonts} before the first query, so they are part of the set.
+ * while the application is running is not seen. Local faces the application ships must be
+ * registered by {@link LocalFonts} before the first query.
  * <p>
- * Callable from any thread with no locking on the query path. The system is asked for its faces
- * inside a holder class, so the JVM's class-initialization lock lets exactly one thread perform
- * the read, and what it publishes is immutable. This matters because the class is entered both
- * from the EDT, when the font chooser lists the families, and from the document-load path, when a
- * stored font name is resolved.
+ * Callable from any thread with no locking.
  */
 public final class InstalledFonts {
 
@@ -182,11 +177,7 @@ public final class InstalledFonts {
     }
 
     /**
-     * The same face with kerning switched on. Package-private because kerning is a promise this
-     * package makes about every face it hands out, not a choice a caller elsewhere makes.
-     *
-     * @param font the face to derive from
-     * @return a kerned derivation of {@code font}
+     * Package-private: kerning is a promise this package makes about every face it hands out.
      */
     static Font deriveKernedFont(Font font) {
         var attributes = new HashMap<TextAttribute, Object>();
@@ -227,23 +218,14 @@ public final class InstalledFonts {
     }
 
     /**
-     * The installed faces together with the two indexes over them, so that no query can see one
-     * of the three ahead of the others.
-     *
-     * @param all         every installed face, kerned, in the order the graphics environment
-     *                    lists them
-     * @param familyNames the family name of each installed face
-     * @param byPsName    each installed face under its PostScript name
-     * @invariant all three are immutable, and the values of {@code byPsName} are exactly the
-     *            elements of {@code all}
+     * The values of {@code byPsName} are exactly the elements of {@code all}; all three are
+     * immutable.
      */
     private record Faces(List<Font> all, Set<String> familyNames, Map<String, Font> byPsName) {}
 
     /**
-     * Initialization-on-demand holder: the JVM's class-initialization lock makes the read of the
-     * installed faces lazy and thread-safe without synchronizing every query. Both the EDT and
-     * the document-load path reach it, and a partially built index would answer with the wrong
-     * face rather than fail, so the read must happen once.
+     * Initialization-on-demand holder: a partially built index would answer with the wrong face
+     * rather than fail, so the read must happen exactly once.
      */
     private static final class Holder {
         static final Faces INSTANCE = readInstalledFaces();

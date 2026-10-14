@@ -27,20 +27,12 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 
 /**
- * Answers "what is under the mouse?" against a finished {@link LayoutResult}.
- * <p>
- * Two kinds of question live here: which existing element or lyric a point lands on, and where a
- * preview element being inserted in edit mode should be drawn. Both read the result's committed
- * geometry and neither changes it, so they sit beside the layout data rather than inside it.
- * <p>
- * Every {@link LayoutResult} owns one of these; call the delegating methods on the result rather
- * than constructing this directly.
+ * Answers "what is under the mouse?" and where an inserted preview element is drawn, against a
+ * finished {@link LayoutResult}. Call the delegating methods on the result rather than
+ * constructing this directly.
  */
 public final class LayoutHitTester {
 
-    /**
-     * Offset for positioning a preview element before the first element in the line (ss).
-     */
     private static final double PREVIEW_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
     private final LayoutResult layoutResult;
@@ -54,44 +46,23 @@ public final class LayoutHitTester {
     // ==========================================================================
 
     /**
-     * Returns {@code line} when {@code mouseXSs} falls within its staff header — the clef and key
-     * signature — the header's double-click target for editing that line's own key.
-     * <p>
-     * Every line's header is a target, whether or not the line holds a key of its own: a header
-     * that merely restates an inherited key is drawn identically to one that changes it, so a click
-     * cannot tell them apart and both accept it.
+     * Every line's header is a target, whether or not the line holds a key of its own.
      *
-     * @param mouseXSs mouse X coordinate, in staff-space units
-     * @param line     the line whose header is being tested
-     * @return {@code line} itself, or {@code null} when {@code mouseXSs} falls outside the header
+     * @return {@code null} when {@code mouseXSs} falls outside the header
      */
     public @Nullable Line hitTestHeaderKeyEdit(double mouseXSs, Line line) {
         return HorizontalSpacingCalculator.isWithinHeaderXSs(mouseXSs, line) ? line : null;
     }
 
     /**
-     * Returns the line whose key the cautionary key change at the end of {@code line} would edit
-     * — the line <em>following</em> {@code line}, not {@code line} itself — when {@code mouseXSs}
-     * falls within the cautionary's drawn run of accidentals.
+     * Returns the line the cautionary key change at the end of {@code line} would edit — the line
+     * <em>following</em> {@code line}, not {@code line} itself.
      * <p>
-     * The cautionary warns the performer about the key the next line begins in, so double-clicking
-     * it edits that line's key where the change is visible, rather than reopening {@code line}'s
-     * own key a second time. This returns {@code null}, and nothing is drawn to click on, when
-     * {@code line} is the song's last line or the two lines' running keys agree — the two cases
-     * {@link CautionaryKeySignature#of(Line)} answers {@code null} for.
-     * <p>
-     * The target is the run of accidentals and not the barline ahead of it: a line that ends in a
-     * barline of its own draws no barline for the cautionary, and clicking the line's own barline
-     * must go on selecting that element rather than opening a key dialog.
-     * <p>
-     * The rect tested is the one rendering draws, including its
-     * {@link LayoutResult#overflowsStaffWidth() overflow} placement, because both read the same
-     * {@link CautionaryKeySignature#placeIn}.
+     * The target is the run of accidentals and not the barline ahead of it, so clicking the
+     * line's own barline still selects that element.
      *
-     * @param mouseXSs mouse X coordinate, in staff-space units
-     * @param line     the line whose end is being tested for its cautionary
-     * @return the following line, or {@code null} when no cautionary is drawn or {@code mouseXSs}
-     *         falls outside its drawn run of accidentals
+     * @return {@code null} when no cautionary is drawn or {@code mouseXSs} falls outside its
+     *         drawn run of accidentals
      */
     public @Nullable Line hitTestCautionaryKeyEdit(double mouseXSs, Line line) {
         var cautionary = CautionaryKeySignature.of(line);
@@ -113,16 +84,8 @@ public final class LayoutHitTester {
     }
 
     /**
-     * Returns the {@link KeyChangeElement} at {@code mouseXSs} on {@code line} — the rect
-     * bounded by that element's own rendered accidentals is the mid-line double-click target for
-     * editing it.
-     * <p>
-     * Delegates to {@link #findElementAtXSs}, so the same column bounds spacing solved apply.
-     *
-     * @param mouseXSs mouse X coordinate, in staff-space units
-     * @param line     the line to search
-     * @return the {@link KeyChangeElement} at that position, or {@code null} when
-     *         {@code mouseXSs} does not fall within a mid-line key signature's column
+     * @return {@code null} when {@code mouseXSs} does not fall within a mid-line key signature's
+     *         column
      */
     public @Nullable KeyChangeElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
         var index = findElementAtXSs(mouseXSs, line);
@@ -140,24 +103,13 @@ public final class LayoutHitTester {
     // ==========================================================================
 
     /**
-     * Returns the index of the element whose column contains {@code mouseXSs}, or {@code null} if
-     * none.
+     * Only X is checked. The hit zone is the glyph body, {@link ElementColumn#getXSs()} to
+     * {@link ElementColumn#getRightEdgeXSs()}, so a leading accidental is not part of its element.
      * <p>
-     * Only the horizontal (X) dimension is checked; Y position is ignored. The hit zone is the
-     * glyph body, {@link ElementColumn#getXSs()} to {@link ElementColumn#getRightEdgeXSs()}, so a
-     * leading accidental is not part of the element it belongs to as far as this is concerned.
-     * <p>
-     * Columns are checked in element order and the first match wins, so on an overlap — a grace
-     * note's column can overlap its host's when the host's flag is discounted — the
-     * lower index (the grace note, which always precedes its host) is returned.
-     * <p>
-     * The spacing solver assigns each column's X as a running sum of non-negative gaps, so left
-     * bounds never decrease as the index grows. Once one is past {@code mouseXSs}, no later
-     * column can contain it and the scan stops.
+     * On an overlap the lower index wins: a grace note's column can overlap its host's, and the
+     * grace note precedes its host.
      *
-     * @param mouseXSs Mouse X coordinate in staff-space units
-     * @param line     The line containing the elements
-     * @return Element index, or {@code null} if mouseXSs is not within any element column's bounds
+     * @return {@code null} if mouseXSs is not within any element column's bounds
      */
     public @Nullable Integer findElementAtXSs(double mouseXSs, Line line) {
         for (var i = 0; i < line.elementCount(); i++) {
@@ -181,20 +133,8 @@ public final class LayoutHitTester {
     }
 
     /**
-     * Finds which insertion slot a mouse X coordinate falls into.
-     * <p>
-     * Insertion slots are the positions where an element can be inserted or replaced:
-     * <ul>
-     *   <li>Index 0 to elementCount-1: over an existing element (for replacement)</li>
-     *   <li>Index elementCount: after the last element (for appending)</li>
-     * </ul>
-     * <p>
-     * If the mouse is within the horizontal bounds of an element head, returns that element's index
-     * to indicate replacement. Otherwise, returns the insertion slot between elements.
-     *
-     * @param mouseXSs Mouse X coordinate in staff-space units
-     * @param line     The line containing the elements
-     * @return Insertion index (0 to elementCount inclusive)
+     * Indexes 0 to elementCount-1 are over an existing element (replacement); elementCount is
+     * after the last element (append).
      */
     public int findInsertionIndex(double mouseXSs, Line line) {
         // Exclude the auto-maintained terminal: insertions always occur before it,
@@ -265,23 +205,9 @@ public final class LayoutHitTester {
     }
 
     /**
-     * Calculates the X position for rendering a preview element at a given index.
-     * <p>
-     * If the mouse is within the horizontal bounds of an element head, snaps to that element,
-     * centering the preview's glyph on it. Otherwise, centers the preview in the room the
-     * neighbouring glyphs leave, or between the last element and the line's right boundary.
-     *
-     * @param insertionIndex      The insertion index (0 to elementCount inclusive)
-     * @param mouseXSs            Mouse X coordinate in staff-space units (used to detect if over an
-     *                            element head); ignored when {@code betweenElementsOnly} is true
-     * @param previewElement      The element to be inserted (used to calculate extents for after-last
-     *                            positioning)
-     * @param line                The line containing the elements
-     * @param betweenElementsOnly When true, skips the element-head snap check below and always
-     *                            returns a between-elements/before-first/after-last position — for
-     *                            callers (e.g. the paste-mode insertion marker) that never merge onto
-     *                            an existing element's own position
-     * @return X position in staff-space units for rendering the preview element
+     * @param mouseXSs            ignored when {@code betweenElementsOnly} is true
+     * @param betweenElementsOnly for callers (e.g. the paste-mode insertion marker) that never
+     *                            merge onto an existing element's own position
      */
     public double calculateInsertionXSs(
         int insertionIndex,
@@ -419,15 +345,8 @@ public final class LayoutHitTester {
     }
 
     /**
-     * Returns the X at which {@code previewElement}'s glyph sits centered in the room between
-     * {@code roomStartSs} and {@code roomEndSs}.
-     * <p>
-     * Centering is symmetric in both directions: a preview wider than the room straddles it,
-     * overlapping each side equally, rather than being pinned to either edge.
-     * <p>
-     * The width centered is the element's own drawn width, not its column's spacing footprint —
-     * a flag, accidental or dot would otherwise leave the glyph the eye actually reads as the
-     * element sitting well off center.
+     * A preview wider than the room straddles it equally. The width centered is the element's own
+     * drawn width, not its column's spacing footprint.
      */
     private static double centeredInRoomSs(double roomStartSs, double roomEndSs, StaffElement previewElement) {
         var previewWidthSs = previewElement.getGlyphWidthSs();

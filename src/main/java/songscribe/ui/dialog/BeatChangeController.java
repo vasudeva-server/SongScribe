@@ -31,13 +31,10 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.SongDidChangeNotification;
 
 /**
- * Reads and writes the beat change on one element, for {@link BeatChangeDialog}.
+ * Reads and writes the beat change on one element, for {@link BeatChangeDialog}. A beat change
+ * redefines the beat from its element onwards.
  *
- * <p>A beat change redefines the beat from its element onwards.
- *
- * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: both of a
- * {@link BeatChange}'s durations come from {@link BeatUnit}, and there is no pair
- * of note values the dialog can offer that this could sensibly reject.
+ * <p>Nothing is refused, so {@link DialogController#validate} keeps its default.
  */
 public final class BeatChangeController extends AttachmentDialogController<BeatChange> {
 
@@ -66,13 +63,6 @@ public final class BeatChangeController extends AttachmentDialogController<BeatC
         return attachment != null ? attachment.getBeatChange() : null;
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Replaces the element's beat change when it already has one, and adds one when it does
-     * not; either way the element ends up carrying exactly {@code change}, and either way exactly
-     * one {@link SongDidChangeNotification} is posted.
-     */
     @Override
     protected void commit(BeatChange change) {
         var element = element();

@@ -34,23 +34,12 @@ public class NonBlankTextArea extends MyJTextArea {
 
     private final NonBlankGuard guard;
 
-    /**
-     * @param rows    the area's height in rows, as {@link javax.swing.JTextArea} takes it
-     * @param columns the area's width in columns, as {@link javax.swing.JTextArea} takes it
-     */
     public NonBlankTextArea(int rows, int columns) {
         super(rows, columns);
         guard = new NonBlankGuard(this);
         setInputVerifier(guard);
     }
 
-    /**
-     * Marks the area's current text as the value to restore, per
-     * {@link NonBlankGuard#rememberCurrentText()}.
-     *
-     * @effects replaces the text this area restores on a blank entry, unless the current text is
-     *     blank, which is ignored
-     */
     public void rememberCurrentText() {
         guard.rememberCurrentText();
     }

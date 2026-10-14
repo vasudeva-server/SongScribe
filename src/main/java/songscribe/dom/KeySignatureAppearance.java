@@ -23,8 +23,7 @@ package songscribe.dom;
 /**
  * A key signature, whose appearance is a property of the element rather than of its type.
  *
- * <p>This arm deliberately carries nothing. A key signature is drawn as a row of sharps or
- * flats whose count and placement come from the {@link Key} the element instance holds, so
- * the type cannot name a glyph or a width; the answer is "ask the element".
+ * <p>This arm deliberately carries nothing: the {@link Key} the element holds decides the
+ * accidentals, so the type cannot name a glyph or a width.
  */
 public record KeySignatureAppearance() implements ElementAppearance {}

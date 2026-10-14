@@ -33,13 +33,8 @@ import songscribe.util.FileUtils;
 /**
  * Routes an open request to the correct reader based on file extension.
  * <p>
- * Use this for all file-open paths (UI and headless converters) so the
- * extension allow-list and error mapping live in one place.
- * <p>
- * Opening a file never writes to it. A load that migrated or dropped tuplets
- * reports what it did on the {@link SongLoadResult.Success} it returns, and the
- * caller decides what to tell the user and whether to save — rewriting the file
- * here would delete musical content from disk before the user had seen it.
+ * Opening a file never writes to it: the caller decides whether to save, because rewriting here
+ * would delete musical content from disk before the user had seen it.
  */
 public final class SongFileLoader {
 

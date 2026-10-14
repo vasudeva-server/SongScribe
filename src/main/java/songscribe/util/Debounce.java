@@ -24,74 +24,41 @@ import javax.swing.Timer;
 
 /**
  * A deadline that every {@link #trigger()} pushes further out, running its action on the EDT once
- * the deadline finally passes with no further trigger — the "settle for N milliseconds, then act"
- * shape shared by a repaint debounce, an activation gate and a pointer-dwell.
- * <p>
- * Two implementations, differing only in what a trigger costs. Pick by how often the trigger is
- * called, not by taste:
- * <ul>
- *   <li>{@link #rescheduling} for the ordinary case — a trigger arriving occasionally, from an
- *       event the user causes deliberately.</li>
- *   <li>{@link #polling} when the trigger sits on a path that runs at input-device frequency; see
- *       that factory for why {@link #rescheduling} is the wrong tool there.</li>
- * </ul>
- * Not thread-safe: construct, trigger and cancel on the EDT, like the {@link Timer} underneath.
+ * no trigger arrives before it passes.
+ *
+ * <p>Use {@link #rescheduling} for occasional triggers and {@link #polling} for a trigger at
+ * input-device frequency.
+ *
+ * <p>Not thread-safe: construct, trigger and cancel on the EDT.
  */
 public abstract class Debounce {
 
     private final Runnable action;
 
-    /**
-     * Private so the only subclasses are the two nested here — the choice of mechanism is a
-     * cost trade-off between the two, not an extension point.
-     */
     private Debounce(Runnable action) {
         this.action = action;
     }
 
-    /**
-     * A debounce whose trigger reschedules a one-shot {@link Timer}.
-     * <p>
-     * The deadline is exact: the action runs {@code delayMs} after the final trigger, with no
-     * quantization. Costs a {@code Timer.restart()} per trigger.
-     */
+    /** The action runs exactly {@code delayMs} after the final trigger. */
     public static Debounce rescheduling(int delayMs, Runnable action) {
         return new ReschedulingDebounce(delayMs, action);
     }
 
     /**
-     * A debounce whose trigger only writes a deadline field, leaving a repeating timer to notice
-     * when that deadline passes.
-     * <p>
-     * For triggers on a hot path. {@link Timer#restart()} is deceptively expensive: Swing keeps
-     * every running timer in one process-wide {@code TimerQueue} backed by a {@code DelayQueue},
-     * so the {@code stop()} half of a restart is a <b>linear scan</b> of every timer alive
-     * anywhere in the application, taken under both the timer's own lock and the queue's — which
-     * the {@code TimerQueue} thread is concurrently blocked on. Paying that per mouse-move, to
-     * express nothing more than "the deadline moved", is lock traffic for its own sake.
-     * <p>
-     * Here a trigger is a {@code long} store plus a boolean check, and the timer is touched only
-     * when the window opens and when it closes. The cost is quantization: the action runs between
-     * {@code delayMs} and {@code delayMs + pollIntervalMs} after the final trigger, so this suits
-     * a deadline that is a judgement call ("has the pointer settled?") rather than a promise.
-     * Nothing polls while the debounce is idle — the timer stops itself once it fires.
-     *
-     * @param pollIntervalMs how often to test the deadline; the action's worst-case lateness.
+     * For triggers on a hot path, where {@link Timer#restart()} is too expensive per trigger.
+     * The action runs between {@code delayMs} and {@code delayMs + pollIntervalMs} after the
+     * final trigger.
      */
     public static Debounce polling(int delayMs, int pollIntervalMs, Runnable action) {
         return new PollingDebounce(delayMs, pollIntervalMs, action);
     }
 
-    /** Pushes the deadline out to {@code delayMs} from now, arming the debounce if it was idle. */
     public abstract void trigger();
 
-    /** Disarms the debounce, so a pending action never runs. A no-op when already idle. */
     public abstract void cancel();
 
-    /** Whether a trigger is outstanding — armed, with its action still to run. */
     public abstract boolean isArmed();
 
-    /** Protected, not private: the nested subclasses reach it as an inherited member. */
     protected final void runAction() {
         action.run();
     }

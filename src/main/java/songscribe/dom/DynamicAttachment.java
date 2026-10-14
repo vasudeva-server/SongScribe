@@ -27,33 +27,20 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Represents a dynamic marking attachment on a note.
- * <p>
- * Dynamics indicate volume levels (p, f, mf, etc.) and are typically
- * placed below the staff, centered on the note.
+ * A dynamic marking attached to a note.
  */
 public final class DynamicAttachment extends Attachment implements IntrinsicHeight {
 
     /**
-     * Types of dynamic markings.
-     * <p>
-     * Every type here is one the editor can create and the renderer can draw. A dynamic with no
-     * glyph would be invisible yet still reserve its footprint, silently pushing everything above
-     * it outward, so the set is deliberately limited to those with one — {@code sfz} and
-     * {@code fp} were declared without a glyph and are not supported.
+     * Limited to types with a glyph: a dynamic with none would be invisible yet still reserve
+     * its footprint, pushing everything above it outward.
      */
     public enum DynamicType {
-        /** Pianissimo - very soft (pp) */
         PIANISSIMO("pp", SMuFLGlyph.DYNAMIC_PP, 0.25),
-        /** Piano - soft (p) */
         PIANO("p", SMuFLGlyph.DYNAMIC_PIANO, 0.40),
-        /** Mezzo-piano - moderately soft (mp) */
         MEZZO_PIANO("mp", SMuFLGlyph.DYNAMIC_MP, 0.53),
-        /** Mezzo-forte - moderately loud (mf) */
         MEZZO_FORTE("mf", SMuFLGlyph.DYNAMIC_MF, 0.63),
-        /** Forte - loud (f) */
         FORTE("f", SMuFLGlyph.DYNAMIC_FORTE, 0.78),
-        /** Fortissimo - very loud (ff) */
         FORTISSIMO("ff", SMuFLGlyph.DYNAMIC_FF, 1.00);
 
         private final String symbol;
@@ -66,21 +53,13 @@ public final class DynamicAttachment extends Attachment implements IntrinsicHeig
             this.velocityFraction = velocityFraction;
         }
 
-        /**
-         * Returns the text symbol for this dynamic.
-         */
         public String getSymbol() {
             return symbol;
         }
 
         /**
-         * Returns the {@link DynamicType} whose {@link #getSymbol() symbol} equals
-         * {@code symbol}, or {@code null} if none matches. Inverse of
-         * {@link #getSymbol()}.
-         * <p>
-         * A {@code null} answer is the normal result for a MusicXML file that carries a dynamic
-         * this app does not support, such as {@code <sfz/>}; the reader drops the mark and imports
-         * the rest of the note.
+         * A {@code null} answer is the normal result for a dynamic this app does not support,
+         * such as {@code <sfz/>}; the reader drops the mark and imports the rest of the note.
          */
         public static @Nullable DynamicType fromSymbol(String symbol) {
             for (var type : values()) {
@@ -92,29 +71,17 @@ public final class DynamicAttachment extends Attachment implements IntrinsicHeig
             return null;
         }
 
-        /**
-         * Returns the SMuFL glyph for rendering. Every type has one — see the class note above.
-         */
         public SMuFLGlyph getGlyph() {
             return glyph;
         }
 
-        /**
-         * Returns the velocity fraction (0.0–1.0) for MIDI playback.
-         */
         public double getVelocityFraction() {
             return velocityFraction;
         }
     }
 
-    /** The dynamic type. */
     private final DynamicType type;
 
-    /**
-     * Creates a dynamic attachment with the specified type.
-     *
-     * @param type The dynamic type
-     */
     public DynamicAttachment(DynamicType type) {
         this.type = type;
     }
@@ -124,28 +91,20 @@ public final class DynamicAttachment extends Attachment implements IntrinsicHeig
         return new DynamicAttachment(type);
     }
 
-    /**
-     * Returns the dynamic type.
-     */
     public DynamicType getType() {
         return type;
     }
 
-    /**
-     * Returns the symbol text for this dynamic.
-     */
     public String getSymbol() {
         return type.getSymbol();
     }
 
-    /** This dynamic's glyph box, the source of every dimension below. */
     private BBox glyphBBox() {
         return SMuFLMetadata.bboxSs(type.getGlyph());
     }
 
     /**
-     * Returns the glyph's own ink width in staff-space units. This is the ink, not the advance
-     * box a neighbouring hairpin pads away from — see {@link #getAdvanceWidthSs()}.
+     * The ink, not the advance box — see {@link #getAdvanceWidthSs()}.
      */
     public double intrinsicWidthSs() {
         return glyphBBox().widthSs();
@@ -157,33 +116,20 @@ public final class DynamicAttachment extends Attachment implements IntrinsicHeig
     }
 
     /**
-     * The glyph's advance width in staff-space units — the box the font declares for the
-     * character, which for the italic dynamic glyphs is narrower than the ink the glyph actually
-     * paints. This is the box a neighbouring hairpin pads away from; see
-     * {@link #getLeftSideBearingSs()}.
+     * The box the font declares, which a neighbouring hairpin pads away from; for the italic
+     * dynamic glyphs it is narrower than the ink.
      */
     public double getAdvanceWidthSs() {
         return SMuFLMetadata.advanceWidthSs(type.getGlyph());
     }
 
-    /**
-     * The signed distance from the glyph origin to the left edge of its ink, in staff spaces.
-     * Negative for the dynamic glyphs whose swashes overhang to the left of their advance box
-     * (Bravura's {@code dynamicForte} by {@code -0.564}), which is what makes the ink box and the
-     * advance box differ. Callers holding an absolute ink left edge subtract this to recover the
-     * glyph origin, and hence the advance box.
-     */
     public double getLeftSideBearingSs() {
         return glyphBBox().leftSs();
     }
 
     /**
-     * Returns the glyph's bottom edge relative to its text baseline, in staff-space units.
-     * Positive, since a dynamic's descender drops below the baseline.
-     * <p>
-     * This says where the ink sits <em>around</em> the baseline, which {@link #intrinsicHeightSs()}
-     * alone cannot: {@code p} has a descender and no ascender, {@code f} has both, and {@code mf} is
-     * nearly all x-height, so a shared baseline is the only alignment that reads level across them.
+     * Positive, since a dynamic's descender drops below the baseline. Aligning on a shared
+     * baseline is the only alignment that reads level across {@code p}, {@code f} and {@code mf}.
      */
     public double getContentBottomSs() {
         return glyphBBox().bottomSs();

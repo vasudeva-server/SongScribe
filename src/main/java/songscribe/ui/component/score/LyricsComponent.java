@@ -30,27 +30,13 @@ import songscribe.util.GraphicsState;
 
 /**
  * Abstract base for lyrics components that render centered multi-line text.
- * <p>
- * Subclasses supply the text and font via {@link #getLyrics()} and {@link #getFont()}.
  */
 public abstract class LyricsComponent extends ScoreComponent {
 
-    /**
-     * Returns the lyrics text to render.
-     */
     protected abstract String getLyrics();
 
-    /**
-     * Returns the font to use when rendering.
-     */
     protected abstract Font getLyricsFont();
 
-    /**
-     * Calculates the width of the text content.
-     *
-     * @param g2 Graphics context
-     * @return the widest lyric line's advance in view pixels, or 0 when there are no lyrics
-     */
     public double getTextWidth(Graphics2D g2) {
         if (song == null) {
             return 0;

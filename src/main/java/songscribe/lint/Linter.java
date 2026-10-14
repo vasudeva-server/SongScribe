@@ -28,16 +28,10 @@ import songscribe.message.notification.LintingNotification;
 /**
  * Runs every {@link LintRule} over one song and holds the result until the next run.
  *
- * <p>One linter belongs to one song. Only the {@link Song} constructor creates it, and the song
- * hands it out through {@link Song#getLinter()}.
+ * <p>One linter belongs to one song. The song lints when a {@link LintingNotification} for it
+ * is built; that class states the order this gives every reader of the report.
  *
- * <p>The song lints when a {@link LintingNotification} for it is built; that class states the
- * order this gives every reader of the report.
- *
- * <p>The linter has no bus subscription and posts no notification. It knows nothing of the UI:
- * the UI asks it for the report ({@link #getReport()}, {@link #hasFlag}).
- *
- * <p>EDT only, by contract: it runs on the thread that owns the song, and reads the song only.
+ * <p>EDT only, by contract; reads the song only.
  */
 public final class Linter {
 
@@ -45,22 +39,10 @@ public final class Linter {
 
     private LintReport report = LintReport.EMPTY;
 
-    /**
-     * Creates the linter of {@code song}. Called only by the {@link Song} constructor.
-     *
-     * @param song the song this linter lints; read only, never changed
-     */
     public Linter(Song song) {
         this.song = song;
     }
 
-    /**
-     * Lints the song with every rule and makes the result the current report.
-     *
-     * @invariant the findings are in {@link LintRule} declaration order and, within a rule, in
-     *     song order
-     * @effects replaces the current report; reads the song and changes nothing in it
-     */
     public void lint() {
         var findings = new ArrayList<LintFinding>();
 
@@ -73,21 +55,10 @@ public final class Linter {
         report = new LintReport(findings);
     }
 
-    /**
-     * The report of the last lint run.
-     *
-     * @return the current report; {@link LintReport#EMPTY} before the first run
-     */
     public LintReport getReport() {
         return report;
     }
 
-    /**
-     * Whether some finding in the current report blocks what {@code flag} names.
-     *
-     * @param flag what a finding may block
-     * @return {@link LintReport#hasFlag} of {@link #getReport()}
-     */
     public boolean hasFlag(LintRule.Flag flag) {
         return report.hasFlag(flag);
     }

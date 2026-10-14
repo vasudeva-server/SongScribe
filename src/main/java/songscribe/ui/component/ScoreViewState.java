@@ -24,9 +24,8 @@ import songscribe.ui.Mode;
 
 /**
  * Holds the mutable view-state that ScoreView and ScoreViewController both read.
- * Plain storage: no bus subscriptions, no behavior.
- * <p>
- * The class is {@code public} so cross-package consumers (e.g. menu/action wiring)
+ *
+ * <p>The class is {@code public} so cross-package consumers (e.g. menu/action wiring)
  * can read state via the getters, but construction is deliberately package-private —
  * only {@code ScoreView} owns the lifecycle.
  */

@@ -23,37 +23,16 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link Property} that holds its value itself, for state with no control behind
- * it.
+ * A {@link Property} that holds its value itself, for state with no control behind it.
+ * Also the change-only adapter over a derivation; see {@link Bindings#onNotify}.
  *
- * <p>This is the one deliberate carveout in a design whose values are otherwise
- * views onto storage that already exists. Some dialog state genuinely has no
- * control to view: a chosen font is presented as a description string in a
- * {@code JLabel}, and no Swing component holds the {@code Font} — the dialog does.
- * Such state is a {@code ValueProperty}, and everything else is a view.
- *
- * <p>It is also the change-only adapter over a derivation. A {@code computed}
- * notifies whenever a dependency changes; binding a {@code ValueProperty} from it
- * and observing the property instead collapses that to notifications on real
- * transitions. See {@link Bindings#onNotify}.
- *
- * <p><b>Threading:</b> EDT-only, like everything in this package.
- *
- * @param <T> the held value's type, declared {@code @Nullable} when absence is a value the
- *     graph carries
+ * <p>EDT-only.
  */
 public final class ValueProperty<T extends @Nullable Object> implements Property<T> {
 
     private final Observers observers = new Observers();
     private T value;
 
-    /**
-     * Creates a property holding {@code initial}.
-     *
-     * <p>Construction notifies nobody, there being nothing yet observing it.
-     *
-     * @param initial the value the property starts out holding
-     */
     public ValueProperty(T initial) {
         value = initial;
     }

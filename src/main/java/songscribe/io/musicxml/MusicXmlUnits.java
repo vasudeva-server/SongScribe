@@ -66,94 +66,45 @@ final class MusicXmlUnits {
 
     private MusicXmlUnits() {}
 
-    /**
-     * Converts a staff-space measure to MusicXML tenths — the inverse of the
-     * reader's {@link #tenthsToExactSs(double)}. All position values share this
-     * single conversion so the scattered {@code × TENTHS_PER_STAFF_SPACE}
-     * arithmetic has one source of truth.
-     */
     static double ssToTenths(double ss) {
         return ss * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
     }
 
     /**
-     * Converts a staff-space measure to the {@code BigDecimal} a tenths-valued attribute
-     * takes, pinned to {@value #POSITION_DECIMAL_PLACES} decimal places.
-     *
-     * <p>The scale is the whole point. JAXB marshals a {@code BigDecimal} through its own
-     * {@code toString}, which honours the scale, so pinning it here is what makes a position
-     * written as an attribute read identically to the same measurement written as plain text
-     * by {@link #formatSsAsTenths(double)} — which is now this value's own text, so the two
-     * cannot disagree. Unpinned, {@code BigDecimal.valueOf(12.0)} would print {@code 12.0}
-     * against the text path's {@code 12.00}.
+     * The scale is pinned to {@value #POSITION_DECIMAL_PLACES} decimal places so a position
+     * written as an attribute reads identically to the same measurement written as text by
+     * {@link #formatSsAsTenths(double)}.
      */
     static BigDecimal ssAsTenths(double ss) {
         return BigDecimal.valueOf(ssToTenths(ss)).setScale(POSITION_DECIMAL_PLACES, RoundingMode.HALF_UP);
     }
 
-    /**
-     * Converts a staff-space measure to the MusicXML tenths string a position value emits as
-     * element text — the {@link #ssAsTenths(double)} of {@code ss}, in plain notation.
-     *
-     * <p>Derived from {@code ssAsTenths} rather than formatted independently, so "the attribute
-     * and the text form of the same measurement agree" is a consequence of the structure rather
-     * than a claim two methods have to keep true. A fixed scale of
-     * {@value #POSITION_DECIMAL_PLACES} never reaches scientific notation, so
-     * {@code toPlainString} and {@code toString} agree; the plain form says so explicitly.
-     */
     static String formatSsAsTenths(double ss) {
         return ssAsTenths(ss).toPlainString();
     }
 
     /**
-     * A staff-space position shift as the {@code BigDecimal} a tenths-valued attribute
-     * takes, or {@code null} when the shift is zero — JAXB omits a null attribute, which
-     * is how a shift stays out of the document unless it carries information.
+     * {@code null} when the shift is zero, which keeps the attribute out of the document.
      */
     static @Nullable BigDecimal shiftTenths(double shiftSs) {
         return shiftSs != 0 ? ssAsTenths(shiftSs) : null;
     }
 
-    /**
-     * Converts a MusicXML tenths value to staff-spaces (tenths ÷ 10) without
-     * rounding — the exact inverse of {@link #ssToTenths(double)}.
-     *
-     * @param tenths a length in MusicXML tenths
-     * @return the same length in staff-spaces
-     */
     static double tenthsToExactSs(double tenths) {
         return tenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE;
     }
 
     /**
-     * Converts an optional {@code tenths}-valued attribute to staff-spaces without
-     * rounding, or 0 when the attribute is absent.
-     *
-     * @param tenths the attribute's value, or null when the attribute is absent, which selects 0
-     * @return {@code tenths} in staff-spaces, exactly as {@link #tenthsToExactSs(double)} gives it,
-     *     or 0 when {@code tenths} is null
+     * @param tenths null when the attribute is absent, which selects 0
      */
     static double tenthsToExactSs(@Nullable BigDecimal tenths) {
         return tenths == null ? 0 : tenthsToExactSs(tenths.doubleValue());
     }
 
-    /**
-     * Parses {@code raw} (trimmed) as an integer, throwing a {@link SAXException}
-     * if it is not a valid integer. Delegates to the shared
-     * {@link DocumentValidation#parseIntOrThrow}, supplying this class's logger so
-     * the {@code .mssw} and MusicXML readers report corrupt values one way. The
-     * trim tolerates the surrounding whitespace SAX character data can carry.
-     */
     static int parseIntOrThrow(String tag, String raw) throws SAXException {
         return DocumentValidation.parseIntOrThrow(LOG, tag, raw.trim());
     }
 
-    /**
-     * Parses {@code raw} (trimmed) as a double, throwing a {@link SAXException} if
-     * it is not a valid number. Used for positional attributes (tenths), which
-     * MusicXML permits to be fractional. Delegates to the shared
-     * {@link DocumentValidation#parseDoubleOrThrow}, supplying this class's logger.
-     */
     static double parseDoubleOrThrow(String attr, String raw) throws SAXException {
         return DocumentValidation.parseDoubleOrThrow(LOG, attr, raw.trim());
     }

@@ -53,40 +53,15 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 
 /**
- * Replays a recorded batch of {@link Mutation}s, undoing it ({@link #undoBatch}) or redoing
- * it ({@link #redoBatch}).
- * <p>
- * Each method runs the whole batch inside {@link Song#replay}, which enters replay mode and
- * opens an edit inside it. Inside replay mode the {@link Line}/{@link Song} helpers apply raw
- * state without companion side-work or guard checks, so the recorded batch is reproduced
- * mechanically.
- * <p>
- * Undo restores each record's <em>before</em> state; redo re-applies its <em>forward</em>
- * change. Both dispatch through an exhaustive pattern switch over the sealed
- * {@link Mutation} hierarchy — the compiler enforces coverage, so there is no
- * {@code default} branch.
- * <p>
- * {@link ElementModification} restores in place via
- * {@link songscribe.dom.StaffElement#copyStateFrom} (identity-preserving — never
- * {@code setElement}), so anchor references held inside other stacked records stay
- * valid across arbitrary undo/redo interleavings.
+ * Replays a recorded batch of {@link Mutation}s, undoing or redoing it.
  *
- * <h2>Replaying a batch</h2>
- * A single mutation is only meaningful in the context of the batch it was recorded in.
- * Undo applies a batch <em>in reverse order</em> and redo <em>in forward order</em>;
- * either direction requires the whole batch, against the same document, with no edit
- * interleaved. The order follows from how the batch was recorded — a companion span
- * removal emitted before its primary element deletion can only be reversed after that
- * element is back — and these methods own it. That the batch is whole, and was recorded
- * against this document, is the caller's obligation, not something they check.
- * See {@code docs/undo.md} and {@code docs/mutations.md}.
+ * <p>That the batch is whole, was recorded against this document, and has no edit
+ * interleaved is the caller's obligation; nothing here checks it.
  *
- * <p>Every change made here is itself recorded into the replay's edit, so its close posts
- * a {@link songscribe.message.notification.SongDidChangeNotification} describing the
- * replay and the view repaints from it like any other edit.
+ * <p>{@link ElementModification} restores in place, never via {@code setElement}, so anchor
+ * references held inside other stacked records stay valid.
  *
- * <p>{@link FontChange} is the one mutation whose state does not live on the
- * {@link Song}, which is why these methods take a {@link FontTarget} beside the song.
+ * <p>See {@code docs/undo.md} and {@code docs/mutations.md}.
  */
 public final class MutationReplayer {
 
@@ -146,11 +121,6 @@ public final class MutationReplayer {
         });
     }
 
-    /**
-     * Restores the before-state of {@code mutation}, undoing its forward effect: whatever
-     * the mutation added is removed, whatever it removed is put back at the same index,
-     * and whatever it changed is returned to the old value it recorded.
-     */
     private static void applyUndo(Song song, FontTarget fonts, Mutation mutation) {
         switch (mutation) {
             case ElementInsertion(var line, var index, var _) -> line.removeElement(index);
@@ -184,11 +154,6 @@ public final class MutationReplayer {
         }
     }
 
-    /**
-     * Re-applies the forward effect of {@code mutation}, reproducing the change the
-     * original edit made: what it added is added again at the same index, what it removed
-     * is removed, and what it changed takes the new value it recorded.
-     */
     private static void applyRedo(Song song, FontTarget fonts, Mutation mutation) {
         switch (mutation) {
             case ElementInsertion(var line, var index, var element) -> line.addElement(index, element);
@@ -247,13 +212,7 @@ public final class MutationReplayer {
         }
     }
 
-    /**
-     * Casts a validated field value to its expected boxed type. The replayed fields
-     * never carry null — their values are validated at mutation construction — so the
-     * non-null return is safe; NullAway cannot see that {@code value} is non-null here.
-     *
-     * @return {@code value} as its expected type
-     */
+    /** Replayed field values are validated non-null at mutation construction. */
     @SuppressWarnings("NullAway")
     private static <T> T cast(@Nullable Object value, Class<T> type) {
         return type.cast(value);

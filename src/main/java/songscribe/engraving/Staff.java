@@ -21,50 +21,23 @@
 package songscribe.engraving;
 
 /**
- * Canonical geometry of the 5-line staff, and the half staff space, the unit in
- * which vertical distances on it are counted.
- * <p>
- * All values are in staff-space units unless noted otherwise, measured Y-down
- * from the middle staff line, so a negative distance is higher on the page.
- * <p>
- * The pitch grid this geometry carries — the discrete positions a note head may
- * occupy, their bounds, and the conversion between a position and a distance —
- * belongs to {@link StaffPosition}.
+ * Canonical geometry of the 5-line staff, and the half staff space. Values are in staff
+ * spaces, Y-down from the middle staff line.
  */
 public final class Staff {
 
-    /** Height of the 5-line staff (4 gaps of 1 ss each) in staff spaces. */
     public static final double STAFF_HEIGHT_SS = 4.0;
     public static final double STAFF_HALF_SS = STAFF_HEIGHT_SS / 2.0;
-
-    /**
-     * Half of one staff space, the unit in which vertical distances on the staff
-     * are counted: the gap between a staff line and the space adjacent to it.
-     */
     public static final double HALF_SPACE_SS = 0.5;
-
-    /** Minimum staff-space amount reserved above the staff top, derived from {@link StaffPosition#MIN}. */
     public static final double MIN_ABOVE_STAFF_SS =
         Math.abs(StaffPosition.MIN.value()) * HALF_SPACE_SS - STAFF_HALF_SS;
-
-    /** Minimum staff-space amount reserved below the staff bottom, derived from {@link StaffPosition#MAX}. */
     public static final double MIN_BELOW_STAFF_SS = StaffPosition.MAX.value() * HALF_SPACE_SS - STAFF_HALF_SS;
 
     private Staff() {}
 
     /**
-     * Converts a count of half staff spaces to staff spaces.
-     * <p>
-     * The argument is a distance — a difference between two staff positions, or an
-     * offset expressed in half staff spaces — never a staff position itself. A
-     * position is converted by {@link StaffPosition#toSs()}. The two are the same
-     * arithmetic, and only the name says which of them a call site means, so a site
-     * that measures from the middle staff line belongs in the other method however
-     * well this one compiles.
-     *
-     * @param halfSpaces a distance in half staff spaces
-     * @return that distance in staff spaces
-     * @invariant the result is an exact multiple of {@link #HALF_SPACE_SS}
+     * @param halfSpaces a distance, never a staff position; a position converts through
+     *                   {@link StaffPosition#toSs()}
      */
     public static double halfSpacesToSs(int halfSpaces) {
         return halfSpaces * HALF_SPACE_SS;

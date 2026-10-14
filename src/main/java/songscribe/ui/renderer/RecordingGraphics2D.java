@@ -70,60 +70,40 @@ import songscribe.util.GraphicUtils;
  * A {@link Graphics2D} that records what a renderer draws instead of painting it, producing a
  * {@link DisplayList} whose union is the renderer's exact ink bounds.
  * <p>
- * This exists so nothing has to compose ink bounds by hand. Hand-composed bounds would duplicate
- * every decision the renderers make — stem direction, ledger-line count, which accidental glyph,
- * the early delegation {@code StaffElementRenderer.render} does for rests, bar lines, repeats and breath
- * marks — and would silently under-report, clipping visible artwork, the moment the two drift.
- * Running the real renderers cannot drift.
+ * <b>State is not shadowed.</b> Every state method goes straight to a delegate, and every drawing
+ * method reads {@link #getTransform()} back from it at draw time. Caching the transform would
+ * misplace ledger lines and the insertion marker, because {@code GraphicUtils.drawRoundedLine}
+ * rotates the transform around a single {@code fill} call.
  * <p>
- * <b>State is not shadowed.</b> Every state method — transform, font, stroke, clip, hints — goes
- * straight to a delegate obtained from a 1×1 scratch image, and every drawing method reads
- * {@link #getTransform()} back from that delegate at draw time. Caching the transform would place
- * ledger lines and the insertion marker wrongly, because {@code GraphicUtils.drawRoundedLine}
- * rotates the transform, fills, and restores it around a single {@code fill} call.
- * <p>
- * <b>No drawing method may delegate.</b> A drawing method wired to the delegate would paint into
- * the 1×1 scratch image, contribute nothing to the display list, and clip the artwork with no
- * error. Every drawing method therefore funnels through {@link #record}; the image is kept 1×1 so
- * that any stray painting is a guaranteed no-op rather than a plausible-looking result.
+ * <b>No drawing method may delegate.</b> A drawing method wired to the delegate would contribute
+ * nothing to the display list and clip the artwork with no error. Every drawing method funnels
+ * through {@link #record}.
  * <p>
  * <b>Record and replay are only equivalent while renderers are transform-independent.</b> A
- * renderer may <em>use</em> the transform to position ink, but must never branch on
- * {@code getTransform()} — for instance drawing differently at one zoom than another. Nothing does
- * so today. If one ever did, the ink recorded at the recording transform would not be the ink
- * painted at the replay transform, and the bounds would be wrong in a way that is invisible at the
- * call site.
+ * renderer may use the transform to position ink, but must never branch on
+ * {@code getTransform()}; otherwise the recorded ink differs from the replayed ink.
  * <p>
  * Instances are reusable: {@link #reset()} clears the accumulated ink and restores the identity
- * transform, so recording a new configuration allocates neither an image nor a delegate.
+ * transform.
  */
 public final class RecordingGraphics2D extends Graphics2D {
 
     private static final Logger LOG = LoggerFactory.getLogger(RecordingGraphics2D.class);
 
     /**
-     * Any painting that escapes into the delegate lands here. Keeping it 1×1 makes such a mistake a
-     * no-op instead of a partially plausible result.
+     * Keeping the delegate's image 1×1 makes any painting that escapes into it a no-op.
      */
     private static final int SCRATCH_SIZE = 1;
 
     /**
-     * Glyph vector creation dominates the cost of recording by orders of magnitude; the rest is
-     * arithmetic and a few small shapes. The key is total — a glyph vector depends on the glyph and
-     * the size and nothing else — so there is no staleness class and no invalidation. It is bounded
-     * by the SMuFL glyphs actually drawn times the two music font sizes.
-     * <p>
-     * Deliberately <em>not</em> a cache of composed display lists keyed by element configuration:
-     * that key would have to enumerate element type, staff position, accidental, dot count,
-     * articulations and fermata presence, and grow with every new drawable attachment. Forgetting a
-     * field there paints a stale glyph, which reads as intentional and is worse than clipping.
+     * The key is total — a glyph vector depends on the glyph and the size and nothing else — so
+     * nothing is ever invalidated. Deliberately not a cache of composed display lists keyed by
+     * element configuration: a forgotten field in that key paints a stale glyph.
      */
     private static final Map<GlyphKey, GlyphVector> GLYPH_VECTOR_CACHE = new ConcurrentHashMap<>();
 
-    /** Reverse lookup from a drawn string back to the glyph whose metadata measures it. */
     private static final Map<String, SMuFLGlyph> GLYPHS_BY_STRING = glyphsByString();
 
-    /** Strings already reported as unmeasurable, so the warning is logged once per string. */
     private static final Set<String> LOGGED_UNMEASURABLE = ConcurrentHashMap.newKeySet();
 
     private final BufferedImage scratchImage;
@@ -137,8 +117,8 @@ public final class RecordingGraphics2D extends Graphics2D {
     }
 
     /**
-     * Shares the accumulator with the graphics this one was created from, so ink drawn through a
-     * {@code create()} child is not silently discarded.
+     * Shares the accumulator with its parent, so ink drawn through a {@code create()} child is not
+     * discarded.
      */
     private RecordingGraphics2D(
         BufferedImage scratchImage,
@@ -167,7 +147,6 @@ public final class RecordingGraphics2D extends Graphics2D {
     // Recording
     // ==========================================================================
 
-    /** Clears the recorded ink and restores the identity transform, ready to record again. */
     public void reset() {
         drawables.clear();
         delegate.setTransform(new AffineTransform());
@@ -179,24 +158,14 @@ public final class RecordingGraphics2D extends Graphics2D {
         return new DisplayList(List.copyOf(drawables));
     }
 
-    /**
-     * The single point every drawing method funnels through. Nothing else may touch the
-     * accumulator, and no drawing method may bypass it.
-     */
     private void record(DisplayList.Drawable drawable) {
         drawables.add(drawable);
     }
 
-    /** Records a filled shape, flattened by the current transform so replay needs no transform stack. */
     private void recordFill(Shape shape) {
         record(new DisplayList.ShapeInk(getTransform().createTransformedShape(shape)));
     }
 
-    /**
-     * Records a stroked shape as the outline the stroke actually covers. This is what accounts for
-     * the {@code CAP_ROUND} bulge of half a line width past each endpoint that
-     * {@code GraphicUtils.drawPath} documents.
-     */
     private void recordDraw(Shape shape) {
         recordFill(getStroke().createStrokedShape(shape));
     }
@@ -211,14 +180,8 @@ public final class RecordingGraphics2D extends Graphics2D {
     }
 
     /**
-     * Measures a glyph from its SMuFL metadata rather than its outline. The metadata bboxes are in
-     * staff spaces and are what the rest of the layout is built from; the real outline disagrees
-     * slightly (Bravura's staccato dot draws 0.34375 ss where its metadata claims 0.336), and the
-     * layout treats the metadata as authoritative. Measuring with {@code getVisualBounds} would
-     * disagree with the layout the overlay sits in.
-     * <p>
-     * The size ratio handles the grace-note font for free, matching {@code NoteGeometry}'s
-     * {@code GRACE_NOTE_SCALE} without duplicating it.
+     * Measures from SMuFL metadata, not the outline: the layout treats the metadata as
+     * authoritative, so {@code getVisualBounds} would disagree with the layout the overlay sits in.
      */
     private static Rectangle2D metadataBoundsSs(SMuFLGlyph glyph, float fontSize) {
         var bbox = SMuFLMetadata.bboxSs(glyph);
@@ -238,33 +201,19 @@ public final class RecordingGraphics2D extends Graphics2D {
     }
 
     /**
-     * Shapes {@code str} through {@link TextMeasurement}, the one context the score itself measures
-     * and draws with, which is what a recorded vector requires: unlike
-     * {@code BravuraFont.glyphOutline}, which takes {@code getOutline()} and keeps pure geometry,
-     * the vector kept here is <em>replayed</em>, so it carries the positioning decisions its context
-     * made.
-     * <p>
-     * That makes fractional metrics load-bearing. With them off, glyph positions round to whole
-     * font units, and a unit here is a quarter of a staff space ({@link BravuraFont#SIZE_SS} is
-     * {@value BravuraFont#SIZE_SS} for a one-staff-space em) — so the rounding is coarse in score
-     * terms, and the zoom transform applied at replay magnifies it into visible stair-stepping.
-     * {@link TextMeasurement} shapes under a graphics carrying
-     * {@link GraphicUtils#setRenderingHints}, which is also what
-     * {@code LineOverlayComponent.paintComponent} applies at replay — so recording and replay agree
-     * by construction rather than by two constants happening to match.
-     *
-     * @param str  the string to shape
-     * @param font the font to shape it in
-     * @return the shaped glyphs, positioned as replay will draw them
+     * Shapes through {@link TextMeasurement}, because the recorded vector is replayed and so
+     * carries its context's positioning decisions. Fractional metrics are load-bearing: with them
+     * off, glyph positions round to whole font units, and the replay zoom magnifies that into
+     * stair-stepping. {@link TextMeasurement} and {@code LineOverlayComponent.paintComponent} both
+     * apply {@link GraphicUtils#setRenderingHints}, so recording and replay agree.
      */
     private static GlyphVector recordableGlyphVector(String str, Font font) {
         return TextMeasurement.glyphVector(str, font);
     }
 
     /**
-     * Falls back to the drawn outline when metadata cannot measure a string. Skipping it instead
-     * would under-report the bounds and clip visible artwork with no error, and throwing is not an
-     * option: this runs on the EDT during mouse tracking, where an exception kills the handler.
+     * Skipping would clip visible artwork with no error, and throwing is not an option: this runs
+     * on the EDT during mouse tracking.
      */
     private static Rectangle2D fallbackBoundsSs(String str, GlyphVector glyphVector) {
         if (LOGGED_UNMEASURABLE.add(str)) {
@@ -534,10 +483,8 @@ public final class RecordingGraphics2D extends Graphics2D {
     }
 
     /**
-     * Records the bounds of an image draw. Returns true unconditionally because the
-     * {@code drawImage} overrides that delegate here must honor the {@link Graphics}
-     * contract, where true means the image was rendered completely — always the case when
-     * recording, since nothing is loaded asynchronously.
+     * True means the image was rendered completely, as the {@link Graphics} contract requires of
+     * the {@code drawImage} overrides.
      */
     @SuppressWarnings("SameReturnValue")
     private boolean recordImage(@Nullable Image image, int x, int y, @Nullable ImageObserver observer) {
@@ -577,8 +524,7 @@ public final class RecordingGraphics2D extends Graphics2D {
     }
 
     /**
-     * A {@code create()} returning the bare delegate would silently discard every subsequent draw,
-     * so the child shares this instance's accumulator. Nothing in the renderers calls this today.
+     * The child shares this instance's accumulator; a bare delegate would discard every draw.
      */
     @Override
     public Graphics create() {
@@ -586,8 +532,7 @@ public final class RecordingGraphics2D extends Graphics2D {
     }
 
     /**
-     * A blit of pixels that were themselves recorded; there is no new shape or glyph to record, and
-     * the copy cannot cover ink outside what is already in the list.
+     * Records nothing: the copy cannot cover ink outside what is already in the list.
      */
     @Override
     public void copyArea(int x, int y, int width, int height, int dx, int dy) {

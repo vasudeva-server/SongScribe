@@ -23,10 +23,7 @@ package songscribe.message.notification;
 import songscribe.message.Message;
 
 /**
- * Posted by {@code UndoController} whenever the undo/redo stacks change (a forward
- * edit pushed a step, an undo/redo moved a step between stacks, or a document load
- * cleared them). Subscribers such as the Undo/Redo actions refresh their enabled
- * state and menu labels in response. Handler name convention: {@code undoStateDidChange}.
+ * Posted by {@code UndoController} whenever the undo/redo stacks change.
  */
 public class UndoStateDidChangeNotification extends Message {
 }

@@ -22,14 +22,8 @@ package songscribe.undo;
 
 import songscribe.dom.Song;
 
-/**
- * The open document as the undo engine sees it: the song, and the place where a replay applies
- * fonts.
- */
+/** The open document as the undo engine sees it: the song and its fonts. */
 public interface ReplayTarget extends FontTarget {
 
-    /**
-     * @return the song the open document holds
-     */
     Song getSong();
 }

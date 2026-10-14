@@ -28,22 +28,8 @@ import songscribe.util.Copyable;
  * The tempo of a song, or of one tempo change within it: a beat unit, a speed in beats per
  * minute, and a marking saying what is drawn.
  *
- * <p><strong>A tempo is a value.</strong> It is immutable and it compares by value, so a caller
- * holding one cannot be surprised by a change made elsewhere, and a controller can tell a
- * gathered tempo from the one the document already holds. Whoever wants a different tempo builds
- * one; {@link Song#setTempo} and {@link TempoChangeAttachment#setTempo} are how a document takes
- * it.
- *
- * <p><strong>Every tempo draws something.</strong> That is not a rule this type keeps — it is
- * a shape {@link TempoMarking} has, so no producer of a tempo can break it and nothing
- * downstream checks for it.
- *
- * <p>For the reasoning behind all of the above, see {@code docs/song-tempo.md}.
- *
- * @param visibleTempo the speed in beats per minute, as written
- * @param tempoType    the beat unit the speed counts, which is what beams group against and what
- *                     a tuplet is measured in
- * @param marking      what this tempo draws — see {@link TempoMarking}
+ * <p>Immutable, compared by value. Every tempo draws something, by the shape of
+ * {@link TempoMarking}. See {@code docs/song-tempo.md}.
  */
 public record Tempo(int visibleTempo, BeatUnit tempoType, TempoMarking marking)
     implements Copyable<Tempo> {
@@ -56,47 +42,30 @@ public record Tempo(int visibleTempo, BeatUnit tempoType, TempoMarking marking)
     public static final BeatUnit DEFAULT_TYPE = BeatUnit.CROTCHET;
     public static final TempoMarking DEFAULT_MARKING = new TempoMarking.Metronome("Moderate");
 
-    /**
-     * The tempo a song has before anything states one.
-     */
     public Tempo() {
         this(DEFAULT_BPM, DEFAULT_TYPE, DEFAULT_MARKING);
     }
 
     /**
-     * @return the speed in MIDI terms: the written speed scaled by how long the beat unit is, so
-     *         playback runs at the written tempo whatever unit it counts
+     * @return the speed in MIDI terms, so playback runs at the written tempo whatever unit it
+     *         counts
      */
     public int realTempo() {
         return ((visibleTempo * tempoType.ticks()) / MidiSequenceBuilder.PPQ);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @return {@code this}. Every component is immutable, so a tempo holds no state for a copy to
-     *         separate.
-     */
     @Override
     public Tempo copy() {
         return this;
     }
 
     /**
-     * Whether two tempos define the same beat.
+     * The beat is the tempo type alone: changing it revalidates the notation of the whole song,
+     * while the BPM and the marking do not.
      *
-     * <p>The beat is the tempo <em>type</em> alone. It is what beams group against and what a
-     * tuplet is measured in, so changing it revalidates the notation of the whole song. The BPM
-     * and the marking say how the tempo is displayed and leave the notation underneath
-     * untouched.
-     *
-     * <p>Asked by everything that would otherwise redo beat-dependent work for a tempo edit that
-     * only changed how the marking reads.
-     *
-     * @param a one tempo, or {@code null} where there is none
-     * @param b the other tempo, or {@code null} where there is none
-     * @return {@code true} when both are null, or both name the same beat unit; {@code false}
-     *         when exactly one is null, since no beat and some beat are not the same beat
+     * @param a {@code null} where there is no tempo
+     * @param b {@code null} where there is no tempo
+     * @return {@code false} when exactly one is null
      */
     public static boolean haveSameBeat(@Nullable Tempo a, @Nullable Tempo b) {
         if (a == b) {

@@ -31,36 +31,21 @@ import songscribe.util.GraphicsState;
 
 /**
  * Component that renders translated lyrics with header.
- * <p>
- * Displays a header ("Sri Chinmoy's translation:" or "Unofficial translation:")
- * followed by multi-line translation text, both centered horizontally.
  */
 public class TranslationComponent extends ScoreComponent {
 
-    /** Vertical spacing for translation block (2 staff lines). */
     private static final Ss TRANSLATION_TOP_MARGIN_SS = new Ss(2.0);
 
-    /** Translation header for official translations. */
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";
 
-    /** Translation header for unofficial translations. */
     private static final String TRANSLATION_HEADER_UNOFFICIAL = "Unofficial translation:";
 
-    /**
-     * The top margin in view pixels, recomputed per layout so it tracks the current zoom.
-     */
+    /** Recomputed per layout so it tracks the current zoom. */
     @Override
     public int getMarginTop() {
         return toViewPx(TRANSLATION_TOP_MARGIN_SS).positionPx();
     }
 
-    /**
-     * Calculates the width of the text content.
-     *
-     * @param g2 Graphics context
-     * @return the greater of the header's and the translation's widest-line advance, in view
-     *         pixels, or 0 when there is no translation
-     */
     public double getTextWidth(Graphics2D g2) {
         if (song == null) {
             return 0;

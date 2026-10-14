@@ -41,51 +41,23 @@ import songscribe.ui.component.ScoreView;
 /**
  * Applies one {@link UIAction.SelectionApplicable} to every element of a selection, in one undo
  * step.
- * <p>
- * The engine every reflectable toolbar action runs through, as opposed to the named musical
- * operations in {@code MusicEditOperations} — beaming, tying, hairpins — each of which is one
- * command with its own rules. The action decides what it does to the selection and hands that
- * over as a {@link Plan}; what happens to a plan is the same whichever action made it.
- * <p>
- * Static, and takes the selection as an argument, because nothing in the pipeline reads what is
- * currently selected: the caller already holds the selection, and the coordinator is reached
- * only for cache invalidation once the mutation has landed. Everything between those two points
- * is a function of the line and the plan alone.
  */
 public final class SelectionActionApplier {
 
     private SelectionActionApplier() {}
 
-    /**
-     * One element an action will change, decided before anything is mutated.
-     *
-     * @param index   The element's index on the line, unchanged by the change
-     * @param standIn The element as it will read afterwards: the new element of a replacement's
-     *                pair for an {@link UIAction.ElementReplaceable}, a modified clone for an
-     *                {@link UIAction.ElementModifiable}. Detached from the line, so the fit gate
-     *                can measure it without anything having been mutated
-     */
+    /** @param standIn detached from the line, so the fit gate can measure it before any mutation */
     public record PendingChange(int index, StaffElement standIn) {}
 
-    /** Which wording refuses a plan whose line no longer fits. */
     public enum Refusal {
-        /** The plan puts something on its elements; the alert names the element type. */
         INSERTION,
-        /**
-         * The plan takes something off its elements. A removal can still overflow the line, and
-         * the insert phrasing would misdescribe it, so its wording names no operation.
-         */
         REMOVAL
     }
 
     /**
      * What an action will do to a selection, decided before anything is mutated.
      *
-     * @param changes      every element the action changes, non-empty and in index order
-     * @param mutation     lands the changes on the line; run inside the modification bracket
-     * @param widensColumn whether a change can make its column wider, so the line must be
-     *                     measured before the mutation runs
-     * @param refusal      the wording that refuses the plan when the line no longer fits
+     * @param changes in index order
      */
     public record Plan(
         List<PendingChange> changes,
@@ -93,10 +65,6 @@ public final class SelectionActionApplier {
         boolean widensColumn,
         Refusal refusal) {
 
-        /**
-         * @throws IllegalArgumentException if {@code changes} is empty: an action that changes
-         *     nothing has no plan
-         */
         public Plan {
             if (changes.isEmpty()) {
                 throw new IllegalArgumentException("A plan changes at least one element");
@@ -107,30 +75,8 @@ public final class SelectionActionApplier {
     }
 
     /**
-     * Applies an action to every element of {@code selection} that it changes. Wraps the whole
-     * apply pass in a single modification bracket so all emitted mutations coalesce into one
-     * {@code SongDidChangeNotification}, leaving the undo step's op-name to the pending one the
-     * action set.
-     * <p>
-     * Runs in three passes, because the fit gate measures the line as the action will leave it,
-     * which is known only once every change is decided:
-     * <ol>
-     *   <li><b>Decide</b> — the action's {@link UIAction.SelectionApplicable#plan}. Mutates
-     *       nothing and opens no bracket.</li>
-     *   <li><b>Gate</b> — over every element that changes, for a plan that widens a column: the
-     *       chain walk over the line as the action will leave it, then the fit check with the
-     *       walk's accidentals in place. Still mutates nothing, so a refusal leaves the score
-     *       untouched and creates no undo step.</li>
-     *   <li><b>Apply</b> — the plan's mutation, inside the modification bracket.</li>
-     * </ol>
-     * A no-op when the action changes no element of the selection.
-     *
-     * @param score     the view to parent a refusal alert on, the source of the song-wide lyric
-     *                  metrics the fit gate measures syllable widths with, and the holder of the
-     *                  coordinator whose selection caches go stale once the mutation lands
-     * @param selection the selection to apply to
-     * @param action    the action to apply
-     * @param toggle    whether to put the action's attribute on or take it off
+     * The undo step's op-name is the pending one the action set. A refusal leaves the score
+     * untouched and creates no undo step.
      */
     public static void apply(
         ScoreView score,
@@ -160,7 +106,6 @@ public final class SelectionActionApplier {
         });
     }
 
-    /** Tells the user the line has no room for {@code plan}, in the plan's wording. */
     private static void refuse(Plan plan, ScoreView score) {
         switch (plan.refusal()) {
             case INSERTION -> OptionDialogs.showErrorMessage(
@@ -178,14 +123,9 @@ public final class SelectionActionApplier {
     }
 
     /**
-     * Pass 2 — the fit gate's verdict once the changes are in place, with every accidental the
-     * chain walk stamps for them drawn. The walk runs over a projection of the line holding
-     * each stand-in at its index, so a stand-in that changes what a note sounds is decided along
-     * with every later note in its chain. The projected run spans the changes, from the first to
-     * the last. Mutates no live note: a refusal leaves every live element as it was, and an
-     * acceptance leaves each stand-in stamped as the walk decided.
+     * Mutates no live note: a refusal leaves every live element as it was.
      *
-     * @param changes the changes to measure, non-empty and in index order
+     * @param changes non-empty and in index order
      */
     private static AccidentalFitGate.Verdict judgeWithChainsWalked(
         Line line, List<PendingChange> changes, ScoreView score) {
@@ -208,11 +148,6 @@ public final class SelectionActionApplier {
             () -> fitsAfterModification(line, changes, lyricRenderMetrics));
     }
 
-    /**
-     * The fit check itself: whether the line still fits once the changes are in place. Mutates
-     * nothing: the projection is built from stand-ins, so a refusal leaves every live element as
-     * it was.
-     */
     private static boolean fitsAfterModification(
         Line line, List<PendingChange> changes, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 

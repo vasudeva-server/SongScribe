@@ -62,25 +62,10 @@ import songscribe.error.RuntimeError;
 
 /**
  * Builds one ProxyMusic {@link Note} from one {@link StaffElement}, and records the pair into
- * {@link BuildIndex#notes()} so the later adjustment passes can reach the node without walking
- * the measure's heterogeneous child list.
+ * {@link BuildIndex#notes()}.
  *
- * <p><b>Scope.</b> Everything here is decided by the element alone: pitch, duration, type, dots,
- * accidental, stem, time modification, and the {@code <notations>} content the note itself owns
- * (articulations, dynamics, fermata). Anything that walks a line's spans and touches more than
- * one node — ties, beams, tuplet brackets, trills, glissandos — is an adjustment pass, and
- * attaches through {@link #addNotation}. Hairpins are {@code <direction>} children and endings
- * are {@code <barline>} children, so neither is a note concern at all.
- *
- * <p><b>Child order is not this class's problem.</b> {@code Note} is a fully typed sequence
- * rather than a heterogeneous list, so JAXB emits {@code <grace>}, {@code <pitch>},
- * {@code <duration>}, {@code <type>}, {@code <dot>}, {@code <accidental>},
- * {@code <time-modification>}, {@code <stem>} and the rest in schema order whatever order the
- * setters are called in.
- *
- * <p>The one order that is <em>not</em> guaranteed is inside {@code <notations>}, whose children
- * live in a heterogeneous {@code List<Object>}. The schema permits any order there, so this
- * class keeps that list in the rank order below for every pass that uses it.
+ * <p>The children of {@code <notations>} are an unordered heterogeneous list, so this class keeps
+ * them in rank order.
  */
 final class NoteBuilder {
 
@@ -94,20 +79,13 @@ final class NoteBuilder {
     private static final int ORDER_DYNAMICS = 5;
     private static final int ORDER_FERMATA = 6;
 
-    /** Rank for a notation type with no ranked position: appended after all of them. */
     private static final int ORDER_OTHER = 7;
 
     private NoteBuilder() {}
 
     /**
-     * Builds the {@code <note>} for the element at {@code elementIndex} of {@code line}, records
-     * it in {@link BuildIndex#notes()}, and returns it — or returns {@code null} for an element
-     * that produces no note.
-     *
-     * <p>Two kinds of element produce none. A breath mark is folded into the preceding note's
-     * {@code <articulations>} rather than emitted in its own right (see
-     * {@link #foldBreathMark}). Anything else without a note value — a barline, a repeat, a
-     * key change — is not a note at all; the caller emits those in its own way.
+     * Returns {@code null} for an element that produces no note: a breath mark (folded into the
+     * preceding note) or anything else without a note value.
      */
     static @Nullable Note buildNote(BuildContext ctx, Line line, int elementIndex) {
         var element = line.getElement(elementIndex);
@@ -208,9 +186,7 @@ final class NoteBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns {@code pmNote}'s {@link Notations}, creating it on first use so a note with no
-     * notations emits no element. Every pass that attaches a notation goes through here (or
-     * through {@link #addNotation}, which calls it), so one note never grows two
+     * Every pass that attaches a notation goes through here, so one note never grows two
      * {@code <notations>} elements.
      */
     static Notations notationsOf(BuildContext ctx, Note pmNote) {
@@ -227,15 +203,7 @@ final class NoteBuilder {
     }
 
     /**
-     * Attaches {@code member} to {@code pmNote}'s {@code <notations>}, inserted at the position
-     * its element type's rank occupies.
-     *
-     * <p>Order matters here in a way it does not elsewhere in a {@code <note>}: the children of
-     * {@code <notations>} are a heterogeneous {@code List<Object>} whose schema content model is
-     * an unbounded choice, so any order validates and any order round-trips. Inserting by rank
-     * means the adjustment passes may run in whatever order suits them.
-     *
-     * <p>Members of equal rank keep their insertion order, so a tie chain's
+     * Members of equal rank keep their insertion order, so a tie chain's
      * {@code <tied type="stop">} stays before its {@code <tied type="start">}.
      */
     static void addNotation(BuildContext ctx, Note pmNote, Object member) {
@@ -252,7 +220,6 @@ final class NoteBuilder {
         members.add(member);
     }
 
-    /** The rank of one {@code <notations>} child; see {@link #addNotation}. */
     private static int notationOrder(Object member) {
         return switch (member) {
             case Tied ignored -> ORDER_TIED;
@@ -267,9 +234,7 @@ final class NoteBuilder {
     }
 
     /**
-     * Returns {@code pmNote}'s {@link Articulations}, creating and attaching it on first use.
-     * A note can reach this twice — once for its own accent, staccato or fall, and again when a
-     * following breath mark is folded onto it — and both must land in the same element.
+     * A note can reach this twice, and both must land in the same element.
      */
     private static Articulations articulationsOf(BuildContext ctx, Note pmNote) {
         for (var member : notationsOf(ctx, pmNote).getTiedOrSlurOrTuplet()) {
@@ -284,11 +249,6 @@ final class NoteBuilder {
         return created;
     }
 
-    /**
-     * Builds the {@code <notations>} content the note owns by itself: articulations (accent,
-     * staccato, fall), dynamics and fermata. The span-borne notations — tied, slide, tuplet
-     * bracket, ornaments — are attached later by the adjustment passes.
-     */
     private static void buildNotations(BuildContext ctx, StaffElement element, Note pmNote) {
         var factory = ctx.factory();
 
@@ -327,18 +287,7 @@ final class NoteBuilder {
     }
 
     /**
-     * Folds the breath mark at {@code elementIndex} into the preceding note's
-     * {@code <articulations>}.
-     *
-     * <p>MusicXML has no standalone breath mark: it is an articulation of the note before it.
-     * The lookup is the immediately preceding element of the same line. A breath mark stands
-     * only immediately after a duration element, and every duration element produces a
-     * {@code Note}, so the lookup is total: {@code elementIndex > 0}, and the element at
-     * {@code elementIndex - 1} has a {@code Note} in {@code ctx.index()}. A breath mark with
-     * no preceding note is an invariant failure.
-     *
-     * @param elementIndex the breath mark's position in {@code line}
-     * @effects on the invariant failure, exits through {@link RuntimeError#exit(String)}
+     * A breath mark with no preceding note is an invariant failure.
      */
     private static void foldBreathMark(BuildContext ctx, Line line, int elementIndex) {
         var precedingNote = elementIndex == 0
@@ -361,8 +310,8 @@ final class NoteBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds {@code <pitch>} for {@code element}. {@code <alter>} is emitted only when the note
-     * actually sounds altered — a natural sign is an accidental, not an alteration.
+     * {@code <alter>} is emitted only when the note actually sounds altered; a natural sign is an
+     * accidental, not an alteration.
      */
     private static Pitch buildPitch(BuildContext ctx, NoteElement element) {
         var spelling = DiatonicPitch.at(element.getStaffPosition().value());
@@ -381,8 +330,7 @@ final class NoteBuilder {
     }
 
     /**
-     * Builds {@code <accidental>} for {@code element}, or returns {@code null} when it draws
-     * none.
+     * Returns {@code null} when {@code element} draws no accidental.
      */
     private static @Nullable Accidental buildAccidental(BuildContext ctx, NoteElement element) {
         var accidental = element.drawnAccidental();
@@ -398,13 +346,7 @@ final class NoteBuilder {
     }
 
     /**
-     * Builds {@code <stem>} for {@code element}, or returns {@code null} when the stem direction
-     * is automatic and the reader can derive it.
-     *
-     * <p>A grace-note stem always goes up and carries a computed stem-tip position so external
-     * renderers can draw it without re-running layout. The tip is the note-head's height above
-     * the middle line plus the standard extension; the sign is negated because staff positions
-     * increase downward while MusicXML's Y is positive upward.
+     * Returns {@code null} when the stem direction is automatic and the reader can derive it.
      */
     private static @Nullable Stem buildStem(BuildContext ctx, NoteElement element) {
         if (element.getType().isGraceNote()) {
@@ -427,12 +369,6 @@ final class NoteBuilder {
         };
     }
 
-    /**
-     * Builds the {@code <time-modification>} for a note belonging to {@code tuplet}:
-     * {@code <actual-notes>} is the tuplet's grade, and {@code <normal-notes>},
-     * {@code <normal-type>} and one {@code <normal-dot/>} per dot describe the written value
-     * whose time the group occupies.
-     */
     private static TimeModification buildTimeModification(BuildContext ctx, Tuplet tuplet) {
         var factory = ctx.factory();
         var ratio = tuplet.getRatio();
@@ -453,9 +389,7 @@ final class NoteBuilder {
     }
 
     /**
-     * The {@code <dynamics>} child for {@code dynamicType}. Each mark is an empty element of its
-     * own name, and the list holding them is a {@code List<JAXBElement<?>>}, so every one has to
-     * be wrapped by its factory method — a bare {@link Empty} in that list does not marshal.
+     * Must be wrapped by its factory method: a bare {@link Empty} in the list does not marshal.
      */
     private static JAXBElement<Empty> dynamicMark(
         BuildContext ctx, DynamicAttachment.DynamicType dynamicType) {
@@ -477,13 +411,9 @@ final class NoteBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * The performed tick count for one note: its written duration, scaled by
-     * {@code normalNotes / grade} when the note belongs to a tuplet.
-     *
-     * <p>{@link NoteTypeMapping#DIVISIONS} is chosen so that this scaling is exact for every
-     * note value, dots and tuplet ratio the validator accepts, so an inexact result means
-     * {@code DIVISIONS} itself is wrong. That throws rather than rounding, mirroring
-     * {@link Dots#augment}.
+     * Throws rather than rounds: {@link NoteTypeMapping#DIVISIONS} makes the scaling exact for
+     * every accepted note value, dots and tuplet ratio, so an inexact result means
+     * {@code DIVISIONS} is wrong.
      *
      * @param tuplet the tuplet this note belongs to, or {@code null} if none
      */

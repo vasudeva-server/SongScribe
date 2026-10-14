@@ -28,8 +28,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * Moves keyboard focus to the score. Selected while focus is in the score;
- * {@link MainFrame#syncScoreAction()} keeps that state.
+ * Moves keyboard focus to the score. {@link MainFrame#syncScoreAction()} keeps its selected state.
  */
 public final class FocusScoreAction extends SelectableUIAction {
 

@@ -68,25 +68,13 @@ import songscribe.io.LyricNumbers;
  * Maps one unmarshalled {@code <note>} onto a {@link StaffElement} appended to a
  * {@link Line}, together with its per-note attachments and lyrics.
  *
- * <p>A {@code Note} object already holds every child, so each value is read where it is used —
- * there is no per-note scratch accumulator.
+ * <p>Three children are deliberately not read: {@code <duration>} (recomputed from
+ * {@code <type>} and its dots), {@code <alter>} (the written pitch comes from
+ * {@code <step>}/{@code <octave>}), and the sounding {@code <tie>} ({@code <tied>} is the source
+ * of truth for spans).
  *
- * <p>Three children are deliberately not read. {@code <duration>} is recomputed
- * from {@code <type>} and its dots; {@code <alter>} is the sounding semitone,
- * while the written pitch comes from {@code <step>}/{@code <octave>}; and the
- * sounding {@code <tie>} is write-forward, {@code <tied>} being the source of truth
- * for span reconstruction.
- *
- * <p>One thing a note carries does <em>not</em> belong to the element it produces
- * and is handed back to {@link MeasureMapper} instead: a {@code <breath-mark>}
- * articulation, which becomes a separate {@code BREATH_MARK} element appended after
- * this note.
- *
- * <p>Range spans are not handed back either. A beam, tie, tuplet bracket, trill or
- * glissando pairs two notes, so it cannot be settled while standing on one — but the
- * whole part is already parsed, so {@link MeasureMapper}'s span passes come back and
- * read each note's markers when they need them. The readers below are what they call:
- * one per span kind, each returning exactly what its pass consumes.
+ * <p>A {@code <breath-mark>} articulation is handed back to {@link MeasureMapper}, which appends
+ * it as a separate {@code BREATH_MARK} element after this note.
  */
 final class NoteMapper {
 
@@ -95,16 +83,8 @@ final class NoteMapper {
     private NoteMapper() {}
 
     /**
-     * The result of mapping one {@code <note>}: the appended element plus the three
-     * facts about the note that its own element cannot carry.
-     *
-     * @param element               the element appended to the line
-     * @param usedLegacyAccidental  true when the {@code <accidental>} token was a
-     *                              retired one converted to its replacement
-     * @param droppedLyric          true when a {@code <lyric>} was dropped because its
-     *                              number names no script
-     * @param hasBreathMark         true when a {@code BREATH_MARK} element must be
-     *                              appended immediately after this note
+     * The result of mapping one {@code <note>}: the appended element plus facts about the note
+     * that its own element cannot carry.
      */
     record MappedNote(
         StaffElement element,
@@ -114,10 +94,7 @@ final class NoteMapper {
     ) {}
 
     /**
-     * One note's {@code <tuplet>} bracket marker, together with the
-     * {@code <time-modification>} the bracket's anchor states.
-     *
-     * <p>{@code yOffsetSs} is already converted to staff spaces; an absent
+     * {@code yOffsetSs} is already converted to staff spaces; an absent
      * {@code relative-y} reads as 0, the value the model treats as "unset".
      */
     record TupletMarker(
@@ -131,23 +108,15 @@ final class NoteMapper {
     ) {}
 
     /**
-     * One note's {@code <wavy-line>} markers. A note carrying both bounds a
-     * single-note trill. {@code yOffsetSs} is already in staff spaces.
+     * A note carrying both bounds a single-note trill. {@code yOffsetSs} is already in staff
+     * spaces.
      */
     record TrillMarker(boolean start, boolean stop, double yOffsetSs) {}
 
     /**
-     * Maps {@code pmNote} to a {@link StaffElement}, appends it to {@code line},
-     * and resolves its non-span attachments (articulations, fermata, dynamic,
-     * fall) and its lyrics. {@code relative-x} is taken as the user's horizontal offset
-     * only when {@code features} declares it. A {@code <lyric>} whose number names no
-     * script does not refuse the document: it is dropped, and the result says so, for the
-     * caller to report with {@link songscribe.dom.ParsedSong#lyricDroppedEntry}.
-     *
-     * @throws SAXException if the note is missing its {@code <type>} element, or carries an
-     *                      unrecognised one; a {@code <pitch>} that is unspellable or lies
-     *                      off the staff; more than two {@code <dot>} elements; or a second
-     *                      fermata or dynamic for the element
+     * {@code relative-x} is taken as the user's horizontal offset only when {@code features}
+     * declares it. A {@code <lyric>} whose number names no script is dropped, not refused, and
+     * the result says so.
      */
     static MappedNote map(Note pmNote, Line line, Set<SupportedFeature> features) throws SAXException {
         var typeToken = ProxyMusicAccess.requireNoteTypeToken(pmNote).trim();
@@ -222,11 +191,7 @@ final class NoteMapper {
     // -------------------------------------------------------------------------
 
     /**
-     * Applies the accidental state, which comes from {@code <accidental>} and never
-     * from {@code <alter>}. A note without an {@code <accidental>} stays {@code Adopting}.
-     * Returns true when the token was a retired legacy one converted to its
-     * replacement — the caller ORs that into the document-wide accidentals-converted
-     * flag.
+     * The accidental state comes from {@code <accidental>} and never from {@code <alter>}.
      */
     private static boolean applyAccidental(Note pmNote, NoteElement element) {
         var accidentalToken = ProxyMusicAccess.accidentalToken(pmNote);
@@ -255,12 +220,6 @@ final class NoteMapper {
     // <notations>
     // -------------------------------------------------------------------------
 
-    /**
-     * The {@code <notations>} content that belongs to the note itself. The
-     * span-borne children — {@code <tied>}, {@code <tuplet>}, {@code <slide>} and
-     * {@code <wavy-line>} — are not here: they pair across notes and are read by the
-     * span passes through the accessors further down.
-     */
     private record NoteNotations(
         boolean hasAccent,
         boolean hasStaccato,
@@ -314,14 +273,6 @@ final class NoteMapper {
         return new NoteNotations(hasAccent, hasStaccato, hasFall, hasBreathMark, hasFermata, dynamicType);
     }
 
-    /**
-     * Every {@code <notations>} child of {@code pmNote}, across all its
-     * {@code <notations>} elements. A note may carry more than one, and their
-     * children are read as one set — exactly as the SAX reader accumulated them.
-     *
-     * <p>The span passes call this once each per note, so the ordinary case of a single
-     * {@code <notations>} hands back its own list rather than a copy of it.
-     */
     private static List<Object> notationChildren(Note pmNote) {
         var notations = pmNote.getNotations();
 
@@ -372,14 +323,6 @@ final class NoteMapper {
         );
     }
 
-    /**
-     * Puts the note-borne attachments on {@code element}. A {@code <notations>} set may state
-     * one fermata and one dynamic, and the element holds at most one of each class, so each
-     * goes on through {@link DocumentValidation#attachUnique}, which refuses the document
-     * rather than the attachment when the element already carries one.
-     *
-     * @throws SAXException if {@code element} already carries a fermata or a dynamic
-     */
     private static void applyNotationAttachments(NoteNotations notations, StaffElement element)
             throws SAXException {
         // Only a note takes articulations and a fall; a rest's <notations> can carry the
@@ -413,7 +356,7 @@ final class NoteMapper {
     // Range-span markers — read by MeasureMapper's span passes, one reader each
     // -------------------------------------------------------------------------
 
-    /** This note's {@code <slide>} type token, or {@code null} when it carries none. */
+    /** {@code null} when the note carries none. */
     static @Nullable String slideType(Note pmNote) {
         for (var child : notationChildren(pmNote)) {
             if (child instanceof Slide slide) {
@@ -425,9 +368,8 @@ final class NoteMapper {
     }
 
     /**
-     * This note's primary {@code <beam number="1">} value, or {@code null} when it
-     * carries none. Secondary levels and hooks are write-forward — layout re-derives
-     * them — so only the primary beam drives span collapse.
+     * {@code null} when the note carries none. Secondary levels and hooks are write-forward, so
+     * only the primary beam drives span collapse.
      */
     static @Nullable String primaryBeamType(Note pmNote) {
         String beamType = null;
@@ -442,10 +384,7 @@ final class NoteMapper {
     }
 
     /**
-     * Answers whether this note opens a tie. Only the start is read: the note a tie ends on is
-     * derived from the anchor, so a {@code <tied type="stop">} carries nothing the reader needs.
-     *
-     * @return {@code true} when one of the note's {@code <tied>} markers is a start
+     * Only the start is read: the end note is derived from the anchor.
      */
     static boolean startsTie(Note pmNote) {
         for (var child : notationChildren(pmNote)) {
@@ -457,14 +396,6 @@ final class NoteMapper {
         return false;
     }
 
-    /**
-     * This note's {@code <tuplet>} bracket marker and the {@code <time-modification>}
-     * beside it. The vertical offset is carried on the start bracket, which is where
-     * the writer puts it.
-     *
-     * @throws SAXException if the {@code <time-modification>} states more than two
-     *                      {@code <normal-dot>} elements
-     */
     static TupletMarker tupletMarker(Note pmNote) throws SAXException {
         var start = false;
         var stop = false;
@@ -501,13 +432,7 @@ final class NoteMapper {
     }
 
     /**
-     * Converts a dot count the document states into {@link Dots}, refusing the document when
-     * the count is one this program cannot represent. Valid MusicXML may state any number of
-     * dots; the model holds at most two.
-     *
-     * @param count   the number of dot elements the document carries
-     * @param element the name of the dot element counted, so the detail names it
-     * @throws SAXException if {@code count} is more than {@link Dots} can hold
+     * Valid MusicXML may state any number of dots; the model holds at most two.
      */
     private static Dots dotsOf(int count, String element) throws SAXException {
         try {
@@ -519,7 +444,6 @@ final class NoteMapper {
     }
 
     /**
-     * This note's {@code <wavy-line>} markers, found inside its {@code <ornaments>}.
      * {@code <trill-mark>} is decorative; the wavy-line pair is what bounds the span.
      */
     static TrillMarker trillMarker(Note pmNote) {
@@ -552,17 +476,8 @@ final class NoteMapper {
     // -------------------------------------------------------------------------
 
     /**
-     * Maps this note's {@code <lyric>} children onto {@code element}, one {@link Lyric} per
-     * script. Mirrors {@code StaffElementIO.endElement11}'s lyric-close branch: a carrier
-     * ({@code <extend type="stop|continue"/>} with no text of its own) gets a null
-     * syllabic and empty text; for a BEGIN/MIDDLE syllabic a trailing compound-word
-     * marker is stripped and {@code compound} set, so the word boundary
-     * round-trips. The {@link Lyric} constructor re-validates the
-     * carrier/syllabic contract. A blank text-bearing syllable carries nothing a user wrote,
-     * so {@link #mapLyric} drops it rather than the whole document. A {@code <lyric>} whose
-     * number names no script is dropped here, whatever it holds, and reported.
-     *
-     * @return true if a {@code <lyric>} was dropped because its number names no script
+     * A blank text-bearing syllable is dropped, not the document. A {@code <lyric>} whose number
+     * names no script is dropped, whatever it holds, and reported.
      */
     private static boolean putLyrics(Note pmNote, StaffElement element) {
         var droppedLyric = false;

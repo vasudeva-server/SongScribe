@@ -21,26 +21,13 @@ public enum Accidental {
         this.glyph = glyph;
     }
 
-    /**
-     * Returns the alteration this accidental applies to the natural pitch of a staff position.
-     *
-     * @return the signed offset from the natural pitch in semitones, {@code -2} for
-     *     {@link #DOUBLE_FLAT} through {@code 2} for {@link #DOUBLE_SHARP}
-     */
     public int semitones() {
         return semitones;
     }
 
     /**
-     * Returns the SMuFL glyph this accidental draws, at every size. Grace notes use this same
-     * regular glyph; the grace size comes from drawing it with a scaled-down font
-     * ({@link ElementType#GRACE_NOTE_SCALE}), mirroring how grace noteheads are rendered.
-     * There is no separate small-glyph table: Bravura's "small" accidentals are a distinct
-     * private-use set with their own (non-proportional) metrics, and have no
-     * double-flat/double-sharp variant, so they cannot scale uniformly with the regular
-     * glyphs.
-     *
-     * @return the glyph; one per constant, never null
+     * Grace notes draw this glyph at {@link ElementType#GRACE_NOTE_SCALE}; Bravura's "small"
+     * accidentals have non-proportional metrics and no double variants, so they cannot replace it.
      */
     public SMuFLGlyph glyph() {
         return glyph;

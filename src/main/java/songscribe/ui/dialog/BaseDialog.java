@@ -72,38 +72,26 @@ import songscribe.util.UIUtils;
 
 
 /**
- * The base class for all application dialogs, providing common layout
- * helpers, lifecycle management, and inner classes for tabbed content.
+ * The base class for all application dialogs.
  *
- * <p><strong>An instance serves one opening.</strong> The opener builds a dialog, shows
- * it, and drops it; the next opening builds a fresh one. The one piece of state that must
- * outlive a close — the window's geometry — is held per class in
- * {@link DialogGeometryStore}, outside the instance, and {@link #getData()} reads what to show afresh every time, so
- * there is nothing else a dialog is entitled to carry from one opening to the next.
+ * <p><strong>An instance serves one opening.</strong> The opener builds a dialog, shows it, and
+ * drops it. The window's geometry outlives a close in {@link DialogGeometryStore}; nothing else
+ * may be carried from one opening to the next.
  *
- * <p><strong>A non-modal dialog must not be built twice while one is up.</strong> A modal
- * {@code setVisible(true)} blocks its caller, so a second opening cannot even begin; a
- * non-modal one returns at once and its opener drops the reference, so nothing but the
- * opener can keep a second window from appearing beside the first. The opener therefore
- * keeps the dialog it built for as long as {@link #isShowing()} answers true and answers a
- * repeat invocation with {@link #toFront()} instead of building — see
- * {@link songscribe.ui.action.DialogOpenAction#open()}, which every entry point to a
- * non-modal dialog goes through, {@code MainFrame.handlePrefs} included.
- * {@code PreferencesDialog} is the only non-modal dialog today.
+ * <p><strong>A non-modal dialog must not be built twice while one is up.</strong> The opener keeps
+ * the dialog while {@link #isShowing()} answers true and answers a repeat invocation with
+ * {@link #toFront()} — see {@link songscribe.ui.action.DialogOpenAction#open()}, which every entry
+ * point to a non-modal dialog goes through.
  *
- * <p><strong>Why a non-modal dialog stays reachable after its opener returns.</strong>
- * {@link #setVisible} registers anonymous {@link WindowAdapter}s that capture
- * {@code BaseDialog.this}, the {@link JDialog} holds those adapters, and AWT holds a
- * showing window through its owner. That chain — not the opener's field — is what keeps a
- * non-modal dialog alive while the user is looking at it. Removing those listeners without
- * putting an equivalent reference in their place would make the dialog collectible mid-use,
- * which is why the reason is written down here rather than left to be re-derived.
+ * <p><strong>A non-modal dialog stays reachable after its opener returns</strong> through the
+ * anonymous {@link WindowAdapter}s {@link #setVisible} registers, which the {@link JDialog}
+ * holds. Removing them without an equivalent reference would make the dialog collectible
+ * mid-use.
  *
  * <h2>Lifecycle</h2>
  *
- * <p>{@link #setVisible setVisible(false)} calls {@link #dispose()} — the OK/Cancel path
- * and the title-bar close both funnel through it — as does a show abandoned before the
- * window ever reached the screen. An instance is not reusable afterwards.
+ * <p>{@link #setVisible setVisible(false)} calls {@link #dispose()}, as does a show abandoned
+ * before the window reached the screen. An instance is not reusable afterwards.
  */
 public abstract class BaseDialog implements Disposable {
 
@@ -129,24 +117,11 @@ public abstract class BaseDialog implements Disposable {
     private final ValueProperty<List<ObservableValue<Boolean>>> validityConditions =
         new ValueProperty<>(List.of());
 
-    /**
-     * Whether every condition {@link #requireValid} was given currently holds — the
-     * dialog's own answer to whether its values may be committed.
-     *
-     * <p>A dialog that contributes no condition is always valid, so this changes nothing
-     * for one that has no rule to state.
-     *
-     * <p>The conjunction is a {@code computed}, so it depends on the conditions
-     * themselves as well as on the list of them: a condition that changes re-derives
-     * this, and so does one that is added.
-     */
     protected final ObservableValue<Boolean> valid =
         bindings.computed(() -> validityConditions.get().stream().allMatch(ObservableValue::get));
 
-    /** The tab {@link #showTab} asked for, consumed by the next show. */
     private @Nullable Tab requestedTab = null;
 
-    /** The control {@link #showTab} asked to focus, consumed with {@link #requestedTab}. */
     private @Nullable JComponent requestedFocus = null;
 
     // Declaration order matters: buildTabbedContent() reads tabListModel, tabList,
@@ -169,27 +144,13 @@ public abstract class BaseDialog implements Disposable {
     private JDialog dialog;
 
     /**
-     * Whether the dialog window exists and is on screen.
-     * <p>
-     * {@link #dialog} is deferred-init — null until the first {@code setVisible(true)} —
-     * and code that populates tab content can run before that, so "is it showing" has to
-     * answer false rather than throw for a dialog that was never built.
-     *
-     * @return {@code true} while the window is on screen, {@code false} before the first
-     *     show and after the close
+     * Answers false rather than throwing for a dialog that was never built.
      */
     public boolean isShowing() {
         //noinspection ConstantValue — deferred-init field, genuinely null before first show
         return dialog != null && dialog.isShowing();
     }
 
-    /**
-     * Brings this dialog's window to the front and asks for focus, which is how a repeat
-     * invocation of a non-modal dialog surfaces the window already up instead of building
-     * a second one beside it.
-     * <p>
-     * A no-op unless the dialog {@linkplain #isShowing() is showing}.
-     */
     public void toFront() {
         if (isShowing()) {
             dialog.toFront();
@@ -198,30 +159,15 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * @return this dialog's {@link Bindings}, which every binding it declares belongs to and
-     *     which {@link #dispose()} cancels
+     * Every binding the dialog declares belongs to these, and {@link #dispose()} cancels them.
      */
     protected final Bindings bindings() {
         return bindings;
     }
 
     /**
-     * Adds a condition that must hold for this dialog's values to be committable.
-     *
-     * <p>Conditions accumulate and are conjoined: {@link #valid} is true when every one
-     * of them is, and a dialog that adds none is always valid. A
-     * {@link StandardDialog} disables its OK button while
-     * {@link #valid} is false, so a rule stated here is one the user sees the moment they
-     * break it rather than one they are told about after pressing OK.
-     *
-     * <p>Call it while building — from a {@link Tab}'s construction or the dialog's own —
-     * not in response to an edit. A condition is a value that answers over and over, not
-     * an answer.
-     *
-     * @param condition the condition to require, typically a {@code computed} over the
-     *     properties it reads; it is asked whenever anything it reads changes
-     * @effects replaces the held list of conditions with one carrying {@code condition},
-     *     which re-derives {@link #valid} and so anything bound to it
+     * Call it while building, not in response to an edit: a condition is a value that answers
+     * over and over, not an answer.
      */
     protected final void requireValid(ObservableValue<Boolean> condition) {
         var conditions = new ArrayList<>(validityConditions.get());
@@ -230,11 +176,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Disposes this dialog's own {@link #bindings} and marks this instance spent.
-     * <p>
-     * Idempotent: {@code setVisible(false)} is reachable both from the OK/Cancel path and
-     * from {@code windowClosing}, so a second call has to be a no-op rather than a second
-     * teardown.
+     * Idempotent: {@code setVisible(false)} is reachable from both the OK/Cancel path and
+     * {@code windowClosing}.
      */
     @Override
     public void dispose() {
@@ -280,12 +223,6 @@ public abstract class BaseDialog implements Disposable {
         return tabs;
     }
 
-    /**
-     * The container a subclass's button panel should attach to. With a sidebar,
-     * that is the content column to the right of the full-height sidebar, so the
-     * sidebar reaches the bottom of the dialog while the buttons sit only under
-     * the content. Without a sidebar, it is the content pane itself.
-     */
     protected Container getButtonPanelContainer() {
         return hasSidebar ? tabContentArea : contentPanel;
     }
@@ -336,41 +273,22 @@ public abstract class BaseDialog implements Disposable {
         return tabbedContent;
     }
 
-    /**
-     * Registers a tab so the base class can call its lifecycle methods.
-     */
     protected void registerTab(Tab tab) {
         tabs.add(tab);
     }
 
-    /**
-     * Adds a tab to the sidebar/card composite and registers it for lifecycle
-     * callbacks. The tab's title (from {@link Tab#getTitle()}) becomes its
-     * sidebar row; its card name is its insertion index.
-     */
     protected void addTab(Tab tab) {
         tabCards.add(tab, String.valueOf(tabs.size()));
         tabListModel.addElement(tab.getTitle());
         registerTab(tab);
     }
 
-    /** Where a show should land: which tab to select, and what to put the caret in. */
     private record ShowRequest(int tabIndex, @Nullable JComponent focus) {}
 
     /**
-     * Shows the dialog with {@code tab} selected rather than the first tab, and
-     * {@code focus} holding the caret — or the platform's default first focusable
-     * control when {@code focus} is null.
-     * <p>
-     * The tab is named by object: {@link #addTab} is the sole definition of tab order, so
-     * resolving through it is exact, and a caller cannot pass an index that quietly
-     * means a different tab after one is inserted.
-     * <p>
-     * The caret target travels with the tab request rather than being parked on the tab,
-     * so one read consumes the whole request and there is no per-tab state to leak into a
-     * later open. A tab that always leads with the same control says so by overriding
-     * {@link Tab#getInitialFocus} instead — that is a standing property of the tab, not a
-     * request about one particular show.
+     * {@code focus} holds the caret, or the platform's default first focusable control when it
+     * is null. A tab that always leads with the same control overrides
+     * {@link Tab#getInitialFocus} instead.
      */
     protected void showTab(Tab tab, @Nullable JComponent focus) {
         requestedTab = tab;
@@ -379,16 +297,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Takes the pending {@link #showTab} request, clearing it, defaulting to the first tab
-     * and no caret target when none was made.
-     * <p>
-     * Read at the very start of the show, before anything that can abort it. A show
-     * cancelled by {@code getData()} — or by a tab throwing out of it — must still
-     * consume the request, or it would survive into an unrelated later open.
-     * <p>
-     * A tab that is not registered falls back to the first tab rather than leaving the
-     * dialog on no card at all, and drops the caret target with it: that control belongs
-     * to a tab this dialog is not going to show.
+     * Read at the very start of the show, before anything that can abort it, or a cancelled show
+     * would leave the request to survive into an unrelated later open.
      */
     private ShowRequest consumeShowRequest() {
         var tab = requestedTab;
@@ -406,12 +316,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * The standing caret target of the tab(s) this show puts on screen, or null when none
-     * names one.
-     * <p>
-     * With a sidebar exactly one tab is on screen. Without one every tab is, so the first
-     * that names a control wins — an arbitrary but stable choice, and no such dialog names
-     * more than one today.
+     * Null when none names one. Without a sidebar every tab is on screen, so the first that
+     * names a control wins.
      */
     @Nullable
     private JComponent shownTabInitialFocus(int shownTabIndex) {
@@ -431,11 +337,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Asks {@code component} to take the caret once the window is up, if there is one.
-     * <p>
-     * Posted rather than called: {@link JComponent#requestFocusInWindow} is a no-op while
-     * the window is not showing, and a modal {@code setVisible(true)} blocks. Queuing it
-     * means it runs once the window is up either way.
+     * Posted because {@link JComponent#requestFocusInWindow} is a no-op while the window is not
+     * showing, and a modal {@code setVisible(true)} blocks.
      */
     private static void requestFocusLater(@Nullable JComponent component) {
         if (component != null) {
@@ -444,9 +347,7 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Selects {@code index} in the sidebar as the dialog opens. A no-op
-     * {@code setSelectedIndex} fires no event, so {@link #selectTab} is driven directly
-     * in that case.
+     * A no-op {@code setSelectedIndex} fires no event, so {@link #selectTab} is driven directly.
      */
     private void selectInitialTab(int index) {
         if (tabList.getSelectedIndex() == index) {
@@ -539,10 +440,7 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Adds a left-positioned {@code label + field} row to {@code container},
-     * like {@link #addLabeledField} with {@link LabelPosition#LEFT} but taking a
-     * pre-built label so the caller can column-align it (e.g. a fixed width set
-     * by a shared measuring pass) before it is laid out.
+     * Takes a pre-built label so the caller can column-align it before it is laid out.
      */
     public static void addLabeledField(JComponent container, JLabel label, JComponent field) {
         var panel = new JPanel(
@@ -558,17 +456,9 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Adds a {@code label + field} row to {@code container} in which the field fills
-     * the width left over beside the label, where {@link #addLabeledField(JComponent,
-     * JLabel, JComponent)} pins the field to its own column width.
+     * For a field taller than one row, use {@link #addScrolledFieldRow} instead.
      *
-     * <p>For a field taller than one row, use {@link #addScrolledFieldRow} instead.
-     *
-     * @param container the container the row is added to
-     * @param label     the row's label, already aligned or width-matched by the caller
-     * @param field     the component that fills the rest of the row
-     * @effects points {@code label} at {@code field} as the control it names, and adds
-     *     the row to {@code container}
+     * @param label the row's label, already aligned or width-matched by the caller
      */
     public static void addFilledFieldRow(JComponent container, JLabel label, JComponent field) {
         label.setLabelFor(field);
@@ -576,20 +466,9 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Adds a {@code label + field} row for a field taller than one row: {@code field} is
-     * put in a scroll pane, which fills the width left over beside the label, and the
-     * label is lined up with the field's first line of text.
+     * A pass that also writes the label's geometry must run after this.
      *
-     * <p>The scroll pane is what makes a taller field usable. A {@link javax.swing.JTextField}
-     * scrolls its own view, but a {@link javax.swing.JTextArea} scrolls only inside a
-     * viewport, so without one a line wider than the row is clipped and unreachable.
-     *
-     * @param container the container the row is added to
-     * @param label     the row's label, already aligned or width-matched by the caller
-     * @param field     the field to scroll and fill the rest of the row with
-     * @effects writes {@code label}'s vertical alignment, border and {@code labelFor}, and
-     *     adds the row to {@code container}. A pass that also writes the label's geometry —
-     *     a shared width-alignment pass, say — must run after this
+     * @param label the row's label, already aligned or width-matched by the caller
      */
     public static void addScrolledFieldRow(JComponent container, JLabel label, JComponent field) {
         var scroll = new JScrollPane(field);
@@ -608,7 +487,6 @@ public abstract class BaseDialog implements Disposable {
         container.add(filledRow(label, scroll));
     }
 
-    /** A row whose {@code filler} takes all the width the label does not. */
     private static JPanel filledRow(JLabel label, JComponent filler) {
         var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
         var row = new JPanel(new BorderLayout(horizontalGap, 0));
@@ -647,26 +525,12 @@ public abstract class BaseDialog implements Disposable {
         addSeparator(container, true);
     }
 
-    /**
-     * Adds the larger inter-section spacer used between stacked sections of a
-     * {@link Tab} (sized from {@code DIALOG_SECTION_GAP}). The container's own
-     * {@code add} applies any layout constraints (a {@link Tab} routes through
-     * its constrained {@code add}).
-     */
     public static void addSectionSeparator(JComponent container) {
         container.add(Box.createVerticalStrut(
             FlatLafProps.getInt(FlatLafKey.DIALOG_SECTION_GAP)
         ));
     }
 
-    /**
-     * Adds a spacer strut to {@code container}, sized from the FlatLaf gap
-     * properties. The orientation follows the container's layout: an X-axis
-     * {@link BoxLayout} gets a horizontal strut, anything else (Y-axis box or a
-     * {@link Tab}'s {@link GridBagLayout}) gets a vertical one. The container's
-     * own {@code add} applies any layout constraints (e.g. {@link Tab} routes
-     * through its constrained {@code add}).
-     */
     private static void addSeparator(JComponent container, boolean isLarge) {
         if (container.getLayout() instanceof BoxLayout boxLayout
                 && boxLayout.getAxis() == BoxLayout.X_AXIS) {
@@ -685,17 +549,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Shows the dialog, or takes it down and disposes it.
-     * <p>
      * <strong>An instance is not reusable after a close.</strong> {@code setVisible(false)}
-     * ends this dialog's life: it saves the geometry, disposes the window, and calls
-     * {@link #dispose()}. A later opening is a fresh instance, built by the opener.
-     * A show abandoned before the window reached the screen — {@link #getData()} answering
-     * false, or the window failing to appear — disposes the instance for the same reason.
-     *
-     * @param visible {@code true} to build the window and show it, {@code false} to close it
-     * @invariant the window is owned by the main frame whatever this dialog's
-     *     {@link Modality}, so it always sits above the score
+     * ends this dialog's life, as does a show abandoned before the window reached the screen.
      */
     public void setVisible(boolean visible) {
         if (visible) {
@@ -846,43 +701,24 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Returns the button that should be the default button for the dialog,
-     * or null if there is no default button.
+     * {@code null} if there is no default button.
      */
     protected @Nullable JButton getDefaultButton() {
         return null;
     }
 
-    /**
-     * Returns whether the dialog should be resizable. Defaults to false.
-     * Subclasses can override to allow resizing.
-     */
     protected boolean isResizable() {
         return false;
     }
 
-    /**
-     * Returns extra width to add to the dialog beyond its packed size.
-     * Subclasses can override this to make the dialog wider.
-     */
     protected int getExtraWidth() {
         return 0;
     }
 
-    /**
-     * Returns extra height to add to the dialog beyond its packed size.
-     * Subclasses can override this to make the dialog taller.
-     */
     protected int getExtraHeight() {
         return 0;
     }
 
-    /**
-     * Returns whether the window-close action (title-bar X, Escape, Cmd+W)
-     * should be honored. Defaults to true. Subclasses can override to
-     * prevent the user from dismissing the dialog while an operation is in
-     * progress.
-     */
     protected boolean isClosable() {
         return true;
     }
@@ -896,9 +732,7 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Returns the underlying {@link JDialog}, or null if the dialog is not
-     * currently visible. Useful when a caller needs a {@link Component}
-     * parent for a nested dialog.
+     * {@code null} if the dialog is not currently visible.
      */
     public @Nullable JDialog getWindow() {
         return dialog;
@@ -909,8 +743,6 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Pins the dialog's size to its current preferred size (plus any extra
-     * width/height), so the window neither grows nor shrinks on its own.
      * Must be called immediately after {@link JDialog#pack()}.
      */
     private void pinSizeToPreferred() {
@@ -923,12 +755,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Re-packs the dialog to fit its current content. Use when a tab's content
-     * changes height at runtime (e.g. a live preview) and the fixed size pinned
-     * at show time would otherwise starve it. Clears that pin so {@link JDialog#pack()}
-     * recomputes from the layout, then re-pins to the new preferred size,
-     * preserving the dialog's location. A no-op until the dialog is showing, so
-     * it is safe to call from content-population code that runs before display.
+     * For a tab whose content changes height at runtime, which the size pinned at show time
+     * would otherwise starve.
      */
     protected void repackToContent() {
         // Null until the first show: content-population code (document listeners on a
@@ -946,27 +774,16 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * The window this dialog parents itself to.
-     *
-     * <p><strong>Window parenting only.</strong> It is not a route to the score: a dialog may not
-     * query or modify state outside itself, and reaching the document through here is that rule
-     * broken in a longer spelling. What a dialog needs from the document arrives as values, and
-     * what it writes goes through its {@link DialogOps} — see {@code .claude/guides/dialogs.md}.
-     *
-     * @return the application window, for parenting a window or an alert
+     * <strong>Window parenting only.</strong> It is not a route to the score; see
+     * {@code .claude/guides/dialogs.md}.
      */
     protected MainFrame getMainFrame() {
         return mainFrame;
     }
 
     /**
-     * Called when the dialog is about to be shown. Populates controls
-     * by iterating registered tabs. Subclasses may override to add
-     * dialog-level population logic (call {@code super.getData()} to
-     * run tab iteration). Subclasses with no registered tabs may override
-     * without calling {@code super}.
-     *
-     * @return true to proceed with showing the dialog, false to cancel
+     * Call {@code super.getData()} to run tab iteration; subclasses with no registered tabs may
+     * override without it.
      */
     protected boolean getData() {
         for (var tab : tabs) {
@@ -1001,13 +818,9 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * One page of a tabbed dialog: a panel that owns its controls and its own layout.
-     *
-     * <p><strong>A tab populates and displays; it does not commit and it does not validate.</strong>
-     * Both of those are the dialog's, because both are about the values as a whole — a rule that
-     * spans tabs cannot be checked from inside one of them, and a commit split across tabs is
-     * several undo steps where the user made one edit. A tab therefore contributes what its
-     * controls say to the dialog's gathered values and stops there; see {@link StandardDialog}.
+     * <strong>A tab populates and displays; it does not commit and it does not validate.</strong>
+     * A rule that spans tabs cannot be checked from inside one, and a commit split across tabs is
+     * several undo steps for one edit. See {@link StandardDialog}.
      */
     @SuppressWarnings("NoopMethodInAbstractClass")
     protected abstract class Tab extends JPanel {
@@ -1043,34 +856,18 @@ public abstract class BaseDialog implements Disposable {
             return title;
         }
 
-        /**
-         * @return the owning dialog's {@link Bindings}
-         */
         protected final Bindings bindings() {
             return BaseDialog.this.bindings;
         }
 
-        /**
-         * Adds a condition to the owning dialog's validity; see
-         * {@link BaseDialog#requireValid}.
-         *
-         * @param condition the condition this tab contributes
-         */
         protected final void requireValid(ObservableValue<Boolean> condition) {
             BaseDialog.this.requireValid(condition);
         }
 
-        /**
-         * @return the owning dialog's {@link MainFrame}
-         */
         protected final MainFrame getMainFrame() {
             return BaseDialog.this.getMainFrame();
         }
 
-        /**
-         * Re-packs the owning dialog to fit its current content; see
-         * {@link BaseDialog#repackToContent()}.
-         */
         protected final void repackToContent() {
             BaseDialog.this.repackToContent();
         }
@@ -1089,46 +886,24 @@ public abstract class BaseDialog implements Disposable {
             }
         }
 
-        /**
-         * Subclasses add components to the tab here.
-         */
         protected abstract void initContents();
 
-        /**
-         * Populate controls from the model. Called when the dialog is
-         * about to be shown.
-         *
-         * @return true to proceed, false to cancel showing the dialog
-         */
         @SuppressWarnings("SameReturnValue")
         protected boolean getData() {
             return true;
         }
 
-        /**
-         * Called after {@link #getData()} but before the dialog becomes
-         * visible. Use for lazy loading, focus requests, etc.
-         */
         protected void tabWillShow() {}
 
         /**
-         * The control that should hold the caret whenever this tab appears, or null to
-         * leave the platform's default first focusable control in charge.
-         * <p>
-         * A standing property of the tab, asked for afresh every time the tab is shown —
-         * both when the dialog opens on it and when the user switches to it in a window
-         * that is already up. A caller that wants a particular control for one particular
-         * open passes it to {@link BaseDialog#showTab} instead, and that outranks this.
+         * Null leaves the platform's default first focusable control in charge. A control passed
+         * to {@link BaseDialog#showTab} outranks this.
          */
         @Nullable
         protected JComponent getInitialFocus() {
             return null;
         }
 
-        /**
-         * Called before the dialog is disposed. Use for cleanup
-         * (e.g., stopping playback).
-         */
         protected void tabWillHide() {}
 
         @Override
@@ -1138,12 +913,7 @@ public abstract class BaseDialog implements Disposable {
         }
 
         /**
-         * Adds a component that expands to fill available space in the given
-         * direction ({@link GridBagConstraints#HORIZONTAL},
-         * {@link GridBagConstraints#VERTICAL}, or
-         * {@link GridBagConstraints#BOTH}). Use this instead of {@link #add}
-         * when a component should grow beyond its preferred size. At most one
-         * expanding component should be added per tab.
+         * At most one expanding component may be added per tab.
          */
         protected void addExpanding(
             Component comp,

@@ -45,92 +45,32 @@ import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 
 /**
- * Turns a finished {@link LayoutResult} into the line's {@link HitRegistry}.
- * <p>
- * The whole content of this class is the mapping below — which layout map feeds which target
- * kind — so it is written out rather than left to be inferred from a column of similar-looking
- * {@code add} calls:
+ * Turns a finished {@link LayoutResult} into the line's {@link HitRegistry}. How a region resolves
+ * against the ones it overlaps is declared on {@link HitTarget}; nothing here chooses it.
  *
- * <pre>
- *   LAYOUT SOURCE                                 TARGET
+ * <p><b>Registration happens at layout, never at render</b>, so a hit test before the first paint
+ * still answers.
  *
- *   Line elements + element columns          ──▶  Element
- *     (via ElementHitGeometry, expanded)
- *   LayoutResult.getLyricBoxes               ──▶  Lyric
- *     (+ lyric row top, midline-relative)
- *   decorationLayouts ▸ Hairpin              ──▶  Hairpin
- *   decorationLayouts ▸ Ending               ──▶  Ending
- *   LayoutResult.getSlideLayout ▸ glissando  ──▶  Slide / GraceGlissando
- *     (four-point strip)
- *   LayoutResult.getSlideLayout ▸ fall       ──▶  Slide / GraceGlissando
- *     (glyph bounding box)
- *   decorationLayouts ▸ Articulation         ──▶  Articulation
- *   decorationLayouts ▸ five Attachment      ──▶  Attachment
- *     subtypes, each registered explicitly
- *   decorationLayouts ▸ Trill                ──▶  Trill
- *     (the reserved ink:
- *      tr glyph ∪ wavy line)
- *   decorationLayouts ▸ Tuplet               ──▶  Tuplet
- *     (number ink box, plus the sloped
- *      bracket quad when bracketed)
- *   NoteGeometry.getAccidentalBoundsSs       ──▶  Accidental
- *     (+ note center, midline-relative)
- *   LayoutResult.TieLayout control points    ──▶  Tie
- *     (control-point bounding box)
- *   LayoutResult.BeamLayout ▸ stems          ──▶  Beam
- *     (whole-group bounding box)
- *   decorationLayouts ▸ Attribution          ──▶  Attribution
- *     (first line only; drawn box)
- *   staff header extent — no layout map      ──▶  StaffLine
- * </pre>
- *
- * <p>How each region resolves against the ones it overlaps is a property of the target kind and
- * is declared on {@link HitTarget}. Nothing here chooses it.
- *
- * <p><b>Registration happens at layout, never at render.</b> Everything here is built from data
- * the layout pipeline has already produced, so a line's hit geometry exists from the moment its
- * layout does. Building it during a paint pass — which is what the slide geometry cache used to
- * do — means a hit test before the first paint answers nothing, and the registry has to be
- * invalidated on every repaint, including repaints caused by selection itself.
- *
- * <p>Coordinates are layout space throughout: X in line-local staff spaces, Y in staff spaces
- * relative to the staff midline, positive downward. Decoration and slide geometry already arrive
- * in that space; the lyric boxes do not, and are converted once, here.
+ * <p>Coordinates are layout space: X in line-local staff spaces, Y in staff spaces relative to the
+ * staff midline, positive downward. The lyric boxes are converted into it once, here.
  */
 public final class HitRegionBuilder {
 
-    /**
-     * Vertical reach of the staff-line hit region on each side of the middle line, in staff
-     * spaces.
-     */
     private static final double STAFF_HIT_RADIUS_SS = 2.0;
 
-    /**
-     * Full width of a glissando's hit strip, in pixels — deliberately wider than the drawn line
-     * so a thin diagonal stays easy to click.
-     * <p>
-     * A pixel constant is safe to bake into layout geometry because {@link DocumentScale} is a
-     * fixed document scale that does not vary with on-screen zoom.
-     */
+    /** Deliberately wider than the drawn line so a thin diagonal stays easy to click. */
     private static final double SLIDE_HIT_THICKNESS_PX = 8.0;
 
-    /**
-     * How far a rectangular hit region's right and bottom edges reach past the extent they name,
-     * in pixels. See {@link #addRegion} for why they have to.
-     */
+    /** How far a rectangular hit region's right and bottom edges reach past the extent they name. */
     static final double INCLUSIVE_EDGE_MARGIN_PX = 1.0;
 
     private HitRegionBuilder() {
     }
 
     /**
-     * Builds the hit registry for one line.
-     *
-     * @param line               the line being laid out
-     * @param layoutResult       that line's finished layout — every map this reads must already
-     *                           be populated
-     * @param lyricRenderMetrics song-wide lyric metrics, for the lyric row's height
-     * @return the registry, or {@link HitRegistry#EMPTY} if the line has nothing clickable
+     * @param layoutResult that line's finished layout — every map this reads must already
+     *                     be populated
+     * @return {@link HitRegistry#EMPTY} if the line has nothing clickable
      */
     public static HitRegistry build(
         Line line,
@@ -160,10 +100,7 @@ public final class HitRegionBuilder {
     // Registration
     // ==========================================================================
 
-    /**
-     * Registers each note head's expanded hit rect, including the song's auto-maintained
-     * terminal element, so an annotation can be attached to it.
-     */
+    /** Includes the song's auto-maintained terminal element, so an annotation can be attached to it. */
     private static void addElements(
         Line line,
         LayoutResult layoutResult,
@@ -174,9 +111,6 @@ public final class HitRegionBuilder {
         }
     }
 
-    /**
-     * Registers each laid-out lyric syllable box.
-     */
     private static void addLyrics(
         Line line,
         LayoutResult layoutResult,
@@ -203,13 +137,7 @@ public final class HitRegionBuilder {
         }
     }
 
-    /**
-     * Registers every note carrying drawable slide geometry: a glissando as a strip along the
-     * drawn line, a fall as its glyph's bounding box.
-     * <p>
-     * A grace note's slide is registered too, as {@link HitTarget.GraceGlissando}. It is not
-     * selectable, but the click has to be answered with an explanation rather than swallowed.
-     */
+    /** A grace note's slide is registered as {@link HitTarget.GraceGlissando}: not selectable, but answered. */
     private static void addSlides(
         Line line,
         LayoutResult layoutResult,
@@ -246,7 +174,6 @@ public final class HitRegionBuilder {
         }
     }
 
-    /** Registers each articulation's expanded hit rect. */
     private static void addArticulations(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.decorationLayouts().<Articulation>getDecorationLayoutsByType(Articulation.class)) {
             addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Articulation(entry.getKey()));
@@ -254,19 +181,11 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * Registers each attached decoration's drawn box, with no margin added.
+     * Attachments take the bare box, with no margin: widening the largest targets in the score
+     * would steal clicks from the notes under them. See {@link #decorationHitRectSs}.
      * <p>
-     * Attachments are the largest hit targets in the score, so widening them costs far more than
-     * it buys: every staff space added below one is a staff space in which the note it is attached
-     * to, or a marking stacked under it, cannot be clicked. The margin belongs to the thin
-     * decorations that would otherwise be fiddly — see {@link #decorationHitRectSs}.
-     * <p>
-     * {@code Attachment} has five concrete subtypes; each is registered explicitly rather than
-     * by its abstract base, because {@code getDecorationLayoutsByType(Attachment.class)} would
-     * silently include only whichever subtypes happen to have layouts today and miss a new one
-     * added later. {@code MetronomeAttachment} itself is abstract and never attached directly, so
-     * only its two concrete subtypes, {@link TempoChangeAttachment} and {@link BeatChangeAttachment},
-     * are registered.
+     * Each concrete subtype is registered explicitly, because
+     * {@code getDecorationLayoutsByType(Attachment.class)} would miss a subtype added later.
      */
     private static void addAttachments(LayoutResult layoutResult, HitRegistry.Builder builder) {
         addAttachmentsOfType(FermataAttachment.class, layoutResult, builder);
@@ -286,14 +205,7 @@ public final class HitRegionBuilder {
         }
     }
 
-    /**
-     * Registers each trill: the {@code tr} glyph, plus the wavy line out to the end note when the
-     * trill spans a range.
-     * <p>
-     * The stacker reserves the trill's ink extent ({@link TrillGeometry#inkExtentSs}), so the
-     * layout's bounds are the drawn ink: the wavy line is drawn along the glyph's own baseline, so
-     * it adds nothing below or above the reserved band.
-     */
+    /** The layout's bounds are the drawn ink ({@link TrillGeometry#inkExtentSs}). */
     private static void addTrills(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.decorationLayouts().<Trill>getDecorationLayoutsByType(Trill.class)) {
             addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Trill(entry.getKey()));
@@ -301,13 +213,9 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * Registers each tuplet: the bracket together with its number, or — when the group is beamed
-     * and no bracket is drawn — the number alone.
-     * <p>
-     * A bracket reaches past the notes it spans at both ends, so its X extent comes from the same
-     * {@link TupletGeometry} edge helpers the renderer and the stacker use, not from the anchor-to-end run
-     * the reservation records. A bare number is far narrower than that run, and registering the
-     * run for it would make empty space above a beam select the tuplet.
+     * The X extent comes from the same {@link TupletGeometry} edge helpers the renderer and the
+     * stacker use, not from the anchor-to-end run the reservation records: a bare number is far
+     * narrower than that run.
      */
     private static void addTuplets(
         LayoutResult layoutResult,
@@ -320,26 +228,14 @@ public final class HitRegionBuilder {
         }
     }
 
-    /**
-     * Registers each tie's control-point bounding box.
-     * <p>
-     * The box is computed directly from the four curve-defining points — start, the two outer
-     * control points, and end — rather than by building a {@link java.awt.geom.CubicCurve2D} and
-     * calling {@code getBounds2D()}, which would return exactly this same control-point hull at
-     * the cost of an allocation on every layout pass. The inner curve's control points are not
-     * part of the computation: the inner curve lies inside the outer curve's hull, so it can
-     * never widen the box.
-     */
+    /** The box is the hull of the outer curve's four points; the inner curve lies inside it. */
     private static void addTies(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var tieLayout : layoutResult.tieLayouts()) {
             addRegion(builder, tieBoundsSs(tieLayout), new HitTarget.Tie(tieLayout.placement().tie()));
         }
     }
 
-    /**
-     * Registers one region per beam group: the bounding box of every beam line in the group, not
-     * a separate shape per beam.
-     */
+    /** One region per beam group: the bounding box of every beam line in the group. */
     private static void addBeams(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var beam : line.spanRegistry().findSpans(Beam.class)) {
             var beamLayout = layoutResult.getBeamLayout(beam);
@@ -353,13 +249,8 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * Registers the attribution block, which appears in exactly one line's decoration layouts —
-     * the first, the only line {@code VerticalStackingCalculator.stackAttribution} places it on —
-     * so the loop needs no line-index test.
-     * <p>
-     * The rect is the drawn box with nothing added: {@value Attribution#ATTRIBUTION_MARGIN_BOTTOM_SS}
-     * staff spaces of blank air sit directly above the staff, and folding that into the clickable
-     * area would take clicks aimed at the music.
+     * The rect is the drawn box with nothing added: the blank air above the staff would take
+     * clicks aimed at the music.
      */
     private static void addAttribution(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.decorationLayouts().<Attribution>getDecorationLayoutsByType(Attribution.class)) {
@@ -368,8 +259,6 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * Registers the staff line itself, which selects the whole line.
-     * <p>
      * Deliberately reachable only from the header at the left, never by clicking a staff line
      * under the music: a click among the notes belongs to the notes.
      */
@@ -388,12 +277,8 @@ public final class HitRegionBuilder {
     // ==========================================================================
 
     /**
-     * The hit rect of a thin decoration: its drawn box plus its bottom margin.
-     * <p>
-     * The margin is part of the clickable area for these kinds only — a hairpin, an ending, a trill
-     * or an articulation is a thin marking, and the space reserved below it is the difference between
-     * comfortable and fiddly. Attachments are large enough already and take the bare box; see
-     * {@link #addAttachments}.
+     * The margin is part of the clickable area for thin markings only. Attachments take the bare
+     * box; see {@link #addAttachments}.
      */
     private static Rectangle2D.Double decorationHitRectSs(LayoutResult.DecorationLayout layout) {
         var rectSs = layout.inkRectSs();
@@ -403,16 +288,9 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * The hit shape of one tuplet.
-     * <p>
-     * A number-only tuplet is its number's ink box and nothing else. A bracketed one is that box
-     * plus the bracket, drawn as the quad through the four arm ends — top and bottom of the left
-     * arm, top and bottom of the right arm. The quad is what a rectangle cannot be: the bracket
-     * tilts, and a rect around a tilted bracket takes in the empty corner above the low end and
-     * the empty corner below the high end, both of which are nowhere near the tuplet's ink.
-     * <p>
-     * The two pieces are subpaths of one shape rather than two registered regions, so that a click
-     * resolves against a single area and a drag rectangle reports the tuplet once.
+     * A number-only tuplet is its number's ink box. A bracketed one adds the quad through the four
+     * arm ends, so a tilted bracket takes in no empty corners. The two pieces are subpaths of one
+     * shape, so a click resolves against a single area and a drag reports the tuplet once.
      */
     private static Shape tupletHitShapeSs(
         Tuplet tuplet,
@@ -448,14 +326,6 @@ public final class HitRegionBuilder {
         return shapeSs;
     }
 
-    /**
-     * The ink box of a tuplet's number, bracketed or not.
-     * <p>
-     * The number is centered between the bracket edges either way, so the frame locates it here
-     * exactly as it locates it in the renderer. Its ink top is the reserved box top at that center
-     * X: the number straddles the bracket line, which sits {@link TupletGeometry#bracketLineOffsetSs}
-     * — half an ink height — below the box top.
-     */
     private static Rectangle2D.Double tupletNumberRectSs(Tuplet tuplet, TupletGeometry.BracketFrame frame) {
         var centerXSs = frame.centerXSs();
         var inkWidthSs = TupletGeometry.numberInkWidthSs(tuplet.getGrade());
@@ -467,16 +337,6 @@ public final class HitRegionBuilder {
             TupletGeometry.TUPLET_NUMBER_INK_HEIGHT_SS);
     }
 
-    /**
-     * The clickable strip along a glissando: the drawn segment widened by half the hit thickness
-     * on each side, as a closed four-point path.
-     * <p>
-     * This is the only shape in the registry that is not an axis-aligned rectangle. A rotated
-     * strip is what the old hit test computed the hard way, by rotating the click into the
-     * segment's local frame and comparing against its length and half-thickness; expressing it
-     * as a path lets the registry resolve it with the same {@code contains} call as everything
-     * else.
-     */
     private static Path2D.Double glissandoStripSs(SlideGeometry.Endpoints endpoints) {
         var halfHitSs = DocumentScale.pxToSs(SLIDE_HIT_THICKNESS_PX) / 2;
         var cos = Math.cos(endpoints.angle());
@@ -504,10 +364,6 @@ public final class HitRegionBuilder {
         return strip;
     }
 
-    /**
-     * The control-point bounding box of a tie's curve — start, the two outer control points, and
-     * end. See {@link #addTies} for why the inner curve's control points are excluded.
-     */
     private static Rectangle2D.Double tieBoundsSs(LayoutResult.TieLayout tieLayout) {
         return boundingBoxSs(
             tieLayout.startXSs(), tieLayout.startYSs(),
@@ -517,24 +373,14 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * Registers {@code shapeSs}, extending a rectangle's right and bottom edges so the extent it
-     * names is fully clickable.
-     * <p>
-     * {@code Rectangle2D.contains} is half-open: the left and top edges count as inside, the
-     * right and bottom as outside. Coordinates fall between pixels, so a rect of width {@code w}
-     * starting at {@code x} covers the pixels from {@code x} up to but not including
-     * {@code x + w} — one column short of the glyph it was measured from, and one row short at
-     * the bottom. Extending the far edges by a pixel restores that column and row.
-     * <p>
-     * Every registration goes through here so no rect can miss it. Non-rectangular shapes pass
-     * through untouched: a closed path has no single pair of far edges to extend, and the two
-     * that exist — a glissando strip and a sloped tuplet bracket — are generous shapes already.
+     * {@code Rectangle2D.contains} is half-open, so a rect covers one column and one row short of
+     * the glyph it was measured from; the far edges are extended by {@link #INCLUSIVE_EDGE_MARGIN_PX}.
+     * Every registration goes through here. Non-rectangular shapes pass through untouched.
      */
     private static void addRegion(HitRegistry.Builder builder, Shape shapeSs, HitTarget target) {
         builder.add(inclusiveOf(shapeSs), target);
     }
 
-    /** @see #addRegion */
     private static Shape inclusiveOf(Shape shapeSs) {
         if (!(shapeSs instanceof Rectangle2D rectSs)) {
             return shapeSs;
@@ -550,8 +396,6 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * The smallest rectangle containing every given point.
-     *
      * @param coordsSs the points as alternating x, y values in staff spaces; at least one point,
      *                 so an even count of at least two values
      */
@@ -566,20 +410,9 @@ public final class HitRegionBuilder {
     }
 
     /**
-     * The bounding box of a beam group's drawn quads, derived without walking
-     * {@link songscribe.ui.renderer.BeamGroupRenderer}'s recursive per-sub-beam geometry.
-     * <p>
-     * The group's X extent runs from the leftmost to the rightmost stem's element X. Because the
-     * beam's slope is constant across the whole group, the outer (tip-side) edge at any X between
-     * those two is the straight {@link LayoutResult.BeamLine} — so its extremes occur at the two
-     * ends, and it is enough to evaluate there. The same is true of the innermost edge of the deepest
-     * sub-beam, offset from the outer edge by a constant depth, so the two ends again bound
-     * everything nested between them.
-     * <p>
-     * That depth — from the outermost beam's outer edge to the deepest sub-beam's inner edge — is
-     * what {@link BeamMetrics#beamStackHeightSs(int, double)} measures, so this region and the
-     * stack {@code BeamGroupRenderer.drawBeam} actually draws are read off one definition. The
-     * depth extends toward the noteheads: downward when {@code stemsUp}, upward otherwise.
+     * The depth is what {@link BeamMetrics#beamStackHeightSs(int, double)} measures, so this region
+     * and the stack {@code BeamGroupRenderer.drawBeam} draws are read off one definition. It
+     * extends toward the noteheads: downward when {@code stemsUp}, upward otherwise.
      */
     private static Rectangle2D.Double beamGroupRectSs(
         Beam beam,

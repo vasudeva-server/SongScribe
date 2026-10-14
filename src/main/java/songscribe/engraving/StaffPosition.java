@@ -23,74 +23,46 @@ package songscribe.engraving;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A discrete vertical position a note head may occupy on the staff, held in half staff spaces
- * from the middle staff line, Y-down: 0 is the middle line, negative is higher on the page, and
- * consecutive positions alternate between a line and the space adjacent to it.
+ * A discrete vertical position a note head may occupy on the staff, in half staff spaces
+ * from the middle staff line, Y-down: 0 is the middle line, negative is higher.
  * <p>
- * The compact constructor is the only way to obtain an instance, and it refuses anything off
- * the grid {@link #MIN}..{@link #MAX} — the range reachable with the ledger lines the renderer
- * draws — so the invariant cannot be bypassed and no caller range-checks a position again.
- * <p>
- * The half staff space itself is a length, and lives on {@link Staff} as
- * {@link Staff#HALF_SPACE_SS}; a distance measured in half staff spaces converts through
- * {@link Staff#halfSpacesToSs(int)} rather than through this type.
- *
- * @param value the position, in half staff spaces from the middle staff line, Y-down
- * @throws PitchOutOfRangeException if {@code value} lies outside {@link #MIN}..{@link #MAX}
+ * Every instance lies within {@link #MIN}..{@link #MAX}, the range reachable with the ledger
+ * lines the renderer draws; no caller range-checks a position.
  */
 public record StaffPosition(int value) {
 
-    /** Ledger lines the renderer draws above the staff. */
     private static final int LEDGER_LINES_ABOVE = 3;
 
-    /** Ledger lines the renderer draws below the staff. */
     private static final int LEDGER_LINES_BELOW = 4;
 
-    /**
-     * Staff positions spanned by one staff line and the space adjacent to it, which
-     * is also the step from one line of the grid to the next.
-     */
     static final int POSITIONS_PER_STAFF_LINE = 2;
 
-    /**
-     * Staff lines between the middle line and the staff's outer line, either side of
-     * it: the 5-line staff has two above the middle line and two below.
-     */
     private static final int STAFF_LINES_FROM_MIDDLE_TO_OUTER = 2;
 
-    /** Staff position of the staff's outer line, either side of the middle line. */
     public static final int OUTERMOST_STAFF_LINE_SP =
         STAFF_LINES_FROM_MIDDLE_TO_OUTER * POSITIONS_PER_STAFF_LINE;
 
-    /**
-     * The outermost position, either side of the middle line, a note head may occupy
-     * without a ledger line: the space adjacent to the staff's outer line.
-     */
     private static final int OUTERMOST_UNLEDGERED_SP = OUTERMOST_STAFF_LINE_SP + 1;
 
     /**
-     * The plain-{@code int} form of {@link #MIN}'s value, kept separate so the canonical
-     * constructor can check against it without constructing a {@link StaffPosition} of its
-     * own while {@link #MIN} is itself still being initialized.
+     * Plain {@code int}, so the canonical constructor can check against it while {@link #MIN}
+     * is still being initialized.
      */
     private static final int MIN_VALUE_SP =
         -(STAFF_LINES_FROM_MIDDLE_TO_OUTER + LEDGER_LINES_ABOVE) * POSITIONS_PER_STAFF_LINE;
 
-    /** The plain-{@code int} form of {@link #MAX}'s value; see {@link #MIN_VALUE_SP}. */
     private static final int MAX_VALUE_SP =
         (STAFF_LINES_FROM_MIDDLE_TO_OUTER + LEDGER_LINES_BELOW) * POSITIONS_PER_STAFF_LINE;
 
     /**
-     * Minimum (highest-pitched) valid staff position. A note here sits on the outermost ledger
-     * line above the staff. A higher pitch is musically ordinary but has no position on this
-     * grid, because the renderer draws no further ledger line to put it on.
+     * The highest-pitched valid position, on the outermost ledger line above the staff. A higher
+     * pitch has no position: the renderer draws no further ledger line.
      */
     public static final StaffPosition MIN = new StaffPosition(MIN_VALUE_SP);
 
     /**
-     * Maximum (lowest-pitched) valid staff position. A note here sits on the outermost ledger
-     * line below the staff. A lower pitch is musically ordinary but has no position on this
-     * grid, because the renderer draws no further ledger line to put it on.
+     * The lowest-pitched valid position, on the outermost ledger line below the staff. A lower
+     * pitch has no position: the renderer draws no further ledger line.
      */
     public static final StaffPosition MAX = new StaffPosition(MAX_VALUE_SP);
 
@@ -101,43 +73,17 @@ public record StaffPosition(int value) {
     }
 
     /**
-     * Converts this position to its signed distance in staff spaces from the middle staff
-     * line, positive downwards.
-     *
-     * @return the distance from the middle staff line in staff spaces, negative above it
-     * @invariant the result is an exact multiple of {@link Staff#HALF_SPACE_SS}
-     * @invariant {@link #MIN}'s and {@link #MAX}'s results are not negatives of each other —
-     *            the two bounds are not symmetric about the middle line
+     * {@link #MIN}'s and {@link #MAX}'s results are not negatives of each other —
+     * the two bounds are not symmetric about the middle line.
      */
     public double toSs() {
         return value * Staff.HALF_SPACE_SS;
     }
 
-    /**
-     * Returns whether this position falls on a line of the grid rather than in a space,
-     * counting the ledger lines outside the staff as lines.
-     * <p>
-     * Positions alternate line, space, line, space outward from the middle line in
-     * both directions, so this is a property of the position alone and holds however
-     * far off the staff it lies.
-     *
-     * @return {@code true} when a note head at this position sits on a line
-     */
     public boolean isOnLine() {
         return value % POSITIONS_PER_STAFF_LINE == 0;
     }
 
-    /**
-     * Returns whether a note head at this position has to be carried on ledger lines, being
-     * further from the middle line than the staff itself reaches.
-     * <p>
-     * The staff's own five lines and the space just outside each outer line need
-     * none. Everything beyond that does, one ledger line for every staff line
-     * between the note and the staff.
-     *
-     * @return {@code true} when the position lies outside the staff and the space
-     *         adjacent to it, either side
-     */
     public boolean needsLedgerLines() {
         return Math.abs(value) > OUTERMOST_UNLEDGERED_SP;
     }

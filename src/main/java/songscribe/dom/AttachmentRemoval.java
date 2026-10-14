@@ -20,19 +20,14 @@
 package songscribe.dom;
 
 /**
- * Holds the tracked-removal bodies for the attachment kinds that have a dialog, so the dialog
- * Remove button and the Delete key run identical logic.
+ * Tracked removals shared by the dialog Remove button and the Delete key.
  *
- * <p>None of these methods opens a modification bracket — the caller owns the bracket, because
- * {@link Line#modifyElement} records unconditionally and only the caller knows whether a
- * refusal is still possible.
+ * <p>The caller owns the modification bracket, because {@link Line#modifyElement} records
+ * unconditionally and only the caller knows whether a refusal is still possible.
  */
 public final class AttachmentRemoval {
     private AttachmentRemoval() {}
 
-    /**
-     * Removing a tempo change redefines the beat from that point on just as adding one does.
-     */
     public static void removeTempoChange(StaffElement element) {
         var attachment = element.findAttachment(TempoChangeAttachment.class);
 
@@ -41,9 +36,6 @@ public final class AttachmentRemoval {
         }
     }
 
-    /**
-     * Removing a beat change redefines the beat from that point on just as adding one does.
-     */
     public static void removeBeatChange(StaffElement element) {
         var attachment = element.findAttachment(BeatChangeAttachment.class);
 

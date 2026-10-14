@@ -27,35 +27,19 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public final class StemMetrics {
     /**
-     * Stem thickness in staff spaces, as the font declares it.
-     *
-     * <p>The strokes this program draws itself — barlines, brackets, hairpins — follow
-     * LilyPond's weights, built up from {@link EngravingConstants#LILYPOND_BASE_THICKNESS_SS}.
-     * A stem cannot: it has to register against glyphs the font supplies, starting at a
-     * notehead's stem anchor and carrying a flag cut for its edge, so the font's own stem
-     * width is the one those glyphs are drawn around.
-     *
-     * @return the stem thickness in staff spaces
+     * The font's stem width, not a multiple of {@link EngravingConstants#LILYPOND_BASE_THICKNESS_SS}:
+     * the stem must register against the font's notehead and flag glyphs.
      */
     public static double thicknessSs() {
         return SMuFLMetadata.stemThicknessSs();
     }
 
-    /**
-     * Half the stem thickness — the distance from a stem's center line to either edge. Beam and
-     * stem-anchor geometry work outward from a stem's center, so they need the half width rather
-     * than the full one.
-     *
-     * @return half the stem thickness in staff spaces
-     */
     public static double halfWidthSs() {
         return thicknessSs() / 2.0;
     }
 
     /**
-     * Stem length in staff-space units, from LilyPond's {@code Stem.details.lengths}, first
-     * entry ({@code scm/define-grobs.scm:3453}, commented there "3.5 (or 3 measured from note
-     * head) is standard length").
+     * From the first entry of LilyPond's {@code Stem.details.lengths}.
      */
     public static final double STEM_LENGTH_SS = 3.5;
 
@@ -64,14 +48,7 @@ public final class StemMetrics {
 
     private StemMetrics() {}
 
-    /**
-     * The Y of a grace note's stem tip at {@code head}, in staff spaces (Y down) from the middle
-     * line: a grace stem always points up, so the tip sits above the head by the grace stem
-     * length.
-     *
-     * @param head the staff position of the grace note's head
-     * @return the Y of the stem tip, in staff spaces from the middle line
-     */
+    /** A grace stem always points up. */
     public static double graceStemTopYSs(StaffPosition head) {
         return head.toSs() - GRACE_NOTE_STEM_LENGTH_SS;
     }

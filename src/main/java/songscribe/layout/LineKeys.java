@@ -26,30 +26,15 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 
 /**
- * The three keys a horizontal solve reads off a line, gathered so a solve can be run against keys
- * the document does not hold — an edit measured before it is committed.
- * <p>
- * A solve of a line as it stands takes {@link #of(Line)}. A pre-check states instead what the edit
- * would produce, which is why all three components travel together: changing one line's key moves
- * its header, the key it leaves off in, and the key the line after it begins in, and a check that
- * projected one of those while reading the other two off the unedited document would measure a
- * line that will never exist.
+ * The three keys a horizontal solve reads off a line, so a solve can be run against keys the
+ * document does not hold. They travel together because changing one line's key moves all three;
+ * projecting one while reading the others off the unedited document would measure a line that will
+ * never exist.
  *
- * @param headerKey      the key the line's header draws, which fixes where its first element sits
- *                       ({@link HorizontalSpacingCalculator#calculateFirstElementXSs})
- * @param keyAtEndOfLine the key the line leaves off in — the left-hand side of any cautionary key
- *                       signature drawn at its end
- * @param nextRunningKey the key the following line begins in, or null when the line has no line
- *                       after it and so warns about nothing
+ * @param nextRunningKey null when the line has no line after it and so warns about nothing
  */
 public record LineKeys(Key headerKey, Key keyAtEndOfLine, @Nullable Key nextRunningKey) {
 
-    /**
-     * Returns the keys {@code line} holds right now — what the committed layout solves against.
-     *
-     * @param line the line to read
-     * @return its header key, the key it leaves off in, and the key the next line begins in
-     */
     public static LineKeys of(Line line) {
         return new LineKeys(line.getRunningKey(), line.keyAtEndOfLine(), line.nextLineRunningKey());
     }

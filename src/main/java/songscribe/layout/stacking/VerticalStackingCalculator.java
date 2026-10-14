@@ -47,66 +47,23 @@ import songscribe.layout.StaffExtents;
 /**
  * Orchestrates the vertical layout pipeline for a staff line.
  * <p>
- * Creates the three-layer {@link StaffExtents} model, delegates to specialized stackers
- * for each tier, then applies manual offsets. All calculations are in staff-space units.
- * Results are written directly to the {@link LayoutResultBuilder}.
- * <p>
- * Tier order:
- * <ol>
- *   <li><b>Note-attached layer</b> ({@link NoteAttachedStacker#stackInner()}): seeds note/tie
- *       bounds, then stacks the inner articulations (staccato, accent)</li>
- *   <li><b>Structural layer</b> ({@link StructuralStacker}) — imports the note-attached top
- *       extents, then stacks tuplet brackets, the outer scripts, and the remaining structural
- *       elements (dynamics hairpins, text dynamics, volta endings) in that order</li>
- *   <li><b>System layer</b> ({@link SystemStacker}): tempo, beat changes, annotations, and on
- *       the first line the attribution block — imports the structural top extents</li>
- * </ol>
- * Each layer starts by importing the previous layer's top extents, ensuring higher layers
- * clear all lower-layer elements.
- * <p>
  * The outer scripts (fermata, trill) come from {@link NoteAttachedStacker} but stack into the
- * structural layer, between the tuplet brackets and the elements that follow them. This mirrors
- * LilyPond's {@code outside-staff-priority}: a tuplet bracket clears the priority-less scripts
- * (staccato, accent) but skips the priority ones, which then float outside the bracket
- * (tuplet-bracket.cc, {@code calc_position_and_height}). Their placement is therefore ordered
- * after the bracket's, so the bracket's reserved footprint pushes them clear.
+ * structural layer after the tuplet brackets, mirroring LilyPond's {@code outside-staff-priority},
+ * so the bracket's reserved footprint pushes them clear.
  */
 public class VerticalStackingCalculator {
 
     private final double lineWidthSs;
     private final DocumentFontsHolder fonts;
 
-    /**
-     * Makes the calculator for lines of one song.
-     *
-     * @param lineWidthSs total width of the staff line in staff-space units
-     * @param fonts       font holder for measuring elements
-     */
     public VerticalStackingCalculator(double lineWidthSs, DocumentFontsHolder fonts) {
         this.lineWidthSs = lineWidthSs;
         this.fonts = fonts;
     }
 
     /**
-     * Calculates vertical positions for all elements in the given columns.
-     * <p>
-     * Creates the three-layer StaffExtents model, seeds note bounding areas, then processes
-     * each decoration tier in order. Results are written directly to the builder.
-     * <p>
-     * On the song's first line {@link SystemStacker} typesets the two first-line decorations from
-     * the song and stacks them: the tempo mark (when {@code tempoMark} is
-     * {@link TempoMark#STACKED}), and the attribution, topmost, over its right-edge columns. The
-     * attribution's
-     * {@link LayoutResult.DecorationLayout} is keyed by the attribution element so that
-     * {@link #applyManualOffsets} can apply the user Y offset. An upward (negative) user Y
-     * offset is accounted for when computing {@code aboveStaffSs}, growing the above-staff band
-     * and dropping the first staff via
-     * {@link songscribe.ui.component.score.LineComponent#calculateMiddleLineYSs()}.
-     *
-     * @param columns      list of element columns with X positions already set
-     * @param line         the line being laid out; must be in its song
-     * @param builder      the LayoutResult builder to write decoration positions into
-     * @param tempoMark    whether the song's tempo mark is stacked on the first line
+     * @param columns list of element columns with X positions already set
+     * @param line    must be in its song
      */
     public void calculate(
         List<ElementColumn> columns,
@@ -172,29 +129,11 @@ public class VerticalStackingCalculator {
     }
 
     /**
-     * Measures how far content reaches above the staff top, in staff-space units.
+     * The result is the line's true content reach, unfloored: a floor here would only inflate the
+     * inter-line gap, which the layout manager owns.
      * <p>
-     * Stacking coordinates put the middle staff line at y=0, so the staff top is at
-     * y=-{@link Staff#STAFF_HALF_SS} and the signed extent has that subtracted from it.
-     * The result is the line's true content reach, unfloored — the inter-line gap is owned
-     * by the layout manager that positions the lines, so a floor here would only inflate
-     * the gap.
-     * <p>
-     * An upward (negative) user Y offset can raise the attribution above the stacked
-     * extents, which only track its natural position. The attribution's final layout is
-     * therefore measured directly so the band grows to match and the first staff drops.
-     * Callers must have applied manual offsets already: the layout read here is the final
-     * painted position and <em>already includes</em> the offset, so adding it again would
-     * reserve twice the shift.
-     *
-     * @param systemExtents the system-tier extents to measure
-     * @param lineWidthSs   total width of the staff line in staff-space units
-     * @param line          the line being laid out; the attribution is measured only on the
-     *                      song's first line, the one it is stacked into
-     * @param builder       the builder holding the already-offset decoration layouts
-     * @return the extent of content above the staff top, never negative
-     * @throws IllegalStateException if this is the first line and the attribution was raised by
-     *                               its user Y offset but no layout was recorded for it
+     * Callers must have applied manual offsets already: the attribution layout read here
+     * <em>already includes</em> the user Y offset, so adding it again would reserve it twice.
      */
     private static double calculateContentAboveStaffSs(
         StaffExtents systemExtents,
@@ -223,20 +162,6 @@ public class VerticalStackingCalculator {
 
     // ---- Accidental seeding ----
 
-    /**
-     * Seeds each note column's accidental bounding box into the structural extents layer.
-     * <p>
-     * Accidental bounds are relative to the notehead glyph origin ({@code column.getXSs()}).
-     * Both top and bottom extents are reserved so structural elements clear the accidental
-     * glyph in both directions (mirroring the symmetry of
-     * {@link NoteAttachedStacker#seedNoteBounds()}).
-     * <p>
-     * Grace notes and notes without accidentals are skipped — they return {@code null}
-     * from {@link StaffElementRenderer#getAccidentalBoundsSs}.
-     *
-     * @param columns          element columns with X positions already set
-     * @param structuralExtents the structural-layer extents to seed into
-     */
     static void seedAccidentalsIntoStructural(
         List<ElementColumn> columns,
         StaffExtents structuralExtents) {
@@ -270,15 +195,8 @@ public class VerticalStackingCalculator {
     // ---- Manual offset application ----
 
     /**
-     * Applies manual user offsets to all decoration layouts post-layout.
-     * <p>
-     * Per spec, offsets are applied after all collision detection is complete.
-     * The user takes responsibility for any resulting overlaps — no collision
-     * re-run occurs.
-     * <p>
-     * The offsets are each decoration element's {@link LineElement#getUserXOffsetSs()} and
-     * {@link LineElement#getUserYOffsetSs()}, applied to each typed entry through its own type by
-     * {@link DecorationLayouts.Builder#applyUserOffsets}.
+     * Offsets are applied after all collision detection; no collision re-run occurs, so the user
+     * owns any resulting overlap.
      */
     private void applyManualOffsets(LayoutResultBuilder builder) {
         builder.decorationLayouts().applyUserOffsets();

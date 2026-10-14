@@ -34,29 +34,18 @@ import songscribe.error.RuntimeError;
  * What the music font declares about its glyphs, in staff spaces with Y-down (screen)
  * convention.
  *
- * <p>This is the boundary at which font metadata becomes application data, and it converts
- * rather than checks: every query below is total, because a font that cannot answer one of
- * them fails the application then, naming what it could not answer. No caller downstream can
- * hold a glyph whose measurements are unknown, so none has to ask whether they are.
- *
- * <p>The first query made reads the font's metadata, and a font that cannot be read or cannot
- * answer shows a fatal error dialog and terminates the application. Nothing here may
- * therefore be queried before the application is able to show a dialog, and that reaches
- * further than it looks: a query from a class's static initializer runs whenever that class
- * is first touched, so the classes holding glyph constants and rendering shapes carry the
- * same restriction.
+ * <p>Every query is total: a font that cannot answer one shows a fatal error dialog and
+ * terminates the application. Nothing here may therefore be queried before the application can
+ * show a dialog, including from a static initializer.
  */
 public final class SMuFLMetadata {
 
     private static final String METADATA_RESOURCE = "/fonts/bravura_metadata.json";
 
-    /** Indexed by {@link SMuFLGlyph#ordinal()}. */
     private final BBox[] bboxesSs;
 
-    /** Indexed by {@link SMuFLGlyph#ordinal()}. */
     private final double[] advanceWidthsSs;
 
-    /** Indexed by {@link StemmedNotehead#ordinal()}. */
     private final StemAnchors[] stemAnchors;
 
     private final double stemThicknessSs;
@@ -73,45 +62,24 @@ public final class SMuFLMetadata {
                 "stemThickness", "stem thickness");
     }
 
-    /**
-     * The box the glyph's ink occupies, relative to the pen origin it draws from.
-     *
-     * @param glyph the glyph to measure
-     * @return its ink box in staff spaces
-     */
     public static BBox bboxSs(SMuFLGlyph glyph) {
         return Holder.INSTANCE.bboxesSs[glyph.ordinal()];
     }
 
     /**
-     * How far the pen moves after drawing the glyph. This differs from the ink box wherever
-     * the font pads a glyph or designs it to overlap what follows, so it is the measure for
-     * laying glyphs out in sequence and not the measure of where a glyph's ink ends.
-     *
-     * @param glyph the glyph to measure
-     * @return its advance width in staff spaces
+     * The measure for laying glyphs out in sequence, not of where a glyph's ink ends.
      */
     public static double advanceWidthSs(SMuFLGlyph glyph) {
         return Holder.INSTANCE.advanceWidthsSs[glyph.ordinal()];
     }
 
-    /**
-     * Where a stem meets this notehead, in each direction.
-     *
-     * @param notehead the notehead a stem attaches to
-     * @return both of its stem attachment points
-     */
     public static StemAnchors stemAnchors(StemmedNotehead notehead) {
         return Holder.INSTANCE.stemAnchors[notehead.ordinal()];
     }
 
     /**
-     * How wide the font expects a stem to be drawn. The stem itself is no glyph, but it butts
-     * against two that are: it starts at the notehead's stem anchor and a flag hangs off its
-     * edge, and both of those are cut for a stem of this width. A stem drawn any wider reaches
-     * past the anchor into the notehead's counter.
-     *
-     * @return the stem thickness in staff spaces
+     * The notehead anchors and flags are cut for a stem of this width; a wider stem reaches past
+     * the anchor into the notehead's counter.
      */
     public static double stemThicknessSs() {
         return Holder.INSTANCE.stemThicknessSs;

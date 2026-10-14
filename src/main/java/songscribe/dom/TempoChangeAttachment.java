@@ -21,10 +21,7 @@
 package songscribe.dom;
 
 /**
- * Represents a tempo marking attachment on a note.
- * <p>
- * Tempo attachments display tempo changes (e.g., "♩ = 120" or "Allegro").
- * They are typically placed above the staff.
+ * A tempo marking attachment on a note.
  */
 public final class TempoChangeAttachment extends MetronomeAttachment {
 
@@ -35,10 +32,8 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The clipboard is the only caller that copies a tempo into a different beat context,
-     * and paste re-validates the tuplets it carries in {@code PasteSpanReconciliation}.
+     * The clipboard copies a tempo into a different beat context, and paste re-validates the
+     * tuplets it carries in {@code PasteSpanReconciliation}.
      */
     @Override
     protected Attachment createCopy() {
@@ -50,9 +45,7 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Replaces the tempo this attachment marks.
-     *
-     * <p>Stays public because the tempo dialog lives in the UI package.
+     * Stays public because the tempo dialog lives in the UI package.
      */
     public void setTempo(Tempo tempo) {
         this.tempo = tempo;

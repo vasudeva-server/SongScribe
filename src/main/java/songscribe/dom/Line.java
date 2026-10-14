@@ -45,66 +45,38 @@ import songscribe.message.mutation.TieRemoval;
 /**
  * One system of the score: an {@link EditableRun element run} that belongs to a {@link Song} and
  * posts every change to its elements as a mutation through that song's modification bracket.
- * It holds four things — the key it establishes, its ordered staff elements, the vertical offset
- * of its lyric rows, and the registry of the spans drawn over it.
  *
- * <p><b>Elements.</b> The five primitives below — insertion, replacement, modification of one
- * element's fields, single removal and range removal — each hand their pending change to the span
- * sweep, post one mutation, and repair nothing around the element; an edit goes through the run
- * operations {@link EditableRun} states, which run the repairs. There is one primitive for each
- * shape of {@link ElementChange}, so every change to the elements passes through one sweep. The
- * four that place or take away an element first ask the song whether they may touch the terminal
- * position, because the last element of the last line is the song's to maintain, not the line's:
- * the policy is stated once, on the song's {@link TerminalMaintainer}.
+ * <p><b>Elements.</b> The five primitives — insertion, replacement, modification of one element's
+ * fields, single removal and range removal — each hand their pending change to the span sweep,
+ * post one mutation, and repair nothing around the element; an edit goes through the run
+ * operations {@link EditableRun} states. The four that place or take away an element first ask
+ * the song whether they may touch the terminal position, because the last element of the last
+ * line is the song's to maintain: see {@link TerminalMaintainer}.
  *
- * <p><b>Spans.</b> The spans are not held here but in the line's {@link LineSpans}, reached
- * through {@link #spanRegistry()}: every query over them, the sweep that re-judges them when an
- * element changes, and the merge rules belong to that registry, and a span enters or leaves it
- * through its own {@link Span#addTo}/{@link Span#removeFrom}. The element primitives only hand
- * each pending change to the registry before they apply it.
- *
- * <p><b>Ties.</b> A tie is not a span: it is a note's own state, and its end is derived (see
- * {@link NoteElement}). The line is where a tie is recorded — {@link #addTie} and
- * {@link #removeTie}. How a tie stays right across edits is in
- * {@code docs/span-invalidation.md}.
+ * <p><b>Ties.</b> A tie is a note's own state; the line is where it is recorded
+ * ({@link #addTie}, {@link #removeTie}). See {@code docs/span-invalidation.md}.
  *
  * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
  * actually takes effect at the start of the line; null means the line inherits the key in effect
- * at the end of the previous line. Line 0 of a song is always non-null — there is nothing before
- * it to inherit from — and {@link Song} is what maintains that, both when a mutation promotes a
- * different line to index 0 and when a document is loaded. A line that belongs to no song is
- * subject to the same rule for the same reason: nothing precedes it, so it must carry its own key
- * before anything asks what key it is in.
- *
- * <p>What a line <em>inherits</em> is not held here. {@link Song} owns it, keyed by line, because
- * it is a fact about a line's position in the song rather than about the line — see
- * {@link Song#inheritedKeyOf}. A line therefore cannot carry a stale inherited key out of the song
- * it was removed from.
- *
- * <p><b>Pairing.</b> Which elements cannot outlive their partner, and how a range widens to cover
- * both, is {@link StaffElementRun}'s — a line is one such run, and a clipboard fragment is
- * another, so the rule is stated once for both.
+ * at the end of the previous line. Line 0 of a song is always non-null, and {@link Song}
+ * maintains that, both when a mutation promotes a different line to index 0 and when a document
+ * is loaded. A line that belongs to no song is subject to the same rule. What a line
+ * <em>inherits</em> is held by {@link Song} ({@link Song#inheritedKeyOf}), so a line cannot carry
+ * a stale inherited key out of the song it was removed from.
  */
 public final class Line implements EditableRun {
 
-    /** The spans drawn over this line's elements. See the class Javadoc. */
     private final LineSpans spans = new LineSpans(this);
 
     private final Song song;
 
     /**
-     * The key this line establishes at its own start, or null when it inherits one.
-     * See the key invariant in this class's Javadoc.
+     * Null when this line inherits its key.
      */
     private @Nullable Key key = null;
 
     private final List<StaffElement> elements = new ArrayList<>();
 
-    /**
-     * Live unmodifiable view of {@link #elements}, held once rather than wrapped per call:
-     * {@link #getElements()} is on the repaint path, and the wrapper tracks later mutations
-     * of {@code elements} anyway.
-     */
     private final List<StaffElement> elementsView = Collections.unmodifiableList(elements);
 
     /**
@@ -114,32 +86,15 @@ public final class Line implements EditableRun {
      * overrides {@code equals}/{@code hashCode}, and an override added later must not silently
      * change what an element's position means.
      * <p>
-     * {@code volatile} is cheap insurance, not a concurrency guarantee. Nothing reads a
-     * {@code Line} off the event thread today; were something to, this would keep a reader
-     * from seeing a non-null reference to a map whose contents are not yet visible, since
-     * {@code IdentityHashMap}'s internal table is not {@code final}. It would not make such a
-     * reader safe — {@link #elements} is a plain {@code ArrayList}, so a rebuild racing a
-     * structural change was never safe and this field does not change that.
-     *
-     * <p>Every write to {@link #elements} — both {@code addElement} overloads, {@code setElement},
-     * {@code removeElement} and {@code removeRange} — goes through {@code attach} or
-     * {@code detach}, which null this field out. {@link #getElementIndex} rebuilds the map when it
-     * finds it null, and otherwise serves a cached lookup.
-     *
-     * <p>Writes to the span registry are absent from that picture because they cannot reach
-     * it: a span holds no position in {@code elements}, and {@link LineSpans} writes its own
-     * list alone.
+     * Every write to {@link #elements} goes through {@code attach} or {@code detach}, which null
+     * this field out.
      */
     private volatile @Nullable Map<StaffElement, Integer> elementIndexMap = null;
 
-    /**
-     * Default lyrics Y position (below staff)
-     */
     private static final double LYRICS_DEFAULT_Y_SS = 6.25;
 
     /**
-     * The vertical position of this line's lyric rows below the staff, in staff spaces, shared
-     * by every script on the line.
+     * Shared by every script on the line.
      */
     private double lyricsYPosSs = LYRICS_DEFAULT_Y_SS;
 
@@ -152,20 +107,12 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * The registry of the spans drawn over this line's elements.
-     *
-     * @return this line's span registry, the same instance for the line's whole life
+     * The same instance for the line's whole life.
      */
     public LineSpans spanRegistry() {
         return spans;
     }
 
-    /**
-     * This line's position among its song's lines.
-     *
-     * @return the index {@link Song#getLine} would return this line for
-     * @throws IllegalStateException if this line is not one of its song's lines
-     */
     public int index() {
         var result = song.indexOfLine(this);
 
@@ -176,41 +123,21 @@ public final class Line implements EditableRun {
         return result;
     }
 
-    /**
-     * Whether this line is its song's first line.
-     *
-     * @return {@code true} when this line stands at index 0 of its song
-     * @throws IllegalStateException if this line is not one of its song's lines
-     */
     public boolean isFirst() {
         return index() == 0;
     }
 
-    /**
-     * Whether this line is its song's last line.
-     *
-     * @return {@code true} when no line follows this one in its song
-     * @throws IllegalStateException if this line is not one of its song's lines
-     */
     public boolean isLast() {
         return index() == song.lineCount() - 1;
     }
 
-    /**
-     * Posts a single mutation through the song's modification bracket. What the bracket
-     * promises — recording, the suspended-tracking path, the key invariant, the chain walk,
-     * and what is thrown outside a bracket — is {@link Song#applyChange}'s contract.
-     */
     public void applyChange(Mutation mutation, Runnable mutator) {
         song.applyChange(mutation, mutator);
     }
 
     /**
-     * Returns the key this line establishes at its own start.
-     *
-     * @return the key that takes effect at the start of this line, or null when this line
-     *         establishes no key of its own and inherits the key in effect at the end of the
-     *         previous line
+     * @return null when this line establishes no key of its own and inherits the key in effect
+     *         at the end of the previous line
      */
     public @Nullable Key getKey() {
         return key;
@@ -249,17 +176,9 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns the key actually in effect at the <em>start</em> of this line: this line's own key
-     * when it has one, and otherwise the key in effect at the end of the previous line, which
-     * accounts for any mid-line key change that line carried.
-     *
-     * <p>Equals {@link #getKey()} whenever that is non-null. Total, and deliberately so — a model
-     * getter has no business terminating the application. A line that establishes no key and has
-     * nothing to inherit from — line 0 before it is keyed, a line removed from its song, or any line
-     * while a file is part-way through loading — is in {@link Key#DEFAULT}, the key a document that
-     * names none is in, not a stand-in for a broken invariant.
-     *
-     * @return the key in effect at the start of this line; never null
+     * Total, deliberately: a line that establishes no key and has nothing to inherit from — line 0
+     * before it is keyed, a line removed from its song, or any line while a file is loading — is
+     * in {@link Key#DEFAULT}.
      */
     public Key getRunningKey() {
         var ownKey = key;
@@ -293,13 +212,6 @@ public final class Line implements EditableRun {
         return getRunningKey();
     }
 
-    /**
-     * Returns the key in effect after this line's last element — the key the next line inherits.
-     * Equal to {@code keyBefore(elementCount())}, see that method's {@code @invariant}.
-     *
-     * @return the key in effect at the end of this line, which is {@link #getRunningKey()} when
-     *         the line is empty; never null
-     */
     public Key keyAtEndOfLine() {
         return keyAtEndUnder(getRunningKey());
     }
@@ -330,17 +242,10 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns the key the following line begins in — the key a cautionary key signature at the end
-     * of this line warns the performer about. Paired with {@link #keyAtEndOfLine()} it is the whole
-     * input to {@link Key#accidentalsFrom}: what the cautionary draws, and how much room layout reserves for
-     * it, both come from that pair.
+     * Null is the "there is nothing to warn about" answer: no cautionary is drawn or reserved for.
      *
-     * <p>Null is the "there is nothing to warn about" answer, and a caller that has one has nothing
-     * further to decide: no cautionary is drawn and none is reserved for.
-     *
-     * @return the following line's {@link #getRunningKey()}, or null when this line is the song's
-     *         last line or is not one of the song's lines at all — a detached line, or one being
-     *         measured before it is added
+     * @return null when this line is the song's last line or is not one of the song's lines at
+     *         all — a detached line, or one being measured before it is added
      */
     public @Nullable Key nextLineRunningKey() {
         var next = nextLine();
@@ -349,9 +254,7 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * The line that follows this one in its song.
-     *
-     * @return the next line, or {@code null} when this line is its song's last line or is not
+     * @return {@code null} when this line is its song's last line or is not
      *     one of its song's lines
      */
     @Nullable Line nextLine() {
@@ -365,9 +268,7 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * The line that precedes this one in its song.
-     *
-     * @return the previous line, or {@code null} when this line is its song's first line or is
+     * @return {@code null} when this line is its song's first line or is
      *     not one of its song's lines
      */
     @Nullable Line previousLine() {
@@ -399,13 +300,11 @@ public final class Line implements EditableRun {
     //   and null ⟺ the element is in no line at all.
     // ========================================================================
 
-    /** Points {@code element} at this line. */
     private void attach(StaffElement element) {
         elementIndexMap = null;
         element.setParentLine(this);
     }
 
-    /** Clears {@code element}'s line pointer. */
     private void detach(StaffElement element) {
         elementIndexMap = null;
         element.setParentLine(null);
@@ -462,23 +361,11 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Replaces every element {@code replacement} names with its new element, as one change:
-     * the spans judge all of its pairs together, once, and then each pair posts its own
-     * {@link ElementReplacement}. Every span whose anchor or end was a replaced element is
-     * re-pointed at that element's replacement; the spans themselves decide what else the
-     * replacement costs them.
-     * <p>
-     * A span is judged against the line with every pair applied, never against a line with
-     * only some of them applied, so no span answers for an intermediate state the edit never
-     * shows.
+     * A span is judged against the line with every pair applied, never against a line with only
+     * some of them applied, so no span answers for an intermediate state the edit never shows.
+     * Every span whose anchor or end was a replaced element is re-pointed at its replacement.
      *
      * @param replacement the pairs to apply, built against this line in its current state
-     * @throws IllegalArgumentException if {@code replacement.line()} is not this line
-     * @throws IllegalStateException if any pair breaks the song's terminal policy — see
-     *     {@link Song#checkTerminalPolicyForReplacement}; nothing is changed
-     * @effects posts the companion span changes the sweep decides, then one
-     *     {@link ElementReplacement} per pair in ascending index order, all through
-     *     {@link #applyChange} under {@link Song#applyChange}'s bracket rule
      */
     public void replace(ElementChange.Replacement replacement) {
         if (replacement.line() != this) {
@@ -529,17 +416,10 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Runs {@code mutator} to change {@code field} of the element at {@code index}, and posts one
-     * {@link ElementModification} that holds the element's state from before and after
+     * The posted {@link ElementModification} holds the element's state from before and after
      * {@code mutator}, so undo and redo restore either one without the caller taking a copy.
-     * <p>
-     * The modification and its companion span changes post through {@link #applyChange}, under
-     * {@link Song#applyChange}'s bracket rule.
      *
-     * @param index   the position of the element to modify
-     * @param field   the field {@code mutator} rewrites
-     * @param mutator the change to apply to the element; it rewrites nothing but {@code field}
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
+     * @param mutator it rewrites nothing but {@code field}
      */
     @Override
     public void modifyElement(int index, ElementField field, Runnable mutator) {
@@ -547,14 +427,7 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * As {@link #modifyElement(int, ElementField, Runnable)}, for a change that rewrites
-     * several fields at once and records them as one {@link ElementModification}.
-     *
-     * @param index   the position of the element to modify
-     * @param fields  the fields {@code mutator} rewrites
-     * @param mutator the change to apply to the element; it rewrites nothing outside
-     *     {@code fields}
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
+     * @param mutator it rewrites nothing outside {@code fields}
      */
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
         // Asked before the mutator runs, like every other sweep, so a span judges the
@@ -580,41 +453,22 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * This line's elements, in order.
-     * <p>
-     * A live view, not a copy: it always shows the line as it is now. A caller that iterates it
-     * across a structural change to the line gets
-     * {@link java.util.ConcurrentModificationException}, so an edit that walks the elements
-     * and changes them copies the list first.
-     *
-     * @return an unmodifiable live view of every element on this line, the terminal included
+     * A live view, not a copy: iterating it across a structural change to the line throws
+     * {@link java.util.ConcurrentModificationException}, so an edit that walks the elements and
+     * changes them copies the list first. The terminal is included.
      */
     public List<StaffElement> getElements() {
         return elementsView;
     }
 
-    /**
-     * This line's elements with the song-owned terminal excluded: the list form of
-     * {@link #effectiveElementCount()}.
-     *
-     * @return an unmodifiable live view, on the same terms as {@link #getElements()}, of the
-     *     first {@link #effectiveElementCount()} elements
-     */
     public List<StaffElement> effectiveElements() {
         return getElements().subList(0, effectiveElementCount());
     }
 
     /**
-     * Returns the elements {@code range} covers, in order.
-     * <p>
-     * A live view over this line's own list, not a copy: it reflects the line as it is at the
-     * moment it is read, and is meaningful only until the line's elements next change. A
-     * caller that holds it across an edit reads positions that have moved, and one that holds
-     * it across a structural change gets {@link java.util.ConcurrentModificationException}.
-     *
-     * @param range the elements to view, both ends included
-     * @return an unmodifiable live view of exactly those elements
-     * @throws IndexOutOfBoundsException if {@code range} reaches past {@link #elementCount()}
+     * A live view over this line's own list, meaningful only until the line's elements next
+     * change; holding it across a structural change throws
+     * {@link java.util.ConcurrentModificationException}.
      */
     public List<StaffElement> getElements(ElementRange range) {
         // subList is exclusive of the end index, so we add 1.
@@ -668,22 +522,11 @@ public final class Line implements EditableRun {
     // ========================================================================
 
     /**
-     * Ties {@code anchor} to the next note and posts one {@link TieAddition}. The note the tie
-     * ends on is derived, not given — see {@link NoteElement#tie()} — so this names only the
-     * anchor.
-     * <p>
-     * Nothing here judges the tie: a caller ties a note where the user or a file placed a tie,
-     * and the tie rule ({@link TieRule}) judges it like any other tie in a line the edit
-     * touched.
+     * Nothing here judges the tie: the tie rule ({@link TieRule}) does.
      *
      * @param anchor a note of this line that can carry a tie ({@link Tie#canAnchor}); a file
      *     reader asks that first and drops a tie on any other note; while the song is replaying,
      *     the note the replayed record names, whichever line holds it at that point of the replay
-     * @throws IllegalArgumentException when {@code anchor} cannot carry a tie
-     * @effects when {@code anchor} is not already tied, posts the {@link TieAddition} through
-     *     {@link #applyChange}, under {@link Song#applyChange}'s bracket rule, and leaves
-     *     {@link NoteElement#isTiedToNext()} {@code true}; when it is already tied, records
-     *     nothing
      */
     public void addTie(NoteElement anchor) {
         if (!Tie.canAnchor(anchor)) {
@@ -698,13 +541,8 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Unties {@code anchor} from the next note and posts one {@link TieRemoval}.
-     *
-     * @param anchor a note of this line; while the song is replaying, the note the replayed
+     * @param anchor while the song is replaying, the note the replayed
      *     record names, whichever line holds it at that point of the replay
-     * @effects when {@code anchor} is tied, posts the {@link TieRemoval} through
-     *     {@link #applyChange}, under {@link Song#applyChange}'s bracket rule, and leaves
-     *     {@link NoteElement#isTiedToNext()} {@code false}; on an untied note, records nothing
      */
     public void removeTie(NoteElement anchor) {
         if (!anchor.isTiedToNext()) {
@@ -715,21 +553,11 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Unties the tie that ends on an element of {@code range}, when one does, because deleting
-     * {@code range} takes that tie's end. Only the first element of {@code range} that is not
-     * a legal separator ({@link Tie#isLegalSeparator}) can be such an end, and its tie's anchor
-     * sits before {@code range}, in this line or at the end of the line before. A tie whose
-     * anchor is in {@code range} goes with its anchor and needs nothing here.
-     *
-     * <p>The untie is not reported: the user deleted the note the tie ended on. Without it the
+     * The untie is not reported: the user deleted the note the tie ended on. Without it the
      * anchor would stay tied to whatever its walk reaches once {@code range} is gone.
      *
      * <p>Does nothing while the song is replaying: the replayed batch already holds the
      * removal.
-     *
-     * @param range elements of this line about to be deleted
-     * @effects posts at most one {@link TieRemoval}, through {@link #removeTie} on the anchor's
-     *     line
      */
     void untieEndingIn(ElementRange range) {
         if (song.isReplaying()) {
@@ -787,22 +615,13 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns {@code tie}'s place in this line, for a caller that starts from one tie rather
-     * than from the line's {@link #ownedTies}.
-     *
-     * @param tie any tie of the song
-     * @return the tie's place here, or {@code null} when this line holds neither of its notes
+     * @return {@code null} when this line holds neither of its notes
      *     and so draws no part of it
      */
     public @Nullable TiePlacement placementOf(Tie tie) {
         return contains(tie.anchor()) || contains(tie.end()) ? placement(tie) : null;
     }
 
-    /**
-     * The tie whose anchor is in the previous line and whose end is this line's first note. Only
-     * the first element that is not a legal separator can be such an end, so the previous line
-     * is consulted once, from that note alone.
-     */
     private @Nullable Tie enteringTie() {
         var firstIndex = Tie.firstNonSeparatorIndexFrom(elements, 0);
 
@@ -815,7 +634,6 @@ public final class Line implements EditableRun {
         return incoming != null && !contains(incoming.anchor()) ? incoming : null;
     }
 
-    /** {@code tie}'s place in this line, which holds at least one of its notes. */
     private TiePlacement placement(Tie tie) {
         var anchor = tie.anchor();
         var end = tie.end();
@@ -840,21 +658,16 @@ public final class Line implements EditableRun {
      */
     public enum Edge {
 
-        /** The left edge: the half enters from it, and the tie's anchor is in the line before. */
         START,
 
-        /** The right edge: the half runs off it, and the tie's end is in the line after. */
         END
     }
 
     /**
      * A tie's place in one line that holds at least one of its notes: the elements it is drawn
      * over, and the edge it runs off when only one of its notes is here. Made only by
-     * {@link #ownedTies} and {@link #placementOf}, so its range and open edge always agree with
-     * where the tie's notes are.
-     * <p>
-     * A value read off the line at the moment it was made; an edit to the line does not update
-     * it.
+     * {@link #ownedTies} and {@link #placementOf}. A value read off the line at the moment it was
+     * made; an edit to the line does not update it.
      *
      * @invariant {@code range().begin()} is the anchor's index unless {@code openEdge()} is
      *     {@link Edge#START}, when it is {@code 0}; {@code range().end()} is the end's index
@@ -872,39 +685,25 @@ public final class Line implements EditableRun {
             this.openEdge = openEdge;
         }
 
-        /**
-         * @return the tie
-         */
         public Tie tie() {
             return tie;
         }
 
-        /**
-         * @return the elements of the line the tie is drawn over, both of its notes here
-         *     included; an open side runs to that edge's element
-         */
         public ElementRange range() {
             return range;
         }
 
         /**
-         * @return the edge of the line the tie runs off, or {@code null} when both of its notes
-         *     are in the line and it is drawn whole
+         * @return {@code null} when both of its notes are in the line
          */
         public @Nullable Edge openEdge() {
             return openEdge;
         }
 
-        /**
-         * @return {@code true} when the tie's anchor is in the line, at {@code range().begin()}
-         */
         public boolean holdsAnchor() {
             return openEdge != Edge.START;
         }
 
-        /**
-         * @return {@code true} when the tie's end is in the line, at {@code range().end()}
-         */
         public boolean holdsEnd() {
             return openEdge != Edge.END;
         }
@@ -921,13 +720,8 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * The element count with a trailing auto-maintained terminal
-     * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}) left out, for a computation that
-     * treats the song-owned terminal as if it were not there — insertion spacing and preview
-     * positioning among them.
-     *
-     * @return {@link #elementCount()} less one when the last element is the terminal
-     *     {@link #isTerminalAt} recognizes, otherwise {@link #elementCount()}
+     * The element count with a trailing auto-maintained terminal left out, for a computation
+     * that treats the song-owned terminal as if it were not there.
      */
     @Override
     public int effectiveElementCount() {
@@ -935,24 +729,14 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Whether the element at {@code index} is the song's terminal — the auto-maintained
-     * {@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT} the song owns rather than the user.
-     *
      * @param index element index; out of range yields {@code false}
-     * @return {@code true} when the element at {@code index} is the terminal
-     *     {@link Song#isTerminal} recognizes on this line
      */
     public boolean isTerminalAt(int index) {
         return hasIndex(index) && song.isTerminal(getElement(index), this);
     }
 
     /**
-     * Whether {@code index} is the song-start slot, as {@link SongStart} states it: index 0 of a
-     * line of the song every line before which is empty.
-     *
-     * @param index an insertion index of this line
-     * @return {@code true} when an element inserted at {@code index} would stand first in the
-     *     song; {@code false} when this line is not one of its song's lines
+     * @return {@code false} when this line is not one of its song's lines
      */
     @Override
     public boolean isSongStartAt(int index) {
@@ -960,26 +744,14 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns whether {@code element} is one of this line's elements.
-     * <p>
-     * This is the query a caller asks when it does not know whether the element is on this line;
-     * {@link #getElementIndex} assumes it is. The answer is read from the element's parent
-     * pointer, which is an exact membership test: a staff element's parent line is written only
-     * by {@link #attach} and {@link #detach}.
-     *
-     * @return {@code true} when {@code element.getParentLine() == this}
+     * Asked when the caller does not know whether the element is on this line;
+     * {@link #getElementIndex} assumes it is.
      */
     public boolean contains(StaffElement element) {
         return element.getParentLine() == this;
     }
 
     /**
-     * Returns {@code element}'s position in this line.
-     * <p>
-     * A caller that does not know whether the element is on this line asks {@link #contains}
-     * first; this method is total over the line's own elements and rejects every other.
-     *
-     * @return the element's position, as {@link #getElement} indexes it
      * @throws IllegalArgumentException when {@code element.getParentLine() != this}
      * @invariant the result is a valid index into this line: {@code 0 <= result < elementCount()}
      */
@@ -1018,16 +790,6 @@ public final class Line implements EditableRun {
         return lyricsYPosSs;
     }
 
-    /**
-     * Moves this line's lyric rows to {@code lyricsYPosSs} below the staff, and posts one
-     * {@link LineLayoutChange} that holds the old and the new position.
-     * <p>
-     * The change posts through {@link #applyChange}, under {@link Song#applyChange}'s bracket
-     * rule.
-     *
-     * @param lyricsYPosSs the new vertical position of every script's row on this line, in staff
-     *     spaces below the staff
-     */
     public void setLyricsYPosSs(double lyricsYPosSs) {
         var old = this.lyricsYPosSs;
         applyChange(

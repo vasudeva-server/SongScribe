@@ -25,12 +25,10 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * A hairpin as a reader found it in a file, judged by {@link Hairpin#spanning}.
  *
- * @param kind      whether the hairpin is a crescendo or a diminuendo
- * @param anchor    the hairpin's first element, in a line of the song being read
- * @param end       the hairpin's last element, in the anchor's line at or after the anchor
- * @param xOffsetSs the user's horizontal offset of the hairpin in staff spaces, positive
- *                  rightward
- * @param yOffsetSs the user's vertical offset of the hairpin in staff spaces, positive downward
+ * @param anchor    in a line of the song being read
+ * @param end       in the anchor's line at or after the anchor
+ * @param xOffsetSs in staff spaces, positive rightward
+ * @param yOffsetSs in staff spaces, positive downward
  */
 public record PendingHairpin(
     Hairpin.Kind kind,

@@ -25,13 +25,8 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Song;
 
 /**
- * Converts between a {@link Song.Script} and the lyric number a file stores it as. This is the
- * one definition of that mapping: {@link Song.Script#LATIN} is lyric number 1 and
- * {@link Song.Script#BENGALI} is 2.
- *
- * <p>The I/O readers convert a lyric number read from a file with {@link #toScript}; the MusicXML
- * writer writes a script with {@link #number}. No code outside {@code songscribe.io} and its
- * subpackages imports this class, so a lyric number never reaches the rest of the application.
+ * Converts between a {@link Song.Script} and the lyric number a file stores it as. A lyric number
+ * never reaches code outside {@code songscribe.io}.
  */
 public final class LyricNumbers {
 
@@ -42,11 +37,7 @@ public final class LyricNumbers {
     }
 
     /**
-     * Returns the script a file's lyric number names.
-     *
-     * @param number a lyric number read from a file
-     * @return the script with that lyric number, or {@code null} when no script has it
-     * @invariant {@code toScript(number(script)) == script} for every script
+     * @return {@code null} when no script has that lyric number
      */
     public static Song.@Nullable Script toScript(int number) {
         var scripts = Song.Script.values();
@@ -59,12 +50,6 @@ public final class LyricNumbers {
         return scripts[ordinal];
     }
 
-    /**
-     * Returns the lyric number a file stores {@code script} as.
-     *
-     * @param script the script to write
-     * @return its lyric number, at least 1
-     */
     public static int number(Song.Script script) {
         return script.ordinal() + FIRST_LYRIC_NUMBER;
     }

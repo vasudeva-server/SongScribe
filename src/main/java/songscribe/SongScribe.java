@@ -125,19 +125,8 @@ public final class SongScribe {
     }
 
     /**
-     * Builds the MusicXML JAXB binding model on a background thread so the first
-     * save of a session does not build it on the event dispatch thread.
-     *
-     * <p>{@code MainFrame.saveCurrentFile} writes synchronously from a Swing action,
-     * and the model spans several hundred generated classes, so paying for it there
-     * stalls the UI. A failure here is not fatal — the save path reports its own
-     * failure — so it is logged and left alone.
-     *
-     * <p>The catch is {@link Throwable}, not {@link RuntimeException}: the failure this
-     * thread can actually produce is {@code MusicXmlSerializer}'s one-time setup blowing
-     * up, which arrives as an {@link ExceptionInInitializerError} — an {@code Error}. A
-     * narrower catch would let it kill the thread silently and log nothing, which is the
-     * one outcome this method exists to prevent.
+     * A failure here is not fatal: the save path reports its own failure. The catch is
+     * {@link Throwable} because the one-time setup fails as an {@link ExceptionInInitializerError}.
      */
     private static void warmMusicXmlSerializer() {
         var warmUp = new Thread(() -> {
@@ -208,23 +197,11 @@ public final class SongScribe {
     }
 
     /**
-     * Sets the message bus and builds the main window without showing it. Every process that
-     * builds the main window builds it here, so the window the end-to-end suite drives is the
-     * window the application shows.
+     * Every process that builds the main window builds it here, including the end-to-end suite.
      *
-     * <p>Requires {@link UIUtils#initMinimalTheme} to have run. Call it once per process: the bus,
-     * the main window and the preview element manager all live for the life of the process, and
-     * a second call would replace the bus under the listeners the first one subscribed.
-     *
-     * <p>Whatever runs before this — the minimal theme, the splash, and the start of MIDI
-     * initialization — runs before the bus exists, so it must not post or subscribe. Everything
-     * this method does after setting the bus may.
-     *
-     * @effects sets the message bus; installs the remaining font faces; keeps tooltips open while
-     *          the pointer hovers their item; subscribes the process's preview element manager;
-     *          supplies the page's default line width to every new {@link Song}; builds and wires
-     *          the main window. Must run on the event dispatch thread.
-     * @return the main window, built and not yet visible
+     * <p>Requires {@link UIUtils#initMinimalTheme} to have run. Call it once per process: a
+     * second call would replace the bus under the listeners the first one subscribed. Whatever
+     * runs before this must not post or subscribe.
      */
     public static MainFrame buildMainWindow() {
         setBus();
@@ -240,10 +217,7 @@ public final class SongScribe {
         return mainFrame;
     }
 
-    /**
-     * Sets the application's message bus, and with it the publication-error policy. Call it once
-     * for the life of the process, before anything can post or subscribe.
-     */
+    /** Call once, before anything can post or subscribe. */
     private static void setBus() {
         if (System.getenv("DEBUG") != null) {
             MessageCenter.setBus(new DebugMBassador<>(MessageCenter::exitOnPublicationError));

@@ -21,39 +21,25 @@
 package songscribe.dom;
 
 /**
- * What a span being added does to the same-kind spans already on its line — its kind's
- * displacement policy, read by {@link Span#addTo} through {@link Span#displacement()}.
+ * What a span being added does to the same-kind spans already on its line, read by
+ * {@link Span#addTo} through {@link Span#displacement()}.
  * <p>
- * "Same kind" is {@link Span#isSameKindAs}: the same concrete class, which a subclass may narrow.
- * {@link Hairpin} narrows it to the same {@link Hairpin.Kind}, so a crescendo never displaces a
- * diminuendo. Every displaced span leaves through its own recorded removal, before the new span's
- * addition so undo restores the displaced spans after removing the new one. A span displaced under
- * {@link #REPLACE_OVERLAPPING} leaves through {@link Span#removeReported}, since it is lost rather than
- * merged into the new one; a span absorbed under {@link #ABSORB_OVERLAPPING} or
+ * Every displaced span leaves through its own recorded removal, before the new span's addition,
+ * so undo restores the displaced spans after removing the new one. A span displaced under
+ * {@link #REPLACE_OVERLAPPING} leaves through {@link Span#removeReported}, since it is lost
+ * rather than merged; a span absorbed under {@link #ABSORB_OVERLAPPING} or
  * {@link #ABSORB_ADJACENT} leaves through {@link Span#removeFrom}, since the widened span covers it.
  */
 enum Displacement {
 
-    /** Leaves every existing span in place: two spans of the kind may overlap freely. */
     COEXIST,
 
-    /**
-     * Removes every same-kind span overlapping the new one before it is added, and reports each
-     * removal with {@link songscribe.Strings#REPORT_REASON_REPLACED}.
-     */
     REPLACE_OVERLAPPING,
 
     /**
-     * Widens the new span over every same-kind span it overlaps and removes the spans the
-     * widened range subsumes. Two spans written back to back stay two: they are two deliberate
-     * groupings, not one gesture interrupted by an accident.
+     * Two spans written back to back stay two: they are deliberate groupings.
      */
     ABSORB_OVERLAPPING,
 
-    /**
-     * As {@link #ABSORB_OVERLAPPING}, and also absorbs a same-kind span within
-     * {@link LineSpans#SPAN_ADJACENCY_REACH} of an endpoint: two spans that close describe one
-     * uninterrupted gesture, so adding either merges them.
-     */
     ABSORB_ADJACENT
 }

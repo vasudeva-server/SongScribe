@@ -41,9 +41,6 @@ import songscribe.util.UIUtils;
 /**
  * A button that when clicked is selected and displays a popup. If the button is clicked while the
  * popup is visible, the popup is hidden. The button is deselected whenever the popup is hidden.
- * <p>
- * Subclasses decide what the popup contains: {@link PopupMenuButton} fills it with menu items,
- * while other flavors may host an arbitrary component.
  */
 public class BasePopupButton
     extends ToolbarToggleButton
@@ -75,18 +72,14 @@ public class BasePopupButton
     }
 
     /**
-     * The popup, which is null only while {@link AbstractButton}'s constructor runs —
-     * it calls {@code updateUI()} before this class's constructor has created the popup. Only an
-     * {@code updateUI()} override has any reason to call this; everything else wants
-     * {@link #requirePopup()}.
+     * Null only while {@link AbstractButton}'s constructor runs, which calls {@code updateUI()}
+     * before the popup exists. Only an {@code updateUI()} override calls this; everything else
+     * wants {@link #requirePopup()}.
      */
     protected @Nullable JPopupMenu getPopup() {
         return popup;
     }
 
-    /**
-     * The popup, for the callers that run after construction and so can never see it null.
-     */
     protected JPopupMenu requirePopup() {
         var result = popup;
 
@@ -97,54 +90,34 @@ public class BasePopupButton
         return result;
     }
 
-    /**
-     * The x offset, relative to this button, at which the popup is shown.
-     */
     protected int popupX() {
         return getParent().getInsets().left;
     }
 
-    /**
-     * The y offset, relative to this button, at which the popup is shown.
-     */
     protected int popupY() {
         return getHeight();
     }
 
-    /**
-     * Called when the popup has been hidden, whatever the reason.
-     */
     protected void popupDidClose() {
         setSelected(false);
     }
 
     /**
-     * Enables the button when at least one of the actions behind it can be performed. A button
-     * that stays live while every one of its actions is dead opens a popup the user cannot use.
-     * <p>
-     * This is private precisely so the constructor can call it: an overridable method would run
-     * against a subclass whose fields have not been assigned yet.
+     * Private so the constructor can call it: an overridable method would run against a subclass
+     * whose fields are not yet assigned.
      */
     private void setEnabledFromActions() {
         setEnabled(actions.stream().anyMatch(UIAction::isEnabled));
     }
 
     /**
-     * Recomputes this button's state from its actions, called whenever any of them fires a
-     * property change. Subclasses override this to derive further state, calling {@code super}
-     * first.
-     * <p>
-     * This must remain a pure recomputation: a single selection change fires a burst of property
-     * events and the result is last-write-wins.
+     * Subclasses override this to derive further state, calling {@code super} first. It must stay
+     * a pure recomputation: a single selection change fires a burst of property events.
      */
     protected void refreshFromActions() {
         setEnabledFromActions();
     }
 
-    /**
-     * Whether the given action is represented by a button somewhere in the popup, either because
-     * the button is bound to the action or because the button's name is the action's command.
-     */
     public boolean hostsAction(UIAction action) {
         return containsAction(requirePopup(), action);
     }

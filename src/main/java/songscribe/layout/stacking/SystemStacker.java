@@ -47,23 +47,11 @@ import songscribe.smufl.SMuFLMetadata;
  * Stacks system-tier decorations (tier 4): tempo markings, beat changes,
  * and annotations, and on the song's first line the two first-line decorations — the song's
  * tempo mark and its attribution block — which it typesets from the song and the document fonts.
- * <p>
- * Operates on the system {@link StaffExtents} layer, which starts as a copy
- * of the structural layer's top extents. All calculations are in staff-space units.
  */
 public class SystemStacker {
 
-    /**
-     * Margin from reference point to tempo marking
-     */
     public static final double TEMPO_MARGIN_SS = 1.0;  // 4px
-    /**
-     * Margin from reference point to beat change
-     */
     public static final double BEAT_CHANGE_MARGIN_SS = 1.0;  // 8px
-    /**
-     * Margin from reference point to annotation
-     */
     public static final double ANNOTATION_MARGIN_SS = 1.0;  // 8px
 
     private final StackingContext context;
@@ -71,16 +59,6 @@ public class SystemStacker {
     private final DocumentFontsHolder fonts;
     private final double lineWidthSs;
 
-    /**
-     * Makes the stacker for the line in {@code context}, reserving in {@code systemExtents}.
-     *
-     * @param context       the line being stacked and the builder layouts are recorded in
-     * @param systemExtents the system extents layer this stacker owns
-     * @param fonts         the document fonts the tempo marks, annotations and attribution are
-     *                      typeset in
-     * @param lineWidthSs   total width of the staff line in staff-space units, which the
-     *                      attribution block is right-aligned to
-     */
     public SystemStacker(
         StackingContext context,
         StaffExtents systemExtents,
@@ -92,13 +70,6 @@ public class SystemStacker {
         this.lineWidthSs = lineWidthSs;
     }
 
-    /**
-     * Stacks all system-tier decorations in order: the song's own tempo mark, then per-column
-     * tempo changes, beat changes and annotations, then the attribution block topmost. The
-     * tempo mark and the attribution are stacked only when the line is its song's first.
-     *
-     * @param tempoMark whether the song's tempo mark is stacked when the line is the first
-     */
     public void stack(TempoMark tempoMark) {
         var columns = context.getColumns();
         var builder = context.getBuilder();
@@ -121,15 +92,8 @@ public class SystemStacker {
     }
 
     /**
-     * Stacks the song's tempo mark at the right edge of the first line's staff header.
-     * <p>
-     * Deliberately stacked before the column loop: everything a note owns is already in
-     * the system layer, so ledger lines and high notes push the mark up, while a beat change
-     * or annotation on the first column stacks above it — the same relationship
-     * {@link #stackTempo} already has with {@link #stackBeatChange} within a column.
-     * <p>
-     * The mark reserves no horizontal space; it begins one notehead width right of the header's
-     * right edge and overhangs the music to its right.
+     * Deliberately stacked before the column loop, so a beat change or annotation on the first
+     * column stacks above it. The mark reserves no horizontal space.
      */
     private void stackTempoMark(LayoutResultBuilder builder) {
         var line = context.getLine();
@@ -150,15 +114,7 @@ public class SystemStacker {
     }
 
     /**
-     * Stacks the attribution block above the right-edge columns of the first line.
-     * <p>
-     * The attribution is right-aligned to the staff right edge. It is stacked over its x-range,
-     * anchored at the top staff line, so it nests as close to the staff as the system-layer
-     * extents allow. Stacked after the column loop so that it clears every other system-tier
-     * decoration.
-     * <p>
-     * Its size comes from the content, never from the model: the block is a solid rectangle of
-     * text, so it reserves one collision region covering the whole of it. The resulting
+     * Stacked after the column loop so that it clears every other system-tier decoration. The
      * layout is keyed by the song's {@link Attribution} element, which carries the user Y offset.
      */
     private void stackAttribution(LayoutResultBuilder builder) {
@@ -180,9 +136,6 @@ public class SystemStacker {
             song.getAttributionElement(), LayoutResult.DecorationLayout.Typeset.of(placed, content));
     }
 
-    /**
-     * Stacks tempo marking for the given column.
-     */
     private void stackTempo(
         ElementColumn column,
         LayoutResultBuilder builder) {
@@ -197,9 +150,6 @@ public class SystemStacker {
         stackMetronomeAttachment(tempo, column, TEMPO_MARGIN_SS, builder);
     }
 
-    /**
-     * Stacks beat change for the given column.
-     */
     private void stackBeatChange(
         ElementColumn column,
         LayoutResultBuilder builder) {
@@ -214,9 +164,6 @@ public class SystemStacker {
         stackMetronomeAttachment(beatChange, column, BEAT_CHANGE_MARGIN_SS, builder);
     }
 
-    /**
-     * Stacks the annotation attachment for the given column, if present.
-     */
     private void stackAnnotations(
         ElementColumn column,
         LayoutResultBuilder builder) {

@@ -27,12 +27,6 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 /**
  * Abstract base class for metronome-style markings (tempo and beat change).
- * <p>
- * Provides the metronome note scale and the content-height overrides used by
- * TempoChangeAttachment and BeatChangeAttachment. The typesetting of a marking —
- * the glyph lookup, the advance sequence and the "=" separator — belongs to
- * {@code songscribe.layout.MetronomeContent}, which needs a resolved font that a
- * document-model object has no access to.
  */
 public abstract sealed class MetronomeAttachment extends Attachment
     permits TempoChangeAttachment, BeatChangeAttachment {
@@ -40,10 +34,8 @@ public abstract sealed class MetronomeAttachment extends Attachment
     // Design constant; mirrors FlatLaf.properties: SongScribe.score.tempo.note.scale
     public static final float NOTE_SCALE = 0.8f;
 
-    /** Bounding box of the quarter note metronome glyph (the tallest common tempo note). */
     private static final BBox QUARTER_NOTE_BBOX =
         SMuFLMetadata.bboxSs(SMuFLGlyph.MET_NOTE_QUARTER_UP);
 
-    /** Content height derived from the quarter note glyph, scaled to metronome note size. */
     public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.heightSs() * NOTE_SCALE;
 }

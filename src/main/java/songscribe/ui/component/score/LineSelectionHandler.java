@@ -55,16 +55,8 @@ import songscribe.ui.renderer.LineInvariants;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
- * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.
- * <p>
- * Each {@code LineComponent} owns one instance. Drag state — whether a press armed, whether it
- * grew into a drag, and the two horizontal positions a band spans — lives here; mouse event
- * handlers in {@code LineComponent} delegate to this class.
- * <p>
- * Hit testing itself lives in the line's {@link HitRegistry}, built at layout time. This
- * class only converts the click point into the registry's coordinate space and acts on the
- * answer; adding a newly selectable kind of notation is a registration at layout time, not
- * another tester here.
+ * Handles selection, hit-testing, and drag logic for a {@link LineComponent}. Hit testing itself
+ * lives in the line's {@link HitRegistry}.
  */
 class LineSelectionHandler {
 
@@ -74,20 +66,16 @@ class LineSelectionHandler {
     private boolean pressHandled = false;
 
     /**
-     * Whether this press may grow into a selection band. Distinct from {@link #pressHandled},
-     * which answers a different question — whether the click that follows still has work to do.
-     * A Shift press on an element leaves {@code pressHandled} false so the click can extend the
-     * range, yet must never sweep.
+     * Distinct from {@link #pressHandled}: a Shift press on an element leaves it false so the
+     * click can extend the range, yet must never sweep.
      */
     private boolean bandArmed = false;
 
-    /** What the press landed on, or null if it landed on nothing. */
+    /** Null if the press landed on nothing. */
     private @Nullable HitTarget pressTarget = null;
 
-    /** The band's fixed end, in line-local staff spaces, captured on press. */
     private double anchorXSs = 0.0;
 
-    /** The band's moving end, in line-local staff spaces, as of the last drag event. */
     private double leadXSs = 0.0;
 
     LineSelectionHandler(LineComponent lc) {
@@ -103,24 +91,12 @@ class LineSelectionHandler {
     }
 
     /**
-     * The band's horizontal extent, in line-local staff spaces.
-     * <p>
-     * A band has no vertical extent of its own. It always spans the staff, which is line
-     * geometry rather than anything the drag decides, so {@link LineComponent#getStaffTopYSs}
-     * and {@link LineComponent#getStaffBottomYSs} answer for that instead.
-     * <p>
-     * Build one with {@link #spanning}, which orders the two ends. The canonical constructor
-     * takes them already ordered and is not the way to turn a pair of drag positions into a band.
-     *
-     * @invariant {@code leftSs <= rightSs}
+     * A band has no vertical extent of its own; it always spans the staff. Build one with
+     * {@link #spanning}, which orders the two ends; the canonical constructor takes them already
+     * ordered.
      */
     record SelectionBand(Ss leftSs, Ss rightSs) {
 
-        /**
-         * The band covering both {@code anchorSs} and {@code leadSs}, in either order.
-         *
-         * @return the band, whichever direction the drag was drawn in
-         */
         static SelectionBand spanning(double anchorSs, double leadSs) {
             return new SelectionBand(
                 new Ss(Math.min(anchorSs, leadSs)), new Ss(Math.max(anchorSs, leadSs)));
@@ -128,16 +104,8 @@ class LineSelectionHandler {
     }
 
     /**
-     * The live selection band, or {@code null} when no drag is in progress or the line's layout
-     * went stale under it.
-     * <p>
-     * Derived on every call rather than stored, and left in staff spaces rather than converted
-     * to pixels. Staff spaces name a position in the music, so a zoom mid-drag re-renders the
-     * band over the same music at the new scale instead of leaving a stale pixel rectangle
-     * behind. The one conversion to pixels happens at paint time, in
-     * {@link LineRenderer#renderSelectionBand}.
-     *
-     * @return the band to paint, or {@code null} when there is nothing to paint
+     * {@code null} when no drag is in progress or the line's layout went stale under it. Kept in
+     * staff spaces so a zoom mid-drag re-renders the band over the same music.
      */
     @Nullable SelectionBand getSelectionBand() {
         if (!dragging) {
@@ -153,14 +121,8 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Hit-tests the given point, in view pixels, against everything clickable on this line.
-     * <p>
-     * A single press needs more than one answer about the same point — whether it landed on
-     * the staff lines, and whether it landed on an ending. Callers should run this once and
-     * examine the result rather than asking several times about the same point.
-     *
-     * @return what the point landed on, or {@code null} when it landed on nothing clickable or
-     *         this component has no line to test against
+     * @return {@code null} when the point landed on nothing clickable or this component has no
+     *         line to test against
      */
     @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
         var region = hitRegionAtViewPoint(viewPoint);
@@ -172,13 +134,7 @@ class LineSelectionHandler {
         return region.target();
     }
 
-    /**
-     * Hit-tests the given point as {@link #hitTestViewPoint} does, and returns the region that
-     * wins rather than only its target, for a caller that also needs where the target is.
-     *
-     * @return the region whose target {@link #hitTestViewPoint} returns, or {@code null} when it
-     *         returns {@code null}
-     */
+    /** Null when {@link #hitTestViewPoint} returns null. */
     @Nullable HitRegion hitRegionAtViewPoint(Point viewPoint) {
         var registry = readyRegistry();
 
@@ -190,13 +146,8 @@ class LineSelectionHandler {
     }
 
     /**
-     * This line's hit registry with its layout brought up to date.
-     * <p>
-     * The layout is ensured here, since the registry is built as part of it: without this a
-     * query could answer from the regions of a stale layout.
-     *
-     * @return the registry, or {@code null} when this component has no line to hit-test or its
-     *         layout could not be brought up to date
+     * @return {@code null} when this component has no line to hit-test or its layout could not
+     *         be brought up to date
      */
     private @Nullable HitRegistry readyRegistry() {
         if (lc.getLine() == null) {
@@ -213,53 +164,26 @@ class LineSelectionHandler {
     }
 
     /**
-     * A view-pixel distance in staff spaces at the view's current zoom.
-     * <p>
-     * Goes straight from view pixels to staff spaces through {@link ViewScale#toSs}, the same
-     * conversion {@code PreviewElementManager.trackMouse} uses on the mouse position. Nothing
-     * downstream wants an intermediate document-pixel value: the registry's regions and the
-     * element hit rects are both staff spaces, so rounding through whole document pixels on
-     * the way would only cost precision — half a document pixel, which the zoom multiplies
-     * back into visible slop.
-     *
-     * @return the same distance in staff spaces
+     * Converts straight to staff spaces: rounding through whole document pixels would cost half a
+     * pixel of precision, which the zoom multiplies into visible slop.
      */
     private double toSs(int viewPx) {
         return lc.getViewScale().toSs(new ViewPx(viewPx)).value();
     }
 
-    /**
-     * The X of a view-pixel point in the registry's line-local staff spaces.
-     *
-     * @return the point's X in staff spaces, measured from the start of the line
-     */
     double layoutXSs(Point viewPoint) {
         return toSs(viewPoint.x);
     }
 
-    /**
-     * The Y of a view-pixel point in the registry's layout space, whose origin is the
-     * staff midline rather than the top of this component.
-     *
-     * @return the point's Y in staff spaces, negative above the midline and positive below
-     */
     private double layoutYSs(Point viewPoint) {
         return toSs(viewPoint.y) - lc.getMiddleLineYSs();
     }
 
     /**
-     * Hit-tests a point, in view pixels, against the "?" drawn where a lyric is missing.
-     * <p>
-     * A "?" has no region in the hit registry. Layout places a placeholder under every slot that
-     * lacks a syllable, but the lint report decides which of them are drawn, and layout never
-     * reads the lint report. This test therefore looks only at the elements of the line that
-     * carry a {@link LintMark.MissingLyric} mark, keeps those for which
-     * {@link LineInvariants#drawnLyricPlaceholder} draws a "?", and tests the point against the
-     * box {@link #markBoundsSs} gives each.
+     * A "?" has no region in the hit registry: layout places a placeholder under every slot
+     * lacking a syllable, but the lint report decides which are drawn, and layout never reads it.
      *
-     * @param viewPoint the point, in this component's view pixels
-     * @return the "?" under the point, or {@code null} when the point is not over one or this
-     *         component has no line laid out
+     * @return {@code null} when the point is not over a "?" or this component has no line laid out
      */
     @Nullable MissingLyricHit hitTestMissingLyricViewPoint(Point viewPoint) {
         var ready = lc.readyLayout();
@@ -293,21 +217,13 @@ class LineSelectionHandler {
     }
 
     /**
-     * Returns the lint mark under a point: its "?", or else the mark {@code report} puts on the
-     * target a click there gets.
-     * <p>
      * The "?" comes first because it stands in the lyric row, and a lyric outranks every other
      * target.
      *
-     * @param region       the point's {@link #hitRegionAtViewPoint} result; {@code null} means
-     *                     the point is on no region, or this component has no line laid out
-     * @param missingLyric the point's {@link #hitTestMissingLyricViewPoint} result; {@code null}
-     *                     means the point is on no "?"
-     * @param report       the song's current lint report
-     * @param layoutResult the current layout of this component's line, which both hit tests read
-     * @return the mark under the point, with the box {@link #markBoundsSs} gives it; {@code null}
-     *         when the point is on no "?" and {@code report} puts no mark on the region's target,
-     *         or both hit tests found nothing
+     * @param region       {@code null} means the point is on no region, or this component has no
+     *                     line laid out
+     * @param missingLyric {@code null} means the point is on no "?"
+     * @return {@code null} when no mark is hit
      */
     @Nullable LintMarkHit lintMarkAt(
         @Nullable HitRegion region,
@@ -332,45 +248,15 @@ class LineSelectionHandler {
         return new LintMarkHit(mark, markBoundsSs(mark, layoutResult, lc.getLyricRenderMetrics()));
     }
 
-    /**
-     * Returns where this line draws a lint mark of the current report, with the box
-     * {@link #markBoundsSs} gives it in this line's current layout.
-     *
-     * @param mark a mark of the song's current lint report whose element is on this component's
-     *             line
-     * @return the mark and its box
-     */
     LintMarkHit lintMarkHit(LintMark mark) {
         return new LintMarkHit(mark, markBoundsSs(mark, lc.requireLayoutResult(), lc.getLyricRenderMetrics()));
     }
 
     /**
-     * Returns the box of the item {@code mark} is drawn on. Each kind of mark is one keyed lookup
-     * in {@code layoutResult}, through the method that also builds the box the pointer is tested
-     * against:
-     * <ul>
-     *   <li>{@link LintMark.Flagged}: the element's hit box, {@link LayoutResult#elementHitRectSs},
-     *       which the hit registry holds for the element;</li>
-     *   <li>{@link LintMark.FlaggedAnnotation}: the annotation's ink box,
-     *       {@link LayoutResult.DecorationLayout#inkRectSs}, which the hit registry holds for the
-     *       annotation;</li>
-     *   <li>{@link LintMark.MissingLyric}: the box of the placeholder the "?" is drawn in
-     *       ({@link LineInvariants#drawnLyricPlaceholder}), {@link LayoutResult#lyricBoxRectSs},
-     *       which {@link #hitTestMissingLyricViewPoint} tests.</li>
-     * </ul>
-     * The registry widens its boxes by {@code HitRegionBuilder}'s inclusive edge margin; the box
-     * returned here is the one before that margin.
+     * The box is in line-local, midline-relative staff spaces, before the registry's inclusive
+     * edge margin.
      *
-     * @param mark               a mark of the song's current lint report, whose element
-     *                           {@code layoutResult} laid out
-     * @param layoutResult       the current layout of the line that holds the mark's element
      * @param lyricRenderMetrics the lyric render metrics {@code layoutResult} was laid out with
-     * @return a new box, in the hit registry's line-local, midline-relative staff spaces
-     * @throws IllegalStateException if {@code layoutResult} draws no item for {@code mark}: no
-     *         annotation for a {@link LintMark.FlaggedAnnotation}, or no "?" for a
-     *         {@link LintMark.MissingLyric}. The score draws every mark of the current report on
-     *         the current layout of its line, so this means the caller passed a mark of another
-     *         report or a layout that is not current.
      */
     static Rectangle2D markBoundsSs(LintMark mark, LayoutResult layoutResult, LyricRenderMetrics lyricRenderMetrics) {
         return switch (mark) {
@@ -400,10 +286,7 @@ class LineSelectionHandler {
     }
 
     /**
-     * Returns the lint mark a hit target shows: a flagged element, or the annotation of an element
-     * whose annotation is flagged.
-     *
-     * @return the mark, or {@code null} when {@code report} puts no such mark on the target
+     * @return {@code null} when {@code report} puts no such mark on the target
      */
     private static @Nullable LintMark lintMarkOf(HitTarget target, LintReport report) {
         LintMark mark = null;
@@ -422,31 +305,12 @@ class LineSelectionHandler {
         return mark;
     }
 
-    /**
-     * A "?" under the pointer.
-     *
-     * @param mark     the mark the "?" is drawn for
-     * @param boundsSs the box the "?" is hit in, in the hit registry's midline-relative staff
-     *                 spaces
-     */
     record MissingLyricHit(LintMark.MissingLyric mark, Rectangle2D boundsSs) { }
 
-    /**
-     * A lint mark, and the box of the item it is drawn on.
-     *
-     * @param mark     the mark
-     * @param boundsSs the box {@link #markBoundsSs} gives the mark, in the hit registry's
-     *                 midline-relative staff spaces
-     */
     record LintMarkHit(LintMark mark, Rectangle2D boundsSs) { }
 
     /**
-     * Whether the given point, in view pixels, is horizontally within the staff header,
-     * regardless of its Y. Unlike the registry's staff-line region, which is bounded
-     * vertically too, this covers the whole header column, since no element can be inserted
-     * anywhere in it.
-     *
-     * @return true when the point's X falls in the header
+     * Covers the whole header column, since no element can be inserted anywhere in it.
      */
     boolean isWithinHeaderX(Point viewPoint) {
         return isWithinHeaderXSs(layoutXSs(viewPoint));
@@ -552,28 +416,13 @@ class LineSelectionHandler {
     }
 
     /**
-     * Selects a lyric hit by a press in EDIT mode, returning whether one was selected.
-     * <p>
-     * A lyric is the <b>only</b> thing selectable in EDIT mode. Everything else — every
-     * decoration, every note — needs SELECT mode or an alt+click. That is one rule for the whole
-     * hit vocabulary rather than a per-kind exception list, and it keeps EDIT mode's own rule
-     * simple: a press inserts.
-     * <p>
-     * A lyric is the exception because it is the one kind that insertion cannot reach anyway.
-     * {@code mouseMoved} clears the insertion preview over a lyric box, so the staff positions a
-     * lyric covers cannot be clicked to insert a note whatever this method does. Selecting there
-     * takes nothing away from EDIT mode.
-     * <p>
-     * The {@link LineComponent#hasPreviewElement()} guard is therefore a fallback rather than the
-     * rule — it only bites if a preview appears over lyric text with no mouse movement to clear
-     * it, and insertion winning is the safe answer in that case.
-     * <p>
-     * Takes the already-computed cascade result for this press, so an element head over the lyric
-     * still wins and falls through to normal EDIT-mode handling.
+     * A lyric is the <b>only</b> thing selectable in EDIT mode, because insertion cannot reach it
+     * anyway: {@code mouseMoved} clears the insertion preview over a lyric box. The
+     * {@link LineComponent#hasPreviewElement()} guard is a fallback for a preview that appears
+     * over lyric text without mouse movement; insertion wins there. Takes the already-computed
+     * cascade result, so an element head over the lyric still wins.
      *
-     * @param target what this press landed on, or {@code null} when it landed on nothing
-     * @return true when a lyric was selected, so the press is finished; false to fall through to
-     *         normal EDIT-mode handling
+     * @param target {@code null} when the press landed on nothing
      */
     boolean handleEditModePress(@Nullable HitTarget target) {
         if (MidiController.isPlaying()) {
@@ -621,11 +470,6 @@ class LineSelectionHandler {
         lc.repaint();
     }
 
-    /**
-     * Handles a click event for selection.
-     *
-     * @return true if the event was handled (selection was active), false to fall through
-     */
     boolean handleClick(MouseEvent e) {
         if (!isSelectionActive(e)) {
             return false;
@@ -668,19 +512,6 @@ class LineSelectionHandler {
     // Guard
     // ======================================================================
 
-    /**
-     * Returns whether selection handling should be active for the given event.
-     * <p>
-     * Selection is active when:
-     * <ul>
-     *   <li>ScoreView is available</li>
-     *   <li>Not playing back</li>
-     *   <li>In SELECT mode (alt-click switches to SELECT mode permanently)</li>
-     * </ul>
-     *
-     * @param e The mouse event (alt key check retained for backwards compatibility)
-     * @return true if selection handling should be active
-     */
     boolean isSelectionActive(MouseEvent e) {
         var scoreView = lc.getScoreView();
         var line = lc.getLine();
@@ -695,23 +526,13 @@ class LineSelectionHandler {
     // Selection helpers
     // ======================================================================
 
-    /**
-     * Clears all selection and activates this line for new selection.
-     */
     private void prepareSelection() {
         lc.getScoreView().clearSelection();
         lc.getScoreView().getSelectionCoordinator().activateLine(lc.getLineIndex());
     }
 
     /**
-     * Makes the lyric on {@code element} in script {@code script} the sole selection.
-     * <p>
-     * Unlike every other target, a lyric names the line it belongs to, so the coordinator
-     * resolves and activates that line itself: there is no registration this can find missing,
-     * and it always succeeds.
-     *
-     * @return true, always — the constant result is what distinguishes a lyric from every other
-     *         target, which can fail on an unregistered line
+     * Always succeeds: a lyric names its own line, so there is no registration to find missing.
      */
     @SuppressWarnings("SameReturnValue")
     private boolean selectLyric(StaffElement element, Song.Script script) {
@@ -721,16 +542,6 @@ class LineSelectionHandler {
         return true;
     }
 
-    /**
-     * Makes {@code target} — a decoration, a note's accidental, or the staff line itself —
-     * the sole selection.
-     * <p>
-     * The registration is what makes the selected line resolvable: activating an unregistered
-     * index would leave the selection pointing at a line nothing can answer for.
-     *
-     * @return true when the target became the selection; false when this line is not registered
-     *         with the coordinator, in which case nothing was selected
-     */
     private boolean selectTarget(HitTarget.Selectable target) {
         var scoreView = lc.getScoreView();
         var coordinator = scoreView.getSelectionCoordinator();
@@ -750,10 +561,6 @@ class LineSelectionHandler {
         return true;
     }
 
-    /**
-     * Selects the element at the given index in this line, clearing any prior selection.
-     * Used by both the press handler and {@link NoteDragHandler}.
-     */
     void selectElementAtIndex(int elementIndex) {
         var scoreView = lc.getScoreView();
         var coordinator = scoreView.getSelectionCoordinator();
@@ -776,23 +583,11 @@ class LineSelectionHandler {
         }
     }
 
-    /**
-     * Selects the element at the given index and plays it if it is a pitched note.
-     */
     void selectAndPlayElement(int elementIndex) {
         selectElementAtIndex(elementIndex);
         playNoteIfPitched(elementIndex);
     }
 
-    /**
-     * Selects {@code element} and plays it if it is a pitched note.
-     * <p>
-     * Targets name elements by identity; the index the selection range is built from is derived
-     * here, at the point of use.
-     *
-     * @return true when the element became the selection; false when it is not on this
-     *         component's line
-     */
     private boolean selectAndPlayElement(StaffElement element) {
         var line = lc.getLine();
 
@@ -804,9 +599,6 @@ class LineSelectionHandler {
         return true;
     }
 
-    /**
-     * Plays the element at the given index if it is a pitched note (not a rest).
-     */
     void playNoteIfPitched(int elementIndex) {
         if (!Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
             return;
@@ -827,50 +619,31 @@ class LineSelectionHandler {
     // Private helpers
     // ======================================================================
 
-    /**
-     * Whether the given X, in staff-space units, is within this line's staff header (clef +
-     * optional key signature). Clicks at or before that X select the staff lines.
-     *
-     * @return true when the X falls in the header
-     */
     private boolean isWithinHeaderXSs(double xSs) {
         return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, lc.getLine());
     }
 
     /**
-     * Whether a press at this point may grow into a band, as far as the staff is concerned.
-     * <p>
-     * The band spans the staff and sweeps by horizontal position alone, so a gesture that starts
-     * off the staff would be one the user has no way to aim. Both staff lines count as on it.
-     *
-     * @return true when the point's Y lies on the staff, its top and bottom lines included
+     * The band sweeps by horizontal position alone, so a gesture starting off the staff could
+     * not be aimed. Both staff lines count as on it.
      */
     private boolean isWithinStaffY(Point viewPoint) {
         return Math.abs(layoutYSs(viewPoint)) <= Staff.STAFF_HALF_SS;
     }
 
     /**
-     * Whether this line holds anything a band could sweep.
-     * <p>
-     * An empty line and a line holding only the song's auto-maintained terminal both answer
-     * false. There is nothing to select on either, so the press does not arm and the drag is a
-     * no-op rather than a band swept across bare staff.
-     *
-     * @return true when a drag on this line could select something
+     * An empty line and a line holding only the song's auto-maintained terminal answer false, so
+     * the press does not arm.
      */
     private boolean hasSweepableColumns() {
         return sweepRange() != null;
     }
 
     /**
-     * What this line's current layout lets a drag reach and select.
-     * <p>
-     * Rebuilt on every ask rather than captured on press: a line's content can change under a
-     * live drag, and re-deriving is what keeps a gesture reading the layout in front of it
-     * instead of one that has been replaced.
+     * Rebuilt on every ask, since a line's content can change under a live drag.
      *
-     * @return the range, or {@code null} when this component has no line, has no layout, or the
-     *         line holds nothing a drag could select
+     * @return {@code null} when this component has no line, has no layout, or the line holds
+     *         nothing a drag could select
      */
     private @Nullable SweepRange sweepRange() {
         var line = lc.getLine();
@@ -884,33 +657,17 @@ class LineSelectionHandler {
     }
 
     /**
-     * The band the current anchor and lead describe, brought inside what {@code sweepRange}
-     * allows.
-     * <p>
-     * Each end is a bare mouse position, never widened out to the column it happens to land in,
-     * so the band's edge follows the mouse continuously across a column rather than jumping to
-     * the column's far side. Both ends are clamped, so no press position can anchor a band
-     * somewhere a drag could not have taken its leading edge.
-     *
-     * @return the band, whichever direction the drag was drawn in
+     * Each end is a bare mouse position, never widened to its column, so the edge follows the
+     * mouse continuously. Both ends are clamped.
      */
     private SelectionBand bandWithin(SweepRange sweepRange) {
         return SelectionBand.spanning(sweepRange.clamp(anchorXSs), sweepRange.clamp(leadXSs));
     }
 
     /**
-     * Replaces the selection with the columns the band touches, anchored at the first of them.
-     * <p>
-     * The anchor is the first column whichever direction the band was drawn in, and whatever the
-     * press point landed on. It is the fixed point every later Shift+click and Shift+arrow
-     * extends from, and nothing but a new plain click or drag may move it.
-     * <p>
-     * Which columns those are is {@code sweepRange}'s answer, not this method's — including the
-     * exclusion of the auto-maintained terminal, which is a consequence of the range
-     * not holding it rather than a check made here.
-     * <p>
-     * The whole range is resolved before anything is selected, so a drag event assigns the
-     * selection exactly once no matter how many columns it touches.
+     * The anchor is the first column whichever direction the band was drawn in. It is the fixed
+     * point every later Shift+click and Shift+arrow extends from; only a new plain click or drag
+     * may move it.
      */
     private void selectSweptColumns(SweepRange sweepRange, SelectionBand band) {
         var coordinator = lc.getScoreView().getSelectionCoordinator();

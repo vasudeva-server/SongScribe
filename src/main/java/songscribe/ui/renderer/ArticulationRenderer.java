@@ -36,29 +36,14 @@ import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
 
-/**
- * Renders articulation markings on notes (staccato, accent).
- * <p>
- * Articulations modify how a note is played:
- * <ul>
- *   <li>Staccato - short, detached (dot above/below note)</li>
- *   <li>Accent - emphasized attack (> symbol)</li>
- * </ul>
- */
 public final class ArticulationRenderer implements ElementRenderer<StaffElement> {
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private ArticulationRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static ArticulationRenderer getInstance() {
         return INSTANCE;
     }
@@ -107,12 +92,8 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     }
 
     /**
-     * The X at which to draw a glyph of the given ink bounds so that it sits centered within its
-     * layout box, which the stacker already centered on the notehead.
-     * <p>
-     * The box is sized from the above-staff glyph's bbox, so centering rather than drawing flush at
-     * the box's left edge is what keeps a glyph whose own bbox differs — a future below-staff
-     * variant, or a wedge — on the note's axis.
+     * The box is sized from the above-staff glyph's bbox, so centering, not drawing flush left,
+     * keeps a glyph whose own bbox differs on the note's axis.
      */
     private static double centeredInLayoutBoxXSs(
         LayoutResult.DecorationLayout layout, double glyphBBoxLeftSs, double glyphWidthSs) {
@@ -120,10 +101,6 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         return layout.xSs() + (layout.widthSs() - glyphWidthSs) / 2.0 - glyphBBoxLeftSs;
     }
 
-    /**
-     * Draws a single articulation glyph centered within its layout box, which the stacker already
-     * centered on the notehead.
-     */
     private static void drawArticulationGlyph(
         Graphics2D g2,
         LayoutResult.DecorationLayout layout,
@@ -137,10 +114,6 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
     }
 
-    /**
-     * Draws an articulation outline, filled, centered within its layout box, which the stacker
-     * already centered on the notehead.
-     */
     private static void drawOutline(
         Graphics2D g2,
         LayoutResult.DecorationLayout layout,

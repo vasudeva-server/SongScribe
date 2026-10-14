@@ -37,17 +37,10 @@ import songscribe.util.UIUtils;
  */
 public class PopupMenuButton extends BasePopupButton {
 
-    /**
-     * How the actions handed to the constructor are rendered in the popup.
-     */
     public enum ItemStyle {
-        /** A check box for a {@link UIAction.Selectable} action, a plain item otherwise. */
         AUTO,
 
-        /**
-         * A radio button for every action, driven by {@link Action#SELECTED_KEY}. No
-         * {@link ButtonGroup} is installed, so the group keeps a none-selected state.
-         */
+        /** No {@link ButtonGroup} is installed, so the group keeps a none-selected state. */
         RADIO
     }
 

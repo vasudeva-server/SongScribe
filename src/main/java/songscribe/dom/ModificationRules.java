@@ -25,28 +25,12 @@ import songscribe.message.mutation.Mutation;
 
 /**
  * Every {@link ModificationRule}, in the order they run when the outermost modification bracket
- * closes.
- * <p>
- * The list is fixed. Every rule is a domain rule of the model, so there is no way to register
- * one from outside.
- * <p>
- * Key-invariant maintenance and the accidental chain walk are not rules here: each runs after
- * every mutation ({@link Song#applyChange}), and a rule here runs only once for each edit.
+ * closes. The list is fixed: there is no way to register a rule from outside.
  */
 final class ModificationRules {
 
     private final List<ModificationRule> rules = List.of(new TieRule(), new EndingSectionRule());
 
-    /**
-     * Runs every rule over {@code batch}, in order.
-     *
-     * @param song   the song the edit changed
-     * @param batch  the mutations the edit recorded; every change in it has landed; never empty
-     * @param report the report of the open edit: the tie rule records its removals into it, and
-     *               the ending rule reports its removals through {@link Song#report}, which
-     *               records into the same report
-     * @effects whatever each rule's {@link ModificationRule#apply} does
-     */
     void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {
         for (var rule : rules) {
             rule.apply(song, batch, report);

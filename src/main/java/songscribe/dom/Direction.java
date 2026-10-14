@@ -39,12 +39,6 @@ public enum Direction {
         return this == UP ? DOWN : UP;
     }
 
-    /**
-     * Returns this direction as a multiplier for a distance measured upward, so that a caller
-     * can move a stem or a bracket end the right way with one multiplication.
-     *
-     * @return {@code +1} for {@link #UP}, {@code -1} for {@link #DOWN}
-     */
     public int sign() {
         return this == UP ? 1 : -1;
     }

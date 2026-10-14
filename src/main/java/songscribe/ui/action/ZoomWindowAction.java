@@ -29,8 +29,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * Zooms the main window to fill the screen, or returns it to its normal size: the window
- * zoom, as a double click on the title bar does. {@link ZoomAction} is the score zoom.
+ * The window zoom, as a double click on the title bar does; {@link ZoomAction} is the score zoom.
  */
 public final class ZoomWindowAction extends UIAction {
 

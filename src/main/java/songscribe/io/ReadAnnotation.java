@@ -30,32 +30,13 @@ import songscribe.dom.StaffElement;
 /**
  * An annotation a reader has finished, and where the document placed it.
  *
- * <p>Two values rather than one because where an annotation sits belongs to the
- * {@link AnnotationAttachment} and not to the {@link Annotation} — and the attachment cannot exist
- * until the element it hangs on is known, which in both file formats is later than the point the
- * annotation itself is complete.
- *
- * <p>Both readers answer this rather than the annotation alone, so neither can hand over a
- * finished annotation and leave its position behind. That is the whole reason it is a pair: a
- * second accessor beside the annotation would have to state in prose when it is meaningful, and
- * reading it at the wrong moment would give a plausible number with nothing marking it wrong.
- *
- * @param annotation    what the document's text and formatting describe
- * @param userYOffsetSs where the document placed it, in staff spaces, relative to the position
- *                      layout would otherwise compute
+ * <p>A pair so that neither reader can hand over a finished annotation and leave its position
+ * behind.
  */
 public record ReadAnnotation(Annotation annotation, double userYOffsetSs) {
 
     private static final Logger LOG = LoggerFactory.getLogger(ReadAnnotation.class);
 
-    /**
-     * Builds the attachment this describes and puts it on {@code element}.
-     *
-     * @param element the staff element the annotation binds to
-     * @throws SAXException if {@code element} already carries an annotation: the document names
-     *     two for one element
-     * @effects adds one {@link AnnotationAttachment} to {@code element}
-     */
     public void attachTo(StaffElement element) throws SAXException {
         var attachment = new AnnotationAttachment(annotation);
 

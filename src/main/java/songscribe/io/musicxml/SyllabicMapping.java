@@ -30,21 +30,9 @@ import songscribe.dom.Lyric;
  * {@link Lyric.Extend} values and their MusicXML {@code <syllabic>} text
  * content / {@code <extend type>} attribute tokens.
  *
- * <p>{@link Lyric.Extend#NONE} has <b>no</b> MusicXML token: it represents the
- * complete absence of an {@code <extend>} child, not a token value. {@link
- * #forExtend} therefore rejects it, and the reverse lookup ({@link
- * #forExtendToken}) never produces it — an absent or unrecognized {@code type}
- * attribute (including a legacy self-closed {@code <extend/>} with no
- * attribute at all) defaults to {@link Lyric.Extend#START}, mirroring the
- * legacy {@code StaffElementIO.parseExtendType}.
- *
- * <p>An unrecognized (or {@code null}) {@code <syllabic>} token defaults to
- * {@link Lyric.Syllabic#SINGLE} on read, mirroring the legacy writer's own
- * null-syllabic default ({@code case null -> "single"} in {@code
- * StaffElementIO}'s write loop). In practice a non-carrier {@link Lyric} can
- * never have a null syllabic — its compact constructor forbids it — so this
- * is a defensive fallback for hand-edited or otherwise malformed input, not a
- * path production code exercises.
+ * <p>{@link Lyric.Extend#NONE} has <b>no</b> MusicXML token: it is the absence of an
+ * {@code <extend>} child. {@link #forExtend} therefore rejects it, and {@link #forExtendToken}
+ * never produces it.
  */
 final class SyllabicMapping {
 
@@ -119,9 +107,7 @@ final class SyllabicMapping {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the MusicXML {@code <syllabic>} token for the given syllabic,
-     * defaulting {@code null} to {@link #SYLLABIC_SINGLE} — matching the
-     * legacy writer's null-syllabic default.
+     * A {@code null} syllabic defaults to {@link #SYLLABIC_SINGLE}.
      */
     static String forSyllabic(Lyric.@Nullable Syllabic syllabic) {
         if (syllabic == null) {
@@ -133,11 +119,8 @@ final class SyllabicMapping {
     }
 
     /**
-     * Returns the {@link Lyric.Syllabic} for the given MusicXML {@code
-     * <syllabic>} token, defaulting an unrecognized (or {@code null}) token to
-     * {@link Lyric.Syllabic#SINGLE} — matching the writer's own null-syllabic
-     * default, so a malformed or hand-edited file degrades to the most
-     * conservative syllabic rather than throwing.
+     * An unrecognized (or {@code null}) token defaults to {@link Lyric.Syllabic#SINGLE}, so a
+     * malformed file degrades rather than throwing.
      */
     static Lyric.Syllabic forSyllabicToken(@Nullable String token) {
         if (token == null) {
@@ -148,16 +131,6 @@ final class SyllabicMapping {
         return syllabic != null ? syllabic : Lyric.Syllabic.SINGLE;
     }
 
-    /**
-     * Returns the MusicXML {@code <extend type>} token for the given extend
-     * state.
-     *
-     * @throws IllegalArgumentException if {@code extend} is {@link
-     *                                  Lyric.Extend#NONE} — NONE represents the
-     *                                  absence of an {@code <extend>} element
-     *                                  entirely, not a token value, mirroring
-     *                                  {@code StaffElementIO.extendTypeAttr}.
-     */
     static String forExtend(Lyric.Extend extend) {
         var token = EXTEND_FORWARD_MAP.get(extend);
 
@@ -169,11 +142,8 @@ final class SyllabicMapping {
     }
 
     /**
-     * Returns the {@link Lyric.Extend} for the given MusicXML {@code <extend
-     * type>} attribute value, defaulting an absent or unrecognized token to
-     * {@link Lyric.Extend#START} — mirroring {@code
-     * StaffElementIO.parseExtendType}, including its handling of the legacy
-     * self-closed {@code <extend/>} (no {@code type} attribute at all).
+     * An absent or unrecognized token defaults to {@link Lyric.Extend#START}, as for a legacy
+     * self-closed {@code <extend/>}.
      */
     static Lyric.Extend forExtendToken(@Nullable String token) {
         if (token == null) {

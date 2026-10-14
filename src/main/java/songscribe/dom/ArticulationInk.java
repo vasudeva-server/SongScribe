@@ -27,38 +27,17 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * What an articulation draws: a pair of font glyphs, one for each side of the note, or one
- * outline drawn the same whichever side it sits on. Sealed so that a renderer switching on it
- * draws every kind there is, and so that no caller can ask a kind for a glyph it does not have.
- *
- * <p>Every kind measures itself, so the room an articulation reserves when stacked is derived
- * from the ink it draws rather than stated beside it.
+ * What an articulation draws. Sealed so that a renderer switching on it draws every kind.
  */
 public sealed interface ArticulationInk {
 
     /**
-     * Returns the box the ink occupies, in staff spaces, measured from the origin it is drawn
-     * from. For a glyph pair it is the above-staff glyph's box: Bravura's staccato dot has the
-     * same box on both sides.
-     *
-     * @return the ink's bounds
+     * For a glyph pair it is the above-staff glyph's box, which Bravura's glyphs share on both sides.
      */
     BBox boundsSs();
 
-    /**
-     * Ink drawn from the music font, with a glyph for each side of the note.
-     *
-     * @param above the glyph drawn above the note
-     * @param below the glyph drawn below the note
-     */
     record Glyphs(SMuFLGlyph above, SMuFLGlyph below) implements ArticulationInk {
 
-        /**
-         * Returns the glyph for one side of the note.
-         *
-         * @param side {@link Direction#UP} for above the note, {@link Direction#DOWN} for below
-         * @return {@link #above()} or {@link #below()}
-         */
         public SMuFLGlyph on(Direction side) {
             return side.isUp() ? above : below;
         }
@@ -69,12 +48,7 @@ public sealed interface ArticulationInk {
         }
     }
 
-    /**
-     * Ink drawn as a filled outline, in staff spaces with Y down, the same on either side of the
-     * note.
-     *
-     * @param shape the outline, positioned relative to the origin it is drawn from
-     */
+    /** In staff spaces with Y down. */
     record Outline(Shape shape) implements ArticulationInk {
 
         @Override

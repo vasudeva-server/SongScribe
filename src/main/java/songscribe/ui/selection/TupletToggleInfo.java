@@ -30,16 +30,11 @@ import songscribe.dom.TupletGrade;
  * What the tuplet menu shows for a selection: {@link RangeQueries#canToggleTuplet}'s answer.
  * It enables and checks the menu items only; the edit asks its own question when it runs.
  *
- * @param validGrades   the grades a tuplet over the selection may take, as
- *                      {@link songscribe.dom.Tuplet#spanning} judges them under
- *                      {@link songscribe.dom.TupletValidator.Strictness#STRICT}; empty when the
- *                      selection holds part of a tuplet
- * @param existingGrade the grade of the tuplet the selection covers or reaches into, or
- *                      {@code null} when it holds no element of a tuplet
+ * @param validGrades   empty when the selection holds part of a tuplet
+ * @param existingGrade {@code null} when the selection holds no element of a tuplet
  */
 public record TupletToggleInfo(Set<TupletGrade> validGrades, @Nullable TupletGrade existingGrade) {
 
-    /** The answer for a selection a tuplet cannot group, and that holds no tuplet. */
     public static final TupletToggleInfo NONE = new TupletToggleInfo(Set.of(), null);
 
     public TupletToggleInfo {

@@ -33,117 +33,59 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Decides whether a span of elements can carry a tuplet of a given printed number, and
- * derives the ratio that number stands for. {@link Tuplet#spanning} and
- * {@link Tuplet#spanningStated} ask it, and answer its verdict as a {@link Spanning}.
+ * derives the ratio that number stands for.
  *
- * <p>A tuplet means: <em>N</em> notes played in the time normally occupied by <em>M</em>
- * notes of written value <em>V</em>. Only <em>N</em> — the printed number, called the
- * grade elsewhere in the model — comes from outside. <em>V</em> is derived as
- * {@code S / N}, where <em>S</em> is the summed written duration of the span's
- * non-grace elements, and <em>M</em> is derived from <em>V</em> and the beat in effect
- * at the span's anchor.
+ * <p>A tuplet means <em>N</em> notes in the time of <em>M</em> notes of written value <em>V</em>.
+ * Only <em>N</em> comes from outside; <em>V</em> is {@code S / N} for the span's summed written
+ * duration <em>S</em>, never the gcd of the durations (which would renumber a quarter plus two
+ * eighths under a 3 into a sextuplet), and <em>M</em> is derived from <em>V</em> and the beat.
  *
- * <p><em>V</em> is deliberately not derived as the greatest common divisor of the span's
- * durations. A gcd would renumber ordinary mixed-value notation — a quarter plus two
- * eighths under a 3 — into a sextuplet.
+ * <p>Written duration comes from {@link StaffElement#writtenDuration()}, never
+ * {@code getDuration()}, which inflates a fermata; a span with a fermata is excluded outright, so
+ * playback and validation sum the same values.
  *
- * <p>Written duration always comes from {@link StaffElement#writtenDuration()},
- * never from {@code getDuration()}: the latter inflates a fermata's value by half again,
- * which is a performance instruction rather than a change to the written rhythm. That
- * inflation is also why the fermata rule excludes a span containing a fermata outright — with
- * no fermata in the span, written and performed durations stay in the exact ratio
- * <em>M</em>:<em>N</em>, so playback and validation sum the same values.
+ * <p>A power-of-two <em>N</em>/<em>M</em> is redundancy, a renotation rather than a re-timing.
+ * Redundancy is a property of the derivation: a derived <em>M</em> that says nothing drops the
+ * tuplet, while a stated <em>M</em> that is otherwise valid is kept even if unconventional.
+ * {@link #validateStated} is the path for a stated ratio, {@link #validate} for a derived one.
  *
- * <h2>Why a power-of-two <em>N</em>/<em>M</em> is redundancy rather than a ratio</h2>
- *
- * <p>When <em>N</em>/<em>M</em> is a power of two the group is exactly expressible at the
- * next finer written value with no bracket at all, so the printed number is a renotation
- * instruction rather than a re-timing: 4:2 over four eighths at a quarter beat says no
- * more than "read these as sixteenths".
- *
- * <p>Redundancy is a property of the <em>derivation</em>, not of the tuplet. When
- * <em>M</em> is derived and the number therefore says nothing, the tuplet is dropped; when
- * <em>M</em> is stated in a file and is otherwise valid it is kept even if it is not the
- * conventional span, because a file that explicitly says 3:2 for three eighths under a
- * dotted-quarter beat is asking for a real re-timing, and a third-party 7:8 must survive.
- * {@link #validateStated} is the path for a stated ratio; {@link #validate} is the path for
- * a derived one.
- *
- * <h2>The cost of beat resolution</h2>
- *
- * <p>{@link Song#beatUnitAt} walks backward over every element before the anchor and is
- * deliberately uncached — see its documentation for why a maintained beat index was
- * rejected. Resolving the beat once per tuplet therefore makes a whole-song check quadratic,
- * which is why a {@link Tuplet.Site} carries the beat its caller already holds rather than
- * looking it up. {@link #sitesFrom} is the way to judge many tuplets in one song: it resolves
- * the beat once and carries it forward, so every site it answers costs nothing more.
+ * <p>{@link Song#beatUnitAt} is uncached and walks every element before the anchor, so judging
+ * many tuplets of one song goes through {@link #sitesFrom}, which carries the beat forward.
  */
 public final class TupletValidator {
 
-    /** Largest binary multiple of the beat a tuplet may conventionally replace. */
     private static final int MAX_BEAT_MULTIPLE = 8;
 
-    /** Shortest span a beat is subdivided down to, in PPQ ticks — the shortest written value. */
     private static final int SHORTEST_SPAN_TICKS = NoteValue.THIRTY_SECOND.ticks();
 
     private TupletValidator() {
     }
 
     /**
-     * How much of the rule set a tuplet is judged against. The beat barrier and the bar or
-     * breath mark inside the span hold under {@link #STRICT} only; every other rule holds under
-     * both.
+     * The beat barrier and the bar or breath mark inside the span hold under {@link #STRICT}
+     * only.
      */
     public enum Strictness {
 
-        /** Every rule: editing and pasting, which choose what gets written. */
         STRICT,
 
-        /**
-         * Every rule but the beat barrier and the bar or breath mark inside the span: loading,
-         * since a document that already exists is not improved by dropping a tuplet whose only
-         * fault is that this editor would not have offered to create it there.
-         */
+        /** For loading: an existing document is not improved by dropping a tuplet. */
         LENIENT
     }
 
-    /** Why a span cannot carry a tuplet. */
     private enum Reason {
-
-        /** The span holds no written duration: S is zero. */
         EMPTY_SPAN,
-
-        /** S does not divide into N equal parts. */
         NOT_DIVISIBLE,
-
-        /** S divides into N equal parts, but the share S / N is not a notatable value. */
         SHARE_NOT_NOTATABLE,
-
-        /** The stated V differs from the share S / N. */
         STATED_VALUE_MISMATCH,
-
-        /** N equals the stated M, so the tuplet plays its notes in their own time. */
         NUMBER_EQUALS_NORMAL_NOTES,
-
-        /** The beat offers no conventional span below N, and no duplet fallback above it. */
         NO_CONVENTIONAL_SPAN,
-
-        /** N / M is a power of two: a renotation, not a re-timing. */
         POWER_OF_TWO_RATIO,
-
-        /** An element in the span carries a fermata. */
         FERMATA,
-
-        /** The beat changes at an element after the anchor. */
         BEAT_BARRIER,
-
-        /** A bar of any type, or a breath mark, stands in the span before its last element. */
         BAR_OR_BREATH_MARK,
-
-        /** The span holds fewer than {@value Span#MIN_PITCHED_NOTES} pitched notes. */
         TOO_FEW_NOTES;
 
-        /** The {@code Strings} key of the text that tells the user why the tuplet failed. */
         private String messageKey() {
             return switch (this) {
                 case EMPTY_SPAN -> Strings.REPORT_REASON_EMPTY_SPAN;
@@ -161,19 +103,11 @@ public final class TupletValidator {
         }
     }
 
-    /** Where a span's elements sit that makes it unfit to carry a tuplet. */
     enum PlacementFault {
-
-        /** An element in the span carries a fermata. */
         FERMATA,
-
-        /** The beat changes at an element after the anchor. */
         BEAT_BARRIER,
-
-        /** A bar of any type, or a breath mark, stands in the span before its last element. */
         BAR_OR_BREATH_MARK;
 
-        /** The refusal reason this fault produces. */
         private Reason reason() {
             return switch (this) {
                 case FERMATA -> Reason.FERMATA;
@@ -183,40 +117,19 @@ public final class TupletValidator {
         }
     }
 
-    /**
-     * The verdict on a span: {@link Valid} carries the ratio the tuplet is to be built with,
-     * {@link Invalid} the reason no tuplet can be.
-     */
     sealed interface Result {
 
-        /**
-         * The span can carry the tuplet.
-         *
-         * @param ratio the ratio the tuplet is to be built with
-         */
         record Valid(TupletNormalTime ratio) implements Result {
         }
 
-        /**
-         * The span cannot carry the tuplet.
-         *
-         * @param reasonKey the {@code Strings} key of the reason, whose value is plain text the
-         *                  user reads
-         */
         record Invalid(String reasonKey) implements Result {
         }
     }
 
     /**
-     * Everything about a span that does not depend on N, computed once so every candidate grade
-     * can be tested against it.
-     *
-     * @param writtenTicks    S, the summed written duration of the span's non-grace elements
-     * @param beat            B, the beat in effect at the span's anchor, including a beat the
-     *                        anchor itself defines
-     * @param enoughPitchedNotes whether the span holds the pitched notes a tuplet needs, as
-     *                           {@link Span#holdsEnoughPitchedNotes} judges it
-     * @param placementFaults every fault found in the span; stored as an unmodifiable copy
+     * @param writtenTicks S, the summed written duration of the span's non-grace elements
+     * @param beat         B, the beat in effect at the span's anchor, including a beat the
+     *                     anchor itself defines
      */
     record SpanContext(
         int writtenTicks, BeatUnit beat, boolean enoughPitchedNotes, Set<PlacementFault> placementFaults
@@ -227,13 +140,6 @@ public final class TupletValidator {
         }
     }
 
-    /**
-     * Measures the span {@code site} names, against the beat it carries. The cost is the span's
-     * length: the beat is not looked up.
-     *
-     * @param site the span and the beat in effect at its anchor
-     * @return the grade-independent facts about the span
-     */
     static SpanContext measure(Tuplet.Site site) {
         var line = site.line();
         var range = site.range();
@@ -357,13 +263,6 @@ public final class TupletValidator {
         return new Result.Valid(stated);
     }
 
-    /**
-     * The constraints on the span's total duration, shared by the derived and the stated
-     * paths: the span holds some written duration, and that duration divides into N equal
-     * parts.
-     *
-     * @return the reason it failed, or null when it did not
-     */
     private static @Nullable Reason divisionFailure(int writtenTicks, TupletGrade grade) {
         if (writtenTicks == 0) {
             return Reason.EMPTY_SPAN;
@@ -376,16 +275,6 @@ public final class TupletValidator {
         return null;
     }
 
-    /**
-     * The constraints on the span's elements rather than on its total duration, shared by the
-     * derived and the stated paths. The fermata holds under either strictness — it inflates the
-     * performed duration and so breaks the exact ratio whatever the tuplet says — and so does
-     * the pitched-note count, since a group with nothing for the number to count is not a
-     * tuplet in any document. The beat barrier and the bar or breath mark are editor policy
-     * and hold under {@link Strictness#STRICT} only.
-     *
-     * @return the reason it failed, or null when it did not
-     */
     private static @Nullable Reason contentFailure(SpanContext context, Strictness strictness) {
         var faults = context.placementFaults();
 
@@ -413,60 +302,25 @@ public final class TupletValidator {
     }
 
     /**
-     * A tuplet a caller hands the walk at its anchor: what the caller knows it by, and where it
-     * ends.
-     *
-     * @param tuplet   the caller's own tuplet, handed back unchanged in its {@link Sited}
-     * @param endIndex the index of the tuplet's last element in the anchor's line, at or after
-     *                 the anchor
-     * @param <T>      the caller's tuplet type
+     * @param endIndex in the anchor's line, at or after the anchor
      */
     public record Anchored<T>(T tuplet, int endIndex) {}
 
-    /**
-     * The tuplets a caller asks {@link #sitesFrom} to place, looked up by anchor.
-     *
-     * @param <T> the caller's tuplet type
-     */
     @FunctionalInterface
     public interface AnchoredTuplets<T> {
 
         /**
-         * The caller's tuplet anchored at {@code index} in {@code line}.
-         *
-         * @param line  the line the walk is in
-         * @param index the index of the element the walk has reached
-         * @return the tuplet whose anchor is that element, or {@code null} when none is
+         * @return {@code null} when no tuplet is anchored at that element
          */
         @Nullable Anchored<T> anchoredAt(Line line, int index);
     }
 
-    /**
-     * A tuplet the caller supplied, with the site the walk found for it: ready for
-     * {@link Tuplet#spanning} or {@link Tuplet#spanningStated}.
-     *
-     * @param tuplet the tuplet as the caller supplied it
-     * @param site   the tuplet's line, its span in that line from the anchor to
-     *               {@link Anchored#endIndex()}, and the beat in effect at the anchor
-     * @param <T>    the caller's tuplet type
-     */
     public record Sited<T>(T tuplet, Tuplet.Site site) {}
 
     /**
-     * Finds the site of every tuplet {@code tuplets} supplies at an anchor at or after
-     * {@code from}, in document order. Pass the song's first element to cover the whole song.
+     * Pass the song's first element to cover the whole song.
      *
-     * <p>This is one forward walk rather than a {@link Tuplet.Site#at} per tuplet: the beat is
-     * resolved once at the starting position and carried forward over every element, so the
-     * walk costs O(elements) rather than O(tuplets × elements).
-     *
-     * @param song    the song to walk
-     * @param from    the element to start at, which must exist in {@code song}
-     * @param tuplets the tuplets to place, by anchor
-     * @param <T>     the caller's tuplet type
-     * @return one entry per element at or after {@code from} at which {@code tuplets} supplied a
-     *     tuplet, in document order
-     * @invariant an entry's site carries the beat {@link Song#beatUnitAt} answers at its anchor
+     * @param from must exist in {@code song}
      */
     public static <T> List<Sited<T>> sitesFrom(Song song, ElementLocation from, AnchoredTuplets<T> tuplets) {
         var sited = new ArrayList<Sited<T>>();
@@ -499,13 +353,6 @@ public final class TupletValidator {
         return sited;
     }
 
-    /**
-     * Measures one span as its elements are handed to it in order, from the anchor to the end.
-     *
-     * <p>Grace notes ride along and add no written duration; rests count toward the duration
-     * exactly as notes do, and the non-duration elements a span may contain all have a zero
-     * default duration.
-     */
     private static final class SpanMeasure {
 
         private final ElementRange span;
@@ -515,10 +362,8 @@ public final class TupletValidator {
         private int writtenTicks = 0;
 
         /**
-         * @param span         the span to measure
-         * @param beatAtAnchor the beat in effect at the anchor, including a beat the anchor itself
-         *                     defines: a barrier on the anchor defines the tuplet's beat rather
-         *                     than splitting it
+         * @param beatAtAnchor including a beat the anchor itself defines: a barrier on the anchor
+         *                     defines the tuplet's beat rather than splitting it
          */
         private SpanMeasure(ElementRange span, BeatUnit beatAtAnchor) {
             this.span = span;
@@ -526,7 +371,6 @@ public final class TupletValidator {
             runningBeat = beatAtAnchor;
         }
 
-        /** Takes the element at {@code index}, the next of the span in order. */
         private void add(StaffElement element, int index) {
             // Read the barrier against the beat running before this element, then let the
             // element redefine it.
@@ -556,37 +400,22 @@ public final class TupletValidator {
         }
 
         /**
-         * Whether an element of type {@code type} at {@code index} is a bar of any type, a single
-         * barline included, or a breath mark, standing before the span's last element. One at
-         * the very end of the span divides nothing, because every note of the span lies before
-         * it: selections already sweep in a breath mark that immediately follows the last note,
-         * and a span running to the end of a line ends on the barline the
-         * model maintains there. Counting either would disable the tuplet control on ordinary
-         * selections.
+         * A bar or breath mark at the very end of the span divides nothing; counting it would
+         * disable the tuplet control on ordinary selections, which sweep in a trailing breath
+         * mark and end on the line's maintained barline.
          */
         private boolean isBarOrBreathMarkBeforeEnd(ElementType type, int index) {
             return index != span.end() && (type.isBar() || type.isBreathMark());
         }
 
-        /**
-         * @param enoughPitchedNotes whether the span holds the pitched notes a tuplet needs
-         * @return what this measure found, with {@code enoughPitchedNotes}
-         */
         private SpanContext context(boolean enoughPitchedNotes) {
             return new SpanContext(writtenTicks, beat, enoughPitchedNotes, placementFaults);
         }
     }
 
     /**
-     * The spans, measured in V-units, that a tuplet of value V may conventionally
-     * replace under beat B: the binary divisions of B's
-     * {@linkplain BeatUnit#binaryDivisionRootTicks() division root} — a dotted beat divides
-     * into {@value BeatUnit#DOTTED_BEAT_PARTS} before subdividing binarily — and the binary
-     * multiples of B.
-     *
-     * <p>Only spans that V divides exactly are kept, and a span of a single V-unit is
-     * excluded. Excluding it is what makes a compound duplet infer 2:3 rather than the
-     * meaningless 2:1.
+     * A span of a single V-unit is excluded, which makes a compound duplet infer 2:3 rather than
+     * the meaningless 2:1.
      */
     private static NavigableSet<Integer> conventionalSpans(NotatableValue noteValue, BeatUnit beat) {
         var spans = new TreeSet<Integer>();
@@ -618,20 +447,11 @@ public final class TupletValidator {
     }
 
     /**
-     * Picks M: the largest conventional span strictly below N. When there is none, a
-     * compound-beat duplet falls back to the smallest span above N, because a duplet is
-     * the one grade whose whole purpose is to replace a longer conventional span; that
-     * restriction is what produces the invalid diagonal in the expected-results tables.
+     * The fallback to the smallest span above N, for a compound-beat duplet, is deliberately not
+     * widened under {@link Strictness#LENIENT}: widening would invent a re-timing nobody wrote
+     * (three quavers under a dotted-crotchet beat would load as 3:6 and play at half speed).
      *
-     * <p>The fallback is deliberately <em>not</em> widened under
-     * {@link Strictness#LENIENT}. Widening it would keep a bracket at the price of
-     * inventing a re-timing nobody wrote: three quavers under a dotted-crotchet beat
-     * would load as 3:6 and play at half speed. Redundancy is a property of the
-     * derivation, so when M has to be derived and the printed number says nothing, the
-     * tuplet is dropped rather than repaired. A ratio the <em>file</em> states takes the
-     * {@link #validateStated} path instead, which never consults this method.
-     *
-     * @return M, or null when the beat offers no span at all
+     * @return null when the beat offers no span at all
      */
     private static @Nullable Integer chooseNormalNotes(
         NavigableSet<Integer> spans, TupletGrade grade, BeatUnit beat

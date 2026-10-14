@@ -105,35 +105,10 @@ Pick the level by audience and severity, consistent with existing usage:
 - `debug` / `trace` — developer diagnostics only; off by default. `trace` is used for the
   message-bus firehose. Do not rely on these being visible in normal runs.
 
-## Documenting logging: the `@log` tag
+## Logging in Javadoc
 
-A method that writes to the log says so in its Javadoc with `@log`, a custom tag in
-the same family as `@invariant` and `@effects`:
-
-```java
-/**
- * @param annotation the text to display; must not be blank
- * @log warning if {@code annotation} is blank
- */
-```
-
-The clause is `<level> <condition>` — the level word is the SLF4J level the call uses,
-and the condition names which of the method's paths produces the line. **One clause per
-tag, repeated like `@throws`.**
-
-**Not every log call earns one.** A `@log` clause is for logging the caller is entitled
-to count on: the degraded path taken instead of failing, the fallback chosen, the input
-dropped. Developer tracing — anything `debug`/`trace`, and everything behind a
-`LogUtils.isTracingXxx` gate — is implementation and stays out of the contract.
-
-**`@log` goes where `@throws` was.** A method that stops rejecting a value and starts
-logging and carrying on moves the clause rather than deleting it: the condition still
-matters to the caller, and only what happens next has changed. State that too — a
-warning that leaves the caller holding the bad value promises something quite different
-from one that substitutes a default, and the caller cannot tell which by looking.
-
-`@log` is a custom tag; for how the IDE is told about it see *Contracts in Javadoc* in
-[java.md](../rules/java.md).
+A Javadoc does not state what a method logs. A log call is part of the body, and a
+reader reads it there. See [Contracts](contracts.md).
 
 ## Configuration & log files
 

@@ -20,12 +20,10 @@
 
 package songscribe.dom;
 
-/** The kind of slide attached to a note. */
 public enum Slide {
 
-    /** Connects this note to the note that follows it. */
     GLISSANDO,
 
-    /** Trails off this note itself, with no target note. */
+    /** Has no target note. */
     FALL
 }

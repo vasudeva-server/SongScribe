@@ -30,23 +30,13 @@ import songscribe.util.GraphicsState;
 
 /**
  * Component that renders footnotes.
- * <p>
- * Displays footnote text centered horizontally at a maximum width of 2/3 the line width.
- * Uses the song's footnote font with appropriate top margin.
  */
 public class FootnotesComponent extends ScoreComponent {
 
-    /**
-     * Minimum margin above footnotes section
-     */
     public static final Ss FOOTNOTES_MIN_MARGIN_TOP_SS = new Ss(5.0);
-    /** Maximum width as fraction of line width. */
     private static final double MAX_WIDTH_PERCENTAGE = 2.0 / 3.0;
 
-    /**
-     * The top margin in view pixels, recomputed per layout so it tracks the current
-     * zoom instead of caching a value frozen at construction.
-     */
+    /** Recomputed per layout so it tracks the current zoom. */
     @Override
     public int getMarginTop() {
         return toViewPx(FOOTNOTES_MIN_MARGIN_TOP_SS).positionPx();
@@ -92,15 +82,8 @@ public class FootnotesComponent extends ScoreComponent {
     }
 
     /**
-     * Computes the horizontal render origin for footnote text given its measured pixel width.
-     * <p>
      * The text width is capped at {@code MAX_WIDTH_PERCENTAGE} of the line width before
-     * centering, so the returned value is always non-negative.
-     *
-     * @param textWidth the footnote block's widest-line advance, in view pixels
-     * @return the pen origin in view pixels, to be handed straight to
-     *         {@link Graphics2D#drawString(String, float, float)}; the ink of the first
-     *         glyph begins at its own left side bearing from there
+     * centering, so the result is never negative.
      */
     private float calculateRenderX(double textWidth) {
         if (song == null) {

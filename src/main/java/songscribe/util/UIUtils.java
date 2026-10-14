@@ -102,7 +102,6 @@ public final class UIUtils {
         ? InputEvent.CTRL_DOWN_MASK
         : Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
-    /** A fully transparent 1x1 cursor, for suppressing the system cursor over a component. */
     public static final @Nullable Cursor HIDDEN_CURSOR = GraphicsEnvironment.isHeadless()
         ? null
         : Toolkit.getDefaultToolkit().createCustomCursor(
@@ -110,22 +109,16 @@ public final class UIUtils {
             new Point(),
             "hidden-cursor");
 
-    /**
-     * The index a {@link ListCellRenderer} receives for a closed combo box's display cell:
-     * the value drawn in the combo itself rather than in a row of the open popup. No row
-     * position equals it.
-     */
+    /** The index a {@link ListCellRenderer} receives for a closed combo box's display cell. */
     public static final int COMBO_DISPLAY_INDEX = -1;
 
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
-    /** What separates two sections of a tooltip: a line break and a blank line. */
     private static final String TOOLTIP_SECTION_SEPARATOR = "<br><br>";
 
     static final int SCREEN_MARGIN_PX = 20;
 
-    /** Click count that identifies a double-click in a {@link MouseEvent}. */
-    public static final int DOUBLE_CLICK_COUNT = 2;
+    private static final int DOUBLE_CLICK_COUNT = 2;
 
     private UIUtils() {
     }
@@ -134,19 +127,7 @@ public final class UIUtils {
     // Tooltips
     //
 
-    /**
-     * Gives {@code component} the tooltip of {@code action}: one section, in the form
-     * {@link #toolTipHtml} gives, headed by the action's name and its keyboard shortcut over its
-     * short description. The name, the shortcut and the description are plain text, and are
-     * escaped, so a {@code <}, {@code >} or {@code &} in any of them shows as itself.
-     *
-     * @param component the component the tooltip is for
-     * @param action    the action whose name, shortcut and short description the tooltip shows,
-     *                  or {@code null} for no tooltip
-     * @effects sets {@code component}'s tooltip; when {@code action} is {@code null} it has none,
-     *     and when the action's short description is {@code null} or empty the tooltip is that
-     *     description, unchanged
-     */
+    /** @param action {@code null} for no tooltip */
     public static void setToolTipText(JComponent component, @Nullable Action action) {
         if (action == null) {
             component.setToolTipText(null);
@@ -164,36 +145,14 @@ public final class UIUtils {
         component.setToolTipText(tip);
     }
 
-    /**
-     * Keeps every tooltip open for as long as the pointer stays on its item. The tooltip manager
-     * otherwise closes a tooltip after a few seconds; it still closes one when the pointer moves
-     * off its item or presses a button.
-     */
     public static void keepToolTipsOpenWhileHovered() {
         ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
     }
 
-    /**
-     * Gives {@code component} a tooltip of one section, in the form {@link #toolTipHtml} gives.
-     * The section's heading, description and shortcut are plain text, and are escaped, so a
-     * {@code <}, {@code >} or {@code &} in any of them shows as itself, and a line break shows
-     * as a line break.
-     *
-     * @param component the component the tooltip is for
-     * @param section   the tooltip's only section
-     */
     public static void setToolTipText(JComponent component, ToolTipSection section) {
         component.setToolTipText(toolTipHtml(List.of(section)));
     }
 
-    /**
-     * Returns the HTML of a tooltip with headings, the one form such a tooltip takes in the
-     * application: each section a bold heading over its description, with a blank line between
-     * sections. A tooltip of one plain line needs none of this.
-     *
-     * @param sections the sections, in the order they are shown
-     * @return the tooltip text, ready for {@link JComponent#setToolTipText}
-     */
     public static String toolTipHtml(List<ToolTipSection> sections) {
         var html = new StringJoiner(TOOLTIP_SECTION_SEPARATOR, "<html>", "</html>");
 
@@ -205,13 +164,10 @@ public final class UIUtils {
     }
 
     /**
-     * One section of a tooltip: a heading in bold, optionally followed by a keyboard shortcut,
-     * over a description. All three are plain text; {@link #toolTipHtml} escapes them and shows
-     * each line break in them as a line break.
+     * All three are plain text: {@link #toolTipHtml} escapes them, so a {@code <}, {@code >} or
+     * {@code &} shows as itself.
      *
-     * @param heading     the bold first line
-     * @param accelerator the keyboard shortcut shown after the heading, or {@code null} for none
-     * @param description the text under the heading
+     * @param accelerator {@code null} for none
      */
     public record ToolTipSection(String heading, @Nullable KeyStroke accelerator, String description) {
 
@@ -228,16 +184,6 @@ public final class UIUtils {
         }
     }
 
-    /**
-     * Returns the HTML that shows {@code text} as written, or an empty string for {@code null}.
-     * <p>
-     * It escapes the characters Swing's HTML renderer would otherwise treat as markup.
-     * Without this, an accelerator or action name containing {@code <} — the staccato
-     * shortcut, for one — opens what the renderer reads as a tag, so the character and
-     * everything after it vanish from the tooltip.
-     * <p>
-     * Each line break becomes a {@code <br>}, because the renderer shows a line break as a space.
-     */
     private static String plainTextHtml(@Nullable String text) {
         if (text == null) {
             return "";
@@ -264,28 +210,12 @@ public final class UIUtils {
     // Mouse events
     //
 
-    /**
-     * Answers whether button 1 is involved in {@code e} — true for a left-button press,
-     * release, click, or drag, not only a click.
-     * <p>
-     * Modifiers are deliberately not consulted, on the same terms {@link
-     * #isLeftDoubleClick} states them: each caller adds the modifier policy it wants.
-     *
-     * @return {@code true} when button 1 is involved in {@code e}
-     */
+    /** Modifiers are deliberately not consulted; each caller adds its own policy. */
     public static boolean isLeftClick(MouseEvent e) {
         return SwingUtilities.isLeftMouseButton(e);
     }
 
-    /**
-     * Answers whether {@code e} is a left-button click with a click count of
-     * {@value #DOUBLE_CLICK_COUNT}.
-     * <p>
-     * Modifiers are deliberately not consulted. Callers disagree about them: Alt
-     * switches the staff to SELECT mode and must not disqualify a gesture, shift is
-     * excluded only where it would discard a selection being built, and the window-zoom
-     * gesture excludes nothing. Each caller adds the modifier policy it wants.
-     */
+    /** Modifiers are deliberately not consulted; callers disagree about them and add their own policy. */
     public static boolean isLeftDoubleClick(MouseEvent e) {
         return SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == DOUBLE_CLICK_COUNT;
     }
@@ -318,11 +248,6 @@ public final class UIUtils {
         button.setName(action.getActionCommand());
     }
 
-    /**
-     * Reacts to a {@link PropertyChangeEvent} fired by a {@link UIAction} on a button that was
-     * configured via {@link #configureButtonFromAction}, keeping the button's icon, tooltip, and
-     * enabled state in sync with the action.
-     */
     public static void handleActionPropertyChange(AbstractButton button, UIAction action, PropertyChangeEvent event) {
         var prop = event.getPropertyName();
 
@@ -419,9 +344,7 @@ public final class UIUtils {
         return UIManager.getColor(COMPONENT_BORDER_COLOR_KEY);
     }
 
-    /**
-     * This should be called AFTER all components have been added.
-     */
+    /** Call after all components have been added. */
     public static void setCanGrow(JComponent component, boolean horizontal, boolean vertical) {
         var size = component.getPreferredSize();
         component.setMaximumSize(
@@ -432,19 +355,13 @@ public final class UIUtils {
         );
     }
 
-    /**
-     * Convenience: allows the component to grow and shrink horizontally
-     * but locks its height to the preferred size. This should be called
-     * AFTER all components have been added.
-     */
+    /** Call after all components have been added. */
     public static void setFlexibleWidth(JComponent component) {
         setCanGrow(component, true, false);
         setCanShrink(component, true, false);
     }
 
-    /**
-     * This should be called AFTER all components have been added.
-     */
+    /** Call after all components have been added. */
     public static void setCanShrink(JComponent component, boolean horizontal, boolean vertical) {
         var size = component.getPreferredSize();
         component.setMinimumSize(
@@ -456,14 +373,9 @@ public final class UIUtils {
     }
 
     /**
-     * Forces a combo box to render in light mode — white background, black foreground, in both
-     * the closed box and the popup — regardless of the active theme.
-     *
-     * <p>Use this for a combo whose entries are drawn as they would appear on the score itself
-     * (e.g. a key signature), which is always black on white; a themed combo showing them in the
-     * app's current (possibly dark) colors would look unlike what they represent. The FlatLaf
-     * style property covers the combo's own chrome; a {@link ListCellRenderer} still has to force
-     * the same colors on the popup rows it paints, since the property does not reach them.
+     * For a combo whose entries are drawn as on the score (always black on white). A
+     * {@link ListCellRenderer} must still force the colors on the popup rows; the property does
+     * not reach them.
      */
     public static void forceLightModeCombo(JComboBox<?> combo) {
         combo.setOpaque(true);
@@ -477,24 +389,11 @@ public final class UIUtils {
     }
 
     /**
-     * Makes {@code combo}'s popup show as many rows as the display it opens on has room for and
-     * scroll through the rest, in place of Swing's fixed eight. Eight knows nothing about how
-     * tall a row is, so it asks a short display for more vertical space than it has while leaving
-     * a tall one under-used.
+     * Sized against the usable bounds of the display, the rectangle Swing measures the popup
+     * against.
      *
-     * <p>The count is measured against the usable bounds of the display rather than its full
-     * height, because that is the rectangle Swing itself measures the popup against; a taller
-     * popup would only be clamped and re-centred over the whole display.
-     *
-     * <p>It is recomputed each time the popup opens, so it follows the window to another monitor
-     * and answers to a resolution change.
-     *
-     * @param combo        the combo to size
-     * @param cellHeightPx the height of every one of {@code combo}'s cells, in pixels, as its
-     *                     renderer fixes it. A renderer whose cells vary in height has no single
-     *                     row height, and a combo using one is not sized here.
-     * @effects installs a {@link PopupMenuListener} on {@code combo} that sets its maximum row
-     *          count each time the popup is about to open
+     * @param cellHeightPx the height of every cell, as the renderer fixes it. A combo whose
+     *                     cells vary in height is not sized here.
      */
     public static void fitPopupToScreen(JComboBox<?> combo, int cellHeightPx) {
         combo.addPopupMenuListener(new PopupMenuListener() {
@@ -532,9 +431,6 @@ public final class UIUtils {
         button.setMinimumSize(buttonSize);
     }
 
-    /**
-     * Returns the deepest component at the given screen point within the frame.
-     */
     @Nullable
     public static Component getDeepestComponentAt(JFrame frame, Point screenPoint) {
         var frameLocation = frame.getLocationOnScreen();
@@ -616,18 +512,11 @@ public final class UIUtils {
     }
 
     /**
-     * Returns the usable bounds of the display {@code window} occupies: the display's own bounds
-     * less the space the desktop reserves along its edges — the macOS menu bar and Dock, a
-     * Windows taskbar.
+     * Usable rather than full bounds: Swing measures its own popups against them, and overrules
+     * anything larger.
      *
-     * <p>Usable rather than full bounds because everything placed against a display has to share
-     * it with those reservations, and because it is the rectangle Swing measures its own popups
-     * against. Sizing against anything larger is overruled rather than honoured.
-     *
-     * @param window the window whose display to measure, or {@code null} to measure the default
-     *               display. A window not yet made displayable is on no display and measures the
-     *               default one too.
-     * @return the usable bounds, in screen coordinates
+     * @param window {@code null} to measure the default display. A window not yet made
+     *               displayable is on no display and measures the default one too.
      */
     static Rectangle getScreenBounds(@Nullable Window window) {
         var configuration = window == null ? null : window.getGraphicsConfiguration();
@@ -649,11 +538,6 @@ public final class UIUtils {
         return bounds;
     }
 
-    /**
-     * Binds {@code keyStroke} on {@code component}'s input map for {@code condition}
-     * (one of {@link JComponent#WHEN_FOCUSED}, {@link JComponent#WHEN_IN_FOCUSED_WINDOW},
-     * or {@link JComponent#WHEN_ANCESTOR_OF_FOCUSED_COMPONENT}) to invoke {@code handler}.
-     */
     public static void bindKey(
         JComponent component,
         int condition,
@@ -684,10 +568,6 @@ public final class UIUtils {
             KeyStroke.getKeyStroke(KeyEvent.VK_W, MENU_SHORTCUT_MASK), actionKey, dispatchClosing);
     }
 
-    /**
-     * Pre-warms the AWT native window peer and FlatLaf rendering pipeline.
-     * Call once after the main JFrame is visible.
-     */
     public static void preWarmDialogPeer(Component parent) {
         SwingUtilities.invokeLater(() -> {
             try {
@@ -723,12 +603,6 @@ public final class UIUtils {
         return dummy;
     }
 
-    /**
-     * Initializes the minimum theme state needed before the splash window paints:
-     * the Regular font face, the preferred font family, the custom defaults source,
-     * and the appearance manager. Also installs FlatLaf debug inspectors when running
-     * under {@code DEBUG=1}.
-     */
     public static void initMinimalTheme() {
         // Every component measures its text under the antialiasing hint it gets from the UI
         // defaults. On macOS the toolkit suggests LCD, which FlatLaf passes on, but macOS paints
@@ -755,23 +629,12 @@ public final class UIUtils {
         }
     }
 
-    /**
-     * Installs the remaining (non-Regular) SourceSans3 faces plus the TiroBangla font.
-     * Called eagerly after the splash is visible so that all faces are available
-     * before the main window opens.
-     */
     public static void installEagerFonts() {
         SourceSans3Font.installRemaining();
         LocalFonts.install("TiroBangla-Regular.ttf");
     }
 
-    /**
-     * The font the current look and feel uses for the named role.
-     *
-     * @param key a {@code UIManager} font key, such as {@code Label.font}
-     * @return the theme's font for {@code key}, or a plain {@code JLabel}'s font when the theme
-     *         declares none — so a caller always has a font it can draw with
-     */
+    /** @return the theme's font for {@code key}, or a plain {@code JLabel}'s font when the theme declares none */
     public static Font getUIFont(String key) {
         var font = UIManager.getFont(key);
 
@@ -804,7 +667,6 @@ public final class UIUtils {
     public record TaggedString(String text, @Nullable Font font) {
     }
 
-    /** Returns {@code font} unchanged when {@code shiftPx} is zero. */
     private static Font shiftFontBaseline(
         Font font,
         int shiftPx

@@ -38,25 +38,9 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * Top-level panel for the score component hierarchy.
- * <p>
- * Contains:
- * <ul>
- *   <li>{@link TitleComponent} - song title</li>
- *   <li>{@link SubtitleComponent} - song subtitle (collapses when empty)</li>
- *   <li>{@link StaffPanel} - all staff lines</li>
- *   <li>{@link TextPanel} - under-lyrics sections (lyrics, Bangla, translation)</li>
- *   <li>{@link FootnotesComponent} - footnotes</li>
- * </ul>
- * <p>
- * This panel serves as the entry point for the new JComponent-based
- * rendering system. It is initially embedded alongside the existing
- * ScoreView rendering to allow gradual migration.
  */
 public class MainPanel extends JPanel {
 
-    /**
-     * Margin from previous section to score top
-     */
     public static final Ss SCORE_MARGIN_TOP_SS = new Ss(1.5);
 
     // BoxLayout Y_AXIS sibling stack order (top to bottom):
@@ -67,32 +51,23 @@ public class MainPanel extends JPanel {
     //   textPanel
     //   footnotesComponent
 
-    /** Title component. */
     private final TitleComponent titleComponent;
 
-    /** Subtitle component (collapses to (0,0) when subtitle is empty). */
     private final SubtitleComponent subtitleComponent;
 
-    /** Staff panel containing all staff lines. */
     private final StaffPanel staffPanel;
 
-    /** Text panel containing under-lyrics sections. */
     private final TextPanel textPanel;
 
-    /** Footnotes component. */
     private final FootnotesComponent footnotesComponent;
 
-    /** The song model. */
     @Nullable
     private Song song;
 
-    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    /** Null when detached (tests). */
     @Nullable
     private ScoreView scoreView;
 
-    /**
-     * Creates a new MainPanel.
-     */
     public MainPanel() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
@@ -127,11 +102,6 @@ public class MainPanel extends JPanel {
         add(footnotesComponent);
     }
 
-    /**
-     * Sets the owning {@link ScoreView} and fans it out to the once-created leaf
-     * components and the child panels so every on-score component reads the same
-     * view zoom on demand.
-     */
     public void setScoreView(ScoreView scoreView) {
         this.scoreView = scoreView;
         titleComponent.setScoreView(scoreView);
@@ -141,23 +111,17 @@ public class MainPanel extends JPanel {
         textPanel.setScoreView(scoreView);
     }
 
-    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
     private ViewScale viewScale() {
         return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
-    /** Spacing between title and score, scaled to the current view zoom. */
     private int scoreMarginTopPx() {
         return viewScale().toViewPx(SCORE_MARGIN_TOP_SS).positionPx();
     }
 
     /**
-     * The gap between the title block and the score, as a BoxLayout sibling.
-     * <p>
-     * Reports its height on demand instead of baking it in at construction the way
-     * {@link Box#createVerticalStrut} does. The height is zoom-dependent, so a fixed strut
-     * held the zoom in force when this panel was built while {@link #getPreferredSize} used
-     * the current one — and the score block shifted vertically by the difference.
+     * Reports its height on demand, not fixed at construction like {@link Box#createVerticalStrut}:
+     * the height is zoom-dependent, and a fixed strut shifted the score block vertically.
      */
     private final class ScoreMarginStrut extends JComponent {
 
@@ -177,11 +141,6 @@ public class MainPanel extends JPanel {
         }
     }
 
-    /**
-     * Sets the song and updates all child components.
-     *
-     * @param song The song
-     */
     public void setSong(Song song) {
         this.song = song;
         titleComponent.setSong(song);
@@ -193,9 +152,6 @@ public class MainPanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Returns the song.
-     */
     public Song getSong() {
         if (song == null) {
             throw RuntimeError.exit("song not initialized");
@@ -204,58 +160,33 @@ public class MainPanel extends JPanel {
         return song;
     }
 
-    /**
-     * Returns the title component.
-     */
     public TitleComponent getTitleComponent() {
         return titleComponent;
     }
 
-    /**
-     * Returns the subtitle component.
-     */
     public SubtitleComponent getSubtitleComponent() {
         return subtitleComponent;
     }
 
-    /**
-     * Returns the staff panel.
-     */
     public StaffPanel getStaffPanel() {
         return staffPanel;
     }
 
-    /**
-     * Returns the text panel.
-     */
     public TextPanel getTextPanel() {
         return textPanel;
     }
 
-    /**
-     * Returns the footnotes component.
-     */
     public FootnotesComponent getFootnotesComponent() {
         return footnotesComponent;
     }
 
-    /**
-     * Rebuilds the layout when the song structure changes.
-     * <p>
-     * Call this after lines are added or removed from the song.
-     */
+    /** Call this after lines are added or removed from the song. */
     public void rebuildLayout() {
         staffPanel.rebuildLayout();
         revalidate();
         repaint();
     }
 
-    /**
-     * Returns the line panel at the given point.
-     *
-     * @param point Point in panel coordinates
-     * @return The line panel, or null
-     */
     @Nullable
     public LinePanel getLinePanelAt(Point point) {
         var scoreBounds = staffPanel.getBounds();
@@ -271,12 +202,6 @@ public class MainPanel extends JPanel {
         return null;
     }
 
-    /**
-     * Returns the line panel at the given index.
-     *
-     * @param index Line index
-     * @return The line panel, or null
-     */
     @Nullable
     public LinePanel getLinePanel(int index) {
         return staffPanel.getLinePanel(index);

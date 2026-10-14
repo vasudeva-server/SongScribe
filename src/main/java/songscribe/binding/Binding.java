@@ -25,31 +25,15 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One binding: a target, a source to observe, and the value to write when that
- * source notifies.
- *
- * <p>Re-entrancy is handled by a {@link WriteGuard}, raised for the duration of this
- * binding's own write. Writing a Swing control fires that control's own notification,
- * which arrives back synchronously while the guard is raised, and is dropped. A
- * one-way binding holds its own guard; the two halves of a two-way binding share one,
- * so neither pushes back what the other has just brought in. See {@code WriteGuard}
- * for why the scope is never wider than that.
- *
- * @param <T> the target's value type, declared {@code @Nullable} when absence is a value the
- *     target carries
+ * One binding: a target, a source to observe, and the value to write when that source notifies.
+ * The two halves of a two-way binding share one {@link WriteGuard}.
  */
 final class Binding<T extends @Nullable Object> implements Subscription {
 
-    /** Whether a newly created binding writes its target immediately. */
     enum InitialWrite {
-        /** Evaluate and write at once, settling the target. */
         WRITE,
 
-        /**
-         * Record the current value as though it had been written, without writing.
-         * For the reverse half of a two-way binding, whose target the forward half
-         * has just settled.
-         */
+        /** For the reverse half of a two-way binding, whose target the forward half has just settled. */
         SKIP
     }
 
@@ -62,20 +46,8 @@ final class Binding<T extends @Nullable Object> implements Subscription {
     private @Nullable T lastWritten = null;
 
     /**
-     * Creates the binding, observes {@code source}, and settles the target according
-     * to {@code initial}.
-     *
-     * @param target what this binding writes
-     * @param source what this binding observes; every notification from it re-runs
-     *     {@code value} and possibly writes {@code target}
-     * @param value produces the value to write; it is run on every notification, so
-     *     it must be cheap and free of side effects. It is also run while a write is
-     *     already in progress within {@code guard} — that is how the declined write
-     *     records what the target now holds — so it must answer correctly part-way
-     *     through the other half's write, and not only after one has finished.
-     * @param initial whether to write the target now
-     * @param guard the re-entrancy scope this binding writes within, shared with the
-     *     other half when this is one side of a two-way binding
+     * {@code value} is run on every notification, including part-way through the other half's
+     * write, so it must be cheap, free of side effects, and correct at that moment.
      */
     Binding(
         WritableValue<T> target,
@@ -98,22 +70,9 @@ final class Binding<T extends @Nullable Object> implements Subscription {
     }
 
     /**
-     * Re-runs the value supplier and writes the target, unless the result is the
-     * value this binding last wrote.
-     *
-     * <p>The comparison is against the last <i>written</i> value, never against the
-     * target's current value, because a {@link WritableValue} has no readable
-     * current value at all — a preview sink has a setter and no getter, and the
-     * adapters over such state are built on exactly that. A binding that has never
-     * written has no last value, so its first application always writes.
-     *
-     * <p>Writes nothing when a write is already in progress within this binding's
-     * guard — the notification this binding's own write caused, or, for one half of a
-     * two-way binding, the one the other half's write caused. It still records the
-     * value as written, because the target now holds it: the write this binding is
-     * declining to make has already been made, by whatever raised the guard. Skipping
-     * that record would leave the last-written value stale, and the unchanged-value
-     * stop below would then decline a later write that was genuinely needed.
+     * Compares against the last <i>written</i> value, never the target's, because a
+     * {@link WritableValue} has no readable value. A declined write is still recorded as
+     * written, or the unchanged-value stop would later decline a write that was needed.
      */
     private void apply() {
         if (guard.isRaised()) {

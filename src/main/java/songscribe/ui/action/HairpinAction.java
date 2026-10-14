@@ -73,14 +73,8 @@ public final class HairpinAction extends UIAction {
     }
 
     /**
-     * Single writer of both the enabled flag and the menu label: the flags alone
-     * cannot tell an add from an extend, and a flag-only enable would both mislabel
-     * the item and allow a one-element hairpin.
-     * <p>
-     * Every disabling path relabels before returning. The label is this class's to
-     * maintain and nothing else resets it, so an early return that skipped it would
-     * strand "Extend Crescendo" on the menu after the selection that justified it
-     * was gone — a greyed-out promise to extend a hairpin that is no longer in play.
+     * Single writer of both the enabled flag and the menu label. Every disabling path relabels
+     * before returning, because nothing else resets the label.
      */
     @Override
     public boolean updateEnabledState() {
@@ -108,7 +102,6 @@ public final class HairpinAction extends UIAction {
         return true;
     }
 
-    /** Sets the menu text and tooltip to the wording {@code resolution} names. */
     private void applyLabel(HairpinResolution resolution) {
         putValue(Action.NAME, Strings.get(resolution.nameKey()));
         putValue(Action.SHORT_DESCRIPTION, Strings.get(resolution.tooltipKey()));

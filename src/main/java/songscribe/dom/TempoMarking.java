@@ -22,40 +22,24 @@ package songscribe.dom;
 /**
  * What a tempo draws: either a metronome marking, or a description on its own.
  *
- * <p>These are the only two shapes a marking takes, so the type is sealed over them. The pair
- * that draws nothing at all — no metronome and no text — is not one of the two, which is why
- * nothing anywhere has to ask whether a tempo is visible. {@link Metronome} always draws a
- * glyph. {@link TextOnly} always draws text, because it refuses text that is blank.
- *
- * <p>A marking is a value. It is immutable, it compares by value, and {@link Tempo} replaces its
- * own rather than changing one in place.
- *
- * <p>{@code docs/song-tempo.md} carries the reasoning, and describes what each case looks like
- * on the page.
+ * <p>The pair that draws nothing at all is not a shape, so nothing has to ask whether a tempo is
+ * visible. {@link Metronome} always draws a glyph; {@link TextOnly} always draws text. A marking
+ * is immutable and compared by value. See {@code docs/song-tempo.md}.
  */
 public sealed interface TempoMarking {
 
     /**
-     * @return the text this marking draws, which is {@code ""} only in the {@link Metronome}
-     *         case
+     * @return {@code ""} only in the {@link Metronome} case
      */
     String description();
 
     /**
-     * The metronome glyph, an {@code =}, the speed in beats per minute, and then the description
-     * when the marking carries one.
-     *
-     * @param description the text drawn after the speed, {@code ""} for none
+     * @param description {@code ""} for none
      */
     record Metronome(String description) implements TempoMarking {}
 
     /**
-     * The description on its own, with no glyph and no speed.
-     *
-     * <p>The speed and the beat unit still live on the {@link Tempo}. They are not drawn here,
-     * and they still drive beaming and playback.
-     *
-     * @param description the text drawn, which is the whole marking
+     * The speed and the beat unit still live on the {@link Tempo} and drive beaming and playback.
      */
     record TextOnly(String description) implements TempoMarking {
 
@@ -71,13 +55,6 @@ public sealed interface TempoMarking {
         }
     }
 
-    /**
-     * What {@link #fromFile} read.
-     *
-     * @param marking  the marking the file states, repaired where it had to be
-     * @param repaired whether the file stated the pair that draws nothing, so that a caller can
-     *                 report the repair in its own words
-     */
     record FromFile(TempoMarking marking, boolean repaired) {}
 
     /**

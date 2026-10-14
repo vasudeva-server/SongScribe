@@ -42,18 +42,10 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * Factory for the reusable "font setting" row: a leading label, a stretchy
- * font-description display, and a Choose / Reset button pair. The row is a pure
- * font chooser — it knows nothing about any particular tab or document font.
- * <p>
- * The owning tab supplies the {@link Property} that holds the chosen font. The row
- * reads it to seed the chooser, and writes the chosen font back to it. Each tab
- * decides what that font means for its own context.
- * <p>
- * The row lays the description label out but never writes it. The chosen font is the
- * tab's own value, and the label is one of the things the tab derives from it — writing
- * the label here as well would leave the same text arriving by two routes, one of which
- * fires only when the font is chosen through this row.
+ * Factory for the reusable "font setting" row, which knows nothing about any particular tab or
+ * document font. The row lays the description label out but never writes it: the tab derives the
+ * label from the chosen font, and a second route would fire only when the font is chosen through
+ * this row.
  */
 final class FontSettingRow {
 
@@ -67,14 +59,6 @@ final class FontSettingRow {
     }
 
     /**
-     * What a tab has to supply for a font row, other than the frame the chooser opens over.
-     *
-     * <p>A record rather than three more parameters: with the caption the count passes what a
-     * call site can be read against, and the description label's own type is what stops it
-     * being swapped with the caption.
-     *
-     * @param description the boxed label the font's description is displayed in, from
-     *     {@link #createFontDescriptionLabel()}
      * @param fontKey the font this row sets, which is also the key Reset restores from
      * @param font holds the chosen font. The row reads it to seed the chooser. Choose writes
      *     the chosen font to it, and Reset writes the system default for {@code fontKey}.
@@ -82,34 +66,14 @@ final class FontSettingRow {
     record Spec(DescriptionLabel description, FontKey fontKey, Property<Font> font) {}
 
     /**
-     * The boxed label a font's description is displayed in.
-     *
-     * <p>Its own type rather than a plain {@link JLabel} so that it cannot be passed where a
-     * row's caption belongs. The two are both labels, adjacent, and mean opposite things:
-     * transposed, the caption would be boxed and the description would read "Font".
+     * Its own type so that it cannot be passed where a row's caption belongs.
      */
     static final class DescriptionLabel extends JLabel {}
 
-    /**
-     * Builds a row captioned with the standard "Font" label.
-     *
-     * @param mainFrame the frame the font chooser opens over
-     * @param spec what this row displays and what choosing a font in it means
-     * @return the assembled row
-     */
     static JPanel create(MainFrame mainFrame, Spec spec) {
         return create(mainFrame, new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT)), spec);
     }
 
-    /**
-     * Builds a row with a caller-supplied caption.
-     *
-     * @param mainFrame the frame the font chooser opens over
-     * @param rowLabel the caption in column 0, for a row the standard "Font" label would
-     *     not describe
-     * @param spec what this row displays and what choosing a font in it means
-     * @return the assembled row
-     */
     static JPanel create(MainFrame mainFrame, JLabel rowLabel, Spec spec) {
         var fontDescription = spec.description();
         var fontKey = spec.fontKey();
@@ -158,12 +122,6 @@ final class FontSettingRow {
         return row;
     }
 
-    /**
-     * Creates the boxed label a font's description is displayed in, matching the style the
-     * Fonts tab uses for its font-name labels.
-     *
-     * @return the label, ready to be handed to a {@link Spec}
-     */
     static DescriptionLabel createFontDescriptionLabel() {
         var label = new DescriptionLabel();
         label.setBorder(BorderFactory.createCompoundBorder(

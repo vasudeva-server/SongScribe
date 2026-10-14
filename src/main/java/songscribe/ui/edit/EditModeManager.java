@@ -46,35 +46,16 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Manages edit mode state for the ScoreView.
- * <p>
- * EditModeManager holds the state related to the preview element (the element that will be inserted),
- * including its type, duration, and accidentals. Also handles element creation, decoration,
- * and modification logic.
  */
 public final class EditModeManager {
 
-    /**
-     * Identifies the element most recently placed by the user: the line it went into
-     * and its index within that line. The line is part of the identity because an index
-     * alone is meaningless once the user moves to a different line.
-     *
-     * @param line The line the element was placed in
-     * @param elementIndex The index of the placed element within that line
-     */
+    /** The line is part of the identity because an index alone is meaningless across lines. */
     public record Insertion(Line line, int elementIndex) {}
 
     @Nullable
     private static EditModeManager INSTANCE = null;
 
-    /**
-     * Creates the singleton instance and wires it to the given dependencies.
-     * Must be called exactly once, during ScoreView construction.
-     *
-     * @param selectionCoordinator The selection coordinator for selection operations
-     * @param scoreActions Callback interface for ScoreView actions
-     * @param scoreView The owning ScoreView, held by InsertionPointMode for the marker overlay
-     *     and by PasteModeManager to reach the ScoreViewController once it exists
-     */
+    /** Must be called exactly once, during ScoreView construction. */
     public static void init(
         SelectionCoordinator selectionCoordinator,
         ScoreActions scoreActions,
@@ -83,7 +64,6 @@ public final class EditModeManager {
         INSTANCE = new EditModeManager(selectionCoordinator, scoreActions, scoreView);
     }
 
-    /** Returns the initialized instance; throws if {@link #init} has not been called. */
     private static EditModeManager instance() {
         if (INSTANCE == null) {
             throw RuntimeError.exit("EditModeManager not initialized — call init() first");
@@ -129,27 +109,14 @@ public final class EditModeManager {
         MessageSubscription.addProcessListener(this);
     }
 
-    /**
-     * Returns the GraceModeManager that manages grace note pairing.
-     */
     public static GraceModeManager getGraceModeManager() {
         return instance().graceModeManager;
     }
 
-    /**
-     * The mode that lets the user pick an insertion point on a line, shared by every
-     * operation that needs one. Input handlers route through this rather than through a
-     * particular client, so a new kind of placement needs no edit to them.
-     *
-     * @return the insertion-point mode
-     */
     public static InsertionPointMode getInsertionPointMode() {
         return instance().insertionPointMode;
     }
 
-    /**
-     * Returns the PasteModeManager that manages clipboard-fragment placement.
-     */
     public static PasteModeManager getPasteModeManager() {
         return instance().pasteModeManager;
     }
@@ -158,20 +125,10 @@ public final class EditModeManager {
     // Preview element accessors
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns whether the preview element is currently visible.
-     */
     public static boolean isPreviewElementVisible() {
         return instance().previewElementIsVisible;
     }
 
-    /**
-     * Sets whether the preview element is visible. Notifies listeners (e.g. the status
-     * bar) of the visibility change; hiding the preview element clears its displayed
-     * content since there is no longer anything positioned to describe.
-     *
-     * @param visible true to show the preview element, false to hide it
-     */
     public static void setPreviewElementVisible(boolean visible) {
         var manager = instance();
 
@@ -183,27 +140,18 @@ public final class EditModeManager {
         MessageCenter.post(new PreviewElementDidChangeNotification(visible ? manager.previewElement : null));
     }
 
-    /**
-     * Returns the current preview element, or null if no preview element is set.
-     */
+    /** Null if no preview element is set. */
     @Nullable
     public static StaffElement getPreviewElement() {
         return instance().previewElement;
     }
 
-    /**
-     * Sets the current preview element.
-     *
-     * @param previewElement The element to set as the preview element, or null to clear it
-     */
+    /** @param previewElement null to clear it */
     public static void setPreviewElement(@Nullable StaffElement previewElement) {
         instance().previewElement = previewElement;
         MessageCenter.post(new PreviewElementDidChangeNotification(previewElement));
     }
 
-    /**
-     * Returns whether a preview element is currently set.
-     */
     public static boolean hasPreviewElement() {
         return instance().previewElement != null;
     }
@@ -212,70 +160,38 @@ public final class EditModeManager {
     // Insertion target
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the element placed by the most recent song change, or null if the most
-     * recent song change was not a placement.
-     */
+    /** Null if the most recent song change was not a placement. */
     @Nullable
     public static Insertion getLastInsertion() {
         return instance().lastInsertion;
     }
 
     /**
-     * Points the insertion-relative keys at {@code elementIndex} in {@code line}, after the
-     * fact. For a caller that has already watched an edit commit: message posting is
-     * synchronous, so by the time an operation returns, its bracket has closed and the
-     * notification that cleared the slot has already been delivered.
-     *
-     * <p>This is how the last-insertion keys stay live across their own edit — tying a pair
-     * re-points the key at the same note, so a second press unties it. Placement goes through
-     * {@link #armInsertion} instead, because it has to name its target from inside the bracket.
-     *
-     * @param line The line the element sits in
-     * @param elementIndex The index of the element within that line
+     * For a caller that has already watched an edit commit, so the notification that cleared
+     * the slot has been delivered. Placement goes through {@link #armInsertion} instead, because
+     * it has to name its target from inside the bracket.
      */
     public static void setLastInsertion(Line line, int elementIndex) {
         instance().lastInsertion = new Insertion(line, elementIndex);
     }
 
     /**
-     * Records a placement whose modification bracket has not yet closed. The pending
-     * insertion becomes the last insertion when the resulting song change arrives.
-     *
-     * <p>Only call this on a path that is certain to commit. A pending insertion left
-     * unclaimed is not discarded — the next song change of any kind promotes it, so an
-     * arm made ahead of a path that turns out to change nothing resurfaces later as a
-     * stale target. That is why this is private: the only caller is the placement path
-     * below, which arms from inside the bracket it is already committing.
-     *
-     * @param line The line the element was placed in
-     * @param elementIndex The index of the placed element within that line
+     * Only call this on a path that is certain to commit: the next song change of any kind
+     * promotes an unclaimed pending insertion, which would then resurface as a stale target.
      */
     private static void armInsertion(Line line, int elementIndex) {
         instance().pendingInsertion = new Insertion(line, elementIndex);
     }
 
-    /**
-     * Clears both insertion slots. Called when a mode change or a document load invalidates
-     * whatever the insertion-relative keys would have acted on.
-     */
     void resetInsertions() {
         pendingInsertion = null;
         lastInsertion = null;
     }
 
-    /**
-     * Returns whether to play inserted notes.
-     */
     public static boolean isPlayInsertedNote() {
         return instance().playInsertedNote;
     }
 
-    /**
-     * Sets whether to play inserted notes.
-     *
-     * @param playInsertedNote true to play inserted notes, false otherwise
-     */
     public static void setPlayInsertedNote(boolean playInsertedNote) {
         instance().playInsertedNote = playInsertedNote;
     }
@@ -284,11 +200,6 @@ public final class EditModeManager {
     // Preview element creation and decoration
     // -------------------------------------------------------------------------
 
-    /**
-     * Creates a new preview element based on the currently selected element type.
-     *
-     * @return The newly created preview element
-     */
     public static StaffElement makePreviewElement() {
         var elementType = ElementType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
@@ -306,12 +217,6 @@ public final class EditModeManager {
         return makePreviewElement(elementType);
     }
 
-    /**
-     * Creates a new preview element of the given type.
-     *
-     * @param elementType The type of element to create
-     * @return The newly created preview element
-     */
     public static StaffElement makePreviewElement(ElementType elementType) {
         // Make a new element or rest of the given type
         var type = elementType;
@@ -325,11 +230,6 @@ public final class EditModeManager {
         return element;
     }
 
-    /**
-     * Decorates an element with the currently selected accidentals, dots, and articulations.
-     *
-     * @param element The element to decorate
-     */
     public static void decorateElement(StaffElement element) {
         // Only a note and a rest can be decorated; a barline, a repeat, a breath mark and a key
         // change carry no dots, accidentals or articulations.
@@ -369,14 +269,6 @@ public final class EditModeManager {
     // Element modification operations
     // -------------------------------------------------------------------------
 
-    /**
-     * Handles special element types that require custom insertion behavior.
-     * Returns true if the element was modified (and no further insertion should occur).
-     *
-     * @param line The line to insert into
-     * @param elementIndex The index at which to insert
-     * @return true if the element was modified, false if normal insertion should proceed
-     */
     public static boolean elementWasModified(Line line, int elementIndex) {
         var inst = instance();
 
@@ -448,24 +340,17 @@ public final class EditModeManager {
     // before init() has assigned INSTANCE, which would abort the application.
     // -------------------------------------------------------------------------
 
-    /**
-     * Promotes a placement armed inside the just-closed modification bracket to the
-     * last insertion. Any song change that was not a placement leaves the pending slot
-     * null, which clears the last insertion.
-     */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
         lastInsertion = pendingInsertion;
         pendingInsertion = null;
     }
 
-    /** Leaving or entering a mode invalidates any insertion target. */
     @Handler
     public void modeDidChange(ModeDidChangeNotification message) {
         resetInsertions();
     }
 
-    /** A newly loaded document has no insertion target. */
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
         resetInsertions();

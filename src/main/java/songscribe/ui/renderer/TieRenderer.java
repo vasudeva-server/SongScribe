@@ -40,41 +40,23 @@ import static songscribe.util.GraphicsState.Property.STROKE;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
- * Renders tie arcs between two notes of the same pitch.
- * <p>
- * Reads pre-computed cubic Bezier geometry from {@link LayoutResult.TieLayout}
- * and draws a filled lens shape using an outer and inner cubic Bezier curve.
- * <p>
- * A tie whose notes sit in different lines is laid out as one half per line, and each half is
- * drawn by the same path as a whole tie: an open half is a complete arc over its own width that
- * returns to the baseline at the staff edge, so drawing never branches on which edge is open.
- * That distinction is decided in the layout phase, which is the only phase that knows where the
- * edges are; here it decides only which of the tie's notes can color it.
+ * A tie across a line break is drawn as one half per line by the same path as a whole tie, so
+ * drawing never branches on which edge is open; only layout knows where the edges are.
  */
 public final class TieRenderer {
 
     // Singleton instance
     private static final TieRenderer INSTANCE = new TieRenderer();
 
-    /**
-     * Round pen that outlines the filled lens, blunting the sharp cusps where the outer and
-     * inner curves meet. Immutable, so a single shared instance suffices across all repaints.
-     */
     private static final BasicStroke TIE_OUTLINE_STROKE = new BasicStroke(
         (float) LayoutEngine.TIE_OUTLINE_THICKNESS_SS,
         BasicStroke.CAP_ROUND,
         BasicStroke.JOIN_ROUND
     );
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private TieRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static TieRenderer getInstance() {
         return INSTANCE;
     }
@@ -84,12 +66,7 @@ public final class TieRenderer {
     // ==========================================================================
 
     /**
-     * Renders a tie, or the half of it the line being painted owns, from its pre-computed
-     * geometry.
-     *
-     * @param g2         Graphics context (staff-space coordinate system)
-     * @param layout     the tie's geometry, from the layout of the line being painted
-     * @param invariants the line being painted and its render state
+     * @param g2 Graphics context (staff-space coordinate system)
      */
     public void renderTie(Graphics2D g2, LayoutResult.TieLayout layout, LineInvariants invariants) {
         try (var _ = GraphicsState.save(g2, TRANSFORM, COLOR, STROKE)) {
@@ -115,15 +92,9 @@ public final class TieRenderer {
     }
 
     /**
-     * Determines the tie color by checking both endpoints, then the tie itself.
-     * <p>
-     * A tie is colored if either its start or end note is playing or selected — the
-     * endpoint checks are what carries an index-range selection onto the ties inside it —
-     * and, failing that, if the tie is itself the selected target.
-     * <p>
-     * A tie crossing a line boundary has only one endpoint in the line being painted. The
-     * other is not an element here and so contributes no color; the line that holds it colors
-     * its own half from the same two checks.
+     * A tie is colored if either note is playing or selected, which carries an index-range
+     * selection onto the ties inside it, or if the tie is itself the selected target. A tie
+     * crossing a line boundary takes color only from its endpoint in the line being painted.
      */
     private static Color determineTieColor(Line.TiePlacement placement, LineInvariants invariants) {
         var range = placement.range();
@@ -154,8 +125,7 @@ public final class TieRenderer {
     }
 
     /**
-     * Returns the color the tie's note at {@code index} in the line being painted imposes on the
-     * tie, or null when it is drawn in the default color and so has nothing to impose.
+     * Null when the note is drawn in the default color and so has nothing to impose.
      */
     private static @Nullable Color endpointColor(int index, LineInvariants invariants) {
         var color = invariants.getElementColor(index);

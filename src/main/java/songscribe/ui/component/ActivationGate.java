@@ -36,22 +36,13 @@ import songscribe.util.Debounce;
 
 /**
  * Suppresses the mouse click that brings the application window to the foreground.
- * <p>
- * Uses a transparent glass pane that is activated when the application moves
- * to the background. The glass pane intercepts and consumes the first mouse press,
- * then deactivates itself. For keyboard-based activation (e.g., Cmd+Tab), a timer
- * deactivates the glass pane after a short delay.
- * <p>
- * Also the source of {@link ApplicationDidEnterBackgroundNotification} and
- * {@link ApplicationDidBecomeActiveNotification}: {@link #activate()} and {@link #deactivate()}
- * are the two ends of the background/foreground transition, so posting from here — rather than
- * from every {@code MainFrame} call site that triggers them — gives every listener one source of
- * truth for when the app actually entered the background and when it is actually usable again.
  *
- * <p>{@link #armForOverlay()} is the second, unrelated reason to raise the same glass pane: an
- * overlay window is up over the frame and the click that dismisses it must not also land on the
- * score. That is not a background transition, so it posts nothing. The two reasons are tracked
- * separately and the pane is up while either holds.
+ * <p>Also the single source of {@link ApplicationDidEnterBackgroundNotification} and
+ * {@link ApplicationDidBecomeActiveNotification}, posted from {@link #activate()} and
+ * {@link #deactivate()}.
+ *
+ * <p>{@link #armForOverlay()} raises the same glass pane for an unrelated reason, and posts
+ * nothing. The two reasons are tracked separately and the pane is up while either holds.
  */
 public final class ActivationGate {
     private static final int CMD_TAB_DELAY_MS = 300;
@@ -63,10 +54,7 @@ public final class ActivationGate {
     private ActivationGate() {
     }
 
-    /**
-     * Installs the activation gate on the given frame. Call after the frame
-     * is visible and its content is fully initialized.
-     */
+    /** Call after the frame is visible and its content is fully initialized. */
     public static void install(JFrame frame) {
         glassPane = new JPanel(null);
         glassPane.setOpaque(false);
@@ -91,10 +79,6 @@ public final class ActivationGate {
         cmdTabDebounce = Debounce.rescheduling(CMD_TAB_DELAY_MS, ActivationGate::deactivate);
     }
 
-    /**
-     * Called when the application moves to the background.
-     * Activates the glass pane so the next click is intercepted.
-     */
     public static void activate() {
         backgrounded = true;
         updateGlassPane();
@@ -103,25 +87,22 @@ public final class ActivationGate {
     }
 
     /**
-     * Raises the glass pane for an overlay window that is up over the frame, so the click that
-     * dismisses the overlay is swallowed instead of also reaching the score. The caller must
-     * pair this with {@link #disarmForOverlay()} on every path that takes the overlay down.
+     * The caller must pair this with {@link #disarmForOverlay()} on every path that takes the
+     * overlay down.
      */
     public static void armForOverlay() {
         overlayArmed = true;
         updateGlassPane();
     }
 
-    /** Releases the overlay's hold on the glass pane. */
     public static void disarmForOverlay() {
         overlayArmed = false;
         updateGlassPane();
     }
 
     /**
-     * Called when the application is raised to the foreground.
-     * Starts a timer to deactivate the glass pane, allowing keyboard-based
-     * activation (Cmd+Tab) to work without suppressing the next click.
+     * Deactivation is on a timer so that keyboard-based activation (Cmd+Tab) works without
+     * suppressing the next click.
      */
     public static void appRaisedToForeground() {
         if (cmdTabDebounce != null) {

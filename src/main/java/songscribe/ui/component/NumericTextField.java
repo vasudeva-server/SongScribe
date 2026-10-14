@@ -29,42 +29,22 @@ import songscribe.ui.OptionDialogs;
  * A text field that accepts digits and refuses to yield focus while what it holds is
  * outside a {@link NumericRange}.
  *
- * <p>The field owns the presentation of the rule — the input filter, the focus
- * verifier, the alert naming the bounds — and the {@link NumericRange} owns the rule
- * itself, so a binding or a controller can ask the same question without holding the
- * control. See {@link #isValidValue}.
+ * <p>The {@link NumericRange} owns the rule itself, so a binding or a controller can ask the
+ * same question without holding the control. See {@link #isValidValue}.
  */
 public class NumericTextField extends MyJTextField {
 
     private final NumericRange range;
 
     /**
-     * Creates a field accepting the values in {@code range}, with no limit on how many
-     * characters may be typed.
-     *
-     * <p>Validation is enforced with an {@link InputVerifier}: while the value is
-     * unacceptable the field refuses to yield focus, so a button that triggers it — OK,
-     * say — will not fire. A dialog built on {@link songscribe.ui.dialog.StandardDialog} needs
-     * nothing for this, since it already exempts Cancel and Remove; a dismissing button outside
-     * that family exempts itself the same way.
-     *
-     * @param columns the field's width, in the usual Swing column units
-     * @param range the values this field accepts, and whether it may be left empty
+     * While the value is unacceptable the field refuses to yield focus, so a button that
+     * triggers it — OK, say — will not fire. {@link songscribe.ui.dialog.StandardDialog} already
+     * exempts Cancel and Remove; a dismissing button outside that family must exempt itself.
      */
     public NumericTextField(int columns, NumericRange range) {
         this(columns, range, InputUtils.NO_MAX_CHARS);
     }
 
-    /**
-     * Creates a field accepting the values in {@code range} and limiting typed input to
-     * {@code maxChars} characters.
-     *
-     * @param columns the field's width, in the usual Swing column units
-     * @param range the values this field accepts, and whether it may be left empty
-     * @param maxChars the most characters that may be typed, or
-     *     {@link InputUtils#NO_MAX_CHARS} for no limit
-     * @effects installs an input filter and a focus verifier on this field.
-     */
     public NumericTextField(int columns, NumericRange range, int maxChars) {
         super(columns);
         InputUtils.addNumericFilter(this, InputUtils.NumericFormat.INTEGER, maxChars);
@@ -73,28 +53,16 @@ public class NumericTextField extends MyJTextField {
     }
 
     /**
-     * Returns whether this field currently holds a value its range contains.
-     *
-     * <p>Stricter than the focus verifier: a blank field answers {@code false} here
+     * Stricter than the focus verifier: a blank field answers {@code false} here
      * even when the range accepts blank entries, because blank names no value.
-     *
-     * @return {@code true} when this field's text names an integer within the range
      */
     public boolean hasValidValue() {
         return isValidValue(getText());
     }
 
     /**
-     * Returns whether {@code text} names a value this field's range contains.
-     *
-     * <p>The range is this field's own; the text need not be. A caller holding the
-     * field's text as a bound property asks through this method rather than reading the
-     * control, so that a derivation records the property as its dependency rather than
-     * acquiring none.
-     *
-     * @param text the text to test against this field's range
-     * @return {@code true} when {@code text} strips to a non-empty string naming an
-     *     integer the range contains
+     * The range is this field's own; the text need not be. A caller holding the text as a bound
+     * property asks here, so a derivation records the property as its dependency.
      */
     public boolean isValidValue(String text) {
         return range.containsValue(text);

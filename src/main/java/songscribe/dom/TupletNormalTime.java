@@ -24,19 +24,11 @@ package songscribe.dom;
  * The time a tuplet's notes occupy: the group plays in the time of {@code normalNotes} notes of
  * the written value {@code noteValue}.
  * <p>
- * The printed grade is not part of the ratio. A {@link PendingTuplet} read from a file that
- * states no ratio knows its grade before the load pass derives the ratio, so the two are held
- * apart.
- *
- * @param normalNotes M, the count of {@code noteValue} notes whose time the group occupies
- * @param noteValue   V, the written value of those notes
- * @invariant {@code normalNotes} is positive
+ * The printed grade is not part of the ratio: a {@link PendingTuplet} knows its grade before the
+ * load pass derives the ratio.
  */
 public record TupletNormalTime(int normalNotes, NotatableValue noteValue) {
 
-    /**
-     * @throws IllegalArgumentException if {@code normalNotes} is not positive
-     */
     public TupletNormalTime {
         if (normalNotes <= 0) {
             throw new IllegalArgumentException(

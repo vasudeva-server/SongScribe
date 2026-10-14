@@ -28,11 +28,6 @@ import songscribe.Strings;
 import songscribe.dom.Tempo;
 import songscribe.ui.component.MainFrame;
 
-/**
- * A {@link TempoSection} in a dialog, for editing the tempo change on an element.
- *
- * <p>The dialog owns nothing but the section, which the song settings use as well.
- */
 public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
     private final TempoSection tempoSection;

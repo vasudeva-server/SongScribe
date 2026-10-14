@@ -83,31 +83,23 @@ class LineRenderer {
     // Constants
     // ==========================================================================
 
-    /** Width of the selection rectangle border stroke at 100% zoom, in pixels. */
     private static final float SELECTION_RECT_STROKE_WIDTH_PX = 2.0f;
 
-    /** Corner arc diameter for the rubber-band selection rectangle at 100% zoom, in pixels. */
     private static final double SELECTION_RECT_ARC_PX = 2.0;
 
-    /** Minimum drawn width of the selection band, so a zero-width band still renders. */
+    /** So a zero-width band still renders. */
     private static final double MIN_BAND_WIDTH_PX = 1.0;
 
     // ==========================================================================
     // Instance Fields
     // ==========================================================================
 
-    /** The owning LineComponent whose state we read for rendering. */
     private final LineComponent lc;
 
     // ==========================================================================
     // Constructor
     // ==========================================================================
 
-    /**
-     * Creates a new LineRenderer for the given LineComponent.
-     *
-     * @param lineComponent The LineComponent to render for
-     */
     LineRenderer(LineComponent lineComponent) {
         lc = lineComponent;
     }
@@ -116,14 +108,6 @@ class LineRenderer {
     // Public Entry Points
     // ==========================================================================
 
-    /**
-     * Renders the complete staff line content.
-     * <p>
-     * Called from {@link LineComponent#render(Graphics2D)} after layout
-     * has been performed and state is up to date.
-     *
-     * @param g2 Graphics context with antialiasing enabled
-     */
     void render(Graphics2D g2) {
         // Build the immutable per-line invariants once.
         var invariants = buildInvariants();
@@ -148,11 +132,6 @@ class LineRenderer {
         renderAttribution(g2, invariants);
     }
 
-    /**
-     * Builds the immutable per-line invariants from the owning line component's current state.
-     *
-     * @return The invariants for this render pass
-     */
     LineInvariants buildInvariants() {
         var song = lc.getSong();
         var line = lc.getLine();
@@ -195,9 +174,6 @@ class LineRenderer {
     // Staff and Line Beginning
     // ==========================================================================
 
-    /**
-     * Draws the 5 staff lines.
-     */
     private void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
@@ -231,24 +207,12 @@ class LineRenderer {
         }
     }
 
-    /**
-     * Renders the line beginning (the staff header, and on the first line the song's tempo).
-     *
-     * @param g2    Graphics context
-     * @param invariants   Line invariants
-     * @param frame Element frame
-     */
     private void renderLineBeginning(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         StaffHeaderRenderer.getInstance().render(
             invariants, frame, invariants.getLayoutResult().staffHeader(), g2);
         renderSongTempoMark(g2, invariants, frame);
     }
 
-    /**
-     * Draws the song's tempo above the right edge of the first line's staff header. Whether the
-     * mark was stacked at all — it is stacked only into the first line's layout — is the
-     * renderer's own question, and it answers it once, from the mark's decoration layout.
-     */
     private void renderSongTempoMark(
         Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
 
@@ -256,11 +220,6 @@ class LineRenderer {
             .render(invariants, frame, invariants.getSong().getTempoMarkElement(), g2);
     }
 
-    /**
-     * Draws the song's attribution block above the right end of the first line's staff. Whether
-     * the block was stacked at all — it is stacked only into the first line's layout — is the
-     * renderer's own question, and it answers it once, from the block's decoration layout.
-     */
     private void renderAttribution(Graphics2D g2, LineInvariants invariants) {
         AttributionRenderer.getInstance().render(invariants, g2);
     }
@@ -269,12 +228,6 @@ class LineRenderer {
     // Note Rendering
     // ==========================================================================
 
-    /**
-     * Renders notes using StaffElementRenderer.
-     *
-     * @param g2        Graphics context
-     * @param invariants       Line invariants
-     */
     private void renderElements(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var noteRenderer = StaffElementRenderer.getInstance();
         var line = invariants.requireCurrentLine();
@@ -297,18 +250,8 @@ class LineRenderer {
     }
 
     /**
-     * Computes the X-position override (in staff-space) for an element when a preview
-     * shift is active and the element falls at or after the shift boundary.
-     * <p>
-     * Returns the element's natural layout X plus the preview shift amount, or
-     * {@link Double#NaN} if no override applies (no shift, element before boundary,
-     * or element is a final double barline which is never shifted).
-     *
-     * @param lineFrame    Line-level frame carrying any active preview shift
-     * @param elementIndex Index of the element within the line
-     * @param element      The element being rendered
-     * @param layoutResult The current layout result
-     * @return Override X in staff-space, or {@link Double#NaN}
+     * @return {@link Double#NaN} if no override applies (no shift, element before boundary,
+     *     or element is a final double barline which is never shifted)
      */
     private static double computeOverrideXSs(
         ElementFrame lineFrame,
@@ -324,16 +267,6 @@ class LineRenderer {
             : Double.NaN;
     }
 
-    /**
-     * Determines the color for rendering an element.
-     * <p>
-     * Delegates edit mode, playback, selection, and hover logic to
-     * {@link LineInvariants#getElementColor}. Adds the grace-cancel coloring on top.
-     *
-     * @param elementIndex The index of the element within this line
-     * @param invariants          The per-line invariants
-     * @return The color to use for rendering
-     */
     private Color getElementColor(int elementIndex, LineInvariants invariants) {
         var color = invariants.getElementColor(elementIndex);
 
@@ -354,22 +287,14 @@ class LineRenderer {
     // Range Element Rendering
     // ==========================================================================
 
-    /**
-     * Renders slides for all notes in the line.
-     *
-     * @param g2    Graphics context
-     * @param invariants   Line invariants
-     * @param frame Element frame
-     */
     private void renderSlides(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         SlideRenderer.getInstance().renderSlidesFromLine(g2, invariants, frame);
         renderPendingConnectGlissando(g2, invariants);
     }
 
     /**
-     * Renders the grace-mode drag-right connect feedback as a preview glissando. The pending
-     * connection is render-only state — mutating the grace note's slide during the drag would
-     * leak an untracked change into undo's before-state clones.
+     * The pending connection is render-only state: mutating the grace note's slide during the
+     * drag would leak an untracked change into undo's before-state clones.
      */
     private void renderPendingConnectGlissando(Graphics2D g2, LineInvariants invariants) {
         // Common case: no grace-mode drag is active anywhere — skip the per-element scan.
@@ -393,13 +318,6 @@ class LineRenderer {
         }
     }
 
-    /**
-     * Renders beam groups connecting beamed notes.
-     *
-     * @param g2    Graphics context
-     * @param invariants   Line invariants
-     * @param frame Element frame
-     */
     private void renderBeams(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var beamRenderer = BeamGroupRenderer.getInstance();
         var line = invariants.requireCurrentLine();
@@ -411,13 +329,6 @@ class LineRenderer {
         }
     }
 
-    /**
-     * Renders the ties and tie halves this line's layout laid out ({@link Line#ownedTies}).
-     *
-     * @param g2    Graphics context
-     * @param invariants   Line invariants
-     * @param frame Element frame
-     */
     private void renderTies(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var tieRenderer = TieRenderer.getInstance();
 
@@ -427,26 +338,10 @@ class LineRenderer {
         }
     }
 
-    /**
-     * Returns the index the preview shift must weigh a tie against in the line being painted.
-     * <p>
-     * The preview shift's {@code fromIndex} is a position in that line, so the tie's start has
-     * to be one too. The half entering from the left edge starts before every element here and
-     * shifts exactly when the whole line does, which its range's start of {@code 0} gives.
-     *
-     * @param placement the tie's place in the line being painted
-     * @return the index of the first element the tie is drawn over: its anchor's, or {@code 0}
-     *     when the anchor is in the previous line
-     */
     private static int previewShiftStartOf(Line.TiePlacement placement) {
         return placement.range().begin();
     }
 
-    /**
-     * Runs {@code render} with the frame's preview shift translated into {@code g2} when
-     * {@code spanStart} falls at or after the shift boundary. The transform is restored
-     * on exit (including on exception).
-     */
     private static void renderWithPreviewShiftIfNeeded(
         Graphics2D g2,
         ElementFrame frame,
@@ -465,28 +360,14 @@ class LineRenderer {
         }
     }
 
-    /**
-     * Renders tuplet brackets and numbers.
-     *
-     * @param g2    Graphics context
-     * @param invariants   Line invariants
-     * @param frame Element frame
-     */
     private void renderTuplets(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         TupletRenderer.getInstance().renderTupletsFromLine(g2, invariants, frame);
     }
 
     /**
-     * Renders the cautionary key change at the end of a line — the warning to the performer
-     * that the next line starts in a different key.
-     * <p>
-     * Which lines end in one, and what the cautionary then draws, is
-     * {@link CautionaryKeySignature#of(Line)}'s answer — the same one
-     * {@code HorizontalSpacingCalculator.trailingReservationSs} reserves room against, so what is
-     * drawn and what layout kept clear for it are decided from one source.
-     *
-     * @param g2  Graphics context
-     * @param invariants Line invariants
+     * The cautionary comes from {@link CautionaryKeySignature#of(Line)}, the same answer
+     * {@code HorizontalSpacingCalculator.trailingReservationSs} reserves room against, so what
+     * is drawn and what layout kept clear come from one source.
      */
     private void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
         var cautionary = CautionaryKeySignature.of(invariants.requireCurrentLine());
@@ -498,22 +379,10 @@ class LineRenderer {
         KeySignatureRenderer.getInstance().renderCautionary(g2, cautionary, invariants);
     }
 
-    /**
-     * Renders crescendo and diminuendo hairpins.
-     *
-     * @param g2  Graphics context
-     * @param invariants Line invariants
-     */
     private void renderDynamics(Graphics2D g2, LineInvariants invariants) {
         HairpinRenderer.getInstance().renderHairpinsFromLine(g2, invariants);
     }
 
-    /**
-     * Renders first/second ending brackets.
-     *
-     * @param g2  Graphics context
-     * @param invariants Line invariants
-     */
     private void renderEndings(Graphics2D g2, LineInvariants invariants) {
         EndingRenderer.getInstance().renderEndings(g2, invariants);
     }
@@ -522,16 +391,6 @@ class LineRenderer {
     // Note Attachment Rendering
     // ==========================================================================
 
-    /**
-     * Renders note attachments using pre-computed positions from {@link LayoutResult}.
-     * <p>
-     * Dispatch is driven by {@link LayoutResult.DecorationLayout} presence
-     * rather than legacy model flags. Rendering order follows the stacking tier order
-     * (near-note first, system-level last).
-     *
-     * @param g2        Graphics context
-     * @param invariants       Line invariants
-     */
     private void renderAttachments(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var articulationRenderer = ArticulationRenderer.getInstance();
         var fermataRenderer = FermataRenderer.getInstance();
@@ -615,12 +474,6 @@ class LineRenderer {
     // Overlay Rendering
     // ==========================================================================
 
-    /**
-     * Renders the selection band during a drag on this line, or nothing when no drag is in
-     * progress.
-     *
-     * @param g2 Graphics context
-     */
     void renderSelectionBand(Graphics2D g2) {
         var band = lc.getSelectionBand();
 

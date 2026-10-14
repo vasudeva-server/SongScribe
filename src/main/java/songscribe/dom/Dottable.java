@@ -20,41 +20,18 @@
 package songscribe.dom;
 
 /**
- * An element that takes augmentation dots: a note or a rest. Each leaf holds its own count;
- * this is the one name for the question "how many dots is it written with", so a site that
- * reads or writes dots on an element it has not narrowed narrows to this rather than to each
- * leaf in turn. A breath mark, a barline and a key change take no dots and are not this.
+ * An element that takes augmentation dots: a note or a rest.
  */
 public sealed interface Dottable permits NoteElement, RestElement {
 
-    /**
-     * Returns the dots {@code source} is written with: its own when it takes dots, and
-     * {@link Dots#NONE} when it does not, since an element that takes no dots has none to
-     * give. This is the answer for an element that has not been narrowed, whether a conversion
-     * is carrying dots over or a reader is asking how long it is.
-     *
-     * @param source the element, of any class
-     * @return the source's dots, or {@link Dots#NONE} when it takes none
-     */
     static Dots dotsOf(StaffElement source) {
         return source instanceof Dottable dottable ? dottable.dots() : Dots.NONE;
     }
 
-    /**
-     * Returns the augmentation dots this element is written with.
-     *
-     * @return the dots: {@link Dots#NONE} for an undotted element
-     */
     Dots dots();
 
     /**
-     * Sets the augmentation dots this element is written with. The value is written as
-     * given: the boundaries that read a count from a file convert it through
-     * {@link Dots#of(int)} before it reaches here.
-     *
-     * @param dots the dots to write with
-     * @effects changes what {@link #dots()} and
-     *     {@link StaffElement#writtenDuration()} answer
+     * Written as given; a boundary converts a raw count through {@link Dots#of(int)} first.
      */
     void setDots(Dots dots);
 }

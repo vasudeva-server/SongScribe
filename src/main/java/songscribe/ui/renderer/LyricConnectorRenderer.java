@@ -39,14 +39,7 @@ import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.STROKE;
 
 /**
- * Renders line-level lyric connectors (syllable hyphens and melisma extenders).
- * <p>
- * Iterates the {@link LyricConnectorLayout} entries on the current
- * {@link LayoutResult}, drawing them on that line's own lyric
- * baseline Y. Stateless.
- * <p>
- * Following Gould/Ross engraving rules: hyphens mark syllable division only;
- * extenders mark duration only.
+ * Hyphens mark syllable division only; extenders mark duration only (Gould/Ross).
  */
 public final class LyricConnectorRenderer {
 
@@ -54,7 +47,6 @@ public final class LyricConnectorRenderer {
     // Constants
     // ==========================================================================
 
-    /** Extender stroke width in staff spaces (~0.836 px at default 8 px/ss scale). */
     private static final double EXTENDER_STROKE_WIDTH_SS = 0.1045;
 
     private static final BasicStroke EXTENDER_STROKE = new BasicStroke(
@@ -84,12 +76,6 @@ public final class LyricConnectorRenderer {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Renders every connector on the current line.
-     *
-     * @param g2  graphics context (in staff-space coordinates)
-     * @param ctx render context with a populated layout result and song metrics
-     */
     public void render(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var layoutResult = invariants.getLayoutResult();
         var connectors = layoutResult.getLyricConnectors();
@@ -141,16 +127,11 @@ public final class LyricConnectorRenderer {
     }
 
     /**
-     * Returns the X (staff spaces) at which an unclosed hyphen chain should end while the lyric
-     * editor is open, or {@link Double#NaN} when no editor is open or the edited element is not on
-     * this line.
+     * Returns {@link Double#NaN} when no editor is open or the edited element is not on this line.
      * <p>
-     * The chain ends at the edited element's column left edge — the same end the layout pass gives
-     * a dangling hyphen — rather than at the editor's own left edge, so the preview keeps the
-     * geometry the connector already has and the editor simply overlays whatever it covers. The
-     * final {@link LyricConnectorLayout.Kind#HYPHEN} ends at the closing syllable's lyric box
-     * instead, so the hyphens shift slightly when that syllable is committed; its width cannot be
-     * known before it is typed.
+     * The chain ends at the edited element's column left edge, the same end the layout pass gives
+     * a dangling hyphen. The final {@link LyricConnectorLayout.Kind#HYPHEN} ends at the closing
+     * syllable's lyric box instead, so the hyphens shift slightly when that syllable is committed.
      */
     private static double hyphenChainPreviewEndXSs(LineInvariants invariants) {
         var editedElement = invariants.getActivelyEditedElement();

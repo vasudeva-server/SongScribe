@@ -120,12 +120,7 @@ public final class ViewIO {
         }
 
         /**
-         * Builds a {@link DocumentFonts} from the parsed {@code <view>} block. Roles
-         * absent from the block fall through to the system-default fonts
-         * ({@link DocumentFonts#defaultFonts()}) the reader was seeded with — so
-         * partial blocks and v1.1+ files without
-         * a full font set produce the same result as a missing {@code <view>}
-         * (handled by {@code SongIO} returning {@link DocumentFonts#defaultFonts()}).
+         * Roles absent from the block fall through to {@link DocumentFonts#defaultFonts()}.
          */
         public DocumentFonts getDocumentFonts() {
             var fonts = new DocumentFonts();

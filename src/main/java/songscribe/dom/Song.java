@@ -72,30 +72,19 @@ import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.util.StringUtils;
 
 /**
- * This class serves as the model for data that is read from and written to
- * SongScribe files.
+ * The model for data that is read from and written to SongScribe files.
  *
  * <h2>Lifecycle</h2>
- * A {@code Song} subscribes itself to the message bus in every constructor, so it can
- * handle broadcast command notifications (metadata/tempo/key, etc.) for as long as it is
- * the active document. {@link #dispose()} detaches it. MBassador holds listeners by weak
- * reference, so a discarded {@code Song} keeps responding to broadcasts — and posting
- * spurious undo steps against the dead document — until it is garbage-collected;
- * {@code dispose()} makes the detach deterministic rather than GC-timing-dependent.
- * {@code ScoreView.setSong} calls it when replacing the active {@code Song}.
+ * A {@code Song} subscribes itself to the message bus in every constructor. MBassador holds
+ * listeners weakly, so a discarded {@code Song} keeps responding to broadcasts, and posting
+ * spurious undo steps, until it is garbage-collected: call {@link #dispose()} to detach it
+ * deterministically ({@code ScoreView.setSong} does when replacing the active song).
  *
  * <h2>Key invariant</h2>
- * A song has no key of its own — its key is line 0's. Across the line list, two things always
- * hold: line 0 establishes a key of its own ({@link Line#getKey()} is non-null), and every other
- * line's inherited key equals the key in effect at the end of the line before it. A {@code Song}
- * is what maintains both — see {@link #applyChange} for the editing path and
- * {@link #rebuildInheritedKeysAfterParsing()} for the loading one — which is why the rule is
- * stated here rather than on {@link Line}, which can only state what one line promises.
- *
- * <p>The inherited half lives here too, in {@link #inheritedKeys}, for the same reason: what a line
- * inherits is a fact about where it sits in this list, so the class that owns the list is the one
- * that can keep it true. {@link Line#getRunningKey()} is the query, and it is total — nothing about
- * the key chain can be broken badly enough to have no answer.
+ * A song has no key of its own — its key is line 0's. Across the line list, line 0 establishes a
+ * key of its own ({@link Line#getKey()} is non-null), and every other line's inherited key
+ * equals the key in effect at the end of the line before it. {@link Line#getRunningKey()} is
+ * total.
  */
 public final class Song implements Disposable {
 
@@ -138,39 +127,22 @@ public final class Song implements Disposable {
     }
 
     /**
-     * A script a song's lyrics are written in. Each note holds at most one lyric per script, and
-     * the song shows one script at a time ({@link #getActiveScript()}).
-     *
-     * <p>The application holds a {@code Script}, never a lyric number. A lyric number exists only
-     * in a file, and only {@code songscribe.io.LyricNumbers} converts between the two.
+     * A script a song's lyrics are written in. The application holds a {@code Script}, never a
+     * lyric number, which exists only in a file; only {@code songscribe.io.LyricNumbers} converts
+     * between the two.
      */
     public enum Script {
         LATIN,
         BENGALI
     }
 
-    /**
-     * Default line-wide rest length (delta-X Ss between adjacent column origins) from which every
-     * gap's ideal spacing is derived. Matches the legacy default column gap; a song may override it
-     * to loosen or tighten the whole score proportionally.
-     */
     public static final double DEFAULT_REST_LENGTH_SS = 2.0;
-    /**
-     * Lower clamp for {@link #defaultRestLengthSs}: no rest is ever derived from a line rest tighter
-     * than this. Tunable first cut.
-     */
-    public static final double MIN_DEFAULT_REST_LENGTH_SS = 1.0;
+    private static final double MIN_DEFAULT_REST_LENGTH_SS = 1.0;
 
     /**
-     * Line width used until the UI layer installs the preference-aware provider.
-     * <p>
-     * The real default comes from {@code PageModel.getDefaultLineWidthSs()}, which needs
-     * {@code Prefs} and the screen DPI and so is unreachable from the model layer. This
-     * constant stands in for it wherever a Song is built without the app running — the
-     * corpus generator and unit tests — so such a Song is never born with an unlayoutable
-     * zero-width staff. It is the Letter content area (8.5" page less 0.5" margins per
-     * side) at the standard 96-DPI headless resolution, expressed in staff spaces, which
-     * also keeps it within the page on higher-DPI displays.
+     * Stands in for {@code PageModel.getDefaultLineWidthSs()}, which is unreachable from the model
+     * layer, wherever a Song is built without the app running, so a Song is never born with a
+     * zero-width staff.
      */
     public static final double FALLBACK_LINE_WIDTH_SS = 90.0;
 
@@ -238,16 +210,8 @@ public final class Song implements Disposable {
     private final ArrayList<Line> lines = new ArrayList<>();
 
     /**
-     * The key in effect at the end of the line before each line — what that line inherits when it
-     * establishes no key of its own. A line with no entry inherits nothing: line 0, and any line
-     * that is not in {@link #lines}.
-     *
-     * <p>Keyed by identity because {@link Line} inherits {@code equals} from {@code Object} and two
-     * distinct lines must never collide, however alike their contents.
-     *
-     * <p>This is state, not a cache: there is no invalidate-and-recompute path. Every mutation that
-     * can move a key drives {@link #maintainKeyInvariant} instead, which patches the entries the
-     * change actually reaches rather than rebuilding the whole map.
+     * State, not a cache: every mutation that can move a key drives {@link #maintainKeyInvariant}
+     * rather than an invalidate-and-recompute path.
      */
     private final Map<Line, Key> inheritedKeys = new IdentityHashMap<>();
 
@@ -258,29 +222,14 @@ public final class Song implements Disposable {
     private Script activeScript = Script.LATIN;
 
     /**
-     * Indicates whether this song has been dynamically laid out.
-     * <p>
-     * When reading a document:
-     * - If false (legacy document): ignore xPos values (they were absolute positions)
-     * - If true (new document): read xPos values as relative offsets
-     * <p>
-     * When saving: always set to true.
+     * False for a legacy document, whose xPos values are absolute positions and are ignored.
+     * Always true when saving.
      */
     private boolean hasBeenDynamicallyLaidOut = false;
 
     /**
-     * Data format version for the song's internal representation.
-     * <p>
-     * <ul>
-     *   <li>Version 1: Legacy format (inline range data, inline Note attachments)</li>
-     *   <li>Version 2: LineElement format (Span objects, Attachment objects)</li>
-     * </ul>
-     * <p>
-     * Note: This is distinct from the IO file format version (SongIO.IO_MAJOR_VERSION).
-     * The file format may remain compatible while the in-memory representation is migrated.
-     * <p>
-     * Default is 1 for newly loaded songs (before migration).
-     * FormatMigrator sets this to 2 after migration.
+     * Version of the in-memory representation (1 legacy, 2 LineElement), distinct from the IO
+     * file format version.
      */
     private int formatVersion = 1;
 
@@ -318,21 +267,11 @@ public final class Song implements Disposable {
         subscription = new MessageSubscription(this);
     }
 
-    /**
-     * Loading constructor. Applies the parsed data and subscribes to the message bus.
-     * Avoids the wasted work of the no-arg constructor (default line initialization).
-     */
     public Song(SongData data) {
         loadFrom(data);
         subscription = new MessageSubscription(this);
     }
 
-    /**
-     * Creates a minimal stub Song for use during file parsing. All fields stay at defaults
-     * until {@link #loadFrom(SongData)} is called with the real parsed data.
-     * This avoids the double {@code loadFrom} that would result from using
-     * {@link #Song(SongData)} with an empty snapshot.
-     */
     public static Song newParsingStub() {
         return new Song(Stub.INSTANCE);
     }
@@ -344,8 +283,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Detaches this {@code Song} from the message bus. Idempotent. See the class's
-     * {@code Lifecycle} section.
+     * Idempotent. See the class's {@code Lifecycle} section.
      */
     @Override
     public void dispose() {
@@ -358,16 +296,9 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Applies all fields from a {@link SongData} snapshot atomically.
-     * Does not post any notification — the caller ({@code ScoreView.setSong})
-     * posts a {@link songscribe.message.notification.DocumentDidLoadNotification}
-     * after the song is fully installed.
-     * <p>
-     * Called by {@link SongIO.DocumentReader#getSong()}
-     * after parsing a file. This is a direct method call rather than a message
-     * handler because loading targets a specific Song instance.
-     *
-     * @param data the parsed song data to apply
+     * Posts no notification; the caller ({@code ScoreView.setSong}) posts a
+     * {@link songscribe.message.notification.DocumentDidLoadNotification} once the song is
+     * installed.
      */
     @SuppressWarnings("CallToSimpleSetterFromWithinClass")
     public void loadFrom(SongData data) {
@@ -433,35 +364,14 @@ public final class Song implements Disposable {
         return tempo;
     }
 
-    /**
-     * Returns the effective tempo at a given position in the song.
-     * Walks backwards through lines and notes to find the most recent tempo change,
-     * or returns the effective song tempo if none found.
-     *
-     * @param lineIndex The index of the line
-     * @param noteIndex The index of the note within the line
-     * @return The effective tempo at this position
-     */
     public Tempo getTempoAt(int lineIndex, int noteIndex) {
         return tempoResolver.getTempoAt(lineIndex, noteIndex);
     }
 
-    /**
-     * Returns the beat in effect at a position, found by walking backward from that
-     * position to the nearest preceding beat-defining event. The nearest event wins
-     * whichever kind it is; with no event before the anchor the song tempo decides, and
-     * failing that the quarter note.
-     *
-     * @param lineIndex    the index of the line
-     * @param elementIndex the index of the anchor element within that line
-     * @return the beat in effect at this position
-     * @see TempoResolver#beatUnitAt
-     */
     public BeatUnit beatUnitAt(int lineIndex, int elementIndex) {
         return tempoResolver.beatUnitAt(lineIndex, elementIndex);
     }
 
-    /** Returns the canonical attribution metadata record. */
     public SongMetadata getMetadata() {
         return metadata;
     }
@@ -474,22 +384,10 @@ public final class Song implements Disposable {
         return metadata.subtitle();
     }
 
-    /**
-     * Returns the title prefixed with the song number and a separator
-     * (e.g. {@code "5. My Song"}) when a number is present, or the bare title
-     * when the number is empty.
-     */
     public String getNumberedTitle() {
         return numberedTitle(metadata.number(), metadata.title());
     }
 
-    /**
-     * Composes a numbered title from a raw number and title: the title prefixed
-     * with the number and a separator (e.g. {@code "5. My Song"}) when a number
-     * is present, or the bare title when the number is empty. Exposed so callers
-     * working with uncommitted values (e.g. the song settings dialog's title
-     * preview) can produce the same string without duplicating the format.
-     */
     public static String numberedTitle(String number, String title) {
         if (number.isEmpty()) {
             return title;
@@ -507,8 +405,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * @return when the words were written, {@link PartialDate.EmptyDate} when they are
-     *     dated with the music
+     * @return {@link PartialDate.EmptyDate} when the words are dated with the music
      */
     public PartialDate getWordsDate() {
         return metadata.wordsDate();
@@ -518,11 +415,6 @@ public final class Song implements Disposable {
         return language;
     }
 
-    /**
-     * Returns a syllabified-style text assembled from the {@link #getActiveScript() active
-     * script}'s per-note {@link Lyric} records. Returns an empty string when that script has no
-     * lyrics.
-     */
     public String getLyricsText() {
         var sb = new StringBuilder(1000);
 
@@ -594,23 +486,17 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Returns {@code true} when the song has a non-empty official translation.
-     * Unofficial translations are not credited in the attribution.
-     * <p>
-     * This is the single authoritative derivation of the translation flag
-     * (decision 4A); rendering and IO pass this to
+     * The single authoritative derivation of the translation flag; rendering and IO pass this to
      * {@link AttributionFormatter}.
      */
     public boolean showTranslation() {
         return !metadata.unofficialTranslation() && !translatedLyrics.isEmpty();
     }
 
-    /** Returns the stable attribution block element that carries geometry and user Y offset. */
     public Attribution getAttributionElement() {
         return attributionElement;
     }
 
-    /** Returns the stable song tempo mark element drawn at the first line's staff header. */
     public SongTempoMark getTempoMarkElement() {
         return tempoMarkElement;
     }
@@ -620,14 +506,8 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Returns the key this song starts in, which is line 0's own key — a song holds no key of its
-     * own. Line 0 always establishes one, because it has nothing to inherit from.
-     *
-     * <p>Callers ask this rather than reaching for line 0 themselves, so that reaching for line 0
-     * is written once.
-     *
-     * @return the key in effect at the start of the song; {@link Key#DEFAULT} while the song holds
-     *         no lines, which only a reader part-way through a load ever sees
+     * @return {@link Key#DEFAULT} while the song holds no lines, which only a reader part-way
+     *         through a load ever sees
      */
     public Key getStartingKey() {
         return lines.isEmpty() ? Key.DEFAULT : lines.getFirst().getRunningKey();
@@ -637,32 +517,14 @@ public final class Song implements Disposable {
         return modified;
     }
 
-    /**
-     * This song's linter, which holds its lint report.
-     *
-     * @return the linter this song created; the same one for the life of the song
-     */
     public Linter getLinter() {
         return linter;
     }
 
-    /**
-     * Returns the script this song is showing — the one script that layout, painting, the lyric
-     * editor and the lyric lint rules all work on. Lyrics in every other script stay in the
-     * document but are not displayed.
-     *
-     * @return the active script; {@link Script#LATIN} until {@link #setActiveScript} changes it
-     */
     public Script getActiveScript() {
         return activeScript;
     }
 
-    /**
-     * The scripts this song carries lyrics in.
-     *
-     * @return every script held by a lyric on any line, each once, in {@link Script} order; empty
-     *     when the song holds no lyric. The set is unmodifiable.
-     */
     public Set<Script> scripts() {
         var scripts = EnumSet.noneOf(Script.class);
 
@@ -674,16 +536,8 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Selects the script this song shows. The script changes what every line lays out and what
-     * the lyric lint rules check, so the change is announced rather than left to the caller.
-     *
-     * <p>Which script is shown is a property of the session, not of the document: selecting one
-     * does not mark the song modified, and it adds no undo step.
-     *
-     * @param activeScript the script to show
-     * @effects when {@code activeScript} differs from the active script, sets it, then posts an
-     *     {@link ActiveScriptDidChangeNotification} for this song, whose construction lints it;
-     *     otherwise does nothing. Leaves {@link #isModified()} as it was and records no mutation
+     * Which script is shown is a property of the session, not of the document: selecting one does
+     * not mark the song modified, and it adds no undo step.
      */
     public void setActiveScript(Script activeScript) {
         if (activeScript == this.activeScript) {
@@ -707,11 +561,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The position of {@code line} among this song's lines.
-     *
-     * @return the index {@link #getLine} would return {@code line} for, or {@code null} when
-     *     {@code line} is not one of this song's lines — a detached line, or one this song
-     *     has removed
+     * @return {@code null} when {@code line} is not one of this song's lines
      */
     @Nullable Integer indexOfLine(Line line) {
         var index = lines.indexOf(line);
@@ -719,7 +569,6 @@ public final class Song implements Disposable {
         return index < 0 ? null : index;
     }
 
-    /** True when {@code line} is currently one of this song's lines. */
     public boolean contains(Line line) {
         return indexOfLine(line) != null;
     }
@@ -736,17 +585,6 @@ public final class Song implements Disposable {
         return defaultRestLengthSs;
     }
 
-    /**
-     * The width of a staff line, typed so callers are handed a staff-space value rather than a
-     * bare number they must remember the unit of.
-     * <p>
-     * The stored field is a {@code double} because the width travels through the mutation
-     * machinery — {@link songscribe.message.mutation.LayoutChange} and the loaded
-     * {@link songscribe.message.SongData} record — as a boxed {@code Double}, so the wrapper is
-     * put on here rather than held.
-     *
-     * @return the staff line width in staff spaces
-     */
     public Ss getLineWidthSs() {
         return new Ss(lineWidthSs);
     }
@@ -766,29 +604,15 @@ public final class Song implements Disposable {
     // ========== Setters (mutate + setModified + post) ==========
 
     /**
-     * Sets the song's tempo. No-ops when {@code tempo} says what the current one says.
-     *
-     * <p>Stays public because the undo replayer and the MusicXML header reader both
-     * legitimately drive it from outside the editing UI.
-     *
-     * @param tempo the tempo the song is to have
-     * @effects replaces the song's tempo and records one undo step
+     * Stays public because the undo replayer and the MusicXML header reader drive it from outside
+     * the editing UI.
      */
     public void setTempo(Tempo tempo) {
-        if (this.tempo.equals(tempo)) {
-            return;
-        }
-
         mutateMetadata(MetadataField.TEMPO, this.tempo, tempo, () -> this.tempo = tempo);
     }
 
     /**
-     * The index of the first line that has any element. A leading empty line is skipped, so
-     * deleting every element of line 0 moves the answer down to the next line that still has
-     * elements.
-     *
-     * @return the first non-empty line's index, or {@code null} when the song has no lines
-     *     or every line is empty
+     * @return {@code null} when the song has no lines or every line is empty
      */
     public @Nullable Integer firstNonEmptyLineIndex() {
         for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
@@ -801,10 +625,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The song's first element — element 0 of the first non-empty line — or null when every
-     * line is empty or the song has no lines. A pure query, with no bearing on where any
-     * tempo lives: the UI rule that forbids creating a tempo change on the song's first
-     * element is its only caller.
+     * @return {@code null} when every line is empty or the song has no lines
      */
     public @Nullable StaffElement firstElement() {
         var lineIndex = firstNonEmptyLineIndex();
@@ -813,10 +634,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Sets the canonical attribution metadata record atomically. The record must
-     * already be normalized — this method does not re-normalize (decision 7A).
-     * Records the change as a single coarse {@link MetadataField#ATTRIBUTION} mutation.
-     * No-op when {@code newMetadata} equals the current record.
+     * The record must already be normalized; this method does not re-normalize.
      */
     public void setMetadata(SongMetadata newMetadata) {
         if (metadata.equals(newMetadata)) {
@@ -854,7 +672,6 @@ public final class Song implements Disposable {
 
     // -- Direct setters (bypass mutation tracking; for preview/scratch Song instances only) --
 
-    /** A run of two or more blank lines, collapsed by {@link #coercePerson} to a single newline. */
     private static final Pattern BLANK_LINE_RUN = Pattern.compile("(\\s*\\n){2,}");
 
     /**
@@ -883,19 +700,15 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Sets the line-wide rest length, clamped to at least {@link #MIN_DEFAULT_REST_LENGTH_SS}.
-     * There is no mutation record: nothing edits this interactively, so it is written only by
-     * document load.
+     * Records no mutation: written only by document load.
      */
     public void setDefaultRestLengthSs(double defaultRestLength) {
         defaultRestLengthSs = Math.max(MIN_DEFAULT_REST_LENGTH_SS, defaultRestLength);
     }
 
     /**
-     * Do not call this directly unless you know what you are doing. Instead, use
-     * {@link songscribe.ui.component.ScoreView#updatePageLayout}, which stores the width
-     * and re-lays out the page for it; writing the width here alone leaves the page laid
-     * out for a different width.
+     * Use {@link songscribe.ui.component.ScoreView#updatePageLayout}, which also re-lays out the
+     * page; writing the width here alone leaves the page laid out for a different width.
      */
     public void setLineWidthSs(Ss lineWidth) {
         var lineWidthValueSs = lineWidth.value();
@@ -905,16 +718,6 @@ public final class Song implements Disposable {
 
     // -- Setter helpers --
 
-    /**
-     * Early-returns if {@code current} and {@code newValue} are equal; otherwise
-     * opens a bracket and emits a {@link MetadataChange} recording the change.
-     * Autoboxing applies for primitive callers.
-     *
-     * <p>For {@link MetadataField#TEMPO} the {@code Objects.equals} guard is an
-     * <em>identity</em> comparison: {@link Tempo} deliberately declares no
-     * {@code equals}/{@code hashCode} because it is mutated in place. TEMPO's value guard
-     * therefore lives upstream, in {@link #setTempo}.
-     */
     private void mutateMetadata(
         MetadataField field, @Nullable Object current, @Nullable Object newValue, Runnable apply
     ) {
@@ -949,39 +752,14 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Inserts {@code line} at {@code index} and, when the insertion makes {@code line}
-     * the new last line, transfers the terminal invariant so the last element of
-     * the last line is always a valid terminal ({@code FINAL_DOUBLE_BARLINE} or
-     * {@code REPEAT_RIGHT}). All resulting mutations
-     * coalesce into a single {@link SongDidChangeNotification}.
+     * When the insertion makes {@code line} the new last line, the terminal invariant transfers to
+     * it, so the last element of the last line is always a valid terminal. The transfer is skipped
+     * when mutation tracking is suspended, so test setup can install lines with arbitrary
+     * terminals.
      *
-     * <p>The invariant transfer is skipped when mutation tracking is suspended
-     * (see {@link #withoutMutationTracking}) — test setup can install lines with
-     * arbitrary terminal elements.
-     *
-     * <p>A tie on the last note of a line ends at the start of the next line, so the insertion
-     * can move the end of the tie crossing out of the line before {@code line} and of the tie
-     * crossing out of {@code line}. Both lines are ones the tie rule ({@link TieRule}) judges.
-     *
-     * <pre>
-     *  withModification {
-     *    withAutoMaintenance {
-     *      applyChange(LineInsertion(index, line), …)
-     *
-     *      if (line became the new last line) {
-     *        if (prevLast.lastElement == FINAL_DOUBLE_BARLINE)
-     *          applyChange(ElementDeletion on prevLast, …)
-     *
-     *        switch (line.lastElement) {
-     *          FINAL   → no-op
-     *          barline → applyChange(ElementReplacement …)
-     *          non-bar → applyChange(ElementInsertion …)
-     *          empty   → applyChange(ElementInsertion …)
-     *        }
-     *      }
-     *    }
-     *  }
-     * </pre>
+     * <p>A tie on the last note of a line ends at the start of the next line, so the insertion can
+     * move the end of a tie crossing out of the line before {@code line} or out of {@code line};
+     * the tie rule ({@link TieRule}) judges both lines.
      */
     public void addLine(int index, Line line) {
         if (line.getSong() != this) {
@@ -1001,49 +779,15 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Removes the line at {@code index} and, when the removed line was the last line,
-     * installs the terminal on the new last line so the invariant holds. When removing
-     * the sole remaining line would leave the song with no lines, a fresh empty line is
-     * inserted in its place instead, so a normally-tracked removal always leaves the
-     * song with at least one line. All resulting mutations coalesce into a single
-     * {@link SongDidChangeNotification}.
+     * A normally-tracked removal always leaves the song with at least one line: removing the sole
+     * line inserts a fresh empty one, and removing the last line installs the terminal on the new
+     * last line. Both are skipped when mutation tracking is suspended or while replaying, which
+     * legitimately pass through a transient zero-line state.
      *
-     * <p>Both the invariant transfer and the sole-line replacement are skipped when
-     * mutation tracking is suspended (see {@link #withoutMutationTracking}) or while
-     * replaying — bulk-load paths and undo/redo drive the line list explicitly, and
-     * both legitimately pass through a transient zero-line state.
-     *
-     * <p>The removed line keeps its elements, and they keep pointing at it — the
-     * {@link LineDeletion} record holds the line intact so undo can put it back unchanged.
-     * A tie that ends on the removed line's first note leaves with that note: its anchor, on
-     * the line before, is untied first ({@link Line#untieEndingIn}), recorded and not
-     * reported. A tied last note of the line before whose walk found no note in the removed
-     * line now ends in the line that follows instead, or nowhere; the tie rule
-     * ({@link TieRule}) judges it.
-     *
-     * <pre>
-     *  withModification {
-     *    withAutoMaintenance {
-     *      untie the tie ending on the removed line's first note
-     *      applyChange(LineDeletion(index, removed), …)
-     *
-     *      if (removed line was the last line) {
-     *        if (lines is now empty) {
-     *          applyChange(LineInsertion(0, new empty line), …)
-     *          applyChange(ElementInsertion(new line, FINAL) …)
-     *        } else {
-     *          let penult = lines.last
-     *          switch (penult.lastElement) {
-     *            FINAL   → no-op
-     *            barline → applyChange(ElementReplacement …)
-     *            non-bar → applyChange(ElementInsertion …)
-     *            empty   → applyChange(ElementInsertion …)
-     *          }
-     *        }
-     *      }
-     *    }
-     *  }
-     * </pre>
+     * <p>The removed line keeps its elements, and they keep pointing at it, so undo can put it
+     * back unchanged. A tie ending on the removed line's first note is untied first
+     * ({@link Line#untieEndingIn}), recorded and not reported; the tie rule ({@link TieRule})
+     * judges a tied last note of the line before whose walk found no note in the removed line.
      */
     public void removeLine(int index) {
         var deletedLine = lines.get(index);
@@ -1072,131 +816,60 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Restores the terminal invariant after a {@link #newParsingStub() parsing stub}
-     * has been fully populated: ensures the song's last line ends with a valid
-     * terminal ({@link ElementType#isValidSongTerminal()}). File readers suspend mutation
-     * tracking while building lines, so the per-{@code addLine} maintenance is skipped;
-     * this restores the invariant in one pass at the end of a load.
-     *
-     * <p>Must be called while mutation tracking is still suspended so the fix-up is
-     * silent (no notification, no {@code modified} flag) and the terminal policy stays
-     * bypassed. A no-op when the last line already ends with a valid
-     * terminal, so a range span (e.g. an {@code Ending} ending on that barline) keeps
-     * its exact element reference.
+     * Must be called while mutation tracking is still suspended, so the fix-up is silent. A no-op
+     * when the last line already ends with a valid terminal, so a span ending on that barline
+     * keeps its exact element reference.
      */
     public void installTerminalAfterParsing() {
         terminal.installAfterParsing();
     }
 
     /**
-     * Brings every grace-host pair of a freshly read song onto the automatic melisma
-     * ({@link Line#repairGraceHostMelismas}). A file written before the melisma was automatic may
-     * put the syllable on the host, or leave the grace's syllable with no melisma across it.
-     *
-     * <p>A reader calls this once its grace-host pairs are settled. It runs silently whether or not
-     * the caller has tracking suspended, because the legacy reader calls it after the song is
-     * assembled, when tracking has resumed.
-     *
-     * @effects every line's grace-host syllables are repaired with mutation tracking suspended —
-     *     no notification, no undo entry and no {@code modified} flag
+     * A reader calls this once its grace-host pairs are settled. Runs silently whether or not
+     * tracking is suspended, because the legacy reader calls it after tracking has resumed.
      */
     public void repairGraceHostMelismasAfterParsing() {
         withoutMutationTracking(() -> lines.forEach(Line::repairGraceHostMelismas));
     }
 
-    /**
-     * Returns a fresh element of the given terminal type. Throws
-     * {@link IllegalArgumentException} if {@code type} is not a valid terminal
-     * (i.e. {@link ElementType#isValidSongTerminal()} returns {@code false}).
-     */
     static StaffElement newTerminalElement(ElementType type) {
         return TerminalMaintainer.newTerminalElement(type);
     }
 
-    /**
-     * Returns {@code true} when {@code element} is the song's auto-maintained
-     * terminal: it occupies the last position of the last line, and its type satisfies
-     * {@link ElementType#isValidSongTerminal()}.
-     *
-     * <p>A valid terminal type that sits on any line other than the last, or at any
-     * position other than the last, is treated as an ordinary (interactable) element.
-     */
     public boolean isTerminal(StaffElement element, Line line) {
         return terminal.isTerminal(element, line);
     }
 
     /**
-     * Returns {@code true} when {@code element} is its song's auto-maintained terminal,
-     * resolving the line and song from the element itself. For callers that have a
-     * {@link StaffElement} but neither a {@link Line} nor a {@link Song} handle —
-     * {@code UIAction.Reflectable.appliesTo}, in particular.
-     * <p>
-     * <strong>Contract:</strong> returns {@code false} for an element that belongs to no line.
-     * That default is correct for an applicability predicate, where an unparented element simply
-     * does not apply, but it is <em>wrong</em> for an invariant check, which must not treat
-     * "cannot tell" as "safe". A check inside the DOM has a {@link Line} in hand and must use
-     * {@link #isTerminal(StaffElement, Line)} instead, as the terminal policy
-     * checks on {@link TerminalMaintainer} do. The deliberately different name keeps the weaker
-     * predicate from being reached for by muscle memory when writing such a check.
+     * Returns {@code false} for an element that belongs to no line. That is right for an
+     * applicability predicate but wrong for an invariant check, which must not treat "cannot
+     * tell" as "safe": a check inside the DOM must use {@link #isTerminal(StaffElement, Line)}.
      */
     public static boolean isTerminalOfItsSong(StaffElement element) {
         var line = element.getParentLine();
         return line != null && line.getSong().isTerminal(element, line);
     }
 
-    /**
-     * Checks that inserting an element of type {@code incoming} at {@code index} of {@code line}
-     * honors the terminal policy stated on {@link TerminalMaintainer}.
-     *
-     * @throws IllegalStateException under the condition
-     *     {@link TerminalMaintainer#checkTerminalPolicyForInsertion} states
-     */
     public void checkTerminalPolicyForInsertion(Line line, int index, ElementType incoming) {
         terminal.checkTerminalPolicyForInsertion(line, index, incoming);
     }
 
-    /**
-     * Checks that replacing the element at {@code index} of {@code line} with one of type
-     * {@code incoming} honors the terminal policy stated on {@link TerminalMaintainer}.
-     *
-     * @throws IllegalStateException under the conditions
-     *     {@link TerminalMaintainer#checkTerminalPolicyForReplacement} states
-     */
     public void checkTerminalPolicyForReplacement(Line line, int index, ElementType incoming) {
         terminal.checkTerminalPolicyForReplacement(line, index, incoming);
     }
 
-    /**
-     * Checks that removing {@code range} from {@code line} honors the terminal policy stated on
-     * {@link TerminalMaintainer}.
-     *
-     * @throws IllegalStateException under the condition
-     *     {@link TerminalMaintainer#checkTerminalPolicyForRemoval} states
-     */
     public void checkTerminalPolicyForRemoval(Line line, StaffElementRun.ElementRange range) {
         terminal.checkTerminalPolicyForRemoval(line, range);
     }
 
-    /** Returns the type of the current auto-maintained terminal element. */
     public ElementType currentTerminalType() {
         return terminal.currentTerminalType();
     }
 
-    /**
-     * Returns {@code true} when the terminal may be replaced with an element of the given
-     * type: {@code incomingType} must be a valid terminal and must differ from the type
-     * currently occupying the terminal slot.
-     */
     public boolean canReplaceTerminal(ElementType incomingType) {
         return terminal.canReplaceTerminal(incomingType);
     }
 
-    /**
-     * Replaces the terminal element with a fresh element of {@code incomingType}.
-     * This is a user-driven mutation — no auto-maintenance increment. No-op when
-     * {@code incomingType} already matches the current terminal type. Throws
-     * {@link IllegalArgumentException} if {@code incomingType} is not a valid terminal.
-     */
     public void replaceTerminal(ElementType incomingType) {
         terminal.replaceTerminal(incomingType);
     }
@@ -1207,53 +880,31 @@ public final class Song implements Disposable {
     // the depth counters and the accumulated mutation batch. See that class, and
     // docs/mutations.md, for the rules callers must honor.
 
-    /** Returns {@code true} while a modification bracket is open. */
     public boolean isModifying() {
         return modifications.isModifying();
     }
 
-    /** Returns {@code true} while mutation tracking is suspended. */
     public boolean isMutationTrackingSuspended() {
         return modifications.isMutationTrackingSuspended();
     }
 
-    /**
-     * Returns {@code true} while the terminal policy is bypassed for internally-driven
-     * maintenance. Package-private: only {@link TerminalMaintainer} asks.
-     */
     boolean isInAutoMaintenance() {
         return modifications.isInAutoMaintenance();
     }
 
-    /** Returns {@code true} while a recorded mutation batch is being replayed. */
     public boolean isReplaying() {
         return modifications.isReplaying();
     }
 
     /**
-     * Runs {@code body} with mutation tracking suspended: mutations apply but nothing is
-     * recorded — no notification, no undo entry, no {@code modified} flag. The caller is
-     * asserting that this run owes no undo entry of its own: it is not a user edit, or the
-     * entry for it is recorded elsewhere, or it must leave none. An edit that owes its own
-     * entry goes through {@link #withModification(Runnable)}.
-     *
-     * @see ModificationSession#withoutMutationTracking
+     * The caller is asserting that this run owes no undo entry of its own: it is not a user
+     * edit, or the entry for it is recorded elsewhere, or it must leave none. An edit that owes
+     * its own entry goes through {@link #withModification(Runnable)}.
      */
     public void withoutMutationTracking(Runnable body) {
         modifications.withoutMutationTracking(body);
     }
 
-    /**
-     * The value-returning form of {@link #withoutMutationTracking(Runnable)}, for a body whose
-     * outcome the caller must inspect after tracking resumes — the pair mirrors
-     * {@link #withModification(Runnable)} / {@link #withModificationResult}. {@code body} runs
-     * under the same suspension and the same assertion: it owes no undo entry of its own.
-     *
-     * @param body The work to run with tracking suspended
-     * @return Whatever {@code body} returns
-     * @effects tracking is suspended for the duration of {@code body} and resumed afterwards,
-     *     whether {@code body} returns or throws
-     */
     public <T> T withoutMutationTrackingResult(Supplier<T> body) {
         modifications.beginSuspendMutationTracking();
 
@@ -1265,44 +916,23 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Replays a recorded batch: enters replay mode, opens an edit inside it, runs {@code body}
-     * to apply the batch's records, then closes the edit and leaves replay mode.
-     *
-     * <p>Inside, every change {@code body} makes is recorded into the edit's batch, so the
-     * edit's close posts a {@link SongDidChangeNotification} and the score repaints as after
-     * any edit. The helpers' companion side-work is suppressed and the terminal policy is
-     * bypassed, because the batch being replayed already carries every change.
-     *
-     * <p>The order — replay mode outside, the edit inside — is what keeps undo and redo from
-     * judging the song a second time. The modification rules run when an edit closes, unless
-     * the song is replaying then; because the edit closes while replay mode is still in force,
-     * no rule runs over the replayed batch, which already carries every removal the rules made
-     * when it was first recorded.
-     *
-     * @param body applies the records of one recorded batch, in the order the replay requires
-     * @effects posts one {@link SongDidChangeNotification} carrying the changes {@code body}
-     *     made, when {@code body} made any change, and nothing otherwise; no modification rule
-     *     runs; the edit closes and replay mode ends whether {@code body} returns or throws
+     * The edit closes while replay mode is still in force, so no modification rule runs over the
+     * replayed batch, which already carries every removal the rules made when it was first
+     * recorded. Replay mode outside and the edit inside is what keeps undo and redo from judging
+     * the song a second time.
      */
     public void replay(Runnable body) {
         modifications.replay(body);
     }
 
     /**
-     * Suspends mutation tracking until the matching {@link #endSuspendMutationTracking()}.
-     * Use {@link #withoutMutationTracking(Runnable)} when the suspended scope fits in a
-     * single block; this pair exists for callers whose suspension scope crosses multiple
-     * methods — the two file readers, {@code SongMapper.map} and {@code SongIO}.
+     * Only for a suspension scope that crosses methods, as in the two file readers; otherwise use
+     * {@link #withoutMutationTracking(Runnable)}.
      */
     public void beginSuspendMutationTracking() {
         modifications.beginSuspendMutationTracking();
     }
 
-    /**
-     * Resumes mutation tracking. Must be paired with a prior
-     * {@link #beginSuspendMutationTracking()} call; calls without a matching
-     * begin are a programming error and throw immediately.
-     */
     public void endSuspendMutationTracking() {
         modifications.endSuspendMutationTracking();
     }
@@ -1329,20 +959,11 @@ public final class Song implements Disposable {
         modifications.withModification(body);
     }
 
-    /**
-     * The value-returning form of {@link #withModification(Runnable)}, for a body
-     * whose outcome the caller must inspect after the bracket closes.
-     *
-     * @param body The modification to run
-     * @return Whatever {@code body} returns
-     */
     public <T> T withModificationResult(Supplier<T> body) {
         return modifications.withModificationResult(body);
     }
 
     /**
-     * Executes {@code body} inside a modification bracket that declares {@code label}
-     * as its op-name (Tier B), then posts a single {@link SongDidChangeNotification}.
      * The label is captured only if this is the outermost bracket: a labeled bracket nested
      * inside an open one never replaces the op-name the outermost bracket captured.
      * {@code body} carries the same recording obligation stated on
@@ -1353,22 +974,13 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Posts {@code message} to the message bus inside a modification bracket so
-     * that the resulting mutations (from subscribers like {@code Song}'s
-     * own {@code @Handler} methods) coalesce into a single
-     * {@link SongDidChangeNotification}. Equivalent to
-     * {@code withModification(() -> MessageCenter.post(message))} but cleaner
-     * at the call site.
+     * The mutations that subscribers make in response coalesce into one
+     * {@link SongDidChangeNotification}.
      */
     public void postWithModification(Message message) {
         modifications.postWithModification(message);
     }
 
-    /**
-     * Like {@link #postWithModification(Message)} but declares an explicit undo
-     * op-name {@code label} for the resulting batch (see
-     * {@link #withModification(String, Runnable)}).
-     */
     public void postWithModification(String label, Message message) {
         modifications.postWithModification(label, message);
     }
@@ -1440,32 +1052,18 @@ public final class Song implements Disposable {
         return ownKey != null ? ownKey : inheritedKeys.get(firstLine);
     }
 
-
     /**
-     * Returns the key {@code line} inherits — the key in effect at the end of the line before it —
-     * regardless of whether the line establishes a key of its own and so overrides it.
+     * Distinct from {@link Line#getRunningKey()}: {@link Line#setKey}'s no-op normalization needs
+     * the inherited value, not the line's own.
      *
-     * <p>Distinct from {@link Line#getRunningKey()} in exactly the case that matters to
-     * {@link Line#setKey}'s no-op normalization: a line asking whether the key it is being given is
-     * the one it would inherit anyway needs the inherited value, not its own.
-     *
-     * @param line the line to ask about
-     * @return the key {@code line} inherits, or null when nothing precedes it — line 0, a line not
-     *         in this song, or any line while a load is still in progress
+     * @return null when nothing precedes it — line 0, a line not in this song, or any line while a
+     *         load is still in progress
      */
     @Nullable
     Key inheritedKeyOf(Line line) {
         return inheritedKeys.get(line);
     }
 
-    /**
-     * Restores the key invariant after {@code mutation} — line 0 establishing a key of its own,
-     * and every later line's inherited key matching the key at the end of the line before it.
-     *
-     * <p>{@link #keyMoveOf} decides whether the mutation moves a key at all, so that an ordinary
-     * note or lyric edit does not walk the line list. Only the line-list mutations are switched on
-     * here, for the repair they owe on top of the propagation every key move owes.
-     */
     private void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
         switch (mutation) {
             case LineInsertion _ -> repairLineZeroKey(startingKeyBefore);
@@ -1490,36 +1088,21 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Where a mutation's key move is felt from: the line whose end key every line inheriting past
-     * it follows, and the first line whose drawn key content the move changes.
-     *
-     * <p>The two differ because a line's own key and the key it inherits are separate storage: a
-     * line whose start changes — given a key of its own, or newly arrived — runs in its new key from
-     * its own start, so the cautionary on the line before it changes too, while a mid-line key
-     * change moves only the key its line leaves off in.
-     *
-     * @param originIndex    the line {@link #inheritanceFrom} is asked about: it re-derives what it
-     *                       inherits from the line before it, and every line after it, through the
-     *                       first establishing a key of its own, re-derives what it inherits
+     * @param originIndex    the line {@link #inheritanceFrom} is asked about
      * @param reachFromIndex the first line {@link #keyMoveReach} names, at or before
-     *                       {@code originIndex}
+     *                       {@code originIndex}: a line whose start changes also changes the
+     *                       cautionary on the line before it
      */
     private record KeyMove(int originIndex, int reachFromIndex) {
     }
 
     /**
-     * Returns where {@code mutation}'s key move is felt from, or null when it moves no key.
+     * The one enumeration of the mutations that can move a key, read by
+     * {@link #maintainKeyInvariant} and {@link #keyMoveReach}; a second would drift out of step
+     * and show as a line rendering the key it was in before the edit.
      *
-     * <p>This is the one enumeration of the mutations that can move a key.
-     * {@link #maintainKeyInvariant} reads it to bring the inherited keys back up to date, and
-     * {@link #keyMoveReach} reads it to say which lines now draw something different. A second
-     * enumeration would drift out of step with this one, and the drift would show as a line
-     * rendering the key it was in before the edit, with nothing to explain it.
-     *
-     * @param mutation the mutation just applied, or about to be replayed
-     * @return where the move is felt from, or {@code null} when {@code mutation} moves no key —
-     *     which is every mutation not listed here, every listed one that carried no key change,
-     *     and every one naming a line no longer in this song or leaving no line to re-derive from
+     * @return {@code null} when {@code mutation} moves no key, including one naming a line no
+     *     longer in this song or leaving no line to re-derive from
      */
     private @Nullable KeyMove keyMoveOf(Mutation mutation) {
         return switch (mutation) {
@@ -1542,14 +1125,6 @@ public final class Song implements Disposable {
         };
     }
 
-    /**
-     * The move a line makes when the key it starts in changes — it has just arrived, or its own
-     * key has changed: the chain is re-derived from the line itself, whatever key of its own it
-     * has, and the cautionary on the line before it changes too.
-     *
-     * @param line the line that arrived or whose own key changed
-     * @return the move, or null when {@code line} is not in this song and so moves nothing
-     */
     private @Nullable KeyMove lineStartKeyMove(Line line) {
         if (!contains(line)) {
             return null;
@@ -1560,13 +1135,8 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The move a line leaving {@code lineIndex} makes: the line now standing there follows the
-     * line before the gap, so the chain is re-derived from that line — or from the new line 0
-     * when the first line left, which holds a key of its own once the song repairs it.
-     *
-     * @param lineIndex the index the departed line stood at
-     * @return the move, or null when no line stands where the chain is re-derived from: the song
-     *     is now empty, or a later mutation in the same batch has since shortened it
+     * @return null when no line stands where the chain is re-derived from: the song is now empty,
+     *     or a later mutation in the same batch has since shortened it
      */
     private @Nullable KeyMove departingLineKeyMove(int lineIndex) {
         var originIndex = Math.max(lineIndex - 1, 0);
@@ -1578,16 +1148,6 @@ public final class Song implements Disposable {
         return new KeyMove(originIndex, originIndex);
     }
 
-    /**
-     * The move a mid-line key change written into or taken out of {@code line} makes: the line's
-     * own two keys stand, and only the key it leaves off in moves, so the chain is re-derived from
-     * it and the reach starts at it.
-     *
-     * @param line the line the mutation touched
-     * @param movesKey whether the elements the mutation carried were key changes at all
-     * @return the move, or null when the mutation carried no key change or {@code line} is not
-     *         in this song
-     */
     private @Nullable KeyMove midLineKeyMove(Line line, boolean movesKey) {
         if (!movesKey) {
             return null;
@@ -1699,14 +1259,6 @@ public final class Song implements Disposable {
         return List.copyOf(reach);
     }
 
-    /**
-     * The origin {@link #tieReach} asks about for {@code mutation}.
-     *
-     * @return the origin, or {@code null} for a mutation that names none — including a
-     *     {@link TieAddition} or {@link TieRemoval} whose anchor is no longer on the line it
-     *     names, and a {@link SpanAddition} or {@link SpanRemoval} of a span that is not a beam,
-     *     or of a beam whose endpoints are not both on that line
-     */
     private static @Nullable TieReachOrigin tieReachOrigin(Mutation mutation) {
         return switch (mutation) {
             case ElementInsertion insertion -> elementOrigin(insertion.line(), insertion.index());
@@ -1721,10 +1273,6 @@ public final class Song implements Disposable {
         };
     }
 
-    /**
-     * The origin of an element mutation at {@code position}: the range of the beam that contains
-     * it, when one does, and {@code position} alone otherwise.
-     */
     private static TieReachOrigin elementOrigin(Line line, int position) {
         var beam = line.spanRegistry().findBeamAt(position);
 
@@ -1747,11 +1295,6 @@ public final class Song implements Disposable {
         return new TieReachOrigin(line, index, index);
     }
 
-    /**
-     * The origin of a span record: the range of {@code span} when it is a beam whose endpoints
-     * are both in {@code line}. A removed beam is in no registry, so its range is read from its
-     * endpoints' positions.
-     */
     private static @Nullable TieReachOrigin beamOrigin(Line line, Span<?> span) {
         if (!(span instanceof Beam beam)) {
             return null;
@@ -1767,14 +1310,6 @@ public final class Song implements Disposable {
         return new TieReachOrigin(line, line.getElementIndex(anchor), line.getElementIndex(end));
     }
 
-    /**
-     * The positions {@link #tieReach} asks about: {@code first} to {@code last} in
-     * {@code line}'s elements, both included.
-     *
-     * @param line  the line the mutation names
-     * @param first the first position of the origin
-     * @param last  the last position of the origin
-     */
     private record TieReachOrigin(Line line, int first, int last) {
     }
 
@@ -1783,18 +1318,9 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Restores line 0's own key when a mutation has left it with none. Line 0 has nothing to
-     * inherit from, so it must establish a key, and the only value that leaves what the user sees
-     * unchanged is the key that line was already sounding: the key it inherited a moment ago, or —
-     * for a line that has just been inserted at index 0 and so inherited nothing — the key the
-     * song itself started in.
-     *
-     * <p>Recorded as a {@link LineKeyChange} in the same batch, so undo puts the line back to
-     * inheriting rather than leaving it silently keyed to the value it was repaired with.
-     *
-     * <p>Skipped while mutation tracking is suspended. A file reader adds its lines one at a time,
-     * so line 0 is briefly the only line and the key it will end up in is not yet known; guessing
-     * one here would establish a key the document never had, and it would stand, because
+     * Recorded as a {@link LineKeyChange} in the same batch, so undo puts the line back to
+     * inheriting. Skipped while mutation tracking is suspended: a file reader adds its lines one
+     * at a time, and a key guessed here would stand, because
      * {@link #rebuildInheritedKeysAfterParsing()} leaves a line that already has one alone.
      */
     private void repairLineZeroKey(@Nullable Key startingKeyBefore) {
@@ -1825,11 +1351,6 @@ public final class Song implements Disposable {
         firstLine.setKey(materialized);
     }
 
-    /**
-     * Brings up to date the inherited key of every line {@code keyMove} re-derives: the origin's
-     * own, from the line before it, then every line {@link #inheritanceFrom} reports after it, the
-     * line that stops the chain included.
-     */
     private void propagateInheritedKeys(KeyMove keyMove) {
         // A document under construction may not have put line 0 in a key yet, and until it does
         // there is no key for any later line to be in either. The load settles the whole list in
@@ -1862,34 +1383,19 @@ public final class Song implements Disposable {
     }
 
     /**
-     * One line of an inheritance chain that runs in the key it inherits.
-     *
-     * @param line         the line, which establishes no key of its own
-     * @param inheritedKey the key the line before it leaves off in, and so the key this line
-     *                     starts in
+     * @param line establishes no key of its own
      */
     public record Inheritance(Line line, Key inheritedKey) {
 
-        /**
-         * The key the line leaves off in: its last mid-line key change's key, else the key it
-         * inherits.
-         *
-         * @return the key the line after it inherits
-         */
         public Key keyAtEnd() {
             return line.keyAtEndUnder(inheritedKey);
         }
     }
 
     /**
-     * The lines a key reaches forward from one line: every line that runs in the key it inherits,
-     * and the line with a key of its own that ends the run.
-     *
-     * @param inheriting the lines after the origin that run in the key they inherit, consecutive
-     *                   and in song order; empty when the line after the origin has a key of its
-     *                   own or the origin is the last line
-     * @param stop       the first line after them that establishes a key of its own, or null when
-     *                   the inheriting lines run to the end of the song
+     * @param inheriting consecutive and in song order; empty when the line after the origin has a
+     *                   key of its own or the origin is the last line
+     * @param stop       null when the inheriting lines run to the end of the song
      */
     public record InheritanceChain(List<Inheritance> inheriting, @Nullable Stop stop) {
 
@@ -1898,12 +1404,8 @@ public final class Song implements Disposable {
         }
 
         /**
-         * The line that ends an inheritance chain by establishing a key of its own.
-         *
-         * @param line         the line
          * @param inheritedKey the key the line before it leaves off in, which the line runs in the
          *                     moment it gives up its own key
-         * @param ownKey       the key the line establishes, and so the key it starts in
          */
         public record Stop(Line line, Key inheritedKey, Key ownKey) {
         }
@@ -1956,9 +1458,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Settles the key invariant across every line in one forward pass, after a
-     * {@link #newParsingStub() parsing stub} or a {@link #loadFrom(SongData)} has been fully
-     * populated. File readers build lines under suspended mutation tracking, so the per-mutation
+     * File readers build lines under suspended mutation tracking, so the per-mutation
      * propagation in {@link #applyChange} never ran for any of them.
      *
      * <p>Must be called while mutation tracking is still suspended, so the fix-up is silent — no
@@ -1991,20 +1491,9 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Removes every mid-line key change that restates the key already in effect before it,
-     * together with the element it is paired with, across every line of a freshly parsed song.
-     *
-     * <p>Reading is one of the two places that rule is enforced — {@code docs/key-changes.md}
-     * says why it takes both. A file written before the rule existed can carry a stranding no edit
-     * has reached, and nothing on screen says so: a key change that restates the running key draws
-     * no accidentals and occupies no width, yet still refuses the two insertion indices flanking
-     * it and still reaches MusicXML on the next save.
-     *
-     * <p>Removing a stranded key change steps the key to the value it already held, so the chain
-     * {@link #rebuildInheritedKeysAfterParsing()} just settled survives the removal and no second
-     * pass is owed.
-     *
-     * @effects Mutates every line carrying a stranded key change.
+     * One of the two places the stranded-key-change rule is enforced; see
+     * {@code docs/key-changes.md}. Removing a stranded key change leaves the chain
+     * {@link #rebuildInheritedKeysAfterParsing()} settled intact, so no second pass is owed.
      */
     private void removeStrandedKeyChangesAfterParsing() {
         for (var line : lines) {
@@ -2013,20 +1502,9 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Puts a freshly parsed song's keys into the state every edit afterwards assumes: each line's
-     * inherited key derived from the line before it, and no mid-line key change left restating the
-     * key already in effect where it stands.
-     *
-     * <p>This is what a file reader calls once its lines are in place, and it is one call rather
-     * than two because the order is not the reader's to choose — the stranding repair reads each
-     * line's running key, which only the inheritance pass settles. A reader that ran them the
-     * other way round, or dropped the second, would leave a document whose invisible key changes
-     * survive every save, with nothing on screen and nothing in the build to say so.
-     *
-     * <p>Must be called while mutation tracking is still suspended, so the whole of it is silent —
-     * no notification, no undo entry and no {@code modified} flag.
-     *
-     * @effects Mutates every line whose inherited key or stranded key changes need settling.
+     * One call because the order is not the reader's to choose: the stranding repair reads each
+     * line's running key, which only the inheritance pass settles. Must be called while mutation
+     * tracking is still suspended, so it is silent.
      */
     public void settleKeysAfterParsing() {
         rebuildInheritedKeysAfterParsing();
@@ -2034,10 +1512,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Decides every note's accidental state by one chain walk over the whole song, and stamps each
-     * note with what the walk decided.
-     *
-     * <p>A freshly parsed song needs this once. It is read under suspended mutation tracking, where
+     * A freshly parsed song needs this once. It is read under suspended mutation tracking, where
      * no chain walk runs, so its notes are {@link AccidentalState.Chosen Chosen} where the file
      * writes an accidental and {@link AccidentalState.Adopting Adopting} where it is bare, while
      * every edit afterwards assumes a note on a line holds a {@link ChainedAccidental}.
@@ -2046,24 +1521,13 @@ public final class Song implements Disposable {
      *
      * <p>The stamps are recorded nowhere — no mutation, no undo entry — because they establish the
      * state the document is read in rather than editing it.
-     *
-     * @effects every note of this song holds a {@link ChainedAccidental} afterwards
      */
     public void stampAccidentalsAfterParsing() {
         AccidentalChain.walkSong(this).forEach(AccidentalChain.Restamp::stamp);
     }
 
     /**
-     * Records {@code change} into the report of the edit in flight, for the user to be told
-     * about once the edit is over. Does nothing while mutation tracking is suspended, where no
-     * edit need be open.
-     *
-     * @param change the change the song made on its own, as the user is told about it, naming
-     *               lines of this song
-     * @effects appends {@code change} to the report of the open edit, unless tracking is
-     *     suspended; its lines are resolved to indices only when the edit is over, so a line
-     *     added or removed in front of them later in the same edit does not make it wrong
-     * @throws IllegalStateException if tracking is on and no modification bracket is open
+     * @param change names lines of this song
      * @see ModificationSession#report
      */
     public void report(RecordedChange change) {
@@ -2076,24 +1540,10 @@ public final class Song implements Disposable {
         this.modified = modified;
     }
 
-    /**
-     * Sets whether this song has been dynamically laid out.
-     * <p>
-     * Should be set to true when saving.
-     *
-     * @param hasBeenDynamicallyLaidOut true if dynamically laid out
-     */
     public void setHasBeenDynamicallyLaidOut(boolean hasBeenDynamicallyLaidOut) {
         this.hasBeenDynamicallyLaidOut = hasBeenDynamicallyLaidOut;
     }
 
-    /**
-     * Sets the data format version of this song.
-     * <p>
-     * This is typically called by FormatMigrator after migrating from legacy format.
-     *
-     * @param formatVersion the format version to set
-     */
     public void setFormatVersion(int formatVersion) {
         this.formatVersion = formatVersion;
     }
@@ -2105,13 +1555,6 @@ public final class Song implements Disposable {
         setMetadata(update.getMetadata());
     }
 
-    /**
-     * Replaces the song's {@link Tempo}, recording the before and after values for undo.
-     *
-     * <p>A {@code Tempo} is a value, so the recorded "before" is simply the instance the song
-     * held: nothing can rewrite it afterwards, and the undo step keeps the values it was
-     * recorded with however many tempo edits follow.
-     */
     @Handler
     public void tempoDidChange(TempoDidChangeNotification update) {
         // Capture in a local so the lambda below closes over what the song holds now rather

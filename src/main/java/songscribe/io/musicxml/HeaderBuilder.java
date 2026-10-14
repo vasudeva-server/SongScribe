@@ -67,14 +67,8 @@ final class HeaderBuilder {
      * {@code <miscellaneous>} block and the {@code <credit>} list agree on a
      * single value for each.
      *
-     * @param compositionDate the composition date as a reduced-precision ISO
-     *                        string, or {@code ""} when the song has none
-     * @param lyricsDate      the words/lyrics date, or {@code ""} when absent
-     *                        (the model normalizes a words-date equal to the
-     *                        composition date to empty, so a non-empty value
-     *                        here is always genuinely distinct)
-     * @param rights          the {@code <rights>}/rights-credit copyright line
-     * @param encodingDate    the {@code <encoding-date>} in ISO local-date form
+     * @param compositionDate {@code ""} when the song has none
+     * @param lyricsDate      {@code ""} when absent
      */
     record HeaderText(String compositionDate, String lyricsDate, String rights, String encodingDate) {
 
@@ -90,10 +84,6 @@ final class HeaderBuilder {
         }
     }
 
-    /**
-     * Populates {@code <movement-number>} (omitted when {@code getNumber()} is blank) and
-     * {@code <movement-title>} on {@code scorePartwise}.
-     */
     static void buildMovementInfo(BuildContext context, ScorePartwise scorePartwise) {
         var song = context.song();
 
@@ -105,9 +95,7 @@ final class HeaderBuilder {
     }
 
     /**
-     * Populates {@code <identification>}: composer/lyricist/arranger {@code <creator>}s, the
-     * write-forward {@code <rights>} and {@code <encoding>} blocks (dated from {@code headerText} so
-     * builder-output tests can pin a fixed date), and the residual {@code <miscellaneous>} block.
+     * The {@code <encoding>} block is dated from {@code headerText} so tests can pin a fixed date.
      */
     static void buildIdentification(
             BuildContext context, ScorePartwise scorePartwise, HeaderText headerText) {
@@ -140,13 +128,6 @@ final class HeaderBuilder {
         return creator;
     }
 
-    /**
-     * Builds the {@code <encoding>} block: {@code <software>}, {@code <encoding-date>}, and one
-     * {@code <supports type="yes">} entry per {@link SupportedFeature}.
-     *
-     * <p>{@code Encoding.getEncodingDateOrEncoderOrSoftware()} is a {@code List<JAXBElement<?>>}, so
-     * every item is wrapped by the matching {@code ObjectFactory} method rather than added raw.
-     */
     private static Encoding buildEncoding(ObjectFactory factory, HeaderText headerText) {
         var encoding = factory.createEncoding();
         var items = encoding.getEncodingDateOrEncoderOrSoftware();
@@ -170,11 +151,6 @@ final class HeaderBuilder {
         return supports;
     }
 
-    /**
-     * Parses {@code headerText.encodingDate()} (an ISO local-date string, e.g. from
-     * {@link HeaderText#of}) into the {@code XMLGregorianCalendar}
-     * {@code Encoding.getEncodingDateOrEncoderOrSoftware()} requires for {@code <encoding-date>}.
-     */
     private static XMLGregorianCalendar toEncodingDate(String isoDate) {
         try {
             return DatatypeFactory.newInstance().newXMLGregorianCalendar(isoDate);
@@ -183,12 +159,6 @@ final class HeaderBuilder {
         }
     }
 
-    /**
-     * Builds the residual {@code <miscellaneous>} block (composition-date, lyrics-date,
-     * composition-place, lyrics-source, unofficial-translation, sub-attribution-font/-size,
-     * row-height-adjustment, default-rest-length). Fields are collected into one insertion-ordered
-     * name→value map first, then walked into the {@code <miscellaneous-field>} list in that order.
-     */
     private static Miscellaneous buildMiscellaneous(
             ObjectFactory factory, Song song, DocumentFontsHolder fonts, HeaderText headerText) {
         var fields = new LinkedHashMap<String, String>();
@@ -240,11 +210,9 @@ final class HeaderBuilder {
     }
 
     /**
-     * Populates {@code <defaults>} on {@code scorePartwise}: the fixed {@code <scaling>}, the
-     * {@code <page-layout>} carrying the model line width as {@code <page-width>}, a zero
-     * {@code <staff-layout>}, and the document fonts. {@code <scaling>}, {@code <page-height>}, and
-     * {@code <music-font>} are write-forward (fixed) and ignored on read; {@code <page-width>},
-     * {@code <word-font>}, and {@code <lyric-font>} round-trip.
+     * {@code <scaling>}, {@code <page-height>}, and {@code <music-font>} are write-forward
+     * (fixed) and ignored on read; {@code <page-width>}, {@code <word-font>}, and
+     * {@code <lyric-font>} round-trip.
      */
     static void buildDefaults(BuildContext context, ScorePartwise scorePartwise) {
         var song = context.song();
@@ -292,13 +260,8 @@ final class HeaderBuilder {
     }
 
     /**
-     * The line width to use for {@code <page-width>}, never zero or negative.
-     * <p>
-     * A song whose width never got initialized would otherwise persist a zero-width staff, and
-     * nothing on the read side rejects one: the document reopens with a staff no content can fit, so
-     * every line opens clipped and drawn in red, behind a warning that content is being cut off,
-     * instead of showing the song. Substituting the fallback keeps the document readable, and the
-     * warning records that a song reached the builder in that state.
+     * Never zero or negative: nothing on the read side rejects a zero-width staff, and the
+     * document would reopen with every line clipped.
      */
     private static double lineWidthSs(Song song) {
         var lineWidthSs = song.getLineWidthSs().value();
@@ -314,11 +277,6 @@ final class HeaderBuilder {
         return Song.FALLBACK_LINE_WIDTH_SS;
     }
 
-    /**
-     * Populates the {@code <credit>} elements on {@code scorePartwise}: title, subtitle, each
-     * attribution role, and the score-below text blocks, in that order. Every credit is page 1
-     * (single-page model), so {@code page} is never set (the schema default is already {@code 1}).
-     */
     static void buildCredits(BuildContext context, ScorePartwise scorePartwise, HeaderText headerText) {
         var song = context.song();
         var credits = scorePartwise.getCredit();
@@ -363,15 +321,6 @@ final class HeaderBuilder {
             song.getFootnotes(), CreditStyle.plain());
     }
 
-    /**
-     * The optional {@code <credit-words>} style attributes, as one named value.
-     *
-     * <p>Exactly one is ever set — the title is centered, the Bangla block declares its
-     * language, an attribution role carries the shared vertical offset, everything else sets
-     * none — so these are named factories rather than three trailing parameters. As positional
-     * arguments each call read {@code …, null, null, null)}, and which {@code null} meant which
-     * attribute could only be recovered by counting against the signature.
-     */
     private record CreditStyle(
         @Nullable LeftCenterRight justify,
         @Nullable Double relativeYSs,
@@ -379,50 +328,34 @@ final class HeaderBuilder {
 
         private static final CreditStyle PLAIN = new CreditStyle(null, null, null);
 
-        /** No optional attribute: the renderer places the credit. */
         static CreditStyle plain() {
             return PLAIN;
         }
 
-        /** {@code justify="center"} — the title credit only. */
         static CreditStyle centered() {
             return new CreditStyle(LeftCenterRight.CENTER, null, null);
         }
 
         /**
-         * {@code relative-y} at {@code offsetSs} staff spaces. Written even when the offset is
-         * {@code 0}, because the reader recovers the attribution block's position from it and
-         * cannot tell an omitted attribute from a deliberate zero.
+         * Written even when the offset is {@code 0}: the reader cannot tell an omitted attribute
+         * from a deliberate zero.
          */
         static CreditStyle atOffset(double offsetSs) {
             return new CreditStyle(null, offsetSs, null);
         }
 
-        /** {@code xml:lang} — the Bangla lyric block is the only credit that declares one. */
         static CreditStyle inLanguage(String language) {
             return new CreditStyle(null, null, language);
         }
     }
 
-    /**
-     * Adds one attribution-role {@code <credit>} (composer, lyricist, arranger, the two dates,
-     * rights, place): an {@code ATTRIBUTION}-font credit carrying the shared attribution
-     * {@code relative-y}. Convenience over {@link #addCredit} for the seven attribution calls,
-     * which are identical but for their type and text.
-     */
     private static void addAttributionCredit(
             BuildContext context, List<Credit> credits, String creditType, String text, double relativeYSs) {
         addCredit(context, credits, creditType, FontKey.ATTRIBUTION, text, CreditStyle.atOffset(relativeYSs));
     }
 
     /**
-     * Adds one {@code <credit>} — {@code <credit-type>} then {@code <credit-words>} — when
-     * {@code text} is non-blank; adds nothing otherwise. {@code <credit-words>} always carries
-     * font-family/font-size/font-weight/font-style from {@code context.fonts().getFont(fontKey)}
-     * (weight/style via {@link Font#isBold()}/{@link Font#isItalic()}), and whichever optional
-     * attribute {@code style} names — a {@code relative-y} offset is converted here via
-     * {@link MusicXmlUnits#ssAsTenths}. {@code default-x}/{@code default-y} are write-forward,
-     * external-renderer-only fields and are never set here.
+     * {@code default-x}/{@code default-y} are never set here.
      */
     private static void addCredit(
             BuildContext context,

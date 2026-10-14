@@ -23,15 +23,7 @@ package songscribe.layout;
 import songscribe.dom.Song;
 
 /**
- * Per-element lyric text placement produced by the layout pass and consumed by the renderer.
- * <p>
- * Coordinates are in staff spaces, relative to the line's left edge. The box's X is the
- * left edge of the rendered syllable (after centering against the owning note column); the
- * renderer reads the Y from {@link LayoutResult#lyricBaselineYSsInLine(LyricRenderMetrics)}.
- *
- * @param xSs        left edge of the syllable text in staff spaces
- * @param widthSs    rendered width of the syllable text in staff spaces
- * @param script     the script the syllable is written in
- * @param text       syllable text
+ * Per-element lyric text placement, in staff spaces relative to the line's left edge. X is the
+ * left edge of the rendered syllable after centering against its note column.
  */
 public record LyricBoxLayout(double xSs, double widthSs, Song.Script script, String text) {}

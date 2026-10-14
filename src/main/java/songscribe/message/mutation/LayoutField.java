@@ -20,11 +20,6 @@
 
 package songscribe.message.mutation;
 
-/**
- * Identifies which layout property changed in a {@link LayoutChange} mutation.
- * All current layout fields are staff-space measurements stored as {@code Double};
- * {@link LayoutChange}'s canonical constructor validates values against this type.
- */
 public enum LayoutField {
     LINE_WIDTH_SS(Double.class),
     ROW_HEIGHT_ADJUSTMENT_SS(Double.class);

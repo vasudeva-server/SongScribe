@@ -23,14 +23,8 @@ package songscribe.message.mutation;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.Tempo;
 
-/**
- * Identifies which metadata field changed in a {@link MetadataChange} mutation.
- * Each constant carries the expected runtime type of {@code oldValue} and
- * {@code newValue} in the mutation record; {@link MetadataChange}'s canonical
- * constructor validates values against this type.
- */
 public enum MetadataField {
-    /** Coarse attribution record swap — old/new values are {@link SongMetadata} instances. */
+    /** Old and new values are {@link SongMetadata} instances. */
     ATTRIBUTION(SongMetadata.class),
     TEMPO(Tempo.class),
     FOOTNOTES(String.class);

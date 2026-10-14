@@ -23,11 +23,8 @@ package songscribe.message.notification;
 import songscribe.message.Message;
 
 /**
- * The notification that the score dismissed the callout of the selected lint mark on its own, so
- * the mark is no longer shown: the score scrolled or zoomed, the window lost focus, the lint
- * report changed, or the pointer moved onto a mark.
- *
- * <p>Not posted when the callout hides because the selection changed.
+ * The notification that the score dismissed the callout of the selected lint mark on its own.
+ * Not posted when the callout hides because the selection changed.
  */
 public class LintCalloutWasDismissedNotification extends Message {
 }

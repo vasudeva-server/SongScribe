@@ -50,75 +50,37 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
 /**
- * Score-level coordinator that owns the score's one selection, tracks which line it sits on,
- * and answers the cross-line queries built on it.
+ * Score-level coordinator that owns the score's one selection and the line it sits on.
  * <p>
- * <b>There is one selection in the score, and it has two shapes.</b> Both live in one field,
- * so they exclude each other structurally: assigning either is the whole of dropping the
- * other. See {@link Selection} for what the shapes are and why neither can express the other.
+ * The selection lives in one field and has two shapes (see {@link Selection}); assigning either
+ * drops the other. Nothing hands out a mutable selection for a caller to change behind this
+ * class's back.
  * <p>
- * That one field is also the one place the selection can change, which is what lets repaint,
- * notification and cache invalidation all hang off assignment. Nothing hands out a mutable
- * selection object for a caller to change behind this class's back.
- * <p>
- * {@link #lines} is the second half of the picture: it maps a line index to the {@link Line}
- * at that index, so {@code activeLineIndex} can name a line without holding one. That
- * registration is what a {@code LineComponent} does when it takes on a line, and it is
- * deliberately all a {@code LineComponent} contributes — the selection itself outlives any
- * number of {@code LineComponent.setLine} rebuilds because it never lived on one.
- * <p>
- * <b>What is selected, and nothing downstream of it.</b> Three things follow from a selection
- * without being part of it, and each is its own class reached from here:
- * {@link ActionReflector} for what the toolbar shows about it, {@link SelectionActionApplier}
- * for applying an action across it, and {@link SelectionDragTracker} for finishing the drag
- * that made it. The dependency runs one way — each reads the selection through this class,
- * and none of them can change it.
- * <p>
- * <b>The song's auto-maintained terminal is reachable by a click and by nothing else.</b>
- * {@link #selectSingleElement} is the only path that may land on it, which is what a plain
- * click uses. Every other path that assigns a selection — {@link #selectRange} (drag, pitch
- * shift), {@link #extendSelectionTo} (Shift+click, Shift+arrow) and {@link #selectAll} —
- * routes through {@link #setRange}, whose clamp keeps the terminal out of any multi-element
- * range. A drag additionally filters the terminal out earlier, in {@code LineSelectionHandler}.
- * <p>
- * This is a coordinator-level invariant, not a type-level one: {@link Selection.Range} will
- * happily construct a range covering the terminal, so any new code that assigns
- * {@link #selected} without going through {@link #setRange} re-opens the hole.
+ * The song's auto-maintained terminal is reachable by a click ({@link #selectSingleElement})
+ * and by nothing else: every other assignment goes through {@link #setRange}, whose clamp keeps
+ * it out of any multi-element range. {@link Selection.Range} does not enforce this, so code
+ * that assigns {@link #selected} without {@code setRange} re-opens the hole.
  *
  * <h2>Lifecycle</h2>
- * Constructing a coordinator puts <em>two</em> listeners on the message bus: the
- * coordinator itself and the {@link ActionReflector} it owns. {@link #dispose()}
- * removes both, and a coordinator must not be used after it.
- *
- * <p>The owner calls it when the coordinator's {@link ScoreView} is retired.
- * Nothing retires a view today — the interactive main window outlives the process,
- * and the converters are pending a rewrite — so the only callers are tests. The
- * obligation is the constructor's, not the caller's: an object that puts two
- * listeners on a process-global bus owes a way to take them off.
+ * Constructing a coordinator puts two listeners on the message bus: itself and its
+ * {@link ActionReflector}. The owner calls {@link #dispose()} when the {@link ScoreView} is
+ * retired, which removes both; the coordinator must not be used afterwards.
  */
 public final class SelectionCoordinator implements Disposable {
 
-    /** The score this coordinator selects within. Its mode is the source of truth for
-     *  {@link #isInSelectMode()}. */
     private final ScoreView scoreView;
 
-    /** The line at each line index, registered by that index's {@link LineComponent}. */
     private final Map<Integer, Line> lines = new HashMap<>();
 
     /** Which line currently has the selection, or null if none. */
     private @Nullable Integer activeLineIndex = null;
 
-    /**
-     * The one thing selected in the score, on the line at {@code activeLineIndex}, or null if
-     * nothing is selected.
-     */
+    /** On the line at {@code activeLineIndex}; null if nothing is selected. */
     @Nullable
     private Selection selected = null;
 
-    /** Cleans up after a rubber-band drag Swing failed to finish. */
     private final SelectionDragTracker dragTracker = new SelectionDragTracker();
 
-    /** Keeps the toolbar actions in step with whatever this coordinator has selected. */
     private final ActionReflector actionReflector = new ActionReflector(this);
 
     // Content cache: lazily computed flags about what the current selection contains.
@@ -139,10 +101,7 @@ public final class SelectionCoordinator implements Disposable {
         subscription = new MessageSubscription(this);
     }
 
-    /**
-     * Detaches this coordinator and the {@link ActionReflector} it owns from the bus.
-     * Idempotent. The coordinator must not be used afterwards.
-     */
+    /** Idempotent. The coordinator must not be used afterwards. */
     @Override
     public void dispose() {
         subscription.dispose();
@@ -153,32 +112,20 @@ public final class SelectionCoordinator implements Disposable {
     // Line registry
     // -------------------------------------------------------------------------
 
-    /**
-     * Registers the line at the given index. Called by {@link LineComponent} when it takes
-     * on a line, and again if its score is set afterwards.
-     */
     public void registerLine(int lineIndex, Line line) {
         lines.put(lineIndex, line);
     }
 
-    /**
-     * Removes a line registration.
-     */
     public void unregisterLine(int lineIndex) {
         lines.remove(lineIndex);
     }
 
-    /**
-     * Forgets every registered line and deactivates.
-     */
     public void clearLines() {
         lines.clear();
         activeLineIndex = null;
     }
 
-    /**
-     * Returns the line registered at the given index, or null if none is.
-     */
+    /** Null if no line is registered at the given index. */
     @Nullable
     public Line getLine(int lineIndex) {
         return lines.get(lineIndex);
@@ -188,41 +135,23 @@ public final class SelectionCoordinator implements Disposable {
     // Active line management
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the index of the line that currently has the selection,
-     * or {@code null} if no line does.
-     */
+    /** Null if no line has the selection. */
     public @Nullable Integer getActiveLineIndex() {
         return activeLineIndex;
     }
 
-    /**
-     * Returns the line the selection sits on, or null if no line is active.
-     * <p>
-     * Answers whatever shape the selection has, including none — a decoration target and a
-     * whole-line selection both sit on a line without carrying an index range, and the
-     * active line is how they are cleared, revalidated and reflected. Callers that
-     * specifically want an index range ask {@link #getRange} instead.
-     */
+    /** Null if no line is active. */
     @Nullable
     public Line getActiveLine() {
         return lines.get(activeLineIndex);
     }
 
-    /**
-     * Returns the selected index range, or null if the selection is a target or there is
-     * none. A range is never empty: nothing selected is null, not a zero-width range.
-     */
+    /** Null if the selection is a target or there is none; a range is never empty. */
     public Selection.@Nullable Range getRange() {
         return (selected instanceof Selection.Range range) ? range : null;
     }
 
-    /**
-     * Collapses the selection to a single element at {@code elementIndex} on the line
-     * at {@code lineIndex}. Returns whether a line was registered at that index to select on.
-     * Shared by the mouse click-to-select path and arrow-key navigation; each caller handles
-     * its own notification and repaint.
-     */
+    /** Each caller handles its own notification and repaint. */
     public boolean selectSingleElement(int lineIndex, int elementIndex) {
         clearSelection();
         activateLine(lineIndex);
@@ -237,58 +166,28 @@ public final class SelectionCoordinator implements Disposable {
         return true;
     }
 
-    /**
-     * Activates the given line for selection, dropping whatever was selected.
-     * <p>
-     * Clears unconditionally, including when the line is already active: activating a line is
-     * the start of selecting on it, and every caller assigns a selection immediately after or
-     * has just cleared one. Keeping a range alive across it would mean the shape of what was
-     * selected decided whether it survived, which is the distinction this class no longer draws.
-     */
+    /** Clears the selection even when the line is already active. */
     public void activateLine(int lineIndex) {
         selected = null;
         activeLineIndex = lineIndex;
     }
 
-    /**
-     * Clears the selection and deactivates the line it was on.
-     */
     public void clearSelection() {
         selected = null;
         activeLineIndex = null;
     }
 
-    /**
-     * Clears what is selected while leaving its line active, so the next selection lands on
-     * the same line without being reactivated. What a rubber band that caught nothing leaves
-     * behind — and, more rarely, a range spliced out of existence by
-     * {@link #revalidateElementSelection} or caught by its bounds backstop.
-     */
+    /** Leaves its line active, so the next selection lands on it without being reactivated. */
     public void clearActiveSelection() {
         selected = null;
     }
 
-    /**
-     * Makes the given target the sole selection on the active line.
-     * <p>
-     * Whatever was selected before — an index range, another target, the staff line — is
-     * dropped by the assignment itself: one field holds one selection, so there is nothing
-     * further to clear. The caller is responsible for having activated the target's line
-     * first.
-     */
+    /** The caller has activated the target's line first. */
     public void select(HitTarget.Selectable target) {
         selected = new Selection.Target(target);
     }
 
-    /**
-     * Assigns a range on {@code line}, clamped so a multi-element range never reaches the song's
-     * auto-maintained terminal. Only {@link #selectSingleElement} may select the terminal — a
-     * click on it is the one gesture that selects it, so a Shift+click or
-     * Shift+arrow that would sweep it in stops at the last editable element instead.
-     * <p>
-     * The range's first element needs no clamp: the terminal is the last element, so a range
-     * beginning on it ends on it too, which is the single-element range a click produces.
-     */
+    /** Clamped so a multi-element range never reaches the song's auto-maintained terminal. */
     private void setRange(Line line, ElementRange range, int anchor) {
         var clamped = range;
 
@@ -300,11 +199,6 @@ public final class SelectionCoordinator implements Disposable {
         selected = new Selection.Range(line, clamped, anchor);
     }
 
-    /**
-     * Selects {@code range} on the active line, anchored at its first element. The anchor comes
-     * to rest anywhere else only when {@link #extendSelectionTo} carries the range past it
-     *. Does nothing when no line is active.
-     */
     public void selectRange(ElementRange range) {
         var line = getActiveLine();
 
@@ -315,10 +209,6 @@ public final class SelectionCoordinator implements Disposable {
         setRange(line, range, range.begin());
     }
 
-    /**
-     * Extends the selection from its anchor to {@code elementIndex}, leaving the anchor where
-     * it is. No-op when the selection is not a range, since there is no anchor to extend from.
-     */
     public void extendSelectionTo(int elementIndex) {
         var range = getRange();
 
@@ -333,12 +223,6 @@ public final class SelectionCoordinator implements Disposable {
             anchor);
     }
 
-    /**
-     * Selects every element on the active line, excluding the song's auto-maintained terminal.
-     * <p>
-     * A whole-line selection is swapped for its elements in the process, because both are the
-     * same field. An empty line has nothing to swap to, so its selection stands.
-     */
     public void selectAll() {
         var line = getActiveLine();
 
@@ -356,15 +240,7 @@ public final class SelectionCoordinator implements Disposable {
         setRange(line, new ElementRange(0, lastSelectableIndex), 0);
     }
 
-    /**
-     * Makes the lyric on {@code element} in script {@code script} the sole selection, activating
-     * the line the element sits on.
-     * <p>
-     * Unlike every other target, a lyric names the line it belongs to, so this resolves and
-     * activates that line itself rather than requiring the caller to have done it.
-     *
-     * @param element an element in a line, as every element a press on the score reaches is
-     */
+    /** Activates the lyric's line itself; the caller need not. */
     public void selectLyric(StaffElement element, Song.Script script) {
         var line = element.requireParentLine();
 
@@ -377,10 +253,6 @@ public final class SelectionCoordinator implements Disposable {
     // Select mode
     // -------------------------------------------------------------------------
 
-    /**
-     * Whether the score is in select mode. Derived from the score's mode rather than cached,
-     * so there is no second copy of the fact to keep in step with it.
-     */
     public boolean isInSelectMode() {
         return scoreView.getMode() == Mode.SELECT;
     }
@@ -389,15 +261,6 @@ public final class SelectionCoordinator implements Disposable {
     // Cross-line queries (needed for rendering and ScoreView API)
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns whether the element at the given index on the given line reads as selected —
-     * {@link Selection.Range#contains}'s answer, which covers an element paired with one the
-     * range names as well as the range itself.
-     *
-     * @param elementIndex the element's index on the line; negative yields false
-     * @param lineIndex    the line the element sits on
-     * @return {@code true} when that element reads as selected
-     */
     public boolean isElementSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex == null || activeLineIndex != lineIndex || elementIndex < 0) {
             return false;
@@ -407,55 +270,26 @@ public final class SelectionCoordinator implements Disposable {
         return (range != null) && range.contains(elementIndex);
     }
 
-    /**
-     * Returns whether the staff line itself is the current selection. The readable name for
-     * a {@link HitTarget.StaffLine} target, which is how a line selection is held.
-     */
     public boolean isLineSelected() {
         return selected instanceof Selection.Target(HitTarget.StaffLine _);
     }
 
-    /**
-     * Returns whether the staff line at the given index is selected (for deletion).
-     */
     public boolean isLineSelected(int lineIndex) {
         return activeLineIndex != null && activeLineIndex == lineIndex && isLineSelected();
     }
 
     /**
-     * Returns the selected target, or null if the selection is an index range or there is none.
-     * <p>
-     * A whole-line selection reads as {@link HitTarget.StaffLine} here rather than as null.
-     * Callers that mean "a decoration is selected" want {@link #hasDecorationSelection}.
+     * Null if the selection is an index range or there is none. A whole-line selection reads as
+     * {@link HitTarget.StaffLine}, not null.
      */
     public HitTarget.@Nullable Selectable getSelectedTarget() {
         return (selected instanceof Selection.Target(var target)) ? target : null;
     }
 
     /**
-     * Returns whether the given target is the current selection on the given line.
-     * <p>
-     * Every {@link HitTarget} is a record over object references, so the general case compares
-     * what the target names rather than where it sits on the line.
-     * <p>
-     * One kind is answered from the other selection shape, so that callers need only this one
-     * query: a note is selected through the index range (clicking one collapses the range onto
-     * it). That predates {@link HitTarget} and stays as it is — see {@link Selection}.
-     * <p>
-     * The leading {@code activeLineIndex} gate is kind-dependent. Every {@link HitTarget} kind
-     * except {@link HitTarget.Tie} lives on exactly one line, so asking about any other line
-     * must answer {@code false} — the gate short-circuits that before the switch runs. A tie
-     * can cross a line break, with half drawn by each of its two lines. Both lines'
-     * repaints ask this method with their own line index (see
-     * {@code LineRenderer.buildInvariants}), so the tie case answers from record equality and
-     * from whether the line at {@code lineIndex} holds one of the tie's two notes — record
-     * equality alone would report the tie selected on every line in the song.
-     * <p>
-     * The switch is exhaustive on purpose. A {@code default} arm would silently answer
-     * {@code false} for a kind added later, which is exactly how the staff line went
-     * unanswered before it was folded in. Every {@link HitTarget.Selectable} shares one answer,
-     * so they share one arm; a kind that is not {@code Selectable} has to be named, because
-     * whether it can ever read as selected is the decision the arm records.
+     * A tie can cross a line break, so it is selected on {@code lineIndex} only if that line
+     * holds one of its notes. The switch is exhaustive on purpose: a new {@link HitTarget} kind
+     * must be decided here.
      */
     public boolean isSelected(HitTarget target, int lineIndex) {
         if (target instanceof HitTarget.Tie tieTarget) {
@@ -488,21 +322,6 @@ public final class SelectionCoordinator implements Disposable {
         };
     }
 
-    /**
-     * Returns whether the element at {@code elementIndex} on the line at {@code lineIndex} reads
-     * as covered by the selected index range — {@link Selection.Range#contains}'s answer, which
-     * is wider than {@code begin..end} where a pair straddles an end of it.
-     * <p>
-     * Separate from {@link #isSelected} because a range is not a thing a click addresses — it is
-     * the other selection shape (see {@link Selection}) — and because every caller that draws an
-     * element already holds its index. Routing those callers through {@link #isSelected} would
-     * mean wrapping the index into a {@link HitTarget.Element} only for the answer to derive it
-     * back by scanning the line, once per drawn element on every repaint.
-     *
-     * @param elementIndex the element's index on the line; out of range yields false
-     * @param lineIndex    the line the element sits on
-     * @return {@code true} when that element reads as covered by the selected range
-     */
     public boolean isElementRangeSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex == null || activeLineIndex != lineIndex || elementIndex < 0) {
             return false;
@@ -519,15 +338,8 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Returns whether a decoration — a slide, ending, hairpin, articulation and so on — is
-     * selected.
-     * <p>
-     * An index range is not a decoration, and neither are two of the targets. A
-     * {@link HitTarget.StaffLine} selects the line as a whole: this predicate decides whether
-     * Delete removes one notation or the entire line, so answering true for it would delete a
-     * notation instead of the line. A {@link HitTarget.Lyric} selects text rather than
-     * notation, and Delete reaches it through its own branch; it has never counted here, and
-     * the callers that want it ask for it by name.
+     * Excludes {@link HitTarget.StaffLine} (Delete removes the whole line, not one notation) and
+     * {@link HitTarget.Lyric} (Delete reaches it through its own branch).
      */
     public boolean hasDecorationSelection() {
         var target = getSelectedTarget();
@@ -537,14 +349,6 @@ public final class SelectionCoordinator implements Disposable {
             && !(target instanceof HitTarget.Lyric);
     }
 
-    /**
-     * Clears the selection if its target no longer refers to something live on its line —
-     * e.g. after an undo/redo that removed the selected notation outright. No-op if the
-     * current selection is still valid, or if it is not a target. Each target answers its own
-     * liveness through {@link HitTarget.Selectable#isLiveOn}.
-     *
-     * @return whether the selection was cleared
-     */
     public boolean revalidateDecorationSelection() {
         var line = getActiveLine();
         var target = getSelectedTarget();
@@ -559,25 +363,9 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Splices the selected range through every mutation in {@code notification}, so it keeps
-     * naming the elements the user selected as the batch that just ran shifted or removed
-     * elements around it. No-op for a target selection, which
-     * {@link #revalidateDecorationSelection} answers for instead.
-     * <p>
-     * The mutation list is folded front-to-back: {@code Song.applyChange} appends to it as
-     * each mutation runs, and undo replays mutations in reverse but *records* them in replay
-     * order, so each record's indices are relative to the state the previous record left
-     * behind. Folding back-to-front would apply every splice against the wrong baseline.
-     * <p>
-     * A {@link LineDeletion} of the range's own line clears the selection outright — via
-     * {@link #clearSelection}, not {@link #clearActiveSelection}, since the line itself is
-     * gone and leaving {@code activeLineIndex} pointing at it would strand a stale index.
-     * Every other mutation either moves no element index (a song-scoped mutation, a
-     * replacement, a modification) or is spliced via {@link Selection.Range#splicedFor}.
-     * <p>
-     * After the fold, a range whose {@code end} can no longer be indexed on its line — a
-     * structural change that never reached the mutation record — is also cleared. This is a
-     * backstop, not the primary mechanism: do not remove it as unreachable.
+     * Mutations are folded front-to-back: each record's indices are relative to the state the
+     * previous record left behind. The final end-of-range check is a backstop for structural
+     * changes that never reached the mutation record; do not remove it as unreachable.
      */
     public void revalidateElementSelection(SongDidChangeNotification notification) {
         var range = getRange();
@@ -623,22 +411,12 @@ public final class SelectionCoordinator implements Disposable {
     // Cross-line query methods
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns whether a line can be deleted (a line is selected). Deleting the sole
-     * remaining line is allowed — {@link songscribe.dom.Song#removeLine} replaces it
-     * with a fresh empty line so the song always has at least one line.
-     */
+    /** Deleting the sole remaining line is allowed. */
     public boolean canDeleteLine() {
         return getSelectedLine() != null;
     }
 
-    /**
-     * Returns whether a tempo change may be added to the selected element.
-     * <p>
-     * A tempo change is forbidden on the song's first element, because the song's own tempo
-     * is already rendered at the staff header there. Song Settings is where that tempo is
-     * edited.
-     */
+    /** Forbidden on the song's first element: the song's own tempo is edited in Song Settings. */
     public boolean canChangeTempo() {
         var selectedElement = getSingleSelectedElement();
 
@@ -653,20 +431,14 @@ public final class SelectionCoordinator implements Disposable {
     // Selection shape queries
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the number of elements in the selection, or 0 if it is not a range.
-     */
     public int getSelectionSize() {
         var range = getRange();
         return (range != null) ? range.range().size() : 0;
     }
 
     /**
-     * Returns the current selection as an index span, or null if nothing spanning is selected.
-     * <p>
-     * A whole-line selection carries no index range of its own, so it is reported as a span
-     * over every element on the line. An empty line has nothing to span and reads as no
-     * selection at all.
+     * Null if nothing spanning is selected. A whole-line selection is reported as a span over
+     * every element on the line; an empty line reads as no selection.
      */
     @Nullable
     public ElementSelection getSelection() {
@@ -690,34 +462,22 @@ public final class SelectionCoordinator implements Disposable {
         return (range != null) ? range.toElementSelection() : null;
     }
 
-    /**
-     * Returns the single selected element if exactly one element is selected,
-     * or null otherwise.
-     */
+    /** Null unless exactly one element is selected. */
     @Nullable
     public StaffElement getSingleSelectedElement() {
         var range = getRange();
         return (range != null) ? range.singleElement() : null;
     }
 
-    /**
-     * Returns the index of the line that has a line selection (for deletion),
-     * or null if no line is selected.
-     */
+    /** Null if no line is selected. */
     public @Nullable Integer getSelectedLine() {
         return isLineSelected() ? activeLineIndex : null;
     }
 
-    /**
-     * Returns whether any line has a line selection.
-     */
     public boolean hasLineSelection() {
         return getSelectedLine() != null;
     }
 
-    /**
-     * Returns the elements in the active selection, or an empty list if nothing is selected.
-     */
     public List<StaffElement> getSelectedElements() {
         var selection = getSelection();
 
@@ -732,28 +492,15 @@ public final class SelectionCoordinator implements Disposable {
     // Selection content queries
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns whether there is an active element selection.
-     */
     public boolean hasActiveSelection() {
         return getSelection() != null;
     }
 
-    /**
-     * Returns whether the selection is exactly the song's auto-maintained terminal.
-     * <p>
-     * A multi-element selection can never contain the terminal — {@link #setRange} clamps it
-     * out — so testing the single selected element is sufficient.
-     */
     public boolean isTerminalSelected() {
         var element = getSingleSelectedElement();
         return element != null && Song.isTerminalOfItsSong(element);
     }
 
-    /**
-     * Returns whether the current selection contains any duration notes (notes or rests).
-     * Returns {@code false} if there is no active selection.
-     */
     public boolean selectionHasDurations() {
         if (!hasActiveSelection()) {
             return false;
@@ -763,10 +510,6 @@ public final class SelectionCoordinator implements Disposable {
         return hasDurations;
     }
 
-    /**
-     * Returns whether the current selection contains any rests.
-     * Returns {@code false} if there is no active selection.
-     */
     public boolean selectionHasRests() {
         if (!hasActiveSelection()) {
             return false;
@@ -776,13 +519,7 @@ public final class SelectionCoordinator implements Disposable {
         return hasRests;
     }
 
-    /**
-     * Returns whether any element in the current selection can carry an annotation that survives
-     * a save — see {@link songscribe.dom.ElementType#canCarryAnnotation()}. "Any" rather than
-     * "every" matches {@link #isApplicableToSelection}: an action is applicable when at least
-     * one selected element accepts it.
-     * Returns {@code false} if there is no active selection.
-     */
+    /** True when any selected element can, as in {@link #isApplicableToSelection}. */
     public boolean selectionCanCarryAnnotation() {
         var selection = getSelection();
 
@@ -795,11 +532,8 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Returns whether the given reflectable action is applicable to the current selection: it
-     * admits at least one selected element, and {@link UIAction.Reflectable#canToggle} holds for
-     * every element it admits. Results are cached per selection, and dropped when the song
-     * changes, since the second condition reads element state. Returns {@code false} if there is
-     * no active selection.
+     * Applicable when the action admits at least one selected element and
+     * {@link UIAction.Reflectable#canToggle} holds for every element it admits.
      */
     public <E extends StaffElement> boolean isApplicableToSelection(UIAction.Reflectable<E> action) {
         var selection = getSelection();
@@ -835,10 +569,6 @@ public final class SelectionCoordinator implements Disposable {
         });
     }
 
-    /**
-     * Computes and caches the content flags for the current selection.
-     * Short-circuits when all flags are set.
-     */
     private void ensureContentComputed() {
         var selection = getSelection();
 
@@ -876,9 +606,6 @@ public final class SelectionCoordinator implements Disposable {
     // Toolbar reflection
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the reflector that keeps the toolbar actions in step with this selection.
-     */
     public ActionReflector getActionReflector() {
         return actionReflector;
     }
@@ -887,9 +614,6 @@ public final class SelectionCoordinator implements Disposable {
     // Rubber-band drag tracking
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the tracker that cleans up after a rubber-band drag Swing failed to finish.
-     */
     public SelectionDragTracker getDragTracker() {
         return dragTracker;
     }
@@ -899,30 +623,16 @@ public final class SelectionCoordinator implements Disposable {
     // -------------------------------------------------------------------------
 
     /**
-     * Drops every cached answer about the current selection as soon as the song changes.
-     * <p>
-     * The caches are keyed by {@link ElementSelection} — a line plus an index range — and
-     * an index names a different element once a mutation has shifted, replaced, or removed
-     * what was there. Delete a selected barline and click the note that slides into its
-     * index and the key is the same one the barline was answered under, so the note would
-     * be reported as carrying no duration and applying to no action, leaving every
-     * note-only button disabled.
-     * <p>
-     * Runs ahead of {@link UIAction#songDidChange}, which re-derives
-     * each action's enabled state from these caches.
+     * The caches are keyed by line and index range, and an index names a different element
+     * once a mutation shifts or removes what was there. Runs ahead of
+     * {@link UIAction#songDidChange}, which re-derives each action's enabled state from them.
      */
     @Handler(priority = Message.HIGH_PRIORITY)
     public void songDidChangeInvalidateCaches(SongDidChangeNotification message) {
         invalidateSelectionCaches();
     }
 
-    /**
-     * Discards the cached selection queries and the reflection guard, so the next query
-     * and the next reflection both recompute from the elements now on the line.
-     * <p>
-     * Package-private so {@link SelectionActionApplier} can call it from inside its
-     * modification bracket, which is where a batch apply's caches go stale.
-     */
+    /** Package-private so {@link SelectionActionApplier} can call it inside its modification bracket. */
     void invalidateSelectionCaches() {
         contentCacheSelection = null;
         applicabilityCacheSelection = null;

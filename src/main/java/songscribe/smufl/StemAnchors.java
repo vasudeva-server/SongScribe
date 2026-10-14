@@ -22,11 +22,5 @@ package songscribe.smufl;
 
 /**
  * Where a stem meets a notehead, for each of the two stem directions.
- *
- * <p>Both anchors are present because a notehead the font gives one to, it gives both to,
- * which is why neither is nullable.
- *
- * @param stemUpSE   where an upward stem meets the notehead, at its south-east corner
- * @param stemDownNW where a downward stem meets the notehead, at its north-west corner
  */
 public record StemAnchors(Anchor stemUpSE, Anchor stemDownNW) {}

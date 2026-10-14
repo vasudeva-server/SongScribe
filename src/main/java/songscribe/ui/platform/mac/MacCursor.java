@@ -25,9 +25,7 @@ package songscribe.ui.platform.mac;
  * while it is standing still.
  * <p>
  * macOS applies a cursor change only in a cursor-update context, so a {@code Component.setCursor}
- * made while the pointer is stationary never reaches the screen — verified directly, with neither
- * a transparent nor an unmistakable built-in cursor appearing while AWT reported the component
- * under the pointer carrying exactly the cursor that had been set.
+ * made while the pointer is stationary never reaches the screen.
  * <p>
  * <b>macOS only.</b> {@link ObjC}'s static initializer loads native macOS libraries, so callers
  * must guard with {@code SystemInfo.isMacOS}.
@@ -38,14 +36,9 @@ public final class MacCursor {
     }
 
     /**
-     * Hides the pointer until the mouse next moves, via
-     * {@code +[NSCursor setHiddenUntilMouseMoves:YES]}.
-     * <p>
-     * Deliberately not {@code +[NSCursor hide]}: that keeps a hide count that every caller must
-     * balance with {@code unhide}, and a single missed unhide — an app deactivated mid-hide, a
-     * window closed, an exception on the path back — leaves the user with no pointer at all and
-     * no way to get it back. AppKit restores this one on the next mouse movement whatever else
-     * happens, which is also exactly the visibility rule wanted here.
+     * Deliberately not {@code +[NSCursor hide]}: its hide count must be balanced with
+     * {@code unhide}, and one missed unhide leaves the user with no pointer at all. AppKit
+     * restores this one on the next mouse movement whatever else happens.
      */
     public static void hideUntilMouseMoves() {
         ObjC.msgSendVoid(ObjC.objcClass("NSCursor"), ObjC.selector("setHiddenUntilMouseMoves:"), true);

@@ -36,23 +36,14 @@ import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
 
-/**
- * Renders tuplet brackets with numbers using staff-space coordinates
- * from {@link LayoutResult.DecorationLayout}.
- * <p>
- * Bracket styling follows LilyPond conventions: round caps/joins,
- * vertical arms pointing toward notes, and an italic serif number.
- */
 public final class TupletRenderer {
 
     // ==========================================================================
     // Constants
     // ==========================================================================
 
-    /** Clearance on each side of tuplet number in bracket (LilyPond: 0.5ss per side) */
     private static final double TUPLET_NUMBER_GAP_SS = 0.5;
 
-    /** Rightward italic correction for tuplet number gap (LilyPond: +0.1ss) */
     private static final double TUPLET_GAP_ITALIC_CORRECTION_SS = 0.1;
 
     /** The tuplet bracket stroke width as a multiple of the LilyPond base thickness. */
@@ -64,15 +55,9 @@ public final class TupletRenderer {
     // Singleton instance
     private static final TupletRenderer INSTANCE = new TupletRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private TupletRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static TupletRenderer getInstance() {
         return INSTANCE;
     }
@@ -81,10 +66,6 @@ public final class TupletRenderer {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Renders all tuplets for a line from the {@link LayoutResult.DecorationLayout.Sloped} layouts
-     * the stacking pass placed them at.
-     */
     public void renderTupletsFromLine(
         Graphics2D g2,
         LineInvariants invariants,
@@ -102,13 +83,8 @@ public final class TupletRenderer {
 
 
     /**
-     * Renders a single tuplet bracket (or number-only for beamed groups) from the frame the
-     * layout placed it in.
-     *
      * @param g2           graphics context (scale transform already applied)
-     * @param invariants   line invariants
-     * @param frame        the element frame of the enclosing pass
-     * @param tuplet       the tuplet being drawn, as a click would address it
+     * @param tuplet      the tuplet being drawn, as a click would address it
      * @param bracketFrame the tuplet's bracket edges and sloped top, in layout space
      */
     private void renderTuplet(

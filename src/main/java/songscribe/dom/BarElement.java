@@ -23,11 +23,8 @@ package songscribe.dom;
  * A barline or a repeat sign: a non-sounding element drawn as a sequence of strokes across the
  * staff.
  *
- * <p>Answers its strokes from its type's {@link BarAppearance}, so a question only a bar can
- * answer — its width, where a volta bracket opens or closes on it — is total here and always
- * answered from the strokes the type declares. {@link ElementType#newInstance()} builds one for
- * every type whose appearance is a bar and for no other, which is what makes the narrowing to
- * that arm sound.
+ * <p>{@link ElementType#newInstance()} builds one for every type whose appearance is a bar and
+ * for no other, which is what makes its narrowing of the appearance sound.
  */
 public final class BarElement extends StructuralElement {
 
@@ -35,9 +32,6 @@ public final class BarElement extends StructuralElement {
         super(type);
     }
 
-    /**
-     * @return the strokes this bar is drawn from, with the geometry derived from them
-     */
     public BarAppearance bar() {
         return (BarAppearance) getType().appearance();
     }

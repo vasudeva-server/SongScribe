@@ -133,17 +133,6 @@ public final class TupletAction extends UIAction {
         setEnabled(info.validGrades().contains(grade));
     }
 
-    /**
-     * Resolves the Tier-A undo op-name from the current selection state. Because this
-     * runs on every dispatch (including no-selection ones that only set mode state), it
-     * null-guards the selection and falls back to the action's base add-size key when
-     * there is no controller or no existing tuplet — never dereferencing a null element.
-     *
-     * <ul>
-     *   <li>No existing tuplet at the selection → {@code Add <Size>}.</li>
-     *   <li>Existing tuplet present (different grade chosen) → {@code Change Tuplet Grade}.</li>
-     * </ul>
-     */
     @Override
     public String getUndoOpName() {
         var baseAddKey = baseAddKey();

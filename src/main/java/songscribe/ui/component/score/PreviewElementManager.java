@@ -56,16 +56,8 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
 
 /**
- * Tracks where the hover preview sits for {@link LineComponent}: which line carries it, which
- * insertion slot and staff position it resolves to, and whether the pointer is over an existing
- * note head.
- * <p>
- * This class owns all static cross-instance state for that tracking — only one preview element can
- * be active across all LineComponents at a time — and answers every "should this be drawn"
- * question that depends on it. The work that hangs off the tracking state lives elsewhere:
- * {@link PreviewElementInserter} turns a click into an edit, {@link PreviewOverlayRegistry} owns
- * the overlay components, and {@link PreviewCursorHider} takes the system cursor away over the
- * preview.
+ * Tracks where the hover preview sits for {@link LineComponent}. Only one preview element can be
+ * active across all LineComponents at a time.
  *
  * <p><b>Lifecycle:</b> the main window constructs one instance at startup, which subscribes to
  * the message bus for the life of the process and is never disposed.
@@ -78,16 +70,7 @@ public final class PreviewElementManager {
     // ==========================================================================
 
     /**
-     * Where the preview element is hovering: the line it is on, the insertion index (0 to
-     * elementCount inclusive), the staff position the mouse resolves to, and whether the mouse
-     * sits within the horizontal bounds of an existing note head and, given that, within its
-     * vertical bounds too.
-     *
-     * @param line             the line showing the preview element
-     * @param insertionIndex   the slot the preview element would be inserted at
-     * @param staffPosition    the mouse Y resolved to the pitch grid
-     * @param overElementX     whether the mouse X lies within an existing element's head
-     * @param overElementHead  whether the mouse also lies within that head vertically
+     * Where the preview element is hovering.
      */
     public record PreviewHover(
         LineComponent line,
@@ -98,33 +81,22 @@ public final class PreviewElementManager {
     }
 
     /**
-     * The current hover, or null when no line shows the preview element.
-     * <p>
-     * Only one line can show the preview element at a time. When the mouse moves
-     * to a different line, the old line is repainted to clear the preview element.
+     * Null when no line shows the preview element.
      */
     private static @Nullable PreviewHover hover = null;
 
-    /** The LineComponent the mouse is currently over (independent of insertion note state). */
     @Nullable
     private static LineComponent currentMouseLine = null;
 
     /**
-     * Runs after {@code ScoreViewController}'s layout-invalidating handler, so the pending
-     * overlay restore sees an invalidated — and therefore recomputable — layout.
+     * Runs after {@code ScoreViewController}'s layout-invalidating handler, so the pending overlay
+     * restore sees an invalidated layout.
      */
     private static final int AFTER_LAYOUT_INVALIDATION_PRIORITY = Message.LOW_PRIORITY - 1;
 
-    /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
+    /** Used by LineRenderer to avoid Swing getMousePosition() returning null. */
     private static double currentMouseXSs = 0.0;
 
-    /**
-     * Subscribes this instance to the bus. The class is a {@link References#Strong} listener, so
-     * the bus itself keeps the instance reachable and the caller need not hold it.
-     *
-     * @effects the instance begins receiving messages, and stays subscribed for the life of the
-     *          process
-     */
     public PreviewElementManager() {
         MessageSubscription.addProcessListener(this);
     }
@@ -149,18 +121,9 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Re-derives the tracked insertion position from the mouse's (unchanged) screen location
-     * once a zoom change has been applied.
-     * <p>
-     * A keyboard/menu zoom (anchored at the viewport center, not the cursor) shifts which
-     * document location sits under a stationary mouse — the {@link PreviewHover} tracks document
-     * position, not screen position, so without this it stays pinned to the pre-zoom location:
-     * the preview keeps rendering there (now
-     * reprojected to new screen pixels by {@code ScoreView.zoomDidChangeRefreshOverlayBounds},
-     * which only fixes the pixel conversion, not the underlying position) and a click at that
-     * screen location resolves against a document position the cursor is no longer over.
-     * Default priority — see the priority requirement documented on
-     * {@link ZoomDidChangeNotification}.
+     * A keyboard/menu zoom shifts which document location sits under a stationary mouse; the
+     * {@link PreviewHover} tracks document position, so without this it stays pinned to the
+     * pre-zoom location. Default priority — see {@link ZoomDidChangeNotification}.
      */
     @Handler
     public void zoomDidChange(ZoomDidChangeNotification message) {
@@ -168,14 +131,9 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Re-derives the tracked insertion position once the last blocking dialog (e.g. Song
-     * Settings) has closed.
-     * <p>
-     * A blocking dialog does not deliver mouse-moved events to the score underneath it, so the
-     * mouse can end up anywhere by the time it closes — over a different note, a different
-     * line, or off the score entirely — while the tracked state still reflects wherever it was
-     * when the dialog opened. No-ops while a dialog is opening ({@code isVisible() == true}):
-     * that transition doesn't change what the score looks like, just what the user can click.
+     * A blocking dialog delivers no mouse-moved events to the score, so the tracked state is
+     * stale when it closes. No-ops while a dialog opens: that does not change what the score
+     * looks like.
      */
     @Handler
     public void dialogVisibilityDidChange(DialogVisibilityDidChangeNotification message) {
@@ -187,9 +145,8 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Hides the preview element when the application moves to the background. Mirrors
-     * {@link #clearPreviewElement} for the mouse-leaves-the-line case: nothing in the background
-     * is tracking the pointer, so nothing should still claim an insertion position.
+     * Nothing tracks the pointer in the background, so nothing may still claim an insertion
+     * position.
      */
     @Handler
     public void applicationDidEnterBackground(ApplicationDidEnterBackgroundNotification message) {
@@ -197,11 +154,8 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Re-derives the tracked insertion position and restores the preview element once the
-     * application is genuinely usable again — see
-     * {@link ApplicationDidBecomeActiveNotification}'s Javadoc for why this is later than raw
-     * window activation and why the mouse position has to be re-resolved rather than assumed
-     * unchanged.
+     * See {@link ApplicationDidBecomeActiveNotification} for why this is later than window
+     * activation.
      */
     @Handler
     public void applicationDidBecomeActive(ApplicationDidBecomeActiveNotification message) {
@@ -214,10 +168,8 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Re-resolves {@link #currentMouseLine} against the mouse's current screen position and
-     * re-derives the preview element's position from it — for any external change (zoom, dialog
-     * dismissal, application activation) after which the mouse may now be over different
-     * document content without ever having fired a real AWT mouse event of its own.
+     * For an external change after which the mouse may be over different content without having
+     * fired an AWT mouse event.
      */
     private static void retargetMouseLineAndRestorePreviewElement() {
         var previousLine = currentMouseLine;
@@ -235,20 +187,10 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Finds the {@link LineComponent} (if any) the mouse is currently over, resolving the
-     * {@link ScoreView} from {@link MainFrame} rather than from {@link #currentMouseLine} — the
-     * whole point of this method is to recover from cases where the mouse may be somewhere
-     * unexpected, and {@code currentMouseLine} is exactly the state that can no longer be
-     * trusted. In particular, backgrounding the application delivers a native mouse-exited event
-     * to whatever line the pointer was over, clearing {@code currentMouseLine} to null before
-     * the app is ever reactivated — a self-referential lookup through it would always fail.
-     * <p>
-     * Cannot use {@link SwingUtilities#getDeepestComponentAt} from the score view downward: a
-     * visible overlay (e.g. the hover preview itself) is a sibling of every {@code
-     * LineComponent}, not a descendant of one, so when the cursor sits over the overlay —
-     * exactly the case this method exists to handle — that walk would return the overlay and
-     * never reach the line underneath it. Testing each line's own bounds sidesteps overlay
-     * z-order entirely.
+     * Null if the mouse is over no line. The {@link ScoreView} comes from {@link MainFrame}, not
+     * {@link #currentMouseLine}, which is the state this method recovers from. Tests each line's
+     * own bounds because {@link SwingUtilities#getDeepestComponentAt} would return an overlay,
+     * a sibling of every {@code LineComponent}, instead of the line beneath it.
      */
     private static @Nullable LineComponent retargetMouseLine() {
         var scoreView = MainFrame.getInstance().getScoreView();
@@ -295,54 +237,26 @@ public final class PreviewElementManager {
     // Overlay
     // ==========================================================================
 
-    /**
-     * Creates {@code host}'s hover-preview overlays and registers them as children of the host.
-     * Any dwell pending against the outgoing overlays is dropped first — see
-     * {@link PreviewCursorHider#discard}.
-     */
     public static void installOverlay(OverlayHost host) {
         PreviewCursorHider.discard();
         PreviewOverlayRegistry.install(host);
     }
 
-    /**
-     * Rebuilds every hover-preview overlay's ink and bounds from the current tracking state,
-     * hiding each one that no longer applies.
-     *
-     * @see PreviewOverlayRegistry#previewDidChange
-     */
     public static void previewElementDidChange() {
         PreviewOverlayRegistry.previewDidChange();
     }
 
     /**
-     * Re-derives the insertion position from the real mouse location, then rebuilds the overlays'
-     * ink for the newly-selected preview element type. Call this instead of
-     * {@link #previewElementDidChange()} when the preview element's identity changes rather than
-     * merely its decorations.
-     *
-     * @see PreviewOverlayRegistry#previewTypeDidChange
+     * Call instead of {@link #previewElementDidChange()} when the preview element's identity
+     * changes, not merely its decorations.
      */
     public static void previewElementTypeDidChange() {
         PreviewOverlayRegistry.previewTypeDidChange();
     }
 
     /**
-     * Repaints the lines whose element colors this manager's tracking state feeds, so an element
-     * that just stopped being the hover target reverts from
-     * {@link LineInvariants#REPLACED_ELEMENT_COLOR} to black — and the one that just became it
-     * turns red.
-     * <p>
-     * The overlays cannot do this themselves. They are siblings of the {@link LineComponent},
-     * not children of it, so updating their bounds dirties only their own rectangles; the
-     * highlighted element is painted by the line underneath and is never touched. The old
-     * drawing-based mechanism repainted the line as a side effect of repainting the overlay ink
-     * welded into it, which is what kept the highlight in sync — separating the overlay out
-     * removed that side effect, and this restores it explicitly.
-     *
-     * @param previousLine the line tracked before the current update, repainted as well when the
-     *                     pointer has crossed from one line to another so the highlight it left
-     *                     behind is cleared
+     * The overlays are siblings of the {@link LineComponent}, so updating their bounds never
+     * repaints the highlighted element the line paints.
      */
     private static void repaintHighlightedElements(@Nullable LineComponent previousLine) {
         var currentLine = getCurrentInsertionLine();
@@ -357,23 +271,15 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Returns whether the hover preview should be drawn on {@code lc}.
-     * <p>
-     * The single home for "is the preview visible": the component asks rather than re-assembling
-     * the conditions in a chain of early returns inside the renderer, far from the predicates
-     * they test.
+     * The single home for "is the preview visible".
      */
     static boolean shouldShowPreviewOn(LineComponent lc) {
         return activePreviewElementOn(lc) != null && lc.isPreviewElementVisible();
     }
 
     /**
-     * Returns the index of the grace note that the host-note insertion preview on {@code lc}
-     * would be connected to, or null when no connecting glissando should be drawn there.
-     * <p>
-     * The single home for "is the grace-host preview glissando visible". It rides on
-     * {@link #shouldShowPreviewOn}: the connecting line only means anything while the host ghost
-     * it runs to is itself on screen.
+     * Null when no connecting glissando should be drawn there. The single home for "is the
+     * grace-host preview glissando visible".
      */
     static @Nullable Integer graceHostPreviewSourceIndexOn(LineComponent lc) {
         if (!shouldShowPreviewOn(lc)) {
@@ -384,9 +290,7 @@ public final class PreviewElementManager {
     }
 
     /**
-     * The preview element {@code lc} would draw, or null when {@code lc} carries no preview at
-     * all. The prefix every preview gate shares: the right line, a mode that previews, a laid-out
-     * line, and an element to preview.
+     * Null when {@code lc} carries no preview at all.
      */
     private static @Nullable StaffElement activePreviewElementOn(LineComponent lc) {
         if (!hasPreviewElement(lc) || lc.getScoreView().getMode() == Mode.SELECT) {
@@ -404,12 +308,6 @@ public final class PreviewElementManager {
     // Public Static API
     // ==========================================================================
 
-    /**
-     * Hides the preview element and optionally clears position tracking state.
-     *
-     * @param clear true to also clear position state (e.g., window deactivated);
-     *              false to only hide the visual (e.g., hovering over an existing element head)
-     */
     public static void hidePreviewElement(boolean clear) {
         if (clear) {
             clearPreviewElement();
@@ -422,11 +320,6 @@ public final class PreviewElementManager {
         PreviewOverlayRegistry.previewDidChange();
     }
 
-    /**
-     * Clears the preview element from all lines.
-     * <p>
-     * Call this when exiting edit mode or when the mouse leaves the score area.
-     */
     static void clearPreviewElement() {
         var previousPreviewLine = getCurrentInsertionLine();
         hover = null;
@@ -444,11 +337,6 @@ public final class PreviewElementManager {
         EditModeManager.setPreviewElementVisible(false);
     }
 
-    /**
-     * Sets whether the Alt key is currently pressed.
-     *
-     * @param pressed true if Alt is pressed
-     */
     static void setAltPressed(boolean pressed) {
         // When Alt is released, re-trigger preview element from current mouse position
         if (!pressed) {
@@ -456,42 +344,31 @@ public final class PreviewElementManager {
         }
     }
 
-    /**
-     * Returns the current preview line, or null if no preview element is active.
-     */
+    /** Null if no preview element is active. */
     @Nullable
     static LineComponent getCurrentInsertionLine() {
         return hover == null ? null : hover.line();
     }
 
-    /**
-     * Returns the current hover, or null when no line shows the preview element.
-     */
+    /** Null when no line shows the preview element. */
     public static @Nullable PreviewHover hover() {
         return hover;
     }
 
     /**
-     * Returns the LineComponent the mouse is currently over, or null when it is over none. Unlike
-     * {@link #getCurrentInsertionLine()} this is independent of whether a preview element is
-     * being shown there.
+     * Null when the mouse is over none. Unlike {@link #getCurrentInsertionLine()}, independent of
+     * whether a preview element is shown there.
      */
     @Nullable
     static LineComponent getCurrentMouseLine() {
         return currentMouseLine;
     }
 
-    /**
-     * Returns the last tracked mouse X in staff-space units.
-     */
     public static double getCurrentMouseXSs() {
         return currentMouseXSs;
     }
 
-    /**
-     * Returns the location of the element currently highlighted by preview element hover,
-     * or null if the preview element's x-position does not match an existing element.
-     */
+    /** Null if the preview element's x-position does not match an existing element. */
     @Nullable
     public static ElementLocation getHoveredElementLocation() {
         var current = hover;
@@ -519,9 +396,6 @@ public final class PreviewElementManager {
         return new ElementLocation(current.line().getLineIndex(), current.insertionIndex());
     }
 
-    /**
-     * Returns whether the given line currently has the preview element.
-     */
     static boolean hasPreviewElement(LineComponent lc) {
         return getCurrentInsertionLine() == lc;
     }
@@ -534,11 +408,6 @@ public final class PreviewElementManager {
     // Delegation Entry Points (called from LineComponent mouse handlers)
     // ==========================================================================
 
-    /**
-     * Handles mouse movement over a line, updating preview element position.
-     * Owns the preview element logic for mouse movement, so {@code LineComponent.mouseMoved()}
-     * delegates to it.
-     */
     static void trackMouse(LineComponent lc, MouseEvent e) {
         if (e.isAltDown()) {
             clearPreviewElement();
@@ -708,28 +577,17 @@ public final class PreviewElementManager {
         repaintHighlightedElements(previousPreviewLine);
     }
 
-    /**
-     * Handles a note-entry click on the preview element — see
-     * {@link PreviewElementInserter#handleClick}. Called from {@code LineComponent.clicked()}.
-     */
     public static void handleClick(LineComponent lc) {
         PreviewElementInserter.handleClick(lc);
     }
 
     /**
-     * Gates grace mode's insertion of the preview element at the hovered slot — see
-     * {@link PreviewElementInserter#acceptForGraceMode}.
-     *
-     * @param lc the line the click landed on
-     * @return the accepted insertion, not yet landed, or {@code null} when it may not go ahead
+     * @return {@code null} when the insertion may not go ahead
      */
     public static @Nullable AcceptedInsertion acceptForGraceMode(LineComponent lc) {
         return PreviewElementInserter.acceptForGraceMode(lc);
     }
 
-    /**
-     * Handles mouse entering a line. Sets up cursor and preview element visibility.
-     */
     static void mouseEnteredLine(LineComponent lc) {
         currentMouseLine = lc;
 
@@ -738,9 +596,6 @@ public final class PreviewElementManager {
         }
     }
 
-    /**
-     * Handles mouse exiting a line. Clears cursor and preview element.
-     */
     static void mouseExitedLine(LineComponent lc) {
         currentMouseLine = null;
 
@@ -757,15 +612,6 @@ public final class PreviewElementManager {
     // Internal Helpers
     // ==========================================================================
 
-    /**
-     * Returns {@code true} when the given mouse position should be blocked because
-     * it coincides with the song's auto-maintained terminal element.
-     * Checks both "mouse is on the terminal element" and "mouse is at the
-     * append position immediately after the terminal".
-     * <p>
-     * When the mouse is directly on the terminal and the active preview element can
-     * legally replace it, the block is lifted so the user can see the ghost preview.
-     */
     static boolean isPositionBlockedByTerminal(
         Song song, Line line, int xIndex, boolean xMatchesElement) {
         var elementCount = line.elementCount();
@@ -793,18 +639,6 @@ public final class PreviewElementManager {
         return xIndex == elementCount;
     }
 
-    /**
-     * Returns {@code true} when inserting a breath mark at {@code xIndex} should be blocked.
-     * Answers {@code false} for any preview element that is not a breath mark.
-     * <p>
-     * The placement rule is the run's, {@link StaffElementRun#canLeadRunAt}: a breath mark
-     * stands only immediately after a duration element and never in front of another breath
-     * mark. Two refusals are the preview's own: a breath mark never replaces an existing
-     * element, so the cursor over one ({@code overExistingElement}) blocks it, and it is not
-     * inserted where a glissando reaches the slot from the note in front
-     * ({@link StaffElementRun#hasGlissandoInto}), since landing there would break that
-     * glissando.
-     */
     static boolean isBreathMarkInsertionBlocked(
         @Nullable StaffElement previewElement, int xIndex, Line line, boolean overExistingElement
     ) {
@@ -815,11 +649,6 @@ public final class PreviewElementManager {
         return overExistingElement || !line.canLeadRunAt(xIndex) || line.hasGlissandoInto(xIndex);
     }
 
-    /**
-     * Returns whether preview element handling should be active for the given line.
-     * <p>
-     * Requires: NOTE_EDIT mode and a preview element set.
-     */
     static boolean shouldHandlePreviewElement(LineComponent lc) {
         if (!EditModeManager.hasPreviewElement()) {
             return false;
@@ -831,33 +660,16 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Returns whether the preview element owns a click on {@code lc} right now.
-     * <p>
-     * The preview element is not a hit region, so a competing click gesture cannot ask the hit
-     * registry whether it owns a click there — it has to ask here instead. Ownership is all this
-     * settles: {@link PreviewElementInserter#handleClick} is the only thing that may act on a
-     * click it owns, and it may still decline that click for reasons of its own — a position the
-     * auto-maintained terminal blocks, an element that may not be replaced, a cancelled
-     * confirmation. A competing gesture must stand down either way, since the alternative is two
-     * gestures both believing the click is theirs.
-     * <p>
-     * The answer is point-dependent, not merely mode-dependent: {@link #trackMouse} clears the
-     * preview outside {@link StaffPosition#MIN} .. {@link StaffPosition#MAX},
-     * so the same line can answer differently from one click to the next depending on where
-     * within it the pointer lands.
-     *
-     * @param lc the line the click landed on
-     * @return {@code true} when the preview element is live on {@code lc}, so the click is the
-     *         inserter's to answer
+     * The preview element is not a hit region, so a competing click gesture asks here whether
+     * the preview owns the click. {@link PreviewElementInserter#handleClick} may still decline
+     * an owned click; the competing gesture must stand down either way. Point-dependent:
+     * {@link #trackMouse} clears the preview outside {@link StaffPosition#MIN} ..
+     * {@link StaffPosition#MAX}.
      */
     static boolean isPreviewClickTarget(LineComponent lc) {
         return shouldHandlePreviewElement(lc) && hasPreviewElement(lc);
     }
 
-    /**
-     * Restores the preview element from the current mouse position on the given line.
-     * Called when state changes (mode, playback, Alt key) may affect preview element visibility.
-     */
     public static void restorePreviewElement(@Nullable LineComponent lc) {
         if (lc == null || !shouldHandlePreviewElement(lc)) {
             return;
@@ -889,10 +701,6 @@ public final class PreviewElementManager {
         trackMouse(lc, syntheticEvent);
     }
 
-    /**
-     * Sets the mouse-derived staff position on a note. Any other element has no staff position
-     * to set.
-     */
     static void applyStaffPosition(StaffElement element, StaffPosition staffPosition) {
         if (element instanceof NoteElement note) {
             note.setStaffPosition(staffPosition);

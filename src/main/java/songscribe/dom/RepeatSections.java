@@ -30,55 +30,34 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The repeat sections of a song: which bar opens the section each right repeat closes, and
- * which repeat bars are left unmatched. It is the one model of repeat sections. Playback reads
- * it to find where a right repeat loops back to, the section rule of {@link Ending} reads it to
- * judge an ending's split, and the lint rule for balanced repeats reads it to report the
- * unmatched bars, so the three agree by construction.
+ * The one model of a song's repeat sections: which bar opens the section each right repeat
+ * closes, and which repeat bars are left unmatched. Playback, the section rule of {@link Ending}
+ * and the lint rule for balanced repeats all read it, so they agree by construction.
  *
- * <p>The model reads the song's elements in song order, line by line, each line's elements in
- * order, the terminal included. An <em>opener</em> is a bar that
- * {@link ElementType#opensRepeatSection() opens a section} ({@code |:} or {@code :|:}); a
- * <em>right repeat</em> is a bar that {@link ElementType#closesRepeat() closes one and plays
- * back} ({@code :|} or {@code :|:}); a <em>closing bar</em> is any other bar that
- * {@link ElementType#closesRepeatSection() ends a section} without playing back ({@code ||}, a
- * final barline). The rules:
+ * <p>An <em>opener</em> is a bar that {@link ElementType#opensRepeatSection() opens a section}
+ * ({@code |:} or {@code :|:}); a <em>right repeat</em> {@link ElementType#closesRepeat() closes
+ * one and plays back} ({@code :|} or {@code :|:}); a <em>closing bar</em> is any other bar that
+ * {@link ElementType#closesRepeatSection() ends a section} ({@code ||}, a final barline).
  *
  * <ul>
- *   <li>A line break neither opens nor closes a section: a section may open any number of
- *       lines before the right repeat that closes it.</li>
+ *   <li>A line break neither opens nor closes a section.</li>
  *   <li>The song start opens a section, but only for the first right repeat before any opener
- *       or closing bar. In {@code A :| B :|} the first {@code :|} closes the section the song
- *       start opens, and the second is a closer with no open section. An opener or a closing
- *       bar ends the song-start section without any finding.</li>
- *   <li>A right repeat closes the innermost open section. With none open, it is a closer with
- *       no open section.</li>
- *   <li>A {@code ||} closes every open section, as a final barline does. In {@code A || B :|}
- *       the {@code :|} has no open section, and in {@code |: A || B} the {@code |:} is never
- *       closed.</li>
- *   <li>A {@code :|:} first closes the open section as a right repeat, then opens a new one.
- *       {@code |: A :|: B :|} is two sections. At the start of the song it closes the section
- *       the song start opens, so {@code A :|: B :|} is two sections and leaves nothing
- *       unmatched.</li>
- *   <li>A song whose first element is a {@code :|} or a {@code :|:} — a state only a deletion
- *       can leave, and which the {@code LEADING_BAR} lint rule flags ({@link SongStart}) — is
- *       read by the same rules. That bar closes the section the song start opens, which holds
- *       no element: it is a {@link Section} with a {@code null} opener, it is not unmatched, and
- *       its {@link #sectionStart} is the bar itself. A {@code :|:} there then opens a new section
- *       as anywhere else.</li>
- *   <li>An opener that comes while a section is already open is nested; it still opens a
- *       section, which the next right repeat closes. In {@code |: |: :| :|} only the second
- *       {@code |:} is nested: the first {@code :|} closes the inner section, and the last
- *       {@code :|} closes the outer one and is paired with the first {@code |:}.</li>
- *   <li>An opener whose section a closing bar or the end of the song ends first is never
- *       closed, unless it is nested: an opener already reported as nested is not also reported
- *       as never closed.</li>
+ *       or closing bar; an opener or a closing bar ends it without any finding.</li>
+ *   <li>A right repeat closes the innermost open section; with none open, it is an unopened
+ *       closer.</li>
+ *   <li>A {@code ||} closes every open section, as a final barline does.</li>
+ *   <li>A {@code :|:} first closes the open section as a right repeat, then opens a new one.</li>
+ *   <li>A song whose first element is a {@code :|} or {@code :|:} (flagged by the
+ *       {@code LEADING_BAR} lint rule, {@link SongStart}) closes the song-start section: a
+ *       {@link Section} with a {@code null} opener, not unmatched, whose {@link #sectionStart} is
+ *       the bar itself.</li>
+ *   <li>An opener that comes while a section is open is nested; it still opens a section, which
+ *       the next right repeat closes.</li>
+ *   <li>An opener whose section a closing bar or the end of the song ends first is never closed,
+ *       unless it is nested: a nested opener is not also reported as never closed.</li>
  * </ul>
  *
- * <p>A caller builds one with {@link #of(Song)}, from the song as it is at that moment. The
- * model is a snapshot, not a view: it does not follow later edits, and nothing caches it. A
- * caller that asks several questions in one pass builds one model and keeps it for that pass
- * only.
+ * <p>A snapshot of the song when {@link #of(Song)} built it; it does not follow later edits.
  *
  * @invariant every right repeat of the song is the closer of exactly one {@link Section} or
  *            one of {@link #unopenedClosers()}, never both
@@ -92,11 +71,7 @@ import org.jspecify.annotations.Nullable;
 public final class RepeatSections {
 
     /**
-     * One repeat section: the bar that opened it and the right repeat that closed it.
-     *
-     * @param opener the location of the {@code |:} or {@code :|:} that opened the section, or
-     *               {@code null} when the song start opened it
-     * @param closer the location of the {@code :|} or {@code :|:} that closed it
+     * @param opener {@code null} when the song start opened the section
      */
     public record Section(@Nullable ElementLocation opener, ElementLocation closer) {
     }
@@ -106,7 +81,6 @@ public final class RepeatSections {
     private final List<ElementLocation> unclosedOpeners;
     private final List<ElementLocation> nestedOpeners;
 
-    /** The start of the innermost section open just before each element; absent when none is. */
     private final Map<ElementLocation, ElementLocation> sectionStarts;
 
     private RepeatSections(Walk walk) {
@@ -141,40 +115,23 @@ public final class RepeatSections {
         return new RepeatSections(walk);
     }
 
-    /**
-     * The sections a right repeat closes.
-     *
-     * @return every closed section, in the song order of its closer
-     */
     public List<Section> sections() {
         return sections;
     }
 
-    /**
-     * The right repeats that find no open section to close, as the second {@code :|} of
-     * {@code A :| B :|} does.
-     *
-     * @return their locations, in song order
-     */
     public List<ElementLocation> unopenedClosers() {
         return unopenedClosers;
     }
 
     /**
-     * The openers whose section a closing bar or the end of the song ends before any right
-     * repeat closes it, leaving out the openers in {@link #nestedOpeners()}.
-     *
-     * @return their locations, in song order
+     * Leaves out the openers in {@link #nestedOpeners()}.
      */
     public List<ElementLocation> unclosedOpeners() {
         return unclosedOpeners;
     }
 
     /**
-     * The openers that come while a section opened by an earlier opener is still open. The
-     * section the song start opens does not make an opener nested.
-     *
-     * @return their locations, in song order
+     * The section the song start opens does not make an opener nested.
      */
     public List<ElementLocation> nestedOpeners() {
         return nestedOpeners;
@@ -204,14 +161,11 @@ public final class RepeatSections {
         return sectionStarts.get(location);
     }
 
-    /** One open section on the walk's stack. */
     private static final class OpenSection {
 
-        /** The opener's location, or {@code null} for the section the song start opens. */
         private final @Nullable ElementLocation opener;
         private final boolean nested;
 
-        /** The element just after the opener, once the walk has reached it. */
         private @Nullable ElementLocation start = null;
 
         OpenSection(@Nullable ElementLocation opener, boolean nested) {
@@ -224,7 +178,6 @@ public final class RepeatSections {
         }
     }
 
-    /** The state of the forward walk that builds a model. */
     private static final class Walk {
 
         private final Deque<OpenSection> open = new ArrayDeque<>();
@@ -252,11 +205,6 @@ public final class RepeatSections {
             }
         }
 
-        /**
-         * Records the start of the innermost open section as the answer for {@code location}.
-         * Only the section opened just before {@code location} can lack a start, and
-         * {@code location} is its start.
-         */
         private void recordSectionStart(ElementLocation location) {
             var innermost = open.peek();
 
@@ -300,7 +248,6 @@ public final class RepeatSections {
             open.push(new OpenSection(opener, nested));
         }
 
-        /** Ends every open section, at a closing bar or at the end of the song. */
         void endAll() {
             var outermostFirst = open.descendingIterator();
 

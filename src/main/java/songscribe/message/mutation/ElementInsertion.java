@@ -24,8 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 
 /**
- * Mutation recording an element insertion at a specific index on a line.
- * The element reference is required because at construction time the element does not yet live on the line.
+ * Mutation recording an element insertion at an index on a line.
  */
 public record ElementInsertion(Line line, int index, StaffElement element)
     implements Mutation, LineScopedMutation {

@@ -30,27 +30,14 @@ import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
 
-/**
- * Renders point dynamic markings (pp, p, mp, mf, f, ff) below the staff.
- * <p>
- * Each dynamic is drawn as a single SMuFL glyph from the Bravura font,
- * centered over the notehead. This renderer is separate from
- * {@link HairpinRenderer}, which handles hairpin (crescendo/diminuendo) lines.
- */
 public final class DynamicMarkingRenderer implements ElementRenderer<StaffElement> {
 
     // Singleton instance
     private static final DynamicMarkingRenderer INSTANCE = new DynamicMarkingRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private DynamicMarkingRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static DynamicMarkingRenderer getInstance() {
         return INSTANCE;
     }

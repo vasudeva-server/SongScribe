@@ -55,9 +55,8 @@ public final class SelectAllElementsAction extends UIAction {
     }
 
     /**
-     * Vetoes the one line selection {@link Flag#ENABLE_WHEN_LINE_SELECTED} would otherwise
-     * enable: a line with no elements resolves to no selection at all, so there is nothing
-     * to swap the line selection for.
+     * Vetoes the line selection {@link Flag#ENABLE_WHEN_LINE_SELECTED} would otherwise enable
+     * when the line has no elements to select.
      */
     @Override
     protected boolean enableFromSelectionSize(ScoreView score) {

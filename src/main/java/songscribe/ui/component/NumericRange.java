@@ -23,47 +23,24 @@ package songscribe.ui.component;
  * The set of integers a numeric input accepts, and whether it also accepts nothing
  * at all.
  *
- * <p>A rule about numbers rather than about Swing. It exists as its own type so that
- * the same rule can be asked by the field that enforces it, by a binding that derives
- * from what the user has typed, and by a controller validating before it commits —
- * without any of them holding a reference to a text component. A rule reachable only
- * through a live control is a rule the other two have to copy, and the second copy is
- * what tells the user something different about one mistake.
+ * <p>A rule about numbers rather than about Swing, so the field, a binding and a controller can
+ * all ask it without holding a text component.
  *
- * <p>The two queries differ only in what they make of blank text, which is the whole
- * reason {@link Blank} exists: {@link #containsValue} answers whether the text names
- * a number in the range, and blank names no number; {@link #acceptsInput} answers
- * whether a field carrying this range should let the text stand, which for blank text
- * is what {@link Blank} says.
- *
- * @param min the smallest accepted value, inclusive
- * @param max the largest accepted value, inclusive
- * @param blank what an empty or all-whitespace entry means for this range
+ * <p>The two queries differ only in blank text: {@link #containsValue} says whether the text
+ * names a number in the range, and blank names none; {@link #acceptsInput} says whether a field
+ * should let the text stand, which for blank is what {@link Blank} says.
  */
 public record NumericRange(int min, int max, Blank blank) {
 
-    /** Whether a field carrying a range may be left with nothing in it. */
     public enum Blank {
-        /** An empty entry stands, and no range check is made. */
         ACCEPTED,
 
-        /** An empty entry is refused, as an out-of-range one is. */
         REJECTED
     }
 
     /**
-     * Returns whether {@code text} names an integer this range contains.
-     *
-     * <p>Surrounding whitespace is ignored, so text a user has typed can be passed
-     * without being tidied first. Blank text names no integer and is therefore never
-     * contained, whatever {@link #blank} says — that policy is about what a field
-     * tolerates, not about what the range holds.
-     *
-     * @param text the text to test; it need not come from any particular control
-     * @return {@code true} when {@code text} strips to a non-empty string that parses
-     *     as an integer between {@link #min} and {@link #max} inclusive
-     * @invariant blank text answers {@code false} for every range, including one
-     *     whose {@link #blank} is {@link Blank#ACCEPTED}.
+     * Surrounding whitespace is ignored. Blank text is never contained, whatever {@link #blank}
+     * says: that policy is about what a field tolerates, not what the range holds.
      */
     public boolean containsValue(String text) {
         var stripped = text.strip();
@@ -72,16 +49,8 @@ public record NumericRange(int min, int max, Blank blank) {
     }
 
     /**
-     * Returns whether a field carrying this range should let {@code text} stand.
-     *
-     * <p>The same question as {@link #containsValue} except for blank text, which is
-     * accepted exactly when {@link #blank} is {@link Blank#ACCEPTED}. This is the
-     * form a focus-time verifier asks, because a field the user is allowed to leave
-     * empty must not trap them in it.
-     *
-     * @param text the text to test
-     * @return {@code true} when {@code text} is blank and {@link #blank} is
-     *     {@link Blank#ACCEPTED}, or when {@link #containsValue} holds
+     * Blank text is accepted exactly when {@link #blank} is {@link Blank#ACCEPTED}. The
+     * focus-time verifier asks this, so a field the user may leave empty does not trap them.
      */
     public boolean acceptsInput(String text) {
         if (text.isBlank()) {

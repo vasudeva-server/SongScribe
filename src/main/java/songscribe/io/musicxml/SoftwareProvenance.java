@@ -30,39 +30,23 @@ import songscribe.Version;
  * The {@code <software>} provenance string: the one place that spells what this
  * program writes into {@code <encoding>} and what its reader will accept there.
  *
- * <p><b>The invariant this class exists for: a document SongScribe writes passes
- * SongScribe's own provenance gate.</b> Written and recognized form are one
- * definition here — {@link #SOFTWARE} is built from {@link #PRODUCT_NAME} and
- * {@link #RECOGNIZED} matches against the same name — so neither can drift out
- * from under the other. Two separate spellings cannot promise that: reordering
- * the writer's concatenation would leave a gate that still accepted the string
- * it no longer emits.
+ * <p><b>A document SongScribe writes passes SongScribe's own provenance gate.</b> {@link #SOFTWARE}
+ * and {@link #RECOGNIZED} are built from the same {@link #PRODUCT_NAME}.
  *
- * <p>Recognition is deliberately exact rather than a prefix match: a product
- * whose name merely begins with this one, such as {@code SongScribeMax 1.0},
- * is foreign and is refused.
+ * <p>Recognition is exact, not a prefix match: {@code SongScribeMax 1.0} is foreign and is
+ * refused.
  */
 final class SoftwareProvenance {
 
-    /** The product name, as it appears at the head of the {@code <software>} value. */
     static final String PRODUCT_NAME = "SongScribe";
 
     /**
-     * The oldest version whose documents this reader accepts: the first version
-     * that wrote MusicXML at all, so nothing below it was ever emitted.
+     * The first version that wrote MusicXML at all, so nothing below it was ever emitted.
      */
     static final String MIN_VERSION = "2.0.0";
 
-    /**
-     * The exact {@code <software>} value this program emits: the product name, a
-     * space, and {@link Version#PUBLIC_VERSION}.
-     */
     static final String SOFTWARE = PRODUCT_NAME + ' ' + Version.PUBLIC_VERSION;
 
-    /**
-     * The recognized {@code <software>} form. Capture group 1 is the version, which
-     * {@link #check} parses as semver.
-     */
     private static final Pattern RECOGNIZED = Pattern.compile('^' + Pattern.quote(PRODUCT_NAME) + " (.+)$");
 
     private SoftwareProvenance() {}

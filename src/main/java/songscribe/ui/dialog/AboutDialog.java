@@ -60,27 +60,17 @@ import songscribe.util.Utils;
 /**
  * The splash artwork shown on demand, with the web and acknowledgement links added below it.
  *
- * <p>It is deliberately not a {@link BaseDialog}: the whole point is the borderless pane the
- * splash uses, and {@code BaseDialog} always builds a titled, decorated {@code JDialog}. Like
- * a splash screen it dismisses itself on the next thing the user does — a click inside, a
- * click outside, any keypress, or switching away from the application — so it also carries no
- * OK/Cancel lifecycle and no persisted geometry.
+ * <p>Not a {@link BaseDialog}: it needs the borderless pane the splash uses, and it dismisses
+ * itself on the next thing the user does, so it has no OK/Cancel lifecycle and no persisted
+ * geometry.
  *
- * <p>It cannot be modal: Java's modal event filter discards input events aimed at blocked
- * windows before any listener sees them, so a modal window can never learn about the outside
- * click that is supposed to dismiss it.
+ * <p>It cannot be modal: a modal window never learns about the outside click that dismisses it.
  *
- * <p><b>It never takes focus</b> ({@code setFocusableWindowState(false)}), and no part of the
- * dismissal reads window focus. An earlier version dismissed on {@code windowLostFocus}, which
- * a borderless window on macOS cannot be relied on to deliver: sometimes the window never
- * became the key window, so the event never arrived and it could not be dismissed at all, and
- * when it did arrive it came after the click had already raised the frame and re-raised this
- * window above it — a visible flicker. Staying unfocusable leaves the frame active throughout,
- * so there is no activation to race with. Every dismissal trigger is instead a global listener
- * that sees the input before it is dispatched, or the application-background notification.
+ * <p><b>It never takes focus</b>, and no part of the dismissal reads window focus: a borderless
+ * window on macOS does not reliably deliver {@code windowLostFocus}, and when it does the
+ * window flickers.
  *
- * <p>The message subscription ends in {@link #dismiss()}, not in a {@code dispose()} override —
- * this window has no other lifecycle event to hang it on.
+ * <p>The message subscription ends in {@link #dismiss()}, not in a {@code dispose()} override.
  */
 public final class AboutDialog extends JDialog {
 
@@ -89,8 +79,7 @@ public final class AboutDialog extends JDialog {
         "https://github.com/vasudeva-server/SongScribe/blob/main/THIRD_PARTY_LICENSES.txt";
 
     /**
-     * A modifier going down on its own isn't the user doing something — it's the first half of
-     * a shortcut, or a hand resting on Shift — so it doesn't count as a dismissing keypress.
+     * A modifier going down on its own is the first half of a shortcut, so it does not dismiss.
      */
     private static final Set<Integer> MODIFIER_KEYS = Set.of(
         KeyEvent.VK_SHIFT,
@@ -160,7 +149,6 @@ public final class AboutDialog extends JDialog {
         subscription = new MessageSubscription(this);
     }
 
-    /** Shows the window, replacing one that is already up. */
     public static void show(MainFrame mainFrame) {
         var showing = instance;
 
@@ -178,13 +166,12 @@ public final class AboutDialog extends JDialog {
         about.setVisible(true);
     }
 
-    /** Switching to another app takes this down with it. */
     @Handler
     public void applicationDidEnterBackground(ApplicationDidEnterBackgroundNotification message) {
         dismiss();
     }
 
-    /** Every dismissal path funnels through here, and more than one can fire for a single click. */
+    /** More than one dismissal path can fire for a single click. */
     private void dismiss() {
         if (dismissed) {
             return;
@@ -205,13 +192,8 @@ public final class AboutDialog extends JDialog {
     }
 
     /**
-     * Dismisses on a press anywhere else in the application. Presses landing on this window are
-     * left to the content panel's own listener, which is what lets a link click through.
-     *
-     * <p>An {@code AWTEventListener} sees the press before it is dispatched, so this does not
-     * depend on which window is focused or on the order the activation events arrive in. The
-     * press itself is swallowed by the glass pane {@link ActivationGate#armForOverlay()} raised,
-     * because consuming an event from here would not stop Swing delivering it.
+     * The press itself is swallowed by the glass pane {@link ActivationGate#armForOverlay()}
+     * raised, because consuming an event from here would not stop Swing delivering it.
      */
     private void dismissOnOutsideClick(AWTEvent e) {
         if (e.getID() != MouseEvent.MOUSE_PRESSED || !(e.getSource() instanceof Component source)) {
@@ -224,12 +206,8 @@ public final class AboutDialog extends JDialog {
     }
 
     /**
-     * Dismisses on any key, which covers Escape and Cmd+W without binding them separately.
-     *
-     * <p>Returns true so the key goes no further: while this window is up, a keypress dismisses
-     * it and does nothing else. Letting keys through instead would mean Cmd+W closed the song
-     * on its way past. On macOS the screen menu bar handles Cmd+Q before Java sees it, so
-     * quitting still works.
+     * Returns true so the key goes no further; otherwise Cmd+W would close the song on its way
+     * past.
      */
     private boolean dismissOnKeyPress(KeyEvent e) {
         if (e.getID() != KeyEvent.KEY_PRESSED || MODIFIER_KEYS.contains(e.getKeyCode())) {

@@ -38,34 +38,8 @@ import songscribe.dom.Trill;
 
 /**
  * Migrates song data from legacy format (version 1) to new format (version 2).
- * <p>
- * Legacy format stores range data as inline properties (ties, tuplets, crescendo, etc.);
- * the new format stores it as Span objects in Line.spans. The legacy reader turns most ranges
- * (tuplets, endings, hairpins) into pending records that the load passes place; beams and
- * trills it adds directly. A tie is not a {@code Span}: it is a flag on its first note, so the
- * reader ties that note. Note attachments
- * (tempoChange, fermata, etc.) are read directly into Attachment objects by StaffElementIO
- * and need no separate migration step.
  *
- * <h2>Migration history</h2>
- * <ul>
- *   <li><b>v1 → v2</b>: {@link #migrate} — legacy range data converted to Span
- *       objects.</li>
- *   <li><b>v2.0 → v2.1</b>: {@link #migratePixelsToStaffSpace} — pixel-based position
- *       fields converted to staff-space units.</li>
- *   <li><b>v2.1 → v2.2</b>: <em>Intentional no-op.</em> {@code stemDirectionAuto}
- *       defaults to {@code true}, so absence of the {@code <stemDirectionAuto/>} tag in
- *       existing v2.1 files is handled correctly by that default. Re-saving a v2.1 file
- *       stamps it as v2.2.</li>
- *   <li><b>v2.2 → v2.3</b>: {@link #migrateAnnotationDynamics} — text annotations
- *       whose text exactly matches a point dynamic symbol ({@code pp}, {@code p},
- *       {@code mp}, {@code mf}, {@code f}, {@code ff}) are converted to
- *       {@code DynamicAttachment} objects.</li>
- *   <li><b>v2.3 → v2.4</b>: {@link #migrateFinalTerminal} — enforces the terminal
- *       invariant: the last line ends in a valid terminal ({@code FINAL_DOUBLE_BARLINE} or
- *       {@code REPEAT_RIGHT}); all misplaced {@code FINAL_DOUBLE_BARLINE} elements on
- *       non-last lines or in non-terminal positions are removed.</li>
- * </ul>
+ * <p>The v2.1 → v2.2 step is a no-op because {@code stemDirectionAuto} defaults to {@code true}.
  */
 public final class FormatMigrator {
 
@@ -73,15 +47,7 @@ public final class FormatMigrator {
     }
 
     /**
-     * Migrates lines from legacy format to new format.
-     * <p>
-     * If the format version is already 2+, this method does nothing.
      * The caller is responsible for setting the format version on the resulting data.
-     *
-     * @param lines The lines to migrate
-     * @param legacyOffsets Per-line Y position offsets read from legacy XML, keyed by line identity.
-     *                      Lines absent from the map use {@link LegacyLineOffsets#DEFAULTS}.
-     * @param formatVersion The current format version (migration is skipped if >= 2)
      */
     static void migrate(List<? extends Line> lines, Map<Line, LegacyLineOffsets> legacyOffsets, int formatVersion) {
         if (formatVersion >= 2) {
@@ -94,19 +60,7 @@ public final class FormatMigrator {
     }
 
     /**
-     * Converts the pixel-based position values of a pre-v2.1 file (which stores positions in
-     * pixels) to staff-space units: the song-level line width and row-height adjustment, each
-     * line's position values, and the offsets of the tuplets and hairpins the reader found.
-     * <p>
-     * Fields that are already unit-agnostic (e.g. Note.staffPosition, which is a
-     * diatonic step count) are NOT converted.
-     *
      * @param ctx the parsed song, before assembly, with every value in pixels
-     * @effects divides every converted value of {@code ctx} by
-     *     {@link DocumentScale#PIXELS_PER_STAFF_SPACE}, with no rounding; replaces
-     *     {@code ctx.pendingTuplets} and {@code ctx.pendingHairpins} with lists whose entries
-     *     carry converted offsets — a pending span is not yet a span, so there is no registry to
-     *     convert it in place
      */
     static void migratePixelsToStaffSpace(MigrationContext ctx) {
         var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
@@ -152,26 +106,10 @@ public final class FormatMigrator {
     }
 
 
-    /**
-     * Migrates a single line from legacy format to new format.
-     *
-     * @param line The line to migrate
-     * @param legacyOffsets Per-line Y position offsets keyed by line identity.
-     */
     private static void migrateLine(Line line, Map<Line, LegacyLineOffsets> legacyOffsets) {
         migrateLineLevelOffsets(line, legacyOffsets.getOrDefault(line, LegacyLineOffsets.DEFAULTS));
     }
 
-    /**
-     * Migrates deprecated line-level Y position offsets to per-instance offsets.
-     * <p>
-     * Converts the three legacy offsets carried by {@code offsets} to per-instance values on the
-     * respective element/attachment objects. Also migrates below-staff annotations to above-staff
-     * with an appropriate userYOffset.
-     *
-     * @param line    The line whose elements are updated
-     * @param offsets The legacy Y position values read from the format v1 XML for this line
-     */
     private static void migrateLineLevelOffsets(Line line, LegacyLineOffsets offsets) {
         var spans = line.spanRegistry();
 
@@ -222,19 +160,6 @@ public final class FormatMigrator {
         }
     }
 
-    /**
-     * Converts text annotations that exactly match a point dynamic symbol into
-     * {@link DynamicAttachment} objects.
-     * <p>
-     * Called when loading files saved before v2.3 introduced native dynamic
-     * serialization. Annotations whose text is one of {@code pp}, {@code p},
-     * {@code mp}, {@code mf}, {@code f}, or {@code ff} (case-sensitive) are
-     * replaced with the corresponding {@code DynamicAttachment}. If the note
-     * already has a {@code DynamicAttachment}, the annotation is removed but
-     * no duplicate is added.
-     *
-     * @param lines The lines to migrate
-     */
     public static void migrateAnnotationDynamics(List<? extends Line> lines) {
         var symbolMap = buildDynamicSymbolMap();
 
@@ -245,10 +170,6 @@ public final class FormatMigrator {
         }
     }
 
-    /**
-     * Builds a map from dynamic symbol string to {@link DynamicAttachment.DynamicType}
-     * for the 6 UI types (those with a glyph).
-     */
     private static Map<String, DynamicAttachment.DynamicType> buildDynamicSymbolMap() {
         var map = new HashMap<String, DynamicAttachment.DynamicType>();
 
@@ -261,10 +182,6 @@ public final class FormatMigrator {
         return map;
     }
 
-    /**
-     * Migrates a single note's annotation to a {@link DynamicAttachment} if the
-     * annotation text matches a dynamic symbol.
-     */
     private static void migrateAnnotationDynamic(
         StaffElement note,
         Map<String, DynamicAttachment.DynamicType> symbolMap
@@ -292,21 +209,6 @@ public final class FormatMigrator {
     }
 
     /**
-     * Enforces the terminal invariant on every line in the song.
-     * <p>
-     * Called when loading any file saved before v2.4. The decision tree for the last line:
-     * <ul>
-     *   <li>Valid terminal last element ({@code FINAL_DOUBLE_BARLINE} or
-     *       {@code REPEAT_RIGHT}) — no-op (both are conformant terminals).</li>
-     *   <li>Replaceable ending barline ({@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE},
-     *       {@code REPEAT_LEFT_RIGHT}) — replaced with {@code FINAL_DOUBLE_BARLINE}.</li>
-     *   <li>Any other element, or empty line — {@code FINAL_DOUBLE_BARLINE} appended.</li>
-     * </ul>
-     * All {@code FINAL_DOUBLE_BARLINE} elements on non-last lines, and any
-     * {@code FINAL_DOUBLE_BARLINE} not in the terminal position of the last line, are
-     * removed before applying the decision tree. Interior {@code REPEAT_RIGHT} elements
-     * on non-last lines are left untouched.
-     *
      * @param lines the lines to migrate (not yet attached to a {@code Song})
      */
     public static void migrateFinalTerminal(List<? extends Line> lines) {
@@ -341,7 +243,6 @@ public final class FormatMigrator {
         }
     }
 
-    /** Removes all {@code FINAL_DOUBLE_BARLINE} elements from {@code line} in reverse order. */
     private static void stripFinalBarlines(Line line) {
         for (var i = line.elementCount() - 1; i >= 0; i--) {
             if (line.getElement(i).getType() == ElementType.FINAL_DOUBLE_BARLINE) {
@@ -350,7 +251,6 @@ public final class FormatMigrator {
         }
     }
 
-    /** Removes {@code FINAL_DOUBLE_BARLINE} elements that are not the last element of {@code line}. */
     private static void stripNonTerminalFinalBarlines(Line line) {
         for (var i = line.elementCount() - 2; i >= 0; i--) {
             if (line.getElement(i).getType() == ElementType.FINAL_DOUBLE_BARLINE) {

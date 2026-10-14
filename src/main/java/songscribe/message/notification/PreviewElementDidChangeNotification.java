@@ -41,8 +41,8 @@ public class PreviewElementDidChangeNotification extends Message {
     }
 
     /**
-     * @param line  The line the preview element would be inserted into, or null if not yet known
-     * @param index The insertion index within {@code line}; meaningless when {@code line} is null
+     * {@code line} is null if not yet known; {@code index} is meaningless when {@code line} is
+     * null.
      */
     public PreviewElementDidChangeNotification(@Nullable StaffElement previewElement, @Nullable Line line, int index) {
         this.previewElement = previewElement;

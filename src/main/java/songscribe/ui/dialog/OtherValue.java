@@ -22,20 +22,13 @@ package songscribe.ui.dialog;
 import songscribe.util.Copyable;
 
 /**
- * The text {@link OtherValueDialog} opens on.
- *
- * <p>It exists because {@link String} is a JDK class and cannot be made {@link Copyable}, which
- * {@link DialogController}'s input bound requires. {@link FontChoice} is the same case for
- * {@link java.awt.Font}.
- *
- * @param text the value to show in the field when the prompt opens
+ * The text {@link OtherValueDialog} opens on. It exists because {@link String} cannot be made
+ * {@link Copyable}, which {@link DialogController}'s input bound requires.
  */
 record OtherValue(String text) implements Copyable<OtherValue> {
 
     /**
-     * {@inheritDoc}
-     *
-     * @return {@code this}; {@link String} is immutable, so there is nothing for a copy to separate
+     * {@link String} is immutable, so there is nothing for a copy to separate.
      */
     @Override
     public OtherValue copy() {

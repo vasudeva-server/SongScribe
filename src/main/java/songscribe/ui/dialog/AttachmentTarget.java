@@ -27,24 +27,11 @@ import songscribe.dom.StaffElement;
 /**
  * The element an attachment dialog edits, together with the line holding it.
  *
- * <p>The two travel as one because every commit needs both: the element carries the attachment,
- * while the line owns the modification bracket and resolves the element's index for the mutation
- * record. Bound together, a target whose element is not on its line cannot be built, so the
- * refusal lands at the gesture that opens the dialog rather than at OK, at the far end of a modal
- * dialog.
- *
  * <p><strong>Invariant: {@link #element()} is an element of {@link #line()}.</strong> Established
- * at construction and relied on by {@link #elementIndex()}, so a target that could only fail later
- * cannot be built at all.
- *
- * @param line    the line holding {@code element}
- * @param element the element whose attachment is being edited
+ * at construction and relied on by {@link #elementIndex()}.
  */
 public record AttachmentTarget(Line line, StaffElement element) {
 
-    /**
-     * @throws IllegalArgumentException if {@code element} is not an element of {@code line}
-     */
     public AttachmentTarget {
         if (!line.contains(element)) {
             throw new IllegalArgumentException("element is not in the given line");
@@ -52,15 +39,7 @@ public record AttachmentTarget(Line line, StaffElement element) {
     }
 
     /**
-     * The target for {@code element} in {@code line}, when there is one.
-     *
-     * <p>The non-throwing door to the class invariant, for the callers that must decide whether to
-     * open a dialog at all rather than assert that they may. Every such check goes through here,
-     * so the rule for what makes a target valid is stated in one place.
-     *
-     * @param line    the line the element is expected to be in
-     * @param element the candidate element; {@code null} is accepted and answers {@code null},
-     *                since a selection that resolved to nothing is the common way to reach this
+     * @param element the candidate element; {@code null} is accepted and answers {@code null}
      * @return the target, or {@code null} when {@code element} is null or not in {@code line}
      */
     public static @Nullable AttachmentTarget forElement(Line line, @Nullable StaffElement element) {
@@ -72,12 +51,8 @@ public record AttachmentTarget(Line line, StaffElement element) {
     }
 
     /**
-     * The element's position in the line, as {@code Line}'s element-modification helpers index it.
-     *
-     * <p>Re-read on each call rather than captured at construction, so an insertion or deletion
-     * elsewhere in the line cannot leave this answering a stale position.
-     *
-     * @return the index, never negative — the class invariant guarantees the element is present
+     * Re-read on each call, so an insertion or deletion elsewhere in the line cannot leave it
+     * stale.
      */
     public int elementIndex() {
         return line.getElementIndex(element);

@@ -32,8 +32,7 @@ import songscribe.dom.Song;
 /**
  * The check of {@link LintRule#BALANCED_REPEATS}: every repeat section is opened once and
  * closed once, by repeats, and no section opens inside another. What opens, closes and nests a
- * section is the rule of {@link RepeatSections}, which playback reads too; this check reports
- * the bars that model leaves unmatched.
+ * section is {@link RepeatSections}' rule, which playback reads too.
  *
  * <p>Each violation carries the heading {@link Strings#LINT_REPEATS_UNBALANCED} and the mark
  * {@link LintMark.Flagged} on the offending bar:
@@ -49,7 +48,6 @@ import songscribe.dom.Song;
  */
 final class BalancedRepeatsCheck implements LintCheck {
 
-    /** Orders element locations as the song reads: by line, then by element within a line. */
     private static final Comparator<ElementLocation> SONG_ORDER =
         Comparator.comparingInt(ElementLocation::lineIndex).thenComparingInt(ElementLocation::elementIndex);
 

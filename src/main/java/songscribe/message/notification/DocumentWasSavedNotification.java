@@ -23,9 +23,8 @@ package songscribe.message.notification;
 import songscribe.message.Message;
 
 /**
- * Posted after a successful file write to signal that the song
- * should be marked as unmodified. Must only be posted after the write
- * succeeds -- if the write fails, modified must remain true.
+ * Posted after a successful file write; must not be posted if the write fails, or the song
+ * would be marked unmodified.
  */
 public class DocumentWasSavedNotification extends Message {
 }

@@ -20,9 +20,6 @@
 
 package songscribe.message.mutation;
 
-/**
- * Identifies which lyrics text changed in a {@link LyricsChange} mutation.
- */
 public enum LyricsField {
     UNDER,
     BANGLA,

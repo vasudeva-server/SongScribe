@@ -28,11 +28,8 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Mutation recording the deletion of a contiguous range of elements from a line; a single
- * element is a range of one. The elements are carried because after the deletion they are no
- * longer reachable through the line.
+ * element is a range of one.
  *
- * @param line            the line the elements were deleted from
- * @param range           the indices the elements held before the deletion
  * @param deletedElements the removed elements, in order; {@code range.size()} of them
  */
 public record ElementDeletion(Line line, ElementRange range, List<StaffElement> deletedElements)

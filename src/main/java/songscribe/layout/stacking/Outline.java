@@ -24,23 +24,13 @@ import songscribe.layout.Footprint;
 import songscribe.layout.StaffExtents;
 
 /**
- * An element's footprint together with the shapes of its two vertical edges: the inner one, which
- * decides where the element may sit, and the outer one, which it reserves for whatever stacks
- * outside it.
+ * An element's footprint together with the shapes of its inner edge, which decides where it may
+ * sit, and its outer edge, which it reserves for whatever stacks outside it.
  *
- * @param footprint the element's horizontal footprint
- * @param profiles  the element's inner and outer edges, each measured from the footprint's left
- *                  edge
+ * @param profiles each edge is measured from the footprint's left edge
  */
 record Outline(Footprint footprint, StaffExtents.Profiles profiles) {
 
-    /**
-     * Returns the outline of an element a neighbor may treat as a rectangle: both edges flat
-     * across the whole footprint.
-     *
-     * @param footprint the element's horizontal footprint
-     * @return the outline with {@link StaffExtents.Profiles#flat} edges as wide as {@code footprint}
-     */
     static Outline flat(Footprint footprint) {
         return new Outline(footprint, StaffExtents.Profiles.flat(footprint.widthSs()));
     }

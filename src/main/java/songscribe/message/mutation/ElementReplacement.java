@@ -24,10 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 
 /**
- * Mutation recording an atomic swap of the element at a specific index on a line.
- * Both the pre-swap element and the post-swap element are captured so that undo
- * can restore the previous occupant and redo can reinstall the replacement without
- * needing to recreate either.
+ * Mutation recording an atomic swap of the element at an index on a line.
  */
 public record ElementReplacement(Line line, int index, StaffElement oldElement, StaffElement newElement)
     implements Mutation, LineScopedMutation {

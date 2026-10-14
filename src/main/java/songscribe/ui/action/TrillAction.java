@@ -37,13 +37,8 @@ import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
 
 /**
- * Checkable action that toggles a {@link Trill} over the current selection.
- * <p>
- * The checked state reflects whether the selection overlaps any existing
- * {@code Trill} range. Checking adds one trill spanning the selection (clamped
- * to the outermost pitched notes); unchecking removes every trill overlapping
- * the selection. The apply step is line-scoped, so this extends
- * {@link SelectableUIAction} rather than the per-element reflection base.
+ * Checkable action that toggles a {@link Trill} over the current selection; unchecking removes
+ * every trill overlapping the selection.
  */
 public final class TrillAction extends SelectableUIAction {
 
@@ -102,10 +97,6 @@ public final class TrillAction extends SelectableUIAction {
         refreshSelectedState();
     }
 
-    /**
-     * Sets the checked state to reflect whether the current selection overlaps
-     * any existing trill.
-     */
     private void refreshSelectedState() {
         var scoreView = getScoreView();
         var range = (scoreView != null) ? selectedRangeOf(scoreView) : null;

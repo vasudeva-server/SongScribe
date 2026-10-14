@@ -23,23 +23,15 @@ import java.util.List;
 
 /**
  * A user-facing string named but not resolved: a {@link songscribe.Strings} key together with
- * the arguments its {@code MessageFormat} pattern needs.
- *
- * <p>It exists so that code deciding <em>what</em> to tell the user can do so without producing
- * text. Resolving is a locale concern and belongs to whoever displays the message; a back end
- * that resolved would be making that decision on the domain side of the dialog interface. The
- * presenter passes {@link #key()} and {@link #args()} to
- * {@link songscribe.ui.OptionDialogs}, which owns the resolution rule — a value is a
- * {@code MessageFormat} pattern only when read through the varargs {@code Strings.get}, so an
- * empty {@link #args()} must resolve through the single-argument form instead.
+ * the arguments its {@code MessageFormat} pattern needs. Resolving is a locale concern that
+ * belongs to whoever displays the message, so code deciding <em>what</em> to tell the user
+ * produces no text.
  *
  * <p>Instances are immutable: {@link #args()} answers an unmodifiable list unaffected by later
  * changes to the list the constructor was given.
  *
- * <p>An argument may itself be a {@code LocalizedMessage}, which is how a message names a
- * user-facing word it must not resolve — a unit abbreviation, a role name. The presenter
- * resolves it along with the pattern. A nested message takes no arguments of its own, so the
- * nesting is one level deep and never recursive.
+ * <p>An argument may itself be a {@code LocalizedMessage}, which the presenter resolves along
+ * with the pattern. A nested message takes no arguments of its own, so nesting is one level deep.
  *
  * @param key  a {@link songscribe.Strings} constant, never a raw string literal
  * @param args the pattern arguments, in the order {@code key}'s pattern indexes them; empty when
@@ -52,8 +44,6 @@ public record LocalizedMessage(String key, List<Object> args) {
     }
 
     /**
-     * A message whose value is literal text and takes no format arguments.
-     *
      * @param key a {@link songscribe.Strings} constant whose value contains no
      *            {@code MessageFormat} placeholders
      */

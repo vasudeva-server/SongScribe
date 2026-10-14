@@ -31,18 +31,14 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
 /**
- * Reads and writes the tempo change on one element, for {@link TempoChangeDialog}.
- *
- * <p>A tempo change carries the beat, so it redefines the beat from its element onwards exactly
- * as a beat change does.
+ * Reads and writes the tempo change on one element, for {@link TempoChangeDialog}. A tempo
+ * change carries the beat, so it redefines the beat from its element onwards as a beat change
+ * does.
  *
  * <p>The value crossing the dialog interface is a {@link Tempo}, not the
- * {@link TempoChangeAttachment} that holds it: the attachment is a node in the document graph and
- * the dialog has no business holding one.
+ * {@link TempoChangeAttachment} that holds it, which is a node in the document graph.
  *
- * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: the
- * beats-per-minute comes from a bounded spinner and the note value from a fixed list, so every
- * {@link Tempo} the dialog can assemble is one the score can hold.
+ * <p>Nothing is refused, so {@link DialogController#validate} keeps its default.
  */
 public final class TempoChangeController extends AttachmentDialogController<Tempo> {
 
@@ -71,13 +67,6 @@ public final class TempoChangeController extends AttachmentDialogController<Temp
         return attachment != null ? attachment.getTempo() : null;
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Replaces the element's tempo change when it already has one, and adds one when it does
-     * not; either way the element ends up carrying exactly {@code change}, and either way exactly
-     * one {@link SongDidChangeNotification} is posted.
-     */
     @Override
     protected void commit(Tempo change) {
         var element = element();

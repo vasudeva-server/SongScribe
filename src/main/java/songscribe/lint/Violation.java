@@ -22,15 +22,8 @@ package songscribe.lint;
 
 /**
  * One thing a {@link LintCheck} found wrong with the song, before it is tied to its rule. A
- * violation has exactly one mark: one finding, one place.
- *
- * @param heading     the heading the Messages panel and the tooltip show above the violation,
- *                    already resolved through {@code Strings.get}. The check chooses it for each
- *                    violation, so one rule can list different kinds of breach under different
- *                    headings.
- * @param description the user-facing text that says what is wrong, already resolved through
- *                    {@code Strings.get}; the view shows it as it is and never interprets it
- * @param mark        where the violation sits and how the score draws it
+ * violation has exactly one mark. The view shows the heading and description as they are and
+ * never interprets them.
  */
 public record Violation(String heading, String description, LintMark mark) {
 }

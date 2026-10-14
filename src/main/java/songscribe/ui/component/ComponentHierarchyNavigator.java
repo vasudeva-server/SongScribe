@@ -29,7 +29,7 @@ public final class ComponentHierarchyNavigator {
 
     private final ComponentHierarchyProvider provider;
 
-    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    /** Null when detached (tests). */
     @Nullable
     private ScoreView scoreView;
 
@@ -37,19 +37,15 @@ public final class ComponentHierarchyNavigator {
         this.provider = provider;
     }
 
-    /** Sets the owning {@link ScoreView} so the single-line fallback spacing tracks zoom. */
     public void setScoreView(ScoreView scoreView) {
         this.scoreView = scoreView;
     }
 
-    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
     private ViewScale viewScale() {
         return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
-    /**
-     * Returns the LineComponent for the given line index, or null if not found.
-     */
+    /** Null if no line component has the given line index. */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
         var mainPanel = provider.getMainPanel();
@@ -69,12 +65,6 @@ public final class ComponentHierarchyNavigator {
         return null;
     }
 
-    /**
-     * Sets up the selection provider and scoreView reference for all line components.
-     *
-     * @param selectionProvider Function that checks if a note is selected
-     * @param scoreView The scoreView instance to set on line components
-     */
     public void setupLineComponentState(
         LineComponent.SelectionProvider selectionProvider,
         ScoreView scoreView

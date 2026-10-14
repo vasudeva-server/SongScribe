@@ -45,20 +45,17 @@ import java.util.Objects;
  *       key's, and nothing intervenes. Not written.</li>
  * </ul>
  *
- * <p>This is the {@link AccidentalState} of a note the walk has decided. The constructor is
- * package-private so that only {@code AccidentalChain}, in this package, constructs one, which
- * is what makes every instance a decision of the rule rather than a value some caller chose.
- * That restriction is why this is a final class rather than a record: an explicitly declared
- * canonical constructor must be at least as accessible as the record class (JLS §8.10.4), so a
- * public record cannot restrict who constructs it.
+ * <p>The constructor is package-private so that only {@code AccidentalChain} constructs one,
+ * which makes every instance a decision of the rule. That is why this is a final class rather
+ * than a record: a public record's canonical constructor cannot be restricted (JLS §8.10.4).
  *
  * <p>Immutable; two instances are equal when their accidentals and types are.
  */
 public final class ChainedAccidental implements AccidentalState {
 
     /**
-     * The place a note holds in the accidental chain at its staff position, and with it whether
-     * the accidental is written on the page. The class Javadoc states each state's condition.
+     * The place a note holds in the accidental chain, and with it whether the accidental is
+     * written.
      */
     public enum ChainType {
         IN_KEY(false),
@@ -73,27 +70,14 @@ public final class ChainedAccidental implements AccidentalState {
             this.written = written;
         }
 
-        /**
-         * @return {@code true} when a note in this state has its accidental drawn: {@link #ANCHOR},
-         *     {@link #REPETITION} and {@link #CANCEL}; {@code false} for {@link #IN_KEY} and
-         *     {@link #IMPLICIT}
-         */
         public boolean isWritten() {
             return written;
         }
 
         /**
-         * Decides a note's state under the rule in the class Javadoc.
-         *
-         * @param sounding      the alteration the note sounds
          * @param inForce       the alteration in force at the note's staff position before it;
          *                      the key's alteration where no written accidental is in force
-         * @param keyAlteration the key's alteration for the note's pitch class,
-         *                      {@link Accidental#NATURAL} when the key does not alter it
-         * @param intervenes    whether something intervenes before the note
-         * @return the state; a pure function of the four arguments
-         * @invariant the result {@link #isWritten()} exactly when {@code sounding != inForce}
-         *     or ({@code inForce != keyAlteration} and {@code intervenes})
+         * @param keyAlteration {@link Accidental#NATURAL} when the key does not alter the pitch class
          */
         public static ChainType decide(
             Accidental sounding, Accidental inForce, Accidental keyAlteration, boolean intervenes
@@ -118,24 +102,14 @@ public final class ChainedAccidental implements AccidentalState {
         this.type = type;
     }
 
-    /**
-     * @return the alteration the note sounds, whatever its state
-     */
     public Accidental accidental() {
         return accidental;
     }
 
-    /**
-     * @return the note's place in its chain
-     */
     public ChainType type() {
         return type;
     }
 
-    /**
-     * @return {@code true} when the accidental is drawn on the page; the same answer as
-     *     {@link #type()}'s {@link ChainType#isWritten()}
-     */
     public boolean isWritten() {
         return type.isWritten();
     }

@@ -23,11 +23,8 @@ package songscribe.message.mutation;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Shared validation helper for mutation records that carry {@code Object}-typed
- * old/new values against a field enum with an expected runtime type. Each mutation
- * record invokes {@link #validate} from its canonical constructor so a mismatched
- * value fails loudly at construction time rather than at cast time in an undo
- * replay or subscriber.
+ * Validates the {@code Object}-typed values of a mutation against its field enum's expected type,
+ * so a mismatch fails at construction rather than in an undo replay.
  */
 final class FieldTypeValidator {
 

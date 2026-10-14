@@ -25,10 +25,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Represents a trill marking that can span one or more notes.
- * <p>
- * Trills are always displayed above the staff. Even single-note trills
- * are represented as Spans where the anchor and end note are the same.
+ * A trill marking over one or more notes; a single-note trill has the same anchor and end.
  */
 public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
 
@@ -36,7 +33,6 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
     public static final double TRILL_GLYPH_WIDTH_SS;
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
-    /** The heading a removed trill is reported under. */
     private static final String REPORT_HEADING_KEY = Strings.REPORT_TRILLS_REMOVED;
 
     static {
@@ -45,29 +41,15 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
         TRILL_GLYPH_HEIGHT_SS = bbox.heightSs();
     }
 
-    /**
-     * Creates a trill spanning multiple elements.
-     *
-     * @param anchorElement The first element of the trill
-     * @param endElement    The last element of the trill
-     */
     public Trill(StaffElement anchorElement, StaffElement endElement) {
         super(StaffElement.class, anchorElement, endElement);
     }
 
-    /**
-     * Creates a single-note trill.
-     *
-     * @param anchorElement The note with the trill
-     */
     @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
     public Trill(StaffElement anchorElement) {
         this(anchorElement, anchorElement);
     }
 
-    /**
-     * {@link Displacement#REPLACE_OVERLAPPING}: a new trill replaces every trill it overlaps.
-     */
     @Override
     protected Displacement displacement() {
         return Displacement.REPLACE_OVERLAPPING;
@@ -83,12 +65,6 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
         return new Trill(newAnchor, newEnd);
     }
 
-    /**
-     * Returns the width of the trill "tr" glyph in staff-space units — the glyph's own width,
-     * not the extent the wavy line covers, which {@code TrillGeometry.inkExtentSs} computes.
-     *
-     * @return the glyph's width in staff spaces
-     */
     public double intrinsicWidthSs() {
         return TRILL_GLYPH_WIDTH_SS;
     }

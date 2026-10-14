@@ -30,48 +30,8 @@ import songscribe.dom.NoteValue;
  * Bidirectional lookup table between a SongScribe {@link NoteValue} and its MusicXML
  * {@code <type>} token, plus tick-duration computation.
  *
- * <p>A rest is distinguished from its note counterpart by a {@code <rest/>} child
- * within the {@code <note>} element, not by a separate token. A grace note is
- * distinguished by a {@code <grace>} child within the {@code <note>} element. Both
- * the rest and grace variants map to the same {@code <type>} token as the
- * corresponding pitched note, which is why the tables key on the value rather than
- * on the {@link ElementType}.
- *
- * <p>This class owns the undotted {@code <duration>} tick count of each value: the
- * {@code <type>} token and the tick count both key off the same {@link NoteValue},
- * so they share one class rather than two parallel tables. Dots lengthen that base
- * through {@link songscribe.dom.Dots#augment}.
- *
- * <p>Special-shape rules:
- * <ul>
- *   <li>Grace notes emit {@code <type>} but <b>no</b> {@code <duration>} —
- *       use {@link #hasDuration(ElementType)} to guard {@code <duration>} emission.</li>
- *   <li>Rests emit {@code <duration>} + {@code <type>} + {@code <rest/>}.</li>
- * </ul>
- *
- * <p>ASCII table — single {@code NoteValue → <type> token + base-tick factor}.
- * A rest and a grace note share the value of their pitched counterpart:
- * <pre>
- * NoteValue       &lt;type&gt;    base ticks (DIVISIONS = 13440)
- * ---------------------------------------------------------
- * WHOLE           whole     4 × DIVISIONS = 53760
- * HALF            half      2 × DIVISIONS = 26880
- * QUARTER         quarter   1 × DIVISIONS = 13440
- * EIGHTH          eighth    DIVISIONS / 2  =  6720
- * SIXTEENTH       16th      DIVISIONS / 4  =  3360
- * THIRTY_SECOND   32nd      DIVISIONS / 8  =  1680
- *
- * Dot augmentation: base × (2^(d+1) − 1) / 2^d   where d = dotCount
- *   0 dots → × 1      (base)
- *   1 dot  → × 3/2    (base + base/2)
- *   2 dots → × 7/4    (base + base/2 + base/4)
- *
- * Divisibility check — DIVISIONS must survive every tuplet ratio N in {2..7}
- * as well as every dot count, not just the plain base values above:
- *   smallest fraction: double-dotted 32nd = 1680 × 7/4 = 2940 ticks  ✓
- *   2940 must also stay an exact integer once scaled by M/N for every
- *   conventional tuplet — see the class-level DIVISIONS derivation below.
- * </pre>
+ * <p>Grace notes emit {@code <type>} but <b>no</b> {@code <duration>}; guard
+ * {@code <duration>} emission with {@link #hasDuration(ElementType)}.
  */
 public final class NoteTypeMapping {
 
@@ -161,12 +121,6 @@ public final class NoteTypeMapping {
     // Public API
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the MusicXML {@code <type>} token for the given {@link NoteValue}.
-     *
-     * @param value the written note value
-     * @return the {@code note-type-value} token MusicXML spells that value with
-     */
     public static String typeToken(NoteValue value) {
         return switch (value) {
             case WHOLE -> TYPE_WHOLE;
@@ -178,11 +132,6 @@ public final class NoteTypeMapping {
         };
     }
 
-    /**
-     * The undotted {@code <duration>} tick count of {@code value}.
-     *
-     * @return the undotted tick count
-     */
     static int baseTicks(NoteValue value) {
         return switch (value) {
             case WHOLE -> WHOLE_TICKS;
@@ -195,17 +144,8 @@ public final class NoteTypeMapping {
     }
 
     /**
-     * Returns the {@link ElementType} for the given MusicXML {@code <type>} token
-     * and note-shape flags, or {@code null} if the token is not recognised.
-     *
-     * @param typeToken the MusicXML {@code <type>} text content (e.g. {@code "quarter"}),
-     *                  already trimmed
-     * @param isRest    {@code true} if a {@code <rest/>} child was present in the {@code <note>}
-     * @param isGrace   {@code true} if a {@code <grace>} child was present in the {@code <note>};
-     *                  when {@code true} the token is not consulted, since the one grace type
-     *                  is the answer whatever the token says
-     * @return the grace type when {@code isGrace}; otherwise the rest or the note of the value
-     *     the token names, or {@code null} if the token names no value
+     * Returns {@code null} if the token names no value; with {@code isGrace} the token is not
+     * consulted. {@code typeToken} is already trimmed.
      */
     @Nullable
     public static ElementType forTypeToken(String typeToken, boolean isRest, boolean isGrace) {
@@ -223,24 +163,15 @@ public final class NoteTypeMapping {
     }
 
     /**
-     * Returns the {@link NoteValue} a MusicXML {@code <type>}-valued token names, such as the text
-     * of a {@code <type>} or a {@code <normal-type>}.
-     *
-     * @param typeToken the token's text content (e.g. {@code "quarter"}), already trimmed
-     * @return the value the token names, or {@code null} if it names none
+     * Returns {@code null} if the token names no value. {@code typeToken} is already trimmed.
      */
     public static @Nullable NoteValue noteValueForTypeToken(String typeToken) {
         return REVERSE_MAP.get(typeToken);
     }
 
     /**
-     * Returns {@code true} if the given {@link ElementType} emits a {@code <duration>}
-     * element in MusicXML output: a pitched note or a rest does; a grace note does not,
-     * because SongScribe assigns it zero playback time and never steals from the host
-     * note. A type that is none of those has no duration at all.
-     *
-     * @param type the element type being written
-     * @return {@code true} for a pitched note or a rest; {@code false} for every other type
+     * A grace note emits no {@code <duration>} because SongScribe assigns it zero playback time
+     * and never steals from the host note.
      */
     public static boolean hasDuration(ElementType type) {
         return type.isDuration();

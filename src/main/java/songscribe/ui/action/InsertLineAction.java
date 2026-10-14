@@ -70,10 +70,6 @@ public final class InsertLineAction extends UIAction {
         };
     }
 
-    /**
-     * All three variants are Return with the menu shortcut key; the two that act
-     * relative to the selected line add a distinguishing modifier.
-     */
     private static int getAcceleratorModifiers(InsertLineCommand.Type type) {
         return switch (type) {
             case ADD_AT_END -> UIUtils.MENU_SHORTCUT_MASK;

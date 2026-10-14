@@ -28,27 +28,14 @@ import songscribe.dom.StaffElement;
 import songscribe.engraving.StaffPosition;
 
 /**
- * Where an element's ink sits vertically on the staff — a different question from where a
- * note's pitch sits, which only a note can answer. Every element has ink, so every element has
- * a seat: a note's is its staff position, a rest's and a breath mark's is the seat their
- * appearance declares, and a barline or a key change spans the staff and is seated on its
- * middle line.
- *
- * <p>The stackers, the hit geometry and the renderers ask this of a column whose element may
- * be of any kind. A site that asks about a note's pitch narrows to {@link NoteElement}
- * instead and reads the staff position directly.
+ * Where an element's ink sits vertically on the staff, as distinct from where a note's pitch
+ * sits, which only a note can answer. Every element has a seat.
  */
 public final class ElementSeat {
 
     private ElementSeat() {
     }
 
-    /**
-     * Returns the staff position an element's ink is seated at.
-     *
-     * @param element the element
-     * @return the seat
-     */
     public static StaffPosition seatSp(StaffElement element) {
         return switch (element) {
             case NoteElement note -> note.getStaffPosition();
@@ -58,12 +45,6 @@ public final class ElementSeat {
         };
     }
 
-    /**
-     * Returns the seat of an element's ink as a distance from the middle staff line.
-     *
-     * @param element the element
-     * @return {@link StaffPosition#toSs} of {@link #seatSp}
-     */
     public static double seatSs(StaffElement element) {
         return seatSp(element).toSs();
     }

@@ -30,18 +30,7 @@ import java.awt.geom.AffineTransform;
 
 import org.jspecify.annotations.Nullable;
 
-/**
- * Saves and restores {@link Graphics2D} properties using try-with-resources.
- * <p>
- * Usage:
- * <pre>
- * try (var _ = GraphicsState.save(g2, Property.COLOR, Property.STROKE)) {
- *     g2.setColor(Color.RED);
- *     g2.setStroke(new BasicStroke(2f));
- *     // ... render ...
- * } // color and stroke are automatically restored
- * </pre>
- */
+/** Saves and restores {@link Graphics2D} properties using try-with-resources. */
 public final class GraphicsState implements AutoCloseable {
 
     public enum Property {
@@ -69,13 +58,6 @@ public final class GraphicsState implements AutoCloseable {
         this.propertyMask = propertyMask;
     }
 
-    /**
-     * Saves the specified properties from the graphics context.
-     *
-     * @param g2         the graphics context
-     * @param properties the properties to save and restore
-     * @return an {@link AutoCloseable} that restores the saved properties when closed
-     */
     public static GraphicsState save(
         Graphics2D g2,
         Property ... properties

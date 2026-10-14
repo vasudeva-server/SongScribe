@@ -27,8 +27,8 @@ import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DurationWasSelectedNotification;
 
 /**
- * An action group that manages non-duration actions (bars and breath mark).
- * Duration actions and rest mode are mutually exclusive with non-duration actions.
+ * The non-duration actions (bars and breath mark), mutually exclusive with duration actions and
+ * rest mode.
  */
 public class NonDurationActionGroup extends ActionGroup<ElementTypeAction> {
 

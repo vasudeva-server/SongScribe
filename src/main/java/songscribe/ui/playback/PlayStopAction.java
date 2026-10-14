@@ -108,10 +108,6 @@ public final class PlayStopAction extends SequencerAction {
         applyTooltip();
     }
 
-    /**
-     * Sets the tooltip: why Play is disabled when a lint finding blocks playback, otherwise the
-     * text of the Play or Stop state.
-     */
     private void applyTooltip() {
         String tooltip;
 

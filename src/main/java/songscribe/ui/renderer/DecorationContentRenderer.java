@@ -28,28 +28,15 @@ import songscribe.layout.DecorationContent;
 import songscribe.layout.MetronomeContent;
 
 /**
- * The one place a {@link DecorationContent} is told apart from its siblings.
- * <p>
- * A decoration's renderer knows which element it draws but not, from the element's layout alone,
- * which kind of content that layout carries — the decoration map is keyed by element, so the
- * content comes back as the sealed interface. Routing every such draw through here means no
- * renderer casts: each arm hands the content on to the renderer that owns that kind, already
- * typed. The switch has no {@code default} arm, so a third kind of content fails to compile here
- * rather than reaching a runtime branch that silently draws nothing.
+ * The one place a {@link DecorationContent} is told apart from its siblings, so no renderer
+ * casts. The switch has no {@code default} arm, so a new kind of content fails to compile here
+ * rather than silently drawing nothing.
  */
 final class DecorationContentRenderer {
 
     private DecorationContentRenderer() {
     }
 
-    /**
-     * Draws {@code content} with its top-left corner at the given position, inside the staff-space
-     * transform.
-     *
-     * @param xSs   left edge of the content, in staff spaces
-     * @param ySs   top edge of the content in component space, in staff spaces
-     * @param color the color the whole decoration draws in
-     */
     static void draw(
         Graphics2D g2,
         DecorationContent content,

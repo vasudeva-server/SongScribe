@@ -15,8 +15,8 @@ Produce:
 - **every `@Nullable`**, with which of the three answers in `design.md` applies;
 - **every guard**, with the callers that can actually produce the value it
   rejects;
-- **fan-in per public method** — how many callers rely on it, which is what
-  decides whether it earns a contract at all;
+- **every method a test derives from**, which is what decides whether it has a
+  full contract;
 - which existing `docs/*.md` describe the subsystem this target sits in, since a
   method cites that overview rather than restating it;
 - every test class, with its case count and what it appears to cover.

@@ -64,15 +64,9 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     /**
-     * Unlike beaming, tying takes {@link Flag#REQUIRES_SELECTION} rather than
-     * {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a tie across a line break is offered on a
-     * <b>single</b> selected note \u2014 a line's last note, or its first, past any barline or
-     * repeat closing or opening the line \u2014 and pairs it with the matching note at the adjacent
-     * line's own edge. A size requirement is checked before
-     * {@code canToggle} runs, so {@code REQUIRES_MULTIPLE_SELECTION} would reject that
-     * selection before the boundary lookup was ever consulted. Sizes this admits but a tie
-     * cannot use are rejected by {@code RangeQueries.canToggleTie}, which is the real gate:
-     * it accepts a single element only when a cross-line partner exists.
+     * Takes {@link Flag#REQUIRES_SELECTION}, not {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a tie
+     * across a line break is offered on a single selected note, and the size requirement is
+     * checked before {@code canToggle}. {@code RangeQueries.canToggleTie} is the real gate.
      */
     public static ToggleNotationAction createTieAction(MainFrame mainFrame) {
         return new ToggleNotationAction(
@@ -92,15 +86,12 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     /**
-     * Like tying, and unlike beaming, a glissando takes {@link Flag#REQUIRES_SELECTION}
-     * rather than {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a single selected note is
-     * already eligible, because the glissando pairs it with the note before it. The real
-     * gate is {@code ScoreViewController.canToggleGlissando}, which checks that such a
-     * predecessor exists and that the pair can carry a glissando.
+     * Takes {@link Flag#REQUIRES_SELECTION}, not {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a
+     * single selected note pairs with the note before it. The real gate is
+     * {@code ScoreViewController.canToggleGlissando}.
      * <p>
-     * The undo-op-name key is {@code null} (Tier B): {@code SlideOperations} labels its own
-     * {@code withModification} bracket with {@code OpNames.addSlideLabel} /
-     * {@code OpNames.deleteSlideLabel}, so the action must not impose a static label.
+     * The undo-op-name key is {@code null}: {@code SlideOperations} labels its own bracket, so
+     * the action must not impose a static label.
      */
     public static ToggleNotationAction createGlissandoAction(MainFrame mainFrame) {
         return new ToggleNotationAction(
@@ -120,14 +111,11 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     /**
-     * Like tying, and unlike beaming, a fall takes {@link Flag#REQUIRES_SELECTION} rather
-     * than {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a fall applies to a note directly, so
-     * a single selected note is eligible. The real gate is
-     * {@code ScoreViewController.canToggleFall}.
+     * Takes {@link Flag#REQUIRES_SELECTION}, not {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a
+     * fall applies to a single note. The real gate is {@code ScoreViewController.canToggleFall}.
      * <p>
-     * The undo-op-name key is {@code null} (Tier B): {@code SlideOperations} labels its own
-     * {@code withModification} bracket with {@code OpNames.addSlideLabel} /
-     * {@code OpNames.deleteSlideLabel}, so the action must not impose a static label.
+     * The undo-op-name key is {@code null}: {@code SlideOperations} labels its own bracket, so
+     * the action must not impose a static label.
      */
     public static ToggleNotationAction createFallAction(MainFrame mainFrame) {
         return new ToggleNotationAction(

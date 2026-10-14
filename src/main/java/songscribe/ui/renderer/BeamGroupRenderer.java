@@ -42,14 +42,6 @@ import static songscribe.util.GraphicsState.Property.CLIP;
 import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.STROKE;
 
-/**
- * Renders beam bars connecting beamed notes.
- * <p>
- * Beams are drawn as filled parallelograms connecting the stems of beamed notes.
- * Multiple beam levels (8th, 16th, 32nd) are stacked vertically. Which members each level
- * joins, and which way a partial-beam stub points, are the beam's to answer; this class only
- * draws them.
- */
 public final class BeamGroupRenderer {
 
     // ==========================================================================
@@ -62,7 +54,6 @@ public final class BeamGroupRenderer {
     /** The fewest unhighlighted notes that keep a beam in place once its highlighted notes go. */
     private static final int MIN_REMAINING_BEAMED_NOTES = 2;
 
-    /** The corners of the parallelogram a beam is drawn as, which sizes its path up front. */
     private static final int BEAM_SHAPE_CORNERS = 4;
 
     // The round pen that rounds a drawn beam's corners (see drawBeam).  Immutable
@@ -76,15 +67,9 @@ public final class BeamGroupRenderer {
     // Singleton instance
     private static final BeamGroupRenderer INSTANCE = new BeamGroupRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private BeamGroupRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static BeamGroupRenderer getInstance() {
         return INSTANCE;
     }
@@ -93,14 +78,6 @@ public final class BeamGroupRenderer {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Renders the beams of one beam group: the primary beam over every member, then each run of
-     * members a level further in carries, down to the innermost level.
-     *
-     * @param g2         the graphics context
-     * @param invariants the line's invariants, whose layout holds {@code beam}'s geometry
-     * @param beam       a beam on the line being painted
-     */
     public void renderBeams(Graphics2D g2, LineInvariants invariants, Beam beam) {
         var highlightColor = getBeamHighlightColor(invariants, beam);
         var layoutResult = invariants.getLayoutResult();
@@ -119,13 +96,9 @@ public final class BeamGroupRenderer {
     }
 
     /**
-     * Returns the color to use for beam highlighting, or null if the beam should not be highlighted.
-     * <p>
-     * A directly selected beam always highlights. Failing that, the note-driven rule applies:
-     * the beam is highlighted when removing the highlighted note(s) would eliminate it
-     * (fewer than {@value #MIN_REMAINING_BEAMED_NOTES} beamable notes remain). Selected notes
-     * use the selection color; hovered notes use the replaced-element color (matching the
-     * hovered note itself).
+     * Returns null if the beam should not be highlighted. A beam is highlighted when removing the
+     * highlighted notes would leave fewer than {@value #MIN_REMAINING_BEAMED_NOTES} beamable
+     * notes.
      */
     @Nullable
     Color getBeamHighlightColor(LineInvariants invariants, Beam beam) {
@@ -173,12 +146,8 @@ public final class BeamGroupRenderer {
     }
 
     /**
-     * Returns the Y offset from {@code middleLineYSs} to the beam-connection end of the stem
-     * (the stem tip), in staff-space units.
-     *
-     * @param layout    StemLayout from LayoutResult, or null if unavailable
-     * @param direction UP = stem goes up (beam above notes); DOWN = stem goes down
-     * @param element   fallback element for staff-position estimate when layout is null
+     * @param layout    null if unavailable
+     * @param element   fallback for the staff-position estimate when layout is null
      */
     static double stemTipYSsOffset(
         LayoutResult.@Nullable StemLayout layout,
@@ -199,17 +168,9 @@ public final class BeamGroupRenderer {
     }
 
     /**
-     * Everything one beam group draws with that stays the same from its primary beam to its
-     * innermost stub, built once per group per paint.
-     *
-     * @param g2            the graphics context
-     * @param layoutResult  the line's layout
-     * @param middleLineYSs the Y of the staff's middle line
-     * @param members       the beam's {@link Beam#members}, which every {@link Beam.MemberRun}
+     * @param members     the beam's {@link Beam#members}, which every {@link Beam.MemberRun}
      *                      here indexes
-     * @param direction     the direction every stem of the group points
      * @param thickeningSs  the beam's raster thickening, 0 when the beam has no layout
-     * @param color         the color every beam of the group is drawn in
      */
     private record BeamDrawing(
         Graphics2D g2,
@@ -221,10 +182,6 @@ public final class BeamGroupRenderer {
         Color color
     ) {
 
-        /**
-         * Draws the beam at {@code level} over {@code run}, then recurses into each run of
-         * members inside it that carries the next level.
-         */
         void drawRun(Beam.MemberRun run, BeamLevel level) {
             if (run.isSingle()) {
                 drawStub(members.get(run.first()), level);
@@ -253,9 +210,7 @@ public final class BeamGroupRenderer {
         }
 
         /**
-         * Draws the partial-beam stub at {@code level} on {@code member}, on the side its beam
-         * gives it. The stub is cut from a beam laid along the whole group, so it takes the
-         * group's slope.
+         * The stub takes the group's slope.
          */
         private void drawStub(Beam.Member member, BeamLevel level) {
             switch (member.stub()) {
@@ -334,9 +289,6 @@ public final class BeamGroupRenderer {
         }
     }
 
-    /**
-     * Beam type for partial beams.
-     */
     private enum BeamType {
         FULL,           // Full beam connecting multiple notes
         ATTACH_LEFT,    // Partial beam attached to left note

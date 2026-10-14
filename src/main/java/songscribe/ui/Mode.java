@@ -20,9 +20,6 @@
 
 package songscribe.ui;
 
-/**
- * This enum represents the different modes that the user can be in when editing a song.
- */
 public enum Mode {
     // Selecting notes or a staff line
     SELECT,

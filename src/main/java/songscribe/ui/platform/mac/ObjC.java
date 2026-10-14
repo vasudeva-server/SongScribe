@@ -37,22 +37,11 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Reusable bridge to the Objective-C runtime via the Java Foreign Function &amp;
- * Memory (FFM) API. Binds the handful of {@code libobjc} entry points
- * ({@code objc_getClass}, {@code sel_registerName}, {@code objc_msgSend}, and the
- * autorelease-pool calls) that SongScribe needs to talk to AppKit / Foundation
- * without a third-party Obj-C wrapper.
+ * Memory (FFM) API.
  * <p>
  * <b>macOS only.</b> The static initializer loads native macOS libraries, so the
  * class must not be referenced on other platforms; callers guard with
  * {@link com.formdev.flatlaf.util.SystemInfo#isMacOS}.
- * <p>
- * A non-struct return ({@code id} / pointer / {@code BOOL} / {@code NSInteger})
- * needs one descriptor per argument signature. A struct return needs its own
- * descriptor per struct, and its own entry point: the two architectures return a
- * struct by different rules, so {@link #msgSendRect} binds the one each requires.
- * arm64 passes the four doubles of an {@code NSRect} back in registers through
- * {@code objc_msgSend}, while x86_64 returns the 32-byte struct in memory through
- * {@code objc_msgSend_stret}. Add a second struct return the same way.
  * <p>
  * Every {@code msgSend*} method wraps any failure of the native call in an
  * {@link IllegalStateException} naming the signature that failed.
@@ -61,40 +50,28 @@ public final class ObjC {
 
     private static final Linker LINKER = Linker.nativeLinker();
 
-    /** {@code Class objc_getClass(const char *name)} */
     private static final MethodHandle OBJC_GET_CLASS;
 
-    /** {@code SEL sel_registerName(const char *str)} */
     private static final MethodHandle SEL_REGISTER_NAME;
 
-    /** {@code id objc_msgSend(id self, SEL op)} */
     private static final MethodHandle MSG_SEND;
 
-    /** {@code id objc_msgSend(id self, SEL op, id arg)} */
     private static final MethodHandle MSG_SEND_ID;
 
-    /** {@code id objc_msgSend(id self, SEL op, NSInteger arg)} */
     private static final MethodHandle MSG_SEND_LONG;
 
-    /** {@code void objc_msgSend(id self, SEL op, BOOL arg)} */
     private static final MethodHandle MSG_SEND_BOOL_ARG;
 
-    /** {@code BOOL objc_msgSend(id self, SEL op)} */
     private static final MethodHandle MSG_SEND_RET_BOOL;
 
-    /** {@code NSInteger objc_msgSend(id self, SEL op)} */
     private static final MethodHandle MSG_SEND_RET_LONG;
 
-    /** {@code NSRect objc_msgSend(id self, SEL op)} (e.g. {@code -frame}) */
     private static final MethodHandle MSG_SEND_RET_RECT;
 
-    /** {@code void objc_msgSend(id self, SEL op)} (e.g. {@code -release}) */
     private static final MethodHandle MSG_SEND_VOID;
 
-    /** {@code void *objc_autoreleasePoolPush(void)} */
     private static final MethodHandle AUTORELEASE_POOL_PUSH;
 
-    /** {@code void objc_autoreleasePoolPop(void *pool)} */
     private static final MethodHandle AUTORELEASE_POOL_POP;
 
     private static final StructLayout NS_POINT_LAYOUT = MemoryLayout.structLayout(
@@ -166,22 +143,12 @@ public final class ObjC {
     }
 
     /**
-     * An Obj-C {@code NSRect}. Coordinates are in points, in whatever space the
-     * message that produced the rectangle uses. For a view's {@code -frame} that
-     * space is the superview, whose y axis points up.
+     * Coordinates are in points, in the space of the message that produced the rectangle; a
+     * view's {@code -frame} is in its superview, whose y axis points up.
      *
-     * @param x left edge
      * @param y bottom edge
-     * @param width horizontal extent
-     * @param height vertical extent
      */
     public record NsRect(double x, double y, double width, double height) {
-        /**
-         * Returns the x coordinate of the right edge, the equivalent of
-         * {@code NSMaxX()}.
-         *
-         * @return the x coordinate of the rectangle's right edge
-         */
         public double maxX() {
             return x + width;
         }
@@ -200,10 +167,6 @@ public final class ObjC {
         return LINKER.downcallHandle(symbol, descriptor);
     }
 
-    /**
-     * Looks up an Obj-C class by name, returning its {@code Class} pointer
-     * (usable as the receiver for class-method message sends).
-     */
     public static MemorySegment objcClass(String name) {
         try (var arena = Arena.ofConfined()) {
             return (MemorySegment) OBJC_GET_CLASS.invoke(arena.allocateFrom(name));
@@ -212,10 +175,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Registers (or resolves) a selector by name. The runtime interns selectors,
-     * so repeated calls for the same name are cheap.
-     */
     public static MemorySegment selector(String name) {
         try (var arena = Arena.ofConfined()) {
             return (MemorySegment) SEL_REGISTER_NAME.invoke(arena.allocateFrom(name));
@@ -224,9 +183,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a no-argument message: {@code [receiver selector]}.
-     */
     public static MemorySegment msgSend(MemorySegment receiver, MemorySegment selector) {
         try {
             return (MemorySegment) MSG_SEND.invoke(receiver, selector);
@@ -235,9 +191,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a single-object-argument message: {@code [receiver selector:arg]}.
-     */
     public static MemorySegment msgSend(MemorySegment receiver, MemorySegment selector, MemorySegment arg) {
         try {
             return (MemorySegment) MSG_SEND_ID.invoke(receiver, selector, arg);
@@ -246,10 +199,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a single {@code NSInteger} (64-bit) argument message returning an
-     * {@code id}: {@code [receiver selector:arg]} (e.g. {@code -itemAtIndex:}).
-     */
     public static MemorySegment msgSend(MemorySegment receiver, MemorySegment selector, long arg) {
         try {
             return (MemorySegment) MSG_SEND_LONG.invoke(receiver, selector, arg);
@@ -258,10 +207,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a single {@code BOOL} argument message returning {@code void}:
-     * {@code [receiver selector:flag]} (e.g. {@code -setEnabled:}).
-     */
     public static void msgSendVoid(MemorySegment receiver, MemorySegment selector, boolean flag) {
         try {
             MSG_SEND_BOOL_ARG.invoke(receiver, selector, (byte) (flag ? 1 : 0));
@@ -270,9 +215,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a no-argument message returning {@code void} (e.g. {@code -release}).
-     */
     public static void msgSendVoid(MemorySegment receiver, MemorySegment selector) {
         try {
             MSG_SEND_VOID.invoke(receiver, selector);
@@ -281,10 +223,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a no-argument message returning a {@code BOOL} (e.g.
-     * {@code -hasSubmenu}, {@code -isEnabled}).
-     */
     public static boolean msgSendBoolean(MemorySegment receiver, MemorySegment selector) {
         try {
             return (byte) MSG_SEND_RET_BOOL.invoke(receiver, selector) != 0;
@@ -293,10 +231,6 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Sends a no-argument message returning an {@code NSInteger} (e.g.
-     * {@code -numberOfItems}).
-     */
     public static long msgSendLong(MemorySegment receiver, MemorySegment selector) {
         try {
             return (long) MSG_SEND_RET_LONG.invoke(receiver, selector);
@@ -306,19 +240,10 @@ public final class ObjC {
     }
 
     /**
-     * Sends a no-argument message returning an {@code NSRect} (e.g. {@code -frame},
-     * {@code -bounds}).
-     * <p>
-     * Unlike the pointer-returning sends, this one has no nil-receiver behavior a
-     * caller can test for. A nil receiver leaves the return registers untouched on
-     * x86_64, and zeroes them on arm64, so the caller gets an undefined or an
+     * Has no nil-receiver behavior a caller can test for: a nil receiver yields an undefined or
      * empty rectangle with nothing to mark it wrong. Check the receiver first.
      *
-     * @param receiver the object to message; must not be nil
-     * @param selector the selector to send
-     * @return the rectangle the receiver returned
-     * @throws IllegalStateException if the native call fails, or the returned
-     *                               rectangle cannot be read
+     * @param receiver must not be nil
      */
     public static NsRect msgSendRect(MemorySegment receiver, MemorySegment selector) {
         try (var arena = Arena.ofConfined()) {
@@ -337,10 +262,7 @@ public final class ObjC {
         }
     }
 
-    /**
-     * Reads an {@code NSString} into a Java string via {@code -UTF8String}.
-     * Returns {@code null} when the string pointer is {@code nil}.
-     */
+    /** Returns {@code null} when the string pointer is {@code nil}. */
     public static @Nullable String nsStringToJava(MemorySegment nsString) {
         if (nsString.address() == 0) {
             return null;
@@ -358,9 +280,8 @@ public final class ObjC {
     }
 
     /**
-     * Builds an autoreleased {@code NSString} from a Java string via
-     * {@code +[NSString stringWithUTF8String:]}. The result is valid only within
-     * the enclosing autorelease pool (see {@link #withAutoreleasePool}).
+     * The result is valid only within the enclosing autorelease pool (see
+     * {@link #withAutoreleasePool}).
      */
     public static MemorySegment javaToNsString(String value) {
         try (var arena = Arena.ofConfined()) {
@@ -369,12 +290,8 @@ public final class ObjC {
     }
 
     /**
-     * Runs {@code body} inside a fresh autorelease pool, draining it afterwards so
-     * temporary autoreleased objects (e.g. those returned by message sends) do not
-     * leak. Extract any Java values you need from native objects before returning.
-     * <p>
-     * The body may produce {@code null}, for a search over native objects that
-     * finds nothing.
+     * Extract any Java values you need from native objects before returning. The body may
+     * return {@code null}.
      */
     public static <T extends @Nullable Object> T withAutoreleasePool(Supplier<T> body) {
         MemorySegment pool;

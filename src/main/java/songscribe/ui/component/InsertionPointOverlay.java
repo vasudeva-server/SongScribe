@@ -39,32 +39,17 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
 /**
- * Pill shown over the score while the user is picking an insertion point, naming the
- * operation and its exits. Added directly to {@link MainFrame}'s {@link JLayeredPane} by
- * {@code InsertionPointMode} — never as the glass pane, which {@link ActivationGate}
- * owns exclusively.
- * <p>
- * The wording is the placing client's: {@link Text} carries the title and the hint, so the
- * pill says "Paste content" for a clipboard fragment and "Insert key change" for a key
- * change without this component knowing either operation.
- * <p>
- * Carries no mouse listeners: a listener-free component is never selected as an AWT
- * mouse-event target, so clicks (including ones over the pill) fall through to the score
- * underneath, exactly as insertion-point placement requires.
- * <p>
- * Bounds are set externally by {@code InsertionPointMode} (there is no layout manager for
- * a {@link JLayeredPane} child). This component in turn positions the pill itself: centered
- * over the score's visible viewport, sized to the pill's Swing-computed preferred size,
- * recomputed in {@link #doLayout}.
+ * Pill shown over the score while the user is picking an insertion point. Added to
+ * {@link MainFrame}'s {@link JLayeredPane} by {@code InsertionPointMode}, never as the glass pane,
+ * which {@link ActivationGate} owns exclusively.
+ *
+ * <p>Carries no mouse listeners: a listener-free component is never an AWT mouse-event target,
+ * so clicks over the pill fall through to the score underneath, as placement requires.
  */
 public final class InsertionPointOverlay extends JComponent {
 
     /**
-     * What the pill says. Both strings are already localized — a client hands over the
-     * resolved text, not a key.
-     *
-     * @param title the operation being placed, in bold on the first line
-     * @param hint how to complete or abandon it, on the second line
+     * Both strings are already localized — a client hands over the resolved text, not a key.
      */
     public record Text(String title, String hint) {}
 
@@ -101,7 +86,6 @@ public final class InsertionPointOverlay extends JComponent {
         pill.setBounds(pillXPx, pillYPx, pillSizePx.width, pillSizePx.height);
     }
 
-    /** Rounded background painted behind the title/hint labels. */
     private static final class Pill extends JPanel {
 
         private static final int HORIZONTAL_PADDING_PX = 16;

@@ -135,17 +135,9 @@ final class OtherValueComboBox extends JComboBox<String> {
     }
 
     /**
-     * Installs the selection model that refuses a barred row, on the list the drop-down shows.
-     *
-     * <p>Swing builds that list when it installs the look and feel, and builds a new one every
-     * time the look and feel changes, so the model is installed here rather than in the
-     * constructor.
-     *
-     * <p>{@link JComboBox}'s own constructor calls this before any field of this class is
-     * assigned. That early run is harmless: the model reads those fields when a row is picked,
-     * never now.
-     *
-     * @effects replaces the drop-down list's selection model
+     * Swing builds the popup list on every look-and-feel change, so the model is installed here,
+     * not in the constructor. {@link JComboBox}'s constructor calls this before any field of this
+     * class is assigned, which is harmless: the model reads them only when a row is picked.
      */
     @Override
     public void updateUI() {
@@ -250,20 +242,13 @@ final class OtherValueComboBox extends JComboBox<String> {
         emptyChoiceSelectable = selectable;
     }
 
-    /**
-     * @return {@code true} when this combo has a {@code (none)} row and the user may not pick it
-     */
     private boolean isEmptyChoiceBarred() {
         return offersEmptyChoice && !emptyChoiceSelectable;
     }
 
     /**
-     * Whether a row already shows {@code text}, comparing what the rows <strong>display</strong> so
-     * that the {@code (none)} and {@code Other…} labels count as taken.
-     *
-     * @param text the value the prompt is offering to commit
-     * @return {@code true} when some row already shows {@code text}, in which case committing it
-     *         would add a second row the user could not tell from the first
+     * Compares what the rows <strong>display</strong>, so that the {@code (none)} and
+     * {@code Other…} labels count as taken.
      */
     boolean isValueInUse(String text) {
         for (var index = 0; index < comboModel.getSize(); index++) {
@@ -275,42 +260,20 @@ final class OtherValueComboBox extends JComboBox<String> {
         return false;
     }
 
-    /**
-     * @return the index of the {@code Other…} row, which is always the last
-     */
     private int otherIndex() {
         return comboModel.getSize() - 1;
     }
 
-    /**
-     * @param value a row's value
-     * @return the text that row paints — the {@code (none)} label for the empty value, and the
-     *         value itself otherwise
-     */
     private static String displayText(String value) {
         return value.isEmpty() ? Strings.get(Strings.LABEL_NONE) : value;
     }
 
-    /**
-     * Opens the modal prompt for a value the list does not hold. The call returns once the user has
-     * answered: a committed value arrives as a write back to this combo, and a cancel writes
-     * nothing, leaving the selection as it was.
-     */
     private void promptForOther() {
         var mainFrame = MainFrame.getInstance();
         new OtherValueDialog(mainFrame, prompt, new OtherValueController(this).ops())
             .setVisible(true);
     }
 
-    /**
-     * Adds one value per non-blank line of the {@code /conf} resource named {@code fileName} to
-     * {@code model}, in file order.
-     *
-     * @param model    the model to add the values to
-     * @param fileName the resource name under {@code /conf}
-     * @throws RuntimeException via {@link RuntimeError#missingResource}, exiting the application,
-     *                          when the resource is absent or cannot be read
-     */
     private static void addValuesFromFile(
         DefaultComboBoxModel<String> model,
         String fileName
@@ -343,13 +306,8 @@ final class OtherValueComboBox extends JComboBox<String> {
     }
 
     /**
-     * The selection model of the list the drop-down shows, which refuses the {@code (none)} row
-     * while that row is barred.
-     *
-     * <p>Every route by which the user picks a row from the open drop-down sets this list's
-     * selection first — a click, a drag, an arrow key. Refusing it here refuses all of them.
-     * The Enter key commits the list's selected value, so a row this refuses can never be the
-     * value it commits.
+     * Every route by which the user picks a row from the open drop-down sets this list's
+     * selection first, so refusing the barred row here refuses all of them.
      */
     private final class BarredSelectionModel extends DefaultListSelectionModel {
 
@@ -364,12 +322,8 @@ final class OtherValueComboBox extends JComboBox<String> {
     }
 
     /**
-     * Paints the empty value as {@code (none)} and every other value verbatim, and paints the
-     * {@code (none)} row disabled while it is barred.
-     *
-     * <p>The disabled paint is applied by row position rather than by value, so it reaches the
-     * row in the open popup and never the closed combo's own text. The closed combo renders
-     * with {@link UIUtils#COMBO_DISPLAY_INDEX}, which no row position equals.
+     * The disabled paint is applied by row position, so it reaches the row in the open popup and
+     * never the closed combo's own text, which renders with {@link UIUtils#COMBO_DISPLAY_INDEX}.
      */
     private final class EmptyValueRenderer extends DefaultListCellRenderer {
 

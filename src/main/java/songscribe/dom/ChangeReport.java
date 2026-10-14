@@ -28,13 +28,10 @@ import org.jspecify.annotations.Nullable;
  * The changes the song made on its own during one edit or one load, in the order they were
  * recorded, for the user to be told about.
  *
- * <p>A finished report: a {@code ChangeReport} never changes after {@link Builder#build()}
- * returns it, and its entries hold line indices rather than model objects, so both of its
- * holders — the notification that carries it and the view that shows it — can keep it without
- * copying. Only a {@link Builder} records. Whoever owns the edit or the load creates the
- * builder, records into it, and builds the report when the edit or the load is over. Neither
- * type knows anything of modification brackets, undo replay or suspended tracking; deciding
- * whether a change is recorded at all is the owner's job.
+ * <p>A finished report never changes after {@link Builder#build()} returns it, and its entries
+ * hold line indices rather than model objects, so its holders can keep it without copying. The
+ * owner of the edit or the load decides whether a change is recorded at all; neither type knows
+ * of modification brackets, undo replay or suspended tracking.
  *
  * @param changes the entries, in the order recorded
  * @invariant {@link #changes()} holds every recorded entry exactly once, in the order recorded
@@ -42,24 +39,12 @@ import org.jspecify.annotations.Nullable;
  */
 public record ChangeReport(List<ReportedChange> changes) {
 
-    /** The report with no entries: an edit or a load that changed nothing on its own. */
     public static final ChangeReport EMPTY = new ChangeReport(List.of());
 
-    /**
-     * Creates a report holding {@code changes}, which later changes to {@code changes} do not
-     * reach.
-     *
-     * @param changes the entries, in the order recorded
-     */
     public ChangeReport {
         changes = List.copyOf(changes);
     }
 
-    /**
-     * Returns whether the report holds no entry.
-     *
-     * @return {@code true} when {@link #changes()} is empty
-     */
     public boolean isEmpty() {
         return changes.isEmpty();
     }
@@ -67,34 +52,19 @@ public record ChangeReport(List<ReportedChange> changes) {
     /**
      * The collector of one edit's or one load's report: the only place a change is recorded.
      *
-     * <p>A builder belongs to one song, the song its entries name. A recorder hands it each
-     * change with the {@link Line} objects the change was made on ({@link RecordedChange}), and
-     * {@link #build()} resolves those lines to indices only then. Resolution waits for
-     * {@code build()} because a report describes the song as the edit or load left it: a line
-     * added or removed in front of a recorded line later in the same edit or load moves that
-     * line's index, and resolving any earlier would make the entry name the wrong line.
+     * <p>A builder belongs to one song. {@link #build()} resolves recorded lines to indices only
+     * then, because a line added or removed in front of a recorded line moves its index.
      *
      * <p>EDT-only, like the model it reports on; no locking.
      *
      * @invariant every line a recorded entry names is still a line of the song when
-     *     {@link #build()} runs. No edit or load records a change on a line and then removes
-     *     that line. A line is removed only by deleting it, which sweeps the key changes it
-     *     strands on other lines and takes the removed line whole, with its spans, unreported,
-     *     and by the undo or redo of a line's insertion or deletion, whose batch records
-     *     nothing on that line. The modification rules remove spans and ties, never lines, and
-     *     no load pass removes a line. {@link #build()} therefore resolves every recorded line
-     *     to an index, never to an absent one
+     *     {@link #build()} runs: no edit or load records a change on a line and then removes it
      */
     public static final class Builder {
 
         private final Song song;
         private final List<RecordedChange> changes = new ArrayList<>();
 
-        /**
-         * Creates a builder with no entries for a report on {@code song}.
-         *
-         * @param song the song whose lines every recorded entry names
-         */
         public Builder(Song song) {
             this.song = song;
         }
@@ -111,11 +81,6 @@ public record ChangeReport(List<ReportedChange> changes) {
             changes.add(change);
         }
 
-        /**
-         * Returns whether the builder holds no entry.
-         *
-         * @return {@code true} when {@link #build()} would return an empty report
-         */
         public boolean isEmpty() {
             return changes.isEmpty();
         }
@@ -139,13 +104,6 @@ public record ChangeReport(List<ReportedChange> changes) {
             return new ChangeReport(reported);
         }
 
-        /**
-         * Returns {@code where} as line indices in the song as it stands now.
-         *
-         * @param where the lines to resolve, or {@code null} for a change with no place
-         * @return the range of {@code where}'s lines, or {@code null} when {@code where} is
-         *     {@code null}
-         */
         private @Nullable LineRange resolve(@Nullable ChangeLines where) {
             if (where == null) {
                 return null;

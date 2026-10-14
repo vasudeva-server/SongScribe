@@ -24,17 +24,12 @@ package songscribe.ui.playback;
 public enum PlaybackState {
     PLAYING,
 
-    /**
-     * Playback ended with the music selection left intact, so the next
-     * {@link PlaybackController#play} resumes at the beginning of that selection.
-     */
+    /** The music selection is intact, so the next {@link PlaybackController#play} starts at its beginning. */
     STOPPED,
 
     /**
-     * Playback ended and the music selection was dropped, so the next
-     * {@link PlaybackController#play} starts at the beginning of the song. Distinct from
-     * {@link #STOPPED} only in that the selection is gone — the score clears its own selection
-     * when it sees this state, rather than being reached into from here.
+     * The music selection was dropped, so the next {@link PlaybackController#play} starts at the
+     * beginning of the song. The score clears its own selection when it sees this state.
      */
     REWOUND,
 }

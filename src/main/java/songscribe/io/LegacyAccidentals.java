@@ -28,15 +28,7 @@ import songscribe.dom.Accidental;
 /**
  * Lookups for the retired {@code NATURAL_FLAT}, {@code NATURAL_SHARP}, and
  * {@code DOUBLE_NATURAL} {@link Accidental} values, keyed by their legacy
- * serialized forms. Lives in {@code io/} rather than {@code io/musicxml/}
- * because both the MusicXML reader and the legacy {@code .mssw} reader
- * consult it.
- *
- * <p>Unlike {@link songscribe.dom.BeatChange#fromLegacyName}, which throws on
- * an unrecognized legacy name, {@link #forLegacyToken} returns {@code null}
- * instead of throwing. A caller needs to distinguish "not a legacy token" from
- * "a legacy token that was converted" so it can flag that a conversion
- * happened; throwing would destroy that distinction.
+ * serialized forms.
  */
 public final class LegacyAccidentals {
 
@@ -73,9 +65,7 @@ public final class LegacyAccidentals {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the replacement {@link Accidental} for a retired MusicXML
-     * {@code <accidental>} token, or {@code null} if {@code token} is not a
-     * retired token.
+     * Returns {@code null} if {@code token} is not a retired token.
      */
     @Nullable
     public static Accidental forLegacyToken(String token) {
@@ -83,10 +73,7 @@ public final class LegacyAccidentals {
     }
 
     /**
-     * Returns every retired accidental's canonical serialized enum name mapped to
-     * its replacement {@link Accidental}, for seeding a lookup table. Underscore-less
-     * alias variants (e.g. {@code "NATURALFLAT"}) are absent — {@code StaffElementIO}
-     * owns the alias rule and synthesizes them from these canonical names.
+     * Underscore-less alias variants are absent; {@code StaffElementIO} owns the alias rule.
      */
     public static Map<String, Accidental> legacyNames() {
         return LEGACY_NAME_MAP;

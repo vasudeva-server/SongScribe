@@ -176,18 +176,16 @@ public class MainFrame extends JFrame {
     private final JSplitPane contentSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     /**
-     * The theme's divider size, restored when the Messages panel is shown. Hiding the panel
-     * sets the divider size to 0, so the split pane cannot be asked for it again.
+     * The theme's divider size, restored when the Messages panel is shown; hiding the panel sets
+     * the pane's to 0.
      */
     private int messagesDividerSize = 0;
 
-    /** macOS 26 (Tahoe) is the first release that left-aligns the window title. */
     private static final int MACOS_TAHOE_VERSION = 26;
 
     /**
-     * True on macOS 26 and later. That release left-aligns the window title beside
-     * the window controls and makes the title bar taller. The app draws its own
-     * title into the title bar area, so it must follow the platform itself.
+     * That release left-aligns the title and makes the title bar taller; the app draws its own
+     * title there, so it must follow.
      */
     private static final boolean IS_MACOS_TAHOE_OR_LATER = SystemInfo.isMacOS &&
         SystemInfo.osVersion >= SystemInfo.toVersion(MACOS_TAHOE_VERSION, 0, 0, 0);
@@ -199,34 +197,24 @@ public class MainFrame extends JFrame {
         ? MAC_TITLE_BAR_HEIGHT_TAHOE
         : MAC_TITLE_BAR_HEIGHT_PRE_TAHOE;
 
-    /**
-     * Gap in points between the right edge of the window controls and a left-aligned
-     * title. macOS leaves this much room before the first title element, which is the
-     * proxy icon in an app that shows one.
-     */
     private static final int MAC_TITLE_CONTROLS_GAP = 16;
 
     private static final int MAC_TITLE_FONT_SIZE = 13;
 
     /**
-     * A startup error collected before the main window is shown. Non-fatal errors are
-     * displayed as warnings after the window is revealed; a fatal error triggers
-     * {@link RuntimeError#exit(String)} before the window appears.
+     * A fatal error exits through {@link RuntimeError#exit(String)} before the window appears;
+     * non-fatal errors are shown as warnings after it is revealed.
      */
     public record StartupError(String title, String message, boolean fatal) {}
 
     private static final ConcurrentLinkedQueue<StartupError> STARTUP_ERRORS =
         new ConcurrentLinkedQueue<>();
 
-    /** Enqueues a startup error to be drained by {@link #drainStartupErrors()}. */
     public static void enqueueStartupError(StartupError error) {
         STARTUP_ERRORS.add(error);
     }
 
-    /**
-     * Returns the first fatal {@link StartupError} in the queue, or {@code null} if
-     * none exists.
-     */
+    /** {@code null} if no fatal error is queued. */
     @Nullable
     public static StartupError firstFatal() {
         for (var error : STARTUP_ERRORS) {
@@ -325,13 +313,7 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Drains the startup error queue. Must be called on the EDT.
-     * <p>
-     * The splash is always hidden before any dialog is shown. If a fatal error is present,
-     * {@link RuntimeError#exit(String, String)} is called and the main window
-     * is not revealed. Otherwise each non-fatal error is shown as a warning dialog in queue
-     * order and the queue is cleared — a second call with no newly enqueued errors shows
-     * nothing.
+     * Must be called on the EDT. The splash is hidden before any dialog is shown.
      */
     static void drainStartupErrors() {
         var fatal = firstFatal();
@@ -352,7 +334,6 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /** Starts the {@code "startup-gate"} daemon thread, which calls {@link #runStartupGate()}. */
     private static void startStartupGate() {
         var thread = new Thread(MainFrame::runStartupGate, "startup-gate");
         thread.setDaemon(true);
@@ -360,16 +341,7 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Runs on the {@code "startup-gate"} thread. Waits for the minimum splash duration
-     * floor to pass, then waits for MIDI init (capped), then schedules reveal() on the EDT.
-     *
-     * <p>The EDT installs a minimal theme, shows the splash and forces its first paint, kicks off
-     * MIDI init on the {@code "midi-init"} thread, installs the remaining fonts, builds the main
-     * window without showing it, records the pending startup action, and starts this gate. The gate
-     * then sleeps out the splash floor, awaits the MIDI latch up to the cap, and schedules
-     * {@code reveal()} back on the EDT, which drains startup errors — exiting on a fatal one
-     * without hiding the splash — then hides the splash, shows the window, warns about any
-     * non-fatal errors, and runs the pending startup action.
+     * Runs on the {@code "startup-gate"} thread.
      *
      * <p>See {@code docs/lifecycle.md} for the full cross-thread sequence.
      */
@@ -393,10 +365,6 @@ public class MainFrame extends JFrame {
         SwingUtilities.invokeLater(() -> getInstance().reveal());
     }
 
-    /**
-     * Reveals the main window on the EDT after the startup gate fires.
-     * Drains startup errors first — a fatal error exits before the window appears.
-     */
     private void reveal() {
         drainStartupErrors();
 
@@ -419,19 +387,10 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Works around a macOS bug in the full-window-content path: a window that uses
-     * {@code apple.awt.fullWindowContent} and is shown at close to the full height of
-     * the screen's available area never presents its first frame, so it comes up
-     * completely blank and stays that way until the user resizes it. The Swing layout
-     * and paint are both correct — only the native surface is missing — so
-     * {@code revalidate()}/{@code repaint()} do not help. Changing the window size once
-     * it is on screen does, so shrink it by a pixel and restore it.
-     * <p>
-     * The trigger is how close the window's bottom edge comes to the bottom of the
-     * available screen area — measured at roughly 25 px on a 1440 px-tall screen with
-     * the Dock showing. {@link #setFrameSize()} always sizes the window to the full
-     * available height, so it is always inside that band, and the workaround is
-     * unconditional on macOS rather than tied to any particular Dock state.
+     * Works around a macOS bug: a window using {@code apple.awt.fullWindowContent} shown near
+     * the full available screen height never presents its first frame, and only a size change
+     * fixes it. Unconditional on macOS because {@link #setFrameSize()} always sizes the window
+     * to the full available height.
      */
     private void forceInitialPaint() {
         if (!SystemInfo.isMacOS || !SystemInfo.isMacFullWindowContentSupported) {
@@ -445,18 +404,10 @@ public class MainFrame extends JFrame {
         });
     }
 
-    /**
-     * Returns the remaining milliseconds to meet the minimum splash duration floor,
-     * clamped to {@code [0, MIN_SPLASH_DURATION_MS]}.
-     */
     static long remainingFloorMs(long elapsedMs) {
         return Math.clamp(MIN_SPLASH_DURATION_MS - elapsedMs, 0, MIN_SPLASH_DURATION_MS);
     }
 
-    /**
-     * Returns the remaining milliseconds before the MIDI init timeout cap,
-     * clamped to {@code [0, MIDI_INIT_TIMEOUT_MS]}.
-     */
     static long remainingCapMs(long elapsedMs) {
         return Math.clamp(MIDI_INIT_TIMEOUT_MS - elapsedMs, 0, MIDI_INIT_TIMEOUT_MS);
     }
@@ -719,13 +670,6 @@ public class MainFrame extends JFrame {
         contentPane.add(new StatusBar(), BorderLayout.SOUTH);
     }
 
-    /**
-     * Puts the score to the left of the Messages panel and shows the panel as the preferences
-     * left it.
-     *
-     * @effects installs the score's scroll pane and the Messages panel in the split pane, and a
-     *          listener that saves the panel width when the user releases the divider
-     */
     private void initContentSplitPane() {
         contentSplitPane.setLeftComponent(requireScoreView().requireScrollPane());
         contentSplitPane.setRightComponent(reportPanel);
@@ -742,10 +686,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Saves the Messages panel width when the user releases the divider after a drag.
-     *
-     * <p>The width is saved on release rather than on each divider move, because every
-     * preference write saves the whole preferences file.
+     * The width is saved on release, not on each divider move: every preference write saves the
+     * whole file.
      */
     private void installDividerReleaseListener() {
         if (!(contentSplitPane.getUI() instanceof BasicSplitPaneUI ui)) {
@@ -766,15 +708,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Shows or hides the Messages panel without saving the choice.
-     *
-     * <p>Hidden, the panel is invisible and the divider has no size, so the score fills the
-     * split. Shown, the divider is restored and placed so the panel has the saved width.
-     *
-     * <p>Every change of visibility goes through here, so the Messages action's selected state
-     * name is set here and always agrees with the panel.
-     *
-     * @param visible whether the panel is shown
+     * Every visibility change goes through here, so the Messages action's selected state always
+     * agrees with the panel.
      */
     private void applyMessagesPanelVisible(boolean visible) {
         reportPanel.setVisible(visible);
@@ -787,11 +722,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Places the divider so the Messages panel has the saved width.
-     *
-     * <p>The place is measured from the right edge of the split pane, so it needs the pane's
-     * width. Before the window is first laid out the pane has none, and the divider is placed
-     * once the pane is first given a size.
+     * The place is measured from the pane's right edge, so it waits until the pane first has a
+     * size.
      */
     private void placeDividerAtSavedWidth() {
         if (contentSplitPane.getWidth() <= 0) {
@@ -809,22 +741,13 @@ public class MainFrame extends JFrame {
         contentSplitPane.setDividerLocation(Math.max(0, messagesPanelRight() - panelWidth));
     }
 
-    /**
-     * The divider location at which the Messages panel would have no width: the split pane's
-     * inner right edge, less the divider.
-     */
     private int messagesPanelRight() {
         return contentSplitPane.getWidth()
             - contentSplitPane.getInsets().right
             - contentSplitPane.getDividerSize();
     }
 
-    /**
-     * Shows the Messages panel and leaves keyboard focus where it is.
-     *
-     * @effects when the panel is hidden, shows it at the saved width and saves that it is
-     *          visible; otherwise nothing
-     */
+    /** Leaves keyboard focus where it is. */
     public void showMessagesPanel() {
         if (reportPanel.isVisible()) {
             return;
@@ -834,12 +757,7 @@ public class MainFrame extends JFrame {
         Prefs.put(PrefsKey.MESSAGES_PANEL_VISIBLE, true);
     }
 
-    /**
-     * Hides the Messages panel. Keyboard focus stays where it is, or moves to the score when the
-     * panel holds it.
-     *
-     * @effects when the panel is visible, hides it and saves that it is hidden; otherwise nothing
-     */
+    /** Keyboard focus stays where it is, or moves to the score when the panel holds it. */
     public void hideMessagesPanel() {
         if (!reportPanel.isVisible()) {
             return;
@@ -858,40 +776,23 @@ public class MainFrame extends JFrame {
         }
     }
 
-    /**
-     * Answers whether the Messages panel is shown.
-     *
-     * @return true when the panel is visible in the main window
-     */
     public boolean isMessagesPanelVisible() {
         return reportPanel.isVisible();
     }
 
-    /**
-     * Moves keyboard focus to the score.
-     *
-     * @effects requests focus for the score view; the move happens when the focus system
-     *          processes the request
-     */
+    /** The move happens when the focus system processes the request. */
     public void focusScore() {
         requireScoreView().requestFocusInWindow();
     }
 
-    /**
-     * Keeps the Score action's selected state in step with focus, whatever moved it.
-     */
     private void installFocusTracking() {
         KeyboardFocusManager.getCurrentKeyboardFocusManager()
             .addPropertyChangeListener("permanentFocusOwner", _ -> syncScoreAction());
     }
 
     /**
-     * Selects the Score action while keyboard focus is in the score.
-     *
-     * <p>A check box menu item flips its own selected state when it is clicked, and the click
-     * does not always move focus, so the Score action calls this after it acts.
-     *
-     * @effects sets the selected state of the Score action
+     * A check box menu item flips its own selected state when clicked, and the click does not
+     * always move focus, so the Score action calls this after it acts.
      */
     public void syncScoreAction() {
         var owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getPermanentFocusOwner();
@@ -900,21 +801,13 @@ public class MainFrame extends JFrame {
             owner != null && SwingUtilities.isDescendingFrom(owner, scoreView.requireScrollPane()));
     }
 
-    /**
-     * Zooms the window to fill the screen, or returns a zoomed window to its normal size.
-     *
-     * @effects toggles the window's maximized state
-     */
     public void toggleZoom() {
         var isZoomed = (getExtendedState() & Frame.MAXIMIZED_BOTH) == Frame.MAXIMIZED_BOTH;
         setExtendedState(isZoomed ? Frame.NORMAL : Frame.MAXIMIZED_BOTH);
     }
 
     /**
-     * Indents the title so that it clears the macOS window controls.
-     *
-     * @effects sets the title label's border; messages AppKit through
-     *          {@link MacWindowControls}, so call on the event dispatch thread
+     * Call on the event dispatch thread.
      */
     private void positionTitleAfterWindowControls() {
         if (titleBarLabel == null) {
@@ -1032,9 +925,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Undo/redo recomputes the modified flag after the replay bracket's
-     * SongDidChangeNotification has already refreshed the title with the stale
-     * flag, so the title must be refreshed again once the new state is known.
+     * Undo/redo recomputes the modified flag after the replay bracket's notification has refreshed
+     * the title with the stale flag.
      */
     @Handler
     public void undoStateDidChange(UndoStateDidChangeNotification message) {
@@ -1046,20 +938,13 @@ public class MainFrame extends JFrame {
         return scoreView;
     }
 
-    /**
-     * The controller of the document on screen.
-     *
-     * @return the score view's controller, or {@code null} before the score view or its
-     *     controller exists
-     */
+    /** {@code null} before the score view or its controller exists. */
     public @Nullable ScoreViewController getScoreViewController() {
         return scoreView != null ? scoreView.getController() : null;
     }
 
     /**
-     * Returns the scoreView, exiting fatally if it is null.
-     * Use this in code that runs after initialization, where a null scoreView
-     * indicates corrupted application state.
+     * For code that runs after initialization.
      */
     public ScoreView requireScoreView() {
         var result = scoreView;
@@ -1107,12 +992,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Opens Preferences, the same way the menu action does.
-     * <p>
-     * Routed through the action rather than building a dialog here: Preferences is the one
-     * non-modal dialog, so its opener is what keeps a second window from appearing beside
-     * the one already up, and two entry points that did not share an opener could not keep
-     * that between them.
+     * Routed through the action: Preferences is the one non-modal dialog, and its opener keeps a
+     * second window from appearing.
      */
     public void handlePrefs() throws IllegalStateException {
         Actions.PREFERENCES_ACTION.open();
@@ -1214,12 +1095,6 @@ public class MainFrame extends JFrame {
         saveAsNewFile();
     }
 
-    /**
-     * Saves the document to its file, asking for one first when it has none.
-     *
-     * @return true on success; false when the user cancels the file chooser, declines to save
-     *     a song with errors (see {@link #writeSong}), or the write fails
-     */
     public boolean save() {
         return (currentFile == null) ? saveAsNewFile() : saveCurrentFile();
     }
@@ -1233,19 +1108,10 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Writes the document to {@code file}, leaving the window's current file alone. Every save
-     * reaches the file through this method, so it is the one place a save is gated: when the
-     * song has a finding that carries {@link LintRule.Flag#BLOCKS_EXPORT}, it first asks the
-     * user to confirm, with Yes as the default answer; where dialogs are suppressed, the
-     * default answer is taken and the file is written. The lint report is current, because
-     * the song lints after every change.
-     *
-     * @param file the file to write
-     * @return true when the file was written; false when the user declines to save a song
-     *     with errors or the write fails
-     * @effects asks for confirmation while a finding blocks export, and on No writes nothing;
-     *     on success, marks the song unmodified and posts {@link DocumentWasSavedNotification};
-     *     on a failed write, shows an error alert. The Messages panel is left as it is.
+     * Leaves the window's current file alone. Every save goes through here, so this is the one
+     * place a save is gated: a finding carrying {@link LintRule.Flag#BLOCKS_EXPORT} first asks
+     * the user to confirm, Yes by default; where dialogs are suppressed the default is taken and
+     * the file is written.
      */
     private boolean writeSong(File file) {
         if (scoreView == null) {
@@ -1330,10 +1196,8 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * The title bar area drawn by the app when macOS full window content is in
-     * effect. Because the app's content covers the native title bar, macOS never
-     * sees the clicks that would normally zoom the window, so the standard
-     * double-click-to-zoom gesture is reimplemented here.
+     * The app's content covers the native title bar, so macOS never sees the clicks that zoom
+     * the window; double-click-to-zoom is reimplemented here.
      */
     private final class TitlePanel extends JPanel {
         private TitlePanel() {

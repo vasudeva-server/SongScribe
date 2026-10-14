@@ -26,27 +26,18 @@ import songscribe.lint.LintMark;
 import songscribe.message.Message;
 
 /**
- * The notification that the lint mark selected in the Messages panel changed: a lint row was
- * selected, or the selection moved to a change row or to no row.
- *
- * <p>The score shows the callout of the selected mark, and hides it when no mark is selected.
+ * The notification that the lint mark selected in the Messages panel changed.
  */
 public class LintMarkSelectionDidChangeNotification extends Message {
 
     private final @Nullable LintMark mark;
 
-    /**
-     * @param mark the mark of the selected lint row, or {@code null} when no lint row is selected
-     */
+    /** {@code mark} is {@code null} when no lint row is selected. */
     public LintMarkSelectionDidChangeNotification(@Nullable LintMark mark) {
         this.mark = mark;
     }
 
-    /**
-     * The selected mark.
-     *
-     * @return the mark of the selected lint row, or {@code null} when no lint row is selected
-     */
+    /** @return the selected lint row's mark, or {@code null} when no lint row is selected */
     public @Nullable LintMark getMark() {
         return mark;
     }

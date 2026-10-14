@@ -40,21 +40,14 @@ import songscribe.ui.component.NumericTextField;
 
 
 /**
- * A self-contained date-input row (year, month, day) that can be embedded in any
- * dialog panel. Owns its three widgets and views each of them as a property.
+ * A date-input row (year, month, day). It owns no {@code Bindings} of its own: it takes one from
+ * the tab that builds it, so the dialog disposes every binding this row declares.
  *
- * <p>The row is not a {@link BaseDialog.Tab} and owns no {@code Bindings} of its
- * own: it takes one from the tab that builds it, so the dialog still owns every
- * binding this row declares and disposes them with the rest.
+ * <p>The month combo is <i>valued</i>: it holds {@link MonthChoice} constants, so no agreement
+ * between list order and month number has to hold. The month number {@link PartialDate} carries
+ * appears only in {@link #getDate} and {@link #setDate}.
  *
- * <p>The month combo is <i>valued</i>: it holds {@link MonthChoice} constants, so the
- * property answers a month rather than a position and no agreement between list order
- * and month number has to hold. The month number {@link PartialDate} carries is
- * produced in {@link #getDate} and consumed in {@link #setDate}, which are the only
- * two places that representation appears.
- *
- * <p>The day combo is still indexed — a day genuinely is its number — with index
- * {@value #NONE_INDEX} the empty entry meaning "no day".
+ * <p>The day combo is indexed, with index {@value #NONE_INDEX} the empty entry meaning "no day".
  */
 final class SongSettingsDateInputRow {
 
@@ -70,16 +63,11 @@ final class SongSettingsDateInputRow {
         new NumericRange(YEAR_MIN, YEAR_MAX, NumericRange.Blank.ACCEPTED);
     private static final int DAYS_IN_MONTH_MAX = 31;
 
-    /** The empty leading entry of the day combo: no day. */
     static final int NONE_INDEX = 0;
 
     /**
-     * The month combo's items: the twelve months and the absence of one.
-     *
-     * <p>A closed set rather than a list of names read by position. The number
-     * {@link PartialDate} carries is a property of the constant, so reordering the
-     * combo, translating it, or inserting a separator cannot change what a selection
-     * means.
+     * The number {@link PartialDate} carries is a property of the constant, so reordering or
+     * translating the combo cannot change what a selection means.
      */
     private enum MonthChoice {
         NONE(0, Strings.MONTH_NONE),
@@ -104,14 +92,6 @@ final class SongSettingsDateInputRow {
             this.labelKey = labelKey;
         }
 
-        /**
-         * Returns the constant {@link PartialDate} carries as {@code stored}.
-         *
-         * @param stored the stored month number, 0 for none
-         * @return the matching constant
-         * @throws IllegalArgumentException if {@code stored} names no month and is not
-         *     0, which {@code PartialDate}'s own range check makes unreachable
-         */
         static MonthChoice ofStored(int stored) {
             for (var choice : values()) {
                 if (choice.stored == stored) {
@@ -122,12 +102,10 @@ final class SongSettingsDateInputRow {
             throw new IllegalArgumentException("No month is stored as " + stored);
         }
 
-        /** @return the number {@link PartialDate} carries for this month, 0 for none */
         int stored() {
             return stored;
         }
 
-        /** @return the localized month name, which for {@link #NONE} is empty */
         @Override
         public String toString() {
             return Strings.get(labelKey);
@@ -146,24 +124,10 @@ final class SongSettingsDateInputRow {
     private final Property<@Nullable Integer> day = Controls.itemIndex(dayCombo);
 
     /**
-     * Builds the row and declares its bindings on {@code bindings}.
-     *
-     * <p>The row announces nothing of its own. Its three getters read the three
-     * properties, so a caller that reads them inside a {@code Bindings.computed}
-     * acquires a dependency on each one it reads and is re-derived when the user edits
-     * it — including when the year becomes invalid, losing a date being as much a change
-     * to what this row contributes as gaining one. A second callback route beside that
-     * would carry the same change and fire on a different schedule.
-     *
-     * <p>Clearing the year clears the month and day with it, so one such gesture
-     * notifies three times. A reader that cannot afford the repeats derives through a
-     * {@link ValueProperty}, which notifies only on a transition.
-     *
-     * <p>The two enabled states are bindings, and the framework keeps them current on
-     * its own.
-     *
-     * @param bindings the owning dialog's bindings, which this row registers its
-     *     bindings and effects on and which disposes them
+     * The row announces nothing of its own: its getters read the properties, so a caller inside a
+     * {@code Bindings.computed} is re-derived when the user edits it. Clearing the year clears the
+     * month and day with it, so one gesture notifies three times; a reader that cannot afford the
+     * repeats derives through a {@link ValueProperty}.
      */
     SongSettingsDateInputRow(Bindings bindings) {
         // The month combo is enabled exactly when the year is valid; the day combo
@@ -193,28 +157,10 @@ final class SongSettingsDateInputRow {
         });
     }
 
-    /**
-     * Returns whether the day combo should be enabled.
-     *
-     * <p>A total function of its two arguments: it reads no field and no control, so
-     * the derivation that drives the combo's enabled state passes what it read from
-     * the properties rather than letting this reach for it.
-     *
-     * @param yearValid whether the year field holds a value in range
-     * @param month the selected month, {@link MonthChoice#NONE} for none
-     * @return {@code true} when a valid year and a chosen month together make a day
-     *     meaningful
-     */
     private static boolean dayEnabled(boolean yearValid, MonthChoice month) {
         return yearValid && month != MonthChoice.NONE;
     }
 
-    /**
-     * Builds the day combo's items: the empty "no day" entry followed by 1 through
-     * {@value #DAYS_IN_MONTH_MAX}, so that each item's position is the day number.
-     *
-     * @return the items, in index order
-     */
     private static List<String> buildDayNames() {
         var days = new ArrayList<String>(DAYS_IN_MONTH_MAX + 1);
         days.add("");
@@ -227,13 +173,7 @@ final class SongSettingsDateInputRow {
     }
 
     /**
-     * Builds a combo over {@code items} that the user may select from but not type
-     * into, which is what makes its selected item the whole of its value and so a
-     * legal subject for {@link Controls#item}.
-     *
-     * @param <E> the item type
-     * @param items the items, in the order they are offered
-     * @return the combo, with its first item selected
+     * Not editable, which makes it a legal subject for {@link Controls#item}.
      */
     private static <E> JComboBox<E> uneditableCombo(List<E> items) {
         var combo = new JComboBox<E>();
@@ -244,11 +184,6 @@ final class SongSettingsDateInputRow {
     }
 
     /**
-     * Appends the three labeled date fields (year, month, day) to {@code panel}.
-     * The year field is added using the pre-built {@code yearLabel} so the caller
-     * can column-align it before layout; month and day use inline left-position labels.
-     *
-     * @param panel the container to append the three rows to
      * @param yearLabel the year field's label, already sized by the caller
      */
     void addTo(JComponent panel, JLabel yearLabel) {
@@ -270,14 +205,8 @@ final class SongSettingsDateInputRow {
     }
 
     /**
-     * Seeds the three widgets from a stored date. The enabled states follow from
-     * the bindings and need no refresh here.
-     *
-     * <p>The year is written first, so that an unusable one clears the month and day
-     * before this method seeds them — what is put in is what comes back out either
-     * way.
-     *
-     * @param date the stored date
+     * The year is written first, so that an unusable one clears the month and day before this
+     * method seeds them.
      */
     void setDate(PartialDate date) {
         year.set(date.year());
@@ -299,15 +228,7 @@ final class SongSettingsDateInputRow {
     }
 
     /**
-     * The date the three widgets describe.
-     *
-     * <p>The year goes in exactly as the field holds it, which may be out of range: a
-     * date is built from it all the same, and the enable rules above are what keep a
-     * month or day from standing beside a year that names no date.
-     *
-     * @return the date, {@link PartialDate.EmptyDate} when the year field is empty
-     * @throws IllegalStateException if the day combo has no selection, which
-     *     {@link #uneditableCombo} rules out by building it with one
+     * The year goes in exactly as the field holds it, which may be out of range.
      */
     PartialDate getDate() {
         var dayIndex = day.get();

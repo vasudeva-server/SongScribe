@@ -28,25 +28,17 @@ import songscribe.engraving.EngravingConstants;
 /**
  * A barline or repeat sign, as the left-to-right sequence of strokes it is drawn from.
  *
- * <p>The strokes are laid out in the order given, starting at the element's own X origin,
- * with exactly one {@link BarStroke#SEPARATION_SS} between each adjacent pair.
- * The group's width and both of its volta bracket anchors are derived from that sequence,
- * so a bar's geometry is stated once, in its declaration, rather than restated by every
- * reader of it.
+ * <p>The strokes are laid out in order from the element's own X origin, exactly one
+ * {@link BarStroke#SEPARATION_SS} apart. The width and both volta anchors derive from that
+ * sequence.
  *
- * <p>Repeat dots take part in neither volta anchor. A volta bracket opens on the group's last
- * drawn line — centered on it, or with its arm's right edge on that line's right edge where the
- * line is thick — and closes half a thin barline past the left edge of the first drawn line.
- * Dots are skipped at both ends because they belong to the repeated section rather than to the
- * bar line the bracket marks: a bracket closing on leading dots would hang back into the
- * preceding measure, and one opening past trailing dots would start inside the section it is
- * meant to bound.
+ * <p>Repeat dots take part in neither volta anchor: they belong to the repeated section rather
+ * than to the bar line the bracket marks.
  *
  * <p>Every bar is declared as a literal in this package — the constants of {@link ElementType}
  * and {@link #SINGLE_BARLINE} — through {@link #of}, and no other code builds one.
  *
- * @param strokes the strokes, left to right; copied on construction, so the record is
- *                immutable whatever the caller does with the list afterwards
+ * @param strokes the strokes, left to right; copied on construction
  * @invariant {@code strokes} is non-empty and holds at least one stroke that is not
  *            {@link BarStroke#DOTS}, so {@link #openingAnchorSs()} scanning back from the end
  *            and {@link #closingAnchorSs()} scanning forward from the start each reach a drawn
@@ -55,9 +47,8 @@ import songscribe.engraving.EngravingConstants;
 public record BarAppearance(List<BarStroke> strokes) implements ElementAppearance {
 
     /**
-     * A single thin barline. Named because it is drawn from somewhere other than an element —
-     * the barline a cautionary key signature draws at the end of a line — and that drawing and
-     * {@link ElementType#SINGLE_BARLINE} must not disagree about what a single barline is.
+     * Named because a cautionary key signature draws it at the end of a line, and that drawing
+     * and {@link ElementType#SINGLE_BARLINE} must not disagree about a single barline.
      */
     public static final BarAppearance SINGLE_BARLINE = of(BarStroke.THIN);
 
@@ -65,22 +56,10 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
         strokes = List.copyOf(strokes);
     }
 
-    /**
-     * Returns the appearance of a bar drawn from the given strokes, left to right.
-     *
-     * @param strokes the strokes, left to right
-     * @return the appearance, so that a declaration site reads
-     *         {@code BarAppearance.of(DOTS, THIN, THICK)}
-     */
     static BarAppearance of(BarStroke... strokes) {
         return new BarAppearance(List.of(strokes));
     }
 
-    /**
-     * @return The total width of the group in staff spaces: every stroke's width, plus one
-     *         {@link BarStroke#SEPARATION_SS} for each gap between adjacent
-     *         strokes.
-     */
     public double widthSs() {
         var totalSs = (strokes.size() - 1) * BarStroke.SEPARATION_SS;
 
@@ -93,16 +72,11 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
 
     /**
      * The X offset in staff spaces, relative to the element's origin, at which a volta bracket
-     * opening on this bar puts its left arm.
+     * opening on this bar puts its left arm. A path coordinate, not an ink edge: the arm is
+     * stroked centered on it, half a {@link EngravingConstants#VOLTA_BRACKET_SS} to either side.
      *
-     * <p>This is a path coordinate, not an ink edge: the arm is stroked centered on it, reaching
-     * half a {@link EngravingConstants#VOLTA_BRACKET_SS} to either side. Trailing repeat dots are
-     * skipped rather than opened past — one opening past them would start inside the section the
-     * bracket is meant to bound.
-     *
-     * @return the center of the last drawn line, which the arm then straddles; or, when that line
-     *         is {@link BarStroke#THICK}, half a bracket short of its right edge, which puts the
-     *         arm's right edge on that edge so the bracket begins where the bar stops
+     * @return the center of the last drawn line; when that line is {@link BarStroke#THICK}, half
+     *         a bracket short of its right edge, so the arm's right edge lies on that edge
      */
     public double openingAnchorSs() {
         var lastLineIndex = strokes.size() - 1;
@@ -133,16 +107,10 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
 
     /**
      * The X offset in staff spaces, relative to the element's origin, at which a volta bracket
-     * closing on this bar ends its horizontal arm.
+     * closing on this bar ends its horizontal arm. A path coordinate, not an ink edge.
      *
-     * <p>This is a path coordinate, not an ink edge: the arm ends here, and a closing stroke,
-     * where the bracket has one, hangs from here. The two cases share the one anchor, so an open
-     * bracket and a struck-through one stop at the same place. Leading repeat dots are skipped
-     * rather than closed on — one closing on them would hang back into the preceding measure.
-     *
-     * <p>The advance is half a {@link BarStroke#THIN} whatever the line it is
-     * measured from, following LilyPond: on a bar opening with a thick line the endpoint lands
-     * that same distance in, well short of that line's center.
+     * <p>The advance is half a {@link BarStroke#THIN} whatever the first line is, following
+     * LilyPond.
      *
      * @return half a thin barline past the left edge of the first drawn line
      */

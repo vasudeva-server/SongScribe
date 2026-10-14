@@ -23,17 +23,6 @@ package songscribe.dom;
 /**
  * The eight measurements of an element type in staff spaces, computed once from the type's
  * appearance and never changed.
- *
- * @param fullWidthSs         the element width including a stemmed note's flag extent
- * @param baseWidthSs         the right edge of the element's own glyph, measured from the origin
- * @param fullElementHeightSs the element height excluding a note's stem
- * @param noteheadTopOffsetSs the Y offset from the element center to the top of its glyph,
- *                            negative
- * @param heightUpSs          the element height with a stem-up
- * @param heightDownSs        the element height with a stem-down
- * @param topOffsetUpSs       the Y offset from the element center to the top of a stem-up element
- * @param topOffsetDownSs     the Y offset from the element center to the top of a stem-down
- *                            element
  */
 record ElementBounds(
     double fullWidthSs,
@@ -45,15 +34,6 @@ record ElementBounds(
     double topOffsetUpSs,
     double topOffsetDownSs
 ) {
-    /**
-     * Bounds for an element with no stem: the same in both stem directions, and the glyph's
-     * width is the element's width.
-     *
-     * @param glyphSize   the glyph's width from the origin to its right edge, and its height
-     * @param topOffsetSs the Y offset from the element center to the top of the glyph, negative
-     * @return bounds whose full and base widths are both the glyph's width, and whose height and
-     *     top offset are the glyph's for either stem direction
-     */
     static ElementBounds symmetric(Size glyphSize, double topOffsetSs) {
         var widthSs = glyphSize.widthSs();
         var heightSs = glyphSize.heightSs();

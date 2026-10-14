@@ -11,7 +11,7 @@ failures this skill exists to avoid.
 | Axis | Model | Input | Covers |
 |---|---|---|---|
 | Des | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
-| Contract & API | inherit | production scope, plus the doc scope when it is non-empty | depth earned by fan-in; contract stated / complete / derived from the domain; contract duplicated into prose; naming; signature quality; test-only surface |
+| Contract & API | inherit | production scope, plus the doc scope when it is non-empty | clauses that restate the body; missing preconditions, null meanings, reasons and class-level facts; full contracts where tests derive; promises duplicated into prose; naming; signature quality; test-only surface |
 | Correctness & Efficiency | sonnet | production scope | real defects, null contracts, repeated or redundant work |
 | Test Conformance | sonnet | test scope and its production counterparts | should each test exist at all, and does it exercise what the contract promises |
 
@@ -95,8 +95,8 @@ with one structural mistake, what would it be?*
 
 ### Invariants the types could carry
 
-Run this before anything else in this axis. Each finding here deletes a guard, a
-`@throws` clause and a test permanently, and none of them rot.
+Run this before anything else in this axis. Each finding here deletes a guard and
+a test permanently, and neither of them rots.
 
 7a. **A validated record whose domain is a known finite set** should be a closed
     enum. The tell is a constructor rejecting values at runtime alongside a
@@ -185,70 +185,73 @@ change touches, per *Reporting a design finding*. Consult the design notes under
 
 ## Axis 2: Contract & API
 
-An API that **fan-in earns a contract for** is judged against that contract, and
-the contract is judged against the domain. Read `.claude/guides/contracts.md` and
-the **Writing a Contract in Javadoc** and **Signature Rules for Contracts**
-sections of `.claude/rules/java.md` before reporting.
+A Javadoc is judged against the five clause types in
+`.claude/guides/contracts.md`, and a full contract against the tests derived from
+it. Read that guide and the **Contracts in Javadoc** and **Signature Rules for
+Contracts** sections of `.claude/rules/java.md` before reporting.
 
 Where a doc scope came with the code, it is part of this axis's material, not
-background: a contract restated in prose is a second copy of the promise, and
-rule 11 below is where that is judged. `docs/` and `plans/` are the only places
-a stale contract can sit without the compiler or a reference lookup reaching it.
+background: a promise restated in prose is a second copy of it, and rule 12
+below is where that is judged. `docs/` and `plans/` are the only places a stale
+promise can sit without the compiler or a reference lookup reaching it.
 
-### Does it earn a contract, and does it have one?
+### Does each clause belong?
 
-1. **Depth follows fan-in** — how many callers rely on the promise times how
-   rarely it changes. A trivial accessor, a one-line delegation, and a private
-   helper with one caller earn an accurate name and nothing more; a full contract
-   on one of those is depth spent where nothing relies on it, and is a finding in
-   its own right.
-1a. **An API several callers rely on and that has no contract is a finding.**
-    Scope this to what the review target adds or changes. Say what the contract
-    should promise, not merely that one is missing.
+Mechanical: apply the five clause types, and report each clause that is none of
+them for deletion. Do not check whether such a clause is accurate — it goes
+either way.
 
-### Is the contract complete?
+1. **A clause that restates the body** — a first sentence that says what the
+   method does, a `@param` or `@return` that repeats a name, or a `@throws`,
+   `@effects`, `@invariant` or `@log` outside a full contract.
+2. **A full contract on a method that no test derives from.** Report the clauses
+   to keep: those of the five types.
 
-Judge against the eight elements in `contracts.md`: summary, preconditions,
-postconditions, boundary semantics, errors, result invariants, side effects,
-relationships. Report the specific clause a caller cannot find:
+### Is a clause missing?
 
-2. **A documented method whose return type is not `void` and which has no
-   `@return`.** Mechanical, no judgment: the tag is mandatory, and a summary
-   sentence that already says what comes back does not excuse its absence. The
-   same for a parameter with no `@param`.
-3. **A `@throws` that does not name the exact condition.** "if invalid" is not a
-   clause a test can be derived from.
-4. **Boundary semantics unstated** — inclusive or exclusive, empty input, zero,
-   negative, ties, equality.
-5. **A `@Nullable` return whose contract never says what null *means*.** The
-   project bans `Optional`, so the annotation is the whole vocabulary and it says
-   only *this may be absent*. Absence is exactly what the caller must branch on.
-   The same applies to a `@Nullable` parameter: state what passing null selects.
-6. **Side effects unstated** — mutation, messages posted, files written,
-   threading requirements.
-7. **A promise stated somewhere that is not the contract** — in a test's
+Scope these to what the review target adds or changes. Say what the clause
+should state, not merely that one is missing.
+
+3. **A precondition that interior code relies on and that no Javadoc states** —
+   above all where no guard exists, because the Javadoc is then the only place
+   the obligation is visible.
+4. **A `@Nullable` return or parameter whose Javadoc never says what null
+   *means*.** The project bans `Optional`, so the annotation is the whole
+   vocabulary and it says only *this may be absent*. Absence is exactly what the
+   caller must branch on. For a parameter, state what passing null selects.
+5. **A constraint with no reason** — a visibility, a priority, an order or a
+   value that a reader would take for arbitrary and change, and whose change
+   breaks something somewhere else.
+6. **A class-level fact unstated** — a threading rule, a lifecycle obligation, or
+   an invariant that several methods depend on.
+7. **A promise stated somewhere that is not the Javadoc** — in a test's
    assertion description, in an implementation comment, in a commit message.
-   A promise a caller cannot find is a promise that is not being kept. Move it
-   into the Javadoc.
+   A promise a test derives from belongs in the full contract; a domain promise
+   the code does not show belongs in the Javadoc as a clause of type 5.
+8. **A method a test derives from with no full contract**, or a full contract
+   with no clause for a case its test asserts. Judge the full contract against
+   the clauses in `contracts.md`: domain, boundary semantics, invariants, errors,
+   effects.
 
 ### Is it derived from the domain?
 
-8. **A contract that narrates the implementation is not a contract.** The tell of
-   a real one is that **the current implementation could in principle violate
-   it**. A promise the code could not possibly break is describing the code. When
-   you find one, say what the domain actually requires instead.
-9. **Where the promise is a musical or domain judgment** — tuplets, beaming,
-   ties, melisma placement, key signatures — do not decide it. Report what the
-   contract fails to state and what you believe it should promise, marked as
-   needing confirmation. A confident, plausible, wrong contract is worse than
-   none, because every test downstream is then derived from it.
+9. **A full contract or a clause of type 5 that narrates the implementation.**
+   The tell of a real one is that **the current implementation could in
+   principle violate it**. A promise the code could not possibly break is
+   describing the code. When you find one, say what the domain actually requires
+   instead.
+10. **Where the promise is a musical or domain judgment** — tuplets, beaming,
+    ties, melisma placement, key signatures — do not decide it. Report what the
+    Javadoc fails to state and what you believe it should promise, marked as
+    needing confirmation. A confident, plausible, wrong promise is worse than
+    none, because every test downstream is then derived from it.
 
 ### Is it at the right tier?
 
-10. **A rule repeated on several methods belongs one tier up** — on the class or
-   in `package-info.java`. Repeated contracts drift and eventually contradict one
+11. **A rule repeated on several methods belongs one tier up** — on the class or
+   in `package-info.java`. Repeated clauses drift and eventually contradict one
    another.
-11. **A rule spanning subsystems belongs in `docs/`**, with the method's Javadoc
+12. **A rule spanning subsystems belongs in `docs/`**, with the method's Javadoc
     linking to it rather than paraphrasing it. The paraphrase is the copy that
     goes stale.
 
@@ -269,52 +272,51 @@ relationships. Report the specific clause a caller cannot find:
 
 ### Names
 
-12. **The name is the part of the contract every caller reads, and for most
-    callers the only part.** A name that overstates, understates, or misdescribes
-    what the method does produces expectations the doc comment does not repair,
-    because the doc comment is not what the caller read. Report the accurate name
-    concretely.
-13. **Never soften a rename finding on the grounds of churn.** `jet_brains_rename`
+13. **The name is the only statement of what a method does.** The Javadoc never
+    states it. A name that overstates, understates, or misdescribes what the
+    method does produces expectations that nothing repairs. Report the accurate
+    name concretely.
+14. **Never soften a rename finding on the grounds of churn.** `jet_brains_rename`
     updates the call sites. There is never a reason to resist a rename once a
     better name is determined; say what the name should be.
 
 ### Signatures
 
-14. **More than four parameters: a `record` parameter object is required.**
-15. **Two or more same-typed parameters a call site could transpose: a `record`,**
+15. **More than four parameters: a `record` parameter object is required.**
+16. **Two or more same-typed parameters a call site could transpose: a `record`,**
     regardless of the total count. Adjacent booleans are the common case, and the
     compiler cannot catch a transposition.
-16. **A boolean that selects a mode or a type: an enum.** A literal `true` at a
+17. **A boolean that selects a mode or a type: an enum.** A literal `true` at a
     call site names nothing.
 
 ### Test-only surface — a hard finding, not an advisory one
 
 This check is mechanical and has no judgment call in it.
 
-17. For each member the review target adds, changes, or widens, run
+18. For each member the review target adds, changes, or widens, run
     `jet_brains_find_referencing_symbols`. **If every reference resolves under
     `src/test/`, it is test-only surface.** Report it. This includes methods,
     accessors, widened fields, and relaxed visibility of any kind, whatever the
     member is named.
-18. **Reflection into production internals from a test is the same violation.**
+19. **Reflection into production internals from a test is the same violation.**
     `getDeclaredField`, `setAccessible`, or any write to a private field from a
     test adds no production surface, so it satisfies the letter of the rule while
     defeating its point: the suite is now coupled to private names, and a rename
     fails at runtime instead of at compile time.
-19. Classify every hit into one of three categories, because the fix differs:
+20. Classify every hit into one of three categories, because the fix differs:
     - **Genuinely test-only** — delete it, or restructure so production supplies
       what the test needs. When a test cannot arrange the state it needs, the
       answer is a constructor or factory that takes that state, used by
       production too.
     - **A misnamed internal API** — it takes explicit arguments and returns a
-      value, so it is already a coherent unit with its own contract. Rename it to
-      the concept and write the contract.
+      value, so it is already a coherent unit. Rename it to the concept, and
+      write the full contract its test derives from.
     - **An incomplete lifecycle contract** — a class with `initialize()` and no
       way back has a missing half, tests or no tests. The fix is to name and
       document the teardown, not to delete the member.
-20. **A constant is part of the contract if a contract's Javadoc names it** via
-    `{@value #X}` or `{@link Class#X}`; its visibility then follows the contract
-    that cites it. If no contract names it, it is implementation, and a test that
+21. **A constant is part of the contract if a Javadoc names it** via
+    `{@value #X}` or `{@link Class#X}`; its visibility then follows the member
+    whose Javadoc cites it. If no Javadoc names it, it is implementation, and a test that
     needs it is testing implementation — which is the finding. Visibility
     justified in a comment by a test ("package-private so the test can…") is the
     finding stated in the source.

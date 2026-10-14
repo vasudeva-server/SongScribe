@@ -32,26 +32,17 @@ import songscribe.ui.component.MainFrame;
 
 /**
  * The Song Settings dialog: a widget shell over the song's title, attribution, music settings
- * and fonts.
- *
- * <p>It holds no song and no score. What it shows arrives as a {@link SongSettingsInput} and
- * what OK commits leaves as a {@link SongSettingsOutput}; everything in between is controls. The
- * {@link DialogOps} it is constructed with does the reading and the writing, and decides what may
- * be committed.
+ * and fonts. It holds no song and no score.
  *
  * <p><strong>Two of its records span tabs, which is why they are assembled here.</strong> The
- * metadata is split between the Title and Attribution tabs and the fonts across three tabs, so
- * neither can be built from inside one of them — and a commit split across tabs would be
- * several undo steps for one press of OK.
+ * metadata is split between the Title and Attribution tabs and the fonts across three tabs.
  */
 public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSettingsOutput> {
 
     /**
-     * What a caller wants to edit, for those that need the dialog opened somewhere
-     * specific. Names a part of the song rather than a tab: {@link #TITLE} and
-     * {@link #SUBTITLE} share one tab but land on different fields, and callers should not
-     * have to know that. {@link #show(Section)} owns the mapping, and the constant order
-     * here carries no meaning.
+     * Names a part of the song rather than a tab: {@link #TITLE} and {@link #SUBTITLE} share one
+     * tab but land on different fields. {@link #show(Section)} owns the mapping; the constant
+     * order carries no meaning.
      */
     public enum Section {
         TITLE,
@@ -74,10 +65,6 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     // and the window closing, which is the only span in which it means anything.
     private @Nullable SongSettingsInput input = null;
 
-    /**
-     * @param mainFrame the window this dialog parents itself to
-     * @param ops       what this dialog may ask of the document, supplied by whoever opened it
-     */
     public SongSettingsDialog(MainFrame mainFrame, DialogOps<SongSettingsInput, SongSettingsOutput> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), ops);
 
@@ -92,12 +79,7 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     }
 
     /**
-     * Shows the dialog with {@code section}'s tab selected and, where the section names a
-     * particular field, that field focused.
-     * <p>
-     * One switch maps each section to both, so a section cannot end up opening one tab
-     * while focusing a control on another. It is exhaustive by enum, so a new
-     * {@link Section} fails to compile here rather than silently opening the wrong tab.
+     * One switch maps each section to both its tab and its control, so they cannot disagree.
      */
     public void show(Section section) {
         switch (section) {
@@ -113,9 +95,7 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     }
 
     /**
-     * Hands the same values to every tab, and keeps them for {@link #gather()}.
-     *
-     * <p>Tab order matters in one place: the Title tab is populated first because the Attribution
+     * Tab order matters in one place: the Title tab is populated first because the Attribution
      * tab's preview reads the title and number out of it while building the attribution block.
      */
     @Override
@@ -134,11 +114,8 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     }
 
     /**
-     * The metadata the Title and Attribution tabs together describe.
-     *
-     * <p>Every field goes in raw: {@link SongMetadata}'s constructor normalizes each one, and
-     * it is the same constructor the Attribution tab's preview builds through, which is what
-     * makes the preview show what the commit will store.
+     * Every field goes in raw: {@link SongMetadata}'s constructor normalizes each one, and the
+     * Attribution tab's preview builds through the same constructor.
      */
     private SongMetadata gatherMetadata() {
         return new SongMetadata(
@@ -157,12 +134,8 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     }
 
     /**
-     * The document's fonts with the six roles this dialog edits replaced.
-     *
-     * <p>Each of those six is owned by one tab — title and subtitle by the Title tab,
-     * attribution and sub-attribution by the Attribution tab, lyrics and annotation by the
-     * Fonts tab — so no tab holds the whole set. The Bangla and footnote roles are
-     * document-level but not surfaced here, and the copy carries them through unchanged.
+     * Each of the six edited roles is owned by one tab, so no tab holds the whole set. The
+     * Bangla and footnote roles are carried through unchanged.
      */
     private DocumentFonts gatherFonts() {
         var fonts = new DocumentFonts(requireInput().fonts());

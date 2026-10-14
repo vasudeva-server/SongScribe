@@ -61,12 +61,8 @@ public class PasteboardAction extends UIAction {
     }
 
     /**
-     * Base {@link UIAction#updateEnabledState()} only accounts for the generic
-     * flag-based checks (playback state, grace mode, etc.), and is called directly by
-     * several unrelated {@code @Handler} methods in the base class (e.g. song/document
-     * load). Without this override, those calls would force-enable COPY/CUT/PASTE
-     * regardless of selection or clipboard content, since none of them declare a
-     * {@code REQUIRES_SELECTION}-style flag.
+     * Overridden because the base handlers call the base version directly, which would
+     * force-enable COPY/CUT/PASTE regardless of selection or clipboard content.
      */
     @Override
     public final boolean updateEnabledState() {
@@ -80,16 +76,13 @@ public class PasteboardAction extends UIAction {
     }
 
     /**
-     * True when the selection is exactly the song's auto-maintained terminal. The terminal is
-     * selectable so an annotation can be attached to it and so its type can be changed, but it may not be copied, cut, pasted over or deleted, so every pasteboard
-     * operation is disabled while it is selected — leaving nothing to invoke by menu or
-     * keystroke.
+     * The terminal may not be copied, cut, pasted over or deleted, so every pasteboard operation
+     * is disabled while it is selected.
      */
     protected boolean isTerminalSelected() {
         return requireScoreView().getSelectionCoordinator().isTerminalSelected();
     }
 
-    /** Computes the enabled state from the score, once the generic flag checks pass. */
     protected boolean updateScoreEnabledState() {
         if (isTerminalSelected()) {
             return false;

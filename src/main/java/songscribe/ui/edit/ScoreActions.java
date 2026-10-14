@@ -31,17 +31,10 @@ import songscribe.prefs.PrefsKey;
 
 /**
  * Callback interface for ScoreView actions needed by EditModeManager.
- * <p>
- * This interface decouples EditModeManager from ScoreView, allowing it to request
- * ScoreView to perform UI-related actions without creating a circular dependency.
  */
 public interface ScoreActions {
 
-    /**
-     * The single authority for which preference keys {@link #syncPlaybackPrefs()} reads.
-     * A caller deciding whether a preference change warrants a sync checks membership here
-     * instead of keeping its own copy of the key list.
-     */
+    /** The single authority for which preference keys {@link #syncPlaybackPrefs()} reads. */
     Set<PrefsKey> PLAYBACK_SYNC_PREFS_KEYS = Set.of(
         PrefsKey.PLAY_INSERTED_NOTE,
         PrefsKey.PLAY_WITH_REPEATS,
@@ -51,41 +44,16 @@ public interface ScoreActions {
         PrefsKey.PLAYBACK_VOLUME
     );
 
-    /**
-     * Clears the current selection.
-     */
     void clearSelection();
 
-    /**
-     * Repaints the scoreView.
-     */
     void repaint();
 
-    /**
-     * Sets the insertion note.
-     *
-     * @param element The note to set as the insertion note
-     */
     void setPreviewElement(@Nullable StaffElement element);
 
-    /**
-     * Synchronizes playback-related preferences. Reads exactly the keys named in
-     * {@link #PLAYBACK_SYNC_PREFS_KEYS} — a caller adding a key to that set must add the
-     * matching read here, and vice versa.
-     */
+    /** Reads exactly the keys in {@link #PLAYBACK_SYNC_PREFS_KEYS}, so the two change together. */
     void syncPlaybackPrefs();
 
-    /**
-     * Updates the page layout for the given line width.
-     *
-     * @param lineWidthSs line width in staff spaces
-     */
     void updatePageLayout(Ss lineWidthSs);
 
-    /**
-     * Enables or disables key bindings (disabled during lyric text editing).
-     *
-     * @param enabled {@code true} to enable, {@code false} to disable
-     */
     void setKeyBindingsEnabled(boolean enabled);
 }

@@ -27,9 +27,8 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.edit.EditModeManager;
 
 /**
- * An insertion of the preview element that its gate accepted and that has not landed yet: the
- * chain walk has stamped the element as it will sound, the line has room for it, and every
- * confirmation was given. Nothing is mutated until it lands.
+ * An insertion of the preview element that its gate accepted and that has not landed yet.
+ * Nothing is mutated until it lands.
  * <p>
  * Only {@link PreviewElementInserter} creates one, and only after the gate, so holding one is
  * proof the insertion may go ahead. It is valid until an element is next inserted into or removed
@@ -49,23 +48,12 @@ public final class AcceptedInsertion {
         this.appends = index == line.elementCount();
     }
 
-    /**
-     * Whether the element lands past the line's last element.
-     *
-     * @return {@code true} when nothing follows the element once it lands, so no neighbor after
-     *     it needs a repair
-     */
     public boolean appends() {
         return appends;
     }
 
     /**
-     * Inserts the element and repairs its neighbors: the lyric chains and the glissando the
-     * insertion breaks. An append has no neighbor after it and repairs nothing.
-     *
-     * @return the element inserted
-     * @effects the repairs and the insertion post through the line's primitives, so the caller
-     *     holds a modification bracket
+     * The caller must hold a modification bracket.
      */
     public StaffElement land() {
         if (!appends) {
@@ -82,20 +70,15 @@ public final class AcceptedInsertion {
     }
 
     /**
-     * Inserts the element and leaves its neighbors as they are, for a caller that inserts with
-     * mutation tracking suspended: a repair made there would be applied but never recorded, so
-     * undo could not put the neighbors back. The caller owes the repairs, and runs them inside
-     * the bracket that records the insertion — see
-     * {@link songscribe.dom.LyricRun#repairNeighborsAfterUntrackedInsertion}.
-     *
-     * @return the element inserted
+     * For a caller that inserts with mutation tracking suspended, where a repair would never be
+     * recorded. The caller owes the repairs and runs them inside the bracket that records the
+     * insertion — see {@link songscribe.dom.LyricRun#repairNeighborsAfterUntrackedInsertion}.
      */
     public StaffElement landWithoutRepairs() {
         line.addElement(index, element);
         return landed();
     }
 
-    /** Re-arms the preview for the next click, and returns the element that landed. */
     private StaffElement landed() {
         EditModeManager.previewElementDidChange(line, index);
         return element;

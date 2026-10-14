@@ -22,9 +22,8 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StemmedNotehead;
 
 /**
- * Geometry constants and stateless calculations for notes, noteheads, stems,
- * ledger lines, and accidentals. This class centralises layout-time geometry
- * so that layout algorithms do not need to import renderer classes.
+ * Geometry constants and stateless calculations for notes, so layout algorithms need not import
+ * renderer classes.
  */
 public final class NoteGeometry {
 
@@ -32,62 +31,38 @@ public final class NoteGeometry {
     // Stem Constants
     // ==========================================================================
 
-    /**
-     * Shortening applied per diatonic step of distance from the middle line to a stem forced into its
-     * unnatural direction. LilyPond's {@code shortening_step} of 0.3333 half-spaces, halved to ss
-     * (see {@code stem.cc:519-555}).
-     */
+    /** LilyPond's {@code shortening_step}, halved to ss. */
     public static final double FORCED_SHORTEN_PER_STEP_SS = 1.0 / 6.0;
 
-    /**
-     * Maximum a forced stem may be shortened, in staff spaces. LilyPond's {@code 2·stem-shorten[0]}
-     * of 2.0 half-spaces, halved to ss.
-     */
+    /** LilyPond's {@code 2·stem-shorten[0]}, halved to ss. */
     public static final double MAX_FORCED_SHORTEN_SS = 1.0;
 
-    /**
-     * Floor a forced stem may be shortened to, in staff spaces. The forced-shortening formula caps at
-     * {@link #MAX_FORCED_SHORTEN_SS}, so a forced stem never falls below this; kept as a named
-     * constant for defensive flooring at the renderer.
-     */
+    /** A forced stem never falls below this; for defensive flooring at the renderer. */
     public static final double FORCED_STEM_FLOOR_SS = StemMetrics.STEM_LENGTH_SS - MAX_FORCED_SHORTEN_SS;
 
     // ==========================================================================
     // Font Constants
     // ==========================================================================
 
-    /** Bravura SMuFL music font size in staff-space units. */
     public static final float MUSIC_FONT_SIZE_SS = 4.0f;
 
     // ==========================================================================
     // Glissando Constants
     // ==========================================================================
 
-    /**
-     * Gap between the note column edge and the drawn slide line, in staff spaces. The connecting
-     * glissando uses it on both endpoints to keep the drawn line clear of the note's ink.
-     */
     public static final double GLISSANDO_DRAWN_GAP_SS = 0.4;
 
     /**
-     * Gap between the host note's column edge and a fall's glyph, in staff spaces. Mirrors the
-     * {@code padding} default LilyPond's {@code BendAfter} grob uses for falls and doits. Shared by
-     * {@code SlideRenderer} (the drawn gap) and {@code ElementColumnBuilder} (the layout reservation
-     * for a fall).
+     * Mirrors LilyPond's {@code BendAfter} padding. Shared by {@code SlideRenderer} (the drawn gap)
+     * and {@code ElementColumnBuilder} (the layout reservation for a fall).
      */
     public static final double FALL_GAP_SS = 0.5;
 
     private static final double GLISSANDO_MIN_LENGTH_SS = 1.0;
 
-    /** Minimum horizontal distance between note origins required for a glissando, in staff spaces. */
     public static final double MIN_GLISSANDO_RESERVATION_SS =
         GLISSANDO_MIN_LENGTH_SS + 2 * GLISSANDO_DRAWN_GAP_SS;
 
-    /**
-     * Stem anchor point for a grace note's stem-up south-east corner: the ordinary black
-     * notehead's stem anchor, scaled by {@link ElementType#GRACE_NOTE_SCALE} because a grace
-     * note is an ordinary black notehead drawn at a reduced font size.
-     */
     public static final Anchor GRACE_STEM_UP_SE = new Anchor(
         SMuFLMetadata.stemAnchors(StemmedNotehead.BLACK).stemUpSE().xSs()
             * ElementType.GRACE_NOTE_SCALE,
@@ -108,15 +83,8 @@ public final class NoteGeometry {
     public static final double DOT_SPACING_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT) * 2;
 
     /**
-     * Returns the X position (in ss, from the note glyph origin) of the first augmentation dot,
-     * following LilyPond's pad-by-one-dot-width convention: the dot sits one augmentation-dot width
-     * to the right of the note's right-most obstruction. That obstruction is the notehead, unless an
-     * unbeamed up-stem flag extends further right.
-     *
-     * @param note      the dotted note
-     * @param beaming   whether the note is beamed, which decides whether it draws a flag
-     * @param direction the note's drawn stem direction
-     * @return the first dot's X, relative to the note's glyph origin
+     * The dot sits one augmentation-dot width right of the note's right-most obstruction: the
+     * notehead, unless an unbeamed up-stem flag extends further right.
      */
     public static double firstDotXSs(NoteElement note, Beaming beaming, Direction direction) {
         var obstructionRightSs = SMuFLMetadata.bboxSs(note.notehead().glyph()).rightSs();
@@ -132,16 +100,6 @@ public final class NoteGeometry {
         return obstructionRightSs + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
     }
 
-    /**
-     * Computes the position of each augmentation dot for a note and passes
-     * (dotX, yOffset) to the consumer. Both values are in staff spaces,
-     * relative to the note's glyph origin.
-     *
-     * @param note      the note, which may have no dots
-     * @param beaming   whether the note is beamed, which decides whether it draws a flag
-     * @param direction the note's drawn stem direction
-     * @param consumer  receives each dot's X and Y offset, left to right
-     */
     public static void forEachDotPosition(
         NoteElement note, Beaming beaming, Direction direction,
         BiConsumer<? super Double, ? super Double> consumer
@@ -161,18 +119,7 @@ public final class NoteGeometry {
         }
     }
 
-    /**
-     * Returns the right-most extent (in ss, from the note glyph origin) of a note's augmentation
-     * dots, or {@code baseRightSs} when the note has no dots. Derived from the same dot positions
-     * {@link #forEachDotPosition} feeds the renderer, so the space layout reserves matches the ink
-     * actually painted.
-     *
-     * @param note        the note, which may have no dots
-     * @param beaming     whether the note is beamed, which decides whether it draws a flag
-     * @param direction   the note's drawn stem direction
-     * @param baseRightSs the right extent without dots, relative to the note's glyph origin
-     * @return the larger of {@code baseRightSs} and the last dot's right edge
-     */
+    /** Derived from the dot positions {@link #forEachDotPosition} feeds the renderer, so reserved space matches the ink. */
     public static double dotsRightExtentSs(
         NoteElement note, Beaming beaming, Direction direction, double baseRightSs
     ) {
@@ -193,30 +140,15 @@ public final class NoteGeometry {
     // Stem Geometry
     // ==========================================================================
 
-    /**
-     * Resolves the <em>drawn</em> stem direction for a note. A grace note is always drawn with
-     * its stem up, whatever direction it answers; every other note draws the direction it
-     * answers ({@link NoteElement#direction()}).
-     */
+    /** The <em>drawn</em> stem direction: a grace note is always drawn stem up, whatever it answers. */
     public static Direction effectiveDirection(NoteElement note) {
         return note.getType().isGraceNote() ? Direction.UP : note.direction();
     }
 
     /**
-     * Returns the amount (≥ 0, ss) a stem is shortened because it points in its <em>forced</em>
-     * (unnatural) direction, per Ross &amp; Gourlay (LilyPond {@code stem.cc:519-555}).
-     *
-     * <p>A stem is forced when the direction it answers opposes its
-     * {@link NoteElement#naturalDirection()}, whoever turned it — the notator, or the beam
-     * group it belongs to. An unbeamed auto stem always points its natural way, so it is never
-     * shortened. Grace stems are never shortened.
-     *
-     * <p>The shortening grows {@link #FORCED_SHORTEN_PER_STEP_SS} per diatonic step of distance from
-     * the middle line and caps at {@link #MAX_FORCED_SHORTEN_SS}, reaching the cap (a
-     * {@link #FORCED_STEM_FLOOR_SS} residual stem) one diatonic step beyond the top staff line.
-     *
-     * @param note the note whose stem is measured
-     * @return the shortening in staff spaces (0 for natural and grace stems)
+     * A stem is forced when the direction it answers opposes its
+     * {@link NoteElement#naturalDirection()}, whoever turned it. An unbeamed auto stem is never
+     * shortened, and neither is a grace stem.
      */
     public static double forcedShorteningSs(NoteElement note) {
         if (note.getType().isGraceNote() || note.direction() == note.naturalDirection()) {
@@ -228,10 +160,8 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the stem length for a note {@code type}: the shortened grace stem for grace notes, the
-     * standard stem otherwise. Single source of truth for the length shared by the drawn stem
-     * ({@link #computeBaseStemGeometry}) and the column's baked vertical extent
-     * ({@link ElementColumnBuilder#calculateStemTopSs}).
+     * The length shared by the drawn stem ({@link #computeBaseStemGeometry}) and the column's baked
+     * vertical extent ({@link ElementColumnBuilder#calculateStemTopSs}).
      */
     public static double stemLengthSs(ElementType noteType) {
         return noteType.isGraceNote()
@@ -240,13 +170,7 @@ public final class NoteGeometry {
     }
 
     /**
-     * Computes the base stem geometry for a note and direction.
-     * This is the shared anchor selection and positioning logic used by both
-     * {@code StaffElementRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
-     *
-     * @param note      The note; must satisfy {@link ElementType#isNoteWithStem()}
-     * @param direction UP for stem-up, DOWN for stem-down
-     * @return The base stem geometry
+     * @param note must satisfy {@link ElementType#isNoteWithStem()}
      */
     public static StemGeometry computeBaseStemGeometry(NoteElement note, Direction direction) {
         var noteType = note.getType();
@@ -262,13 +186,7 @@ public final class NoteGeometry {
         return new StemGeometry(stemLeftXSs, anchor.ySs(), stemLengthSs(noteType));
     }
 
-    /**
-     * The stem-side notehead anchor (SE for up-stems, NW for down-stems) per SMuFL's
-     * per-notehead-shape metrics, for a non-grace note. Grace notes use a separate, smaller
-     * anchor — see {@link #computeBaseStemGeometry}. Shared with
-     * {@link songscribe.ui.renderer.RenderingUtils#stemCenterXOffsetSs} so the anchor lookup is
-     * defined once.
-     */
+    /** For a non-grace note; shared with {@link songscribe.ui.renderer.RenderingUtils#stemCenterXOffsetSs}. */
     public static Anchor stemSideAnchor(StemmedNotehead notehead, Direction direction) {
         var anchors = SMuFLMetadata.stemAnchors(notehead);
 
@@ -276,21 +194,11 @@ public final class NoteGeometry {
     }
 
     /**
-     * Base stem geometry computed from SMuFL anchor data, before any rendering-specific
-     * adjustments (device-pixel snapping, beam lengthening, etc.).
-     *
-     * @param stemLeftXSs Left edge of the stem in staff spaces (relative to notehead origin)
-     * @param anchorYSs   Y position where the stem meets the notehead
-     * @param lengthSs    Stem length in staff spaces (without beam lengthening)
+     * @param stemLeftXSs relative to notehead origin
+     * @param lengthSs    without beam lengthening
      */
     public record StemGeometry(double stemLeftXSs, double anchorYSs, double lengthSs) {
 
-        /**
-         * Returns the Y position of the stem tip (the end away from the notehead).
-         *
-         * @param direction UP for stem-up (tip above notehead), DOWN for stem-down
-         * @return stem tip Y in staff spaces
-         */
         public double stemTipYSs(Direction direction) {
             return direction.isUp() ? anchorYSs - lengthSs : anchorYSs + lengthSs;
         }
@@ -301,26 +209,14 @@ public final class NoteGeometry {
     // ==========================================================================
 
     /**
-     * Horizontal gap between notehead origin and the right edge of an accidental, in staff spaces.
-     * <p>
-     * Single source of truth for the accidental-to-notehead gap: the renderer draws with it and the
-     * layout reserves a column's left extent with it ({@code ElementColumnBuilder.calculateLeftExtentSs}),
-     * so the reserved extent matches what is actually drawn.
+     * The accidental-to-notehead gap, shared by the renderer and the layout's reserved left extent
+     * ({@code ElementColumnBuilder.calculateLeftExtentSs}).
      */
     public static final float ACCIDENTAL_PADDING_SS = 0.3375f; // 2.7px / 8 px/ss
 
-    /**
-     * Grace-note counterpart of {@link #ACCIDENTAL_PADDING_SS}, scaled by
-     * {@link ElementType#GRACE_NOTE_SCALE} so the gap stays proportional to the smaller grace
-     * notehead instead of looking oversized.
-     */
     public static final float GRACE_ACCIDENTAL_PADDING_SS =
         ElementType.GRACE_NOTE_SCALE * ACCIDENTAL_PADDING_SS;
 
-    /**
-     * The regular-size accidental widths and bounding boxes, indexed by {@link Accidental#ordinal()}.
-     * The class loads on the first accidental query, so no caller has to prepare them.
-     */
     private static final class AccidentalTables {
         static final float[] WIDTHS_SS = widthsSs();
         static final BBox[] BOUNDS_SS = boundsSs();
@@ -354,11 +250,6 @@ public final class NoteGeometry {
     // Accidental Geometry
     // ==========================================================================
 
-    /**
-     * Returns the drawn width of the accidental for a note, in staff spaces. Grace notes use the
-     * regular glyphs drawn at {@link ElementType#GRACE_NOTE_SCALE}, so their width is the regular
-     * width scaled by that factor.
-     */
     public static float getAccidentalWidthSs(NoteElement note) {
         var accidental = note.drawnAccidental();
 
@@ -371,16 +262,7 @@ public final class NoteGeometry {
         return note.getType().isGraceNote() ? ElementType.GRACE_NOTE_SCALE * widthSs : widthSs;
     }
 
-    /**
-     * Returns the pen start X for drawing (and measuring the clearance area of) a note's accidental,
-     * in staff spaces relative to the notehead origin. The accidental's right edge sits one padding
-     * left of the origin; for grace notes the padding scales with the glyphs
-     * ({@link ElementType#GRACE_NOTE_SCALE}) so the gap stays proportional to the smaller notehead
-     * instead of looking oversized.
-     *
-     * <p>The renderer and {@code NoteColumnGeometry} must share this so the drawn glyphs and the
-     * glissando-clearance geometry cannot drift apart.
-     */
+    /** The renderer and {@code NoteColumnGeometry} must share this, or the drawn glyphs and the glissando clearance drift apart. */
     public static float getAccidentalStartXSs(NoteElement note) {
         var paddingSs = note.getType().isGraceNote()
             ? GRACE_ACCIDENTAL_PADDING_SS
@@ -390,17 +272,8 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the bounding box of the accidental drawn for a note, in staff-space units.
-     *
-     * <p>Horizontal coordinates are relative to the notehead glyph origin (x = 0).
-     * Vertical coordinates are relative to the note center (y = 0), using Y-down convention.
-     *
-     * <p>Returns {@code null} when the note has no accidental, or when it is a grace note:
-     * grace-note accidentals are deliberately not reserved into the structural stacking layer
-     * (see {@code VerticalStackingCalculator.seedAccidentalsIntoStructural}), so this returns no
-     * bounds for them rather than scaled bounds.
-     *
-     * @return the accidental's bounds relative to the notehead glyph's origin, or {@code null}
+     * Returns {@code null} when the note has no accidental, or when it is a grace note:
+     * grace-note accidentals are deliberately not reserved into the structural stacking layer.
      */
     public static @Nullable BBox getAccidentalBoundsSs(NoteElement note) {
         var accidental = note.drawnAccidental();
@@ -422,47 +295,19 @@ public final class NoteGeometry {
     // ==========================================================================
 
     /**
-     * Calculates the Y coordinate for a note given its staff position.
-     * <p>
-     * The staff position is relative to the middle line (B4), where:
-     * <ul>
-     *   <li>0 = B4 (middle line)</li>
-     *   <li>Negative values = higher pitches (above middle line)</li>
-     *   <li>Positive values = lower pitches (below middle line)</li>
-     * </ul>
-     * Each staff position is 0.5 ss (half a staff space).
-     * <p>
      * Pass {@code middleLineYSs = 0} to get the midline-relative layout-space Y; pass the line's
      * actual middle-line Y to get component space.
-     *
-     * @param staffPosition The note's staff position relative to middle line
-     * @param middleLineYSs Y position of middle staff line in staff spaces
-     * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
         return middleLineYSs + staffPosition * Staff.HALF_SPACE_SS;
     }
 
-    /**
-     * Horizontal extent of a ledger line, in staff spaces relative to the note origin
-     * (X right-positive). {@code leftSs} and {@code rightSs} are the line's left and right edges.
-     */
     public record LedgerExtentSs(double leftSs, double rightSs) {}
 
     /**
-     * Per-note ledger-line geometry: the y-invariant base extent plus the data needed to shorten any
-     * individual ledger line for the nearest accidental. This is identical for all of a note's ledger
-     * lines, so compute it once (via {@link #getLedgerLineGeometry}) and call {@link #extentAtSs} per
-     * line rather than recomputing the head/accidental geometry for each.
-     *
-     * <p>Coordinates are note-relative, X right-positive and Y down-positive. A ledger line runs
-     * from {@code ledgerLeft} to {@code ledgerRight}, overhanging the notehead by the ledger factor
-     * times the head width ({@code headRight - headLeft}) on each side. Where an accidental spans
-     * the ledger's y, {@link #extentAtSs} pulls {@code ledgerLeft} in to the clamp midpoint
-     * {@code (accRight + headLeft) / 2}, but only where that midpoint lies right of {@code ledgerLeft}
-     * — otherwise the base extent's left edge stands.
-     *
-     * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
+     * Per-note ledger-line geometry, identical for all of a note's ledger lines: compute it once
+     * via {@link #getLedgerLineGeometry} and call {@link #extentAtSs} per line. Note-relative, X
+     * right-positive and Y down-positive. See {@code docs/layout-geometry.md}.
      *
      * @param closestAccidentalSs bounds of the note's nearest accidental close enough to shorten a
      *     ledger line for, or {@code null} when the note has none
@@ -473,11 +318,9 @@ public final class NoteGeometry {
         double headLeftSs
     ) {
         /**
-         * Extent of the ledger line at note-relative {@code yOffsetSs} (Y down-positive, note-center
-         * origin, matching {@link NoteGeometry#getAccidentalBoundsSs}). Where the nearest accidental
-         * spans this ledger's Y, pulls the left edge in to the midpoint between the accidental's right
-         * edge and the notehead's left edge (LilyPond's per-head accidental shortening) — but only where
-         * that midpoint would extend the extent inward; otherwise returns the base extent unchanged.
+         * Where the nearest accidental spans this ledger's Y, the left edge is pulled in to the
+         * midpoint between the accidental and the notehead (LilyPond's per-head accidental
+         * shortening), but only where that extends the extent inward.
          */
         public LedgerExtentSs extentAtSs(double yOffsetSs) {
             // closestAccidentalSs and yOffsetSs share the note-center, Y-down origin, so the closed
@@ -496,29 +339,11 @@ public final class NoteGeometry {
         }
     }
 
-    /**
-     * Returns whether a note is drawn with ledger lines: one the staff reaches gets none.
-     *
-     * @return {@code true} when the note's staff position lies beyond what the staff reaches
-     */
     public static boolean noteNeedsLedgerLines(NoteElement note) {
         return note.getStaffPosition().needsLedgerLines();
     }
 
-    /**
-     * Returns the {@link LedgerLineGeometry} for {@code note}: its base ledger extent plus the data
-     * needed to shorten individual ledger lines for the nearest accidental. Compute this once per
-     * note and reuse it across the note's ledger lines.
-     *
-     * <p>Each side of the base extent runs beyond the notehead bbox by
-     * {@link LedgerLine#LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
-     *
-     * <p>Every note type passing {@link #noteNeedsLedgerLines} has a notehead, and
-     * {@code bbox.left()} is {@code 0.0} for all noteheads, so no fallback or left-edge constant
-     * is needed.
-     *
-     * @return the note's base ledger extent plus its closest-accidental shortening data
-     */
+    /** Compute this once per note and reuse it across the note's ledger lines. */
     public static LedgerLineGeometry getLedgerLineGeometry(NoteElement note) {
         var noteType = note.getType();
         var bbox = SMuFLMetadata.bboxSs(note.notehead().glyph());
@@ -533,92 +358,44 @@ public final class NoteGeometry {
         return new LedgerLineGeometry(baseExtentSs, getAccidentalBoundsSs(note), headLeftSs);
     }
 
-    /**
-     * Returns the base horizontal extent of every ledger line for {@code note} (head geometry only —
-     * no accidental shortening), in staff spaces relative to the note origin. Convenience wrapper over
-     * {@link #getLedgerLineGeometry} for callers that need the base extent alone.
-     */
     public static LedgerExtentSs getLedgerLineBaseExtentSs(NoteElement note) {
         return getLedgerLineGeometry(note).baseExtentSs();
     }
 
-    /**
-     * Returns the horizontal extent of the single ledger line at note-relative {@code yOffsetSs},
-     * applying per-head accidental shortening. Convenience wrapper over {@link #getLedgerLineGeometry}
-     * followed by {@link LedgerLineGeometry#extentAtSs}; callers drawing all of a note's ledger lines
-     * should reuse one {@link LedgerLineGeometry} instead of calling this per line.
-     */
+    /** Callers drawing all of a note's ledger lines should reuse one {@link LedgerLineGeometry}. */
     public static LedgerExtentSs getLedgerLineExtentSs(NoteElement note, double yOffsetSs) {
         return getLedgerLineGeometry(note).extentAtSs(yOffsetSs);
     }
 
-    /**
-     * Returns the X offset of the notehead origin relative to the note's column X, in staff spaces.
-     * Always zero: noteheads are drawn at the column X regardless of stem direction, so up-stem and
-     * down-stem noteheads align horizontally.
-     */
+    /** Always zero: noteheads are drawn at the column X regardless of stem direction. */
     @SuppressWarnings("SameReturnValue")
     public static float getNoteheadXOffsetSs(ElementType noteType, Direction direction) {
         return 0f;
     }
 
-    /**
-     * Returns the X of the notehead's center relative to the note's column X, in staff spaces.
-     * <p>
-     * Anything that must sit centered over the notehead — an articulation, a dynamic, a fermata —
-     * measures from here, not from the column X: the column is as wide as the whole element, and an
-     * accent or a dynamic is wider than the head itself.
-     */
+    /** Anything centered over the notehead measures from here, not from the column X. */
     public static double getNoteheadCenterXSs(StaffElement note) {
         return note.getType().getElementCenterXSs();
     }
 
-    /**
-     * Returns the footprint of a {@code widthSs}-wide glyph centered over the notehead of
-     * {@code host}'s element — an articulation, a text dynamic, anything drawn over the head.
-     * <p>
-     * This is the one place the centering is expressed, so a dynamic and an articulation over the
-     * same note can never drift apart: change the rule here and both move together.
-     *
-     * @param host    the element the glyph sits over, with its column's absolute X
-     * @param widthSs the glyph's width in staff spaces
-     * @return the glyph's footprint, {@code widthSs} wide, in absolute staff spaces
-     */
+    /** The one place the centering is expressed, so a dynamic and an articulation over a note never drift apart. */
     public static Footprint centeredOverNotehead(ElementAtColumn<?> host, double widthSs) {
         var xSs = host.columnXSs() + getNoteheadCenterXSs(host.element()) - widthSs / 2.0;
 
         return new Footprint(xSs, widthSs);
     }
 
-    /**
-     * Returns the X origin for a grace note's flag glyph, given the stem's left edge X
-     * (both in staff spaces). SMuFL flag glyphs anchor at the stem's left edge, but the
-     * scaled grace glyph's internal stem connection is only {@link ElementType#GRACE_NOTE_SCALE}
-     * of the full stem width, so the flag is shifted right to stay centered on the actual stem.
-     *
-     * <p>Used by both flag rendering and glissando column-extent computation, which must agree
-     * on where the grace flag sits.
-     */
+    /** Flag rendering and glissando column-extent computation must agree on where the grace flag sits. */
     public static double getGraceFlagOriginXSs(double stemLeftXSs) {
         return stemLeftXSs + StemMetrics.thicknessSs() * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
     }
 
     /**
-     * Returns the flag glyph's bounding box in staff spaces, in the note's local coordinate
-     * space (relative to the notehead origin), or {@code null} when the note has no rendered
-     * flag (beamed, stemless, or no flag glyph for the type).
+     * The single source of truth for where the flag sits, so spacing reservation,
+     * augmentation-dot clearance and column geometry never drift apart. In the note's local
+     * coordinate space.
      *
-     * <p>This is the single source of truth for where the flag sits, so that spacing
-     * reservation, augmentation-dot clearance, and column geometry never drift apart. The
-     * returned origin matches the renderer's paint origin: non-grace flags anchor at the stem's
-     * left edge, while grace flags use {@link #getGraceFlagOriginXSs} and are scaled by
-     * {@link ElementType#GRACE_NOTE_SCALE}.
-     *
-     * @param note      the note
-     * @param direction the stem direction the flag hangs from
-     * @param beaming   whether the note is beamed; a beamed note draws no flag
-     * @return the flag's bounds in note-local staff spaces, or {@code null} when the note is
-     *     beamed, stemless, or its type has no flag glyph
+     * @return {@code null} when the note is beamed, stemless, or its type has no flag glyph
      */
     @Nullable
     public static Rectangle2D flagBBoxLocalSs(NoteElement note, Direction direction, Beaming beaming) {
@@ -661,10 +438,6 @@ public final class NoteGeometry {
     // Private Helpers
     // ==========================================================================
 
-    /**
-     * Computes the bounding box of an accidental glyph drawn at its pen-start X, relative to the
-     * notehead glyph's origin.
-     */
     private static BBox computeAccidentalBounds(SMuFLGlyph accidentalGlyph, float totalWidthSs) {
         var startX = -ACCIDENTAL_PADDING_SS - totalWidthSs;
 

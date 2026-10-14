@@ -38,7 +38,6 @@ public final class StemDirectionAction extends UIAction {
 
     private static final int FLIP_ICON_SIZE = 18;
 
-    /** The auto action is menu-only, so it carries no icon and needs no icon size. */
     private static final int NO_ICON_SIZE = 0;
 
     private final Supplier<? extends Message> commandFactory;

@@ -23,46 +23,28 @@ package songscribe.layout;
 import songscribe.engraving.EngravingConstants;
 
 /**
- * The x-range and properties of a single visual bracket of an ending, in the line's layout space.
- * Which of the ending's two brackets it is follows from the slot of the {@link Pair} that holds it.
+ * The x-range of a single visual bracket of an ending, in the line's layout space.
  *
- * @param x1Ss             X of the left leg's path, in staff spaces
- * @param x2Ss             X of the right edge's path — where the right leg is drawn when there is
- *                         one — in staff spaces
- * @param hasClosingStroke whether the bracket has a right vertical tick
+ * @param x1Ss X of the left leg's path, in staff spaces
+ * @param x2Ss X of the right edge's path, where the right leg is drawn when there is one
  */
 public record BracketRange(double x1Ss, double x2Ss, boolean hasClosingStroke) {
 
-    /** Which of an ending's two visual brackets: a slot of a {@link Pair}. */
     public enum Bracket {
         FIRST,
         SECOND;
 
-        /**
-         * Returns the label text for this bracket (e.g. "1." or "2.").
-         *
-         * @return the bracket number followed by a period
-         */
         public String label() {
             return (this == FIRST ? "1" : "2") + ".";
         }
     }
 
     /**
-     * The two brackets of an ending, in the line's layout space.
-     *
-     * @param first  the first bracket, from the element the ending opens on to the split
+     * @param first the first bracket, from the element the ending opens on to the split
      * @param second the second bracket, from the split to the ending's end
      */
     public record Pair(BracketRange first, BracketRange second) {
 
-        /**
-         * Returns the bracket in {@code slot}.
-         *
-         * @param slot which of the two brackets
-         * @return {@link #first} for {@link Bracket#FIRST}, {@link #second} for
-         *     {@link Bracket#SECOND}
-         */
         public BracketRange get(Bracket slot) {
             return switch (slot) {
                 case FIRST -> first;
@@ -70,28 +52,14 @@ public record BracketRange(double x1Ss, double x2Ss, boolean hasClosingStroke) {
             };
         }
 
-        /**
-         * Returns both brackets moved horizontally by {@code dxSs}.
-         *
-         * @param dxSs shift applied to every X of both brackets
-         * @return the shifted pair
-         */
         Pair shiftedBy(double dxSs) {
             return new Pair(first.shiftedBy(dxSs), second.shiftedBy(dxSs));
         }
     }
 
     /**
-     * Returns the X where the drawn path's top arm ends on the right: {@link #x2Ss} itself when a
-     * closing stroke turns the arm down into the right leg, or half a volta stroke width past it
-     * when the arm ends open.
-     * <p>
-     * This is the end of the path, not of the ink. An open arm ends in a round cap that the stroker
-     * pulls in onto the endpoint, so its ink stops here. A closed bracket's right leg is centered on
-     * {@link #x2Ss}, so its ink reaches half a stroke past {@link #x2Ss} — the same X an open arm's
-     * ink reaches.
-     *
-     * @return the X of the top arm's right end, in staff spaces
+     * The end of the path, not of the ink: a closed bracket's right leg is centered on
+     * {@link #x2Ss}, so its ink reaches half a stroke past it, the same X an open arm's ink reaches.
      */
     public double armEndXSs() {
         return hasClosingStroke
@@ -99,12 +67,6 @@ public record BracketRange(double x1Ss, double x2Ss, boolean hasClosingStroke) {
             : x2Ss + EngravingConstants.VOLTA_BRACKET_SS / 2;
     }
 
-    /**
-     * Returns this bracket moved horizontally by {@code dxSs}.
-     *
-     * @param dxSs shift applied to both {@link #x1Ss} and {@link #x2Ss}
-     * @return the shifted bracket, with the same closing stroke
-     */
     BracketRange shiftedBy(double dxSs) {
         return new BracketRange(x1Ss + dxSs, x2Ss + dxSs, hasClosingStroke);
     }

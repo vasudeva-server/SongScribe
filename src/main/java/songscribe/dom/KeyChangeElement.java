@@ -31,31 +31,20 @@ import org.jspecify.annotations.Nullable;
  * <p><b>Position invariant.</b> A key change element is never the element at index 0 of a
  * line, and is always immediately preceded by an element whose {@link ElementType#isBarLine()}
  * or {@link ElementType#isRepeat()} is true. A key change belongs at the head of a measure,
- * and every path that can create one keeps it there: the editing UI inserts a
- * {@link ElementType#SINGLE_BARLINE} when the position the user chose has none, the deletion
- * pairing removes a key change together with the barline it sits behind, and the MusicXML
- * reader rejects a document whose mid-measure {@code <key>} has no barline before it. Layout,
- * width and MusicXML writing all read the invariant rather than re-checking it.
- *
- * <p>A key change carries no duration and no pitch, so it inherits
- * {@link StructuralElement}'s answers for staff position, dots and accidental.
+ * and every path that can create one keeps it there. Layout, width and MusicXML writing read
+ * the invariant rather than re-checking it.
  */
 public final class KeyChangeElement extends StructuralElement {
 
     private Key key;
 
     /**
-     * The key this element changes <em>from</em>, for as long as it sits on no line — see
-     * {@link #forMeasurement}. Read only while {@link #getParentLine()} is null: an element that
-     * belongs to a document reads the key it changes from off its line every time, so this can
-     * never pin a stale width on one. Null on an element that was never given a key to measure
-     * against, which is every element built to be committed rather than measured.
+     * The key this element changes <em>from</em> while it sits on no line — see
+     * {@link #forMeasurement}. Read only while {@link #getParentLine()} is null. Null on an
+     * element never given a key to measure against.
      */
     private @Nullable Key detachedPreviousKey;
 
-    /**
-     * @param key the key taking effect here
-     */
     public KeyChangeElement(Key key) {
         super(ElementType.KEY_CHANGE);
         this.key = key;
@@ -69,22 +58,8 @@ public final class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Returns a key change built to be <em>measured</em> rather than stored: one that can
-     * report its {@link #extent()} while it sits on no line, by being told the key it changes
-     * from instead of resolving one.
-     *
-     * <p>This is what lets an edit be sized before it is committed. The key an inserted key change
-     * will cancel is fixed by the elements <em>before</em> the insertion point, and an insertion
-     * does not move those, so the caller can read it off the unmodified line
-     * ({@code line.keyAt(insertionIndex - 1)}) and hand it here.
-     *
-     * <p>Adding one to a line is harmless but pointless: once it has a line, the line is what it
-     * reads, and the key handed here is never consulted again. Build a plain
-     * {@link #KeyChangeElement(Key)} to commit.
-     *
-     * @param key         the key that would take effect at the measured position
-     * @param previousKey the key in effect immediately before that position
-     * @return a detached element that reports the drawn extent of that change
+     * Lets an edit be sized before it is committed. Once the element has a line, the key handed
+     * here is never consulted again; build a plain {@link #KeyChangeElement(Key)} to commit.
      */
     public static KeyChangeElement forMeasurement(Key key, Key previousKey) {
         return new KeyChangeElement(key, previousKey);
@@ -99,12 +74,7 @@ public final class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Copies the key this element establishes, and the key it was told to measure against while
-     * detached ({@link #forMeasurement}).
-     *
-     * <p>The key is this element's whole reason to exist and nothing else on the line records
-     * it, so an in-place restore that left it behind would undo a key edit into an element
-     * still establishing the key the edit gave it.
+     * Copies the key this element establishes, so an in-place restore undoes a key edit.
      *
      * @param source the key change whose key to take; always a {@code KeyChangeElement},
      *               because a copy names an element of the same class
@@ -116,76 +86,38 @@ public final class KeyChangeElement extends StructuralElement {
         detachedPreviousKey = sourceKeyChange.detachedPreviousKey;
     }
 
-    /**
-     * @return the key taking effect at this element's position
-     */
     public Key getKey() {
         return key;
     }
 
     /**
-     * Returns what this key change draws and how wide it is — the pair of keys the change runs
-     * between, which is the smallest thing that can answer either question.
-     *
-     * <p>The key changed from is the line's, whenever this element is on one: the position
-     * invariant guarantees an element before it to read the key from, and re-reading it each time
-     * is what keeps the extent tracking the line around it. An element on no line reports against
-     * the key it was told when {@link #forMeasurement} built it, which is what lets an edit be
-     * sized before it is committed.
-     *
-     * <p>See {@code docs/key-changes.md} for the cancellation policy the accidentals follow.
-     *
-     * @return the extent of the change this element makes
-     * @throws IllegalStateException if this element is on no line and was not built by
-     *     {@link #forMeasurement}, so nothing states the key it changes from. A width guessed
-     *     there would be too narrow for every change that cancels, and would be written into the
-     *     document as though it were measured.
+     * On a line, the key changed from is the line's, re-read on every call so the extent tracks
+     * the line around it. On no line it is the key {@link #forMeasurement} was given; an element
+     * it did not build has none, and a guessed width would be too narrow for every change that
+     * cancels. See {@code docs/key-changes.md}.
      */
     public KeySignatureExtent extent() {
         return new KeySignatureExtent(previousKey(), key);
     }
 
-    /**
-     * Returns the accidentals this key change draws, in the order they are laid out: the
-     * cancelling naturals the policy calls for, if any, followed by the new key's own
-     * accidentals.
-     *
-     * @return {@link #extent()}'s accidentals, left to right; empty when this element re-states
-     *     the key already in effect, because a change to the same key draws nothing
-     * @throws IllegalStateException under {@link #extent()}'s condition
-     */
     public List<Key.DrawnAccidental> drawnAccidentals() {
         return extent().accidentals();
     }
 
-    /**
-     * Returns the drawn width of the key change this element makes: the room
-     * {@link #drawnAccidentals()} takes.
-     *
-     * @return {@link #extent()}'s width in staff spaces; zero when this element re-states the key
-     *     already in effect, because nothing is drawn
-     * @throws IllegalStateException under {@link #extent()}'s condition
-     */
     @Override
     public double getAdvanceWidthSs() {
         return extent().widthSs();
     }
 
     /**
-     * Returns the same width {@link #getAdvanceWidthSs()} reports. A key change draws nothing
-     * but its accidentals — no stem, no flag, no dots — so the glyph run and the content are the
-     * same extent, and the type's own width is only the floor described in
-     * {@code ElementType.computeKeySignatureBoundsSs}.
-     *
-     * @return the laid-out width of this key change, in staff spaces
-     * @throws IllegalStateException under {@link #extent()}'s condition
+     * The glyph run and the content are the same extent; the type's own width is only the floor
+     * described in {@code ElementType.computeKeySignatureBoundsSs}.
      */
     @Override
     public double getGlyphWidthSs() {
         return getAdvanceWidthSs();
     }
 
-    /** Resolves the key this element changes from, per {@link #extent()}'s two cases. */
     private Key previousKey() {
         var line = getParentLine();
 
@@ -205,13 +137,8 @@ public final class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Replaces the key this element establishes.
-     *
-     * <p>This is a plain field write. Everything that follows from a key change — the running
-     * key of later lines, re-spelled accidentals, an invalidated layout — is the caller's to
-     * drive through the mutation the edit belongs to, not a side effect of this setter.
-     *
-     * @param key the key taking effect here
+     * A plain field write. Everything that follows from a key change is the caller's to drive
+     * through the mutation the edit belongs to, not a side effect of this setter.
      */
     public void setKey(Key key) {
         this.key = key;

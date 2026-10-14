@@ -26,13 +26,7 @@ import net.engio.mbassy.bus.publication.SyncAsyncPostCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * An {@link MBassador} that logs every message as it is posted, before any handler runs.
- * <p>
- * The entry point installs this bus in place of a plain one when the process runs in debug
- * mode, so the log shows each post in the order it was made, whether or not anything was
- * subscribed to it.
- */
+/** An {@link MBassador} that logs every message before any handler runs. */
 public final class DebugMBassador<T> extends MBassador<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(DebugMBassador.class);
@@ -41,9 +35,6 @@ public final class DebugMBassador<T> extends MBassador<T> {
         super(errorHandler);
     }
 
-    /**
-     * @log {@code message} at debug level, before delivery begins
-     */
     @Override
     public SyncAsyncPostCommand<T> post(T message) {
         LOG.debug("{}", message);

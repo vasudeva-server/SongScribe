@@ -95,13 +95,8 @@ import songscribe.util.UIUtils;
 
 /**
  * The non-modal preferences window. There is no OK/Cancel cycle and nothing to revert: each
- * control is bound two-way to its {@link Prefs} key, so an edit reaches the store the moment
- * it is made, and closing the window keeps every change made while it was open.
- *
- * <p>Because the bindings are two-way over the store's own views, a change made by anything
- * else while this window is open — a {@code resetAll()} elsewhere, a theme switch that
- * failed and reverted — moves the control that shows it. Nothing here subscribes to
- * {@code PrefsDidChangeNotification} and nothing re-reads the store when a tab is shown.
+ * control is bound two-way to its {@link Prefs} key, so an edit reaches the store the moment it is
+ * made. A change made by anything else while the window is open moves the control that shows it.
  */
 public class PreferencesDialog extends BaseDialog {
 
@@ -164,23 +159,11 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     /**
-     * The row {@code program} occupies in the instrument list.
+     * Every program the store can hold is a loaded one, so a program with no row is a broken
+     * store, and answering row 0 would hide the disagreement.
      *
-     * <p>Every program the store can hold is a loaded one: the soundfont ships with the
-     * application and the application does not start without it, and the only writer of
-     * this preference is the list itself. So a program with no row is a broken store
-     * rather than a user whose instrument has gone missing, and answering row 0 would
-     * hand back a legitimate index for it — the store would then keep a program the list
-     * contradicts, with nothing reporting the disagreement.
-     *
-     * <p>A caller must first establish that any instrument is loaded at all. The
-     * synthesizer failing to open is a startup warning rather than a fatal error, and
-     * leaves {@link #getInstrumentPrograms()} empty.
-     *
-     * @param program a MIDI program number a loaded instrument uses
-     * @return the index of {@code program} in {@link #getInstrumentPrograms()}
-     * @throws IllegalStateException if no loaded instrument uses {@code program},
-     *     including when none is loaded
+     * <p>A caller must first establish that any instrument is loaded at all: the synthesizer
+     * failing to open leaves {@link #getInstrumentPrograms()} empty.
      */
     public static int programToIndex(int program) {
         ensureInstrumentsLoaded();
@@ -195,16 +178,8 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     /**
-     * The MIDI program of the instrument at row {@code index} of the instrument list.
-     *
-     * <p>The inverse of {@link #programToIndex}. The list always has a selection — the
-     * instruments tab restores one whenever Swing clears it — so an absent row is a
-     * broken list rather than a state to convert.
-     *
-     * @param index the selected row; nullable only because the selection binding's type is,
-     *     and never {@code null} while the list keeps its selection
-     * @return the program of the instrument at that row
-     * @throws IllegalStateException if {@code index} is {@code null}
+     * @param index nullable only because the selection binding's type is, and never {@code null}
+     *     while the list keeps its selection
      */
     private static int indexToProgram(@Nullable Integer index) {
         if (index == null) {
@@ -609,15 +584,10 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         /**
-         * Plays a single note with the selected instrument, unless the scale is
-         * currently playing.
-         *
-         * <p>Sets {@link PlaybackController}'s instrument to the clicked row's program
-         * first. {@link PlayThread} reads that field rather than the {@code INSTRUMENT}
-         * preference directly, and nothing else has synced it to this click yet — the
-         * sync that {@code PrefsDidChangeNotification} drives runs after bound views
-         * (see {@code prefs.md}), so without this the note would play on the
-         * previously selected instrument instead of the one just clicked.
+         * Sets {@link PlaybackController}'s instrument to the clicked row's program first:
+         * {@link PlayThread} reads that field, and the sync that
+         * {@code PrefsDidChangeNotification} drives runs after bound views (see
+         * {@code prefs.md}).
          */
         private void playSingleNoteIfNotScalePlaying() {
             if (scaleAction.isPlaying()) {
@@ -644,12 +614,8 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         /**
-         * The instrument list leads this tab. Declared rather than requested from
-         * {@link #tabWillShow}, which runs before the window exists when the dialog is
-         * opening — {@code requestFocusInWindow} is a no-op there, so the list takes focus
-         * only when the user switches to this tab in an already-open dialog.
-         * {@link BaseDialog} reads this on both paths and defers the request until the
-         * window is up.
+         * Declared rather than requested from {@link #tabWillShow}, which runs before the window
+         * exists when the dialog is opening, where {@code requestFocusInWindow} is a no-op.
          */
         @Override
         protected JComponent getInitialFocus() {
@@ -662,13 +628,9 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         /**
-         * Plays the clicked row's instrument exactly once.
-         *
-         * <p>A click that changes the selection already plays through {@link
-         * #previewInstrument}, bound to the {@code INSTRUMENT} preference.
-         * {@code ListSelectionListener} does not fire when the click lands on the
-         * already-selected row, so that case is handled here — but only that case,
-         * or the changed-selection click would play the instrument twice.
+         * Handles only a click on the already-selected row, which fires no
+         * {@code ListSelectionListener}; a changed-selection click already plays through
+         * {@link #previewInstrument}, and would play twice.
          */
         private void addClickListener() {
             instrumentList.addListSelectionListener(event -> previewedOnSelectionChange = true);
@@ -687,12 +649,6 @@ public class PreferencesDialog extends BaseDialog {
             });
         }
 
-        /**
-         * Plays the chosen instrument so the user hears what they picked.
-         *
-         * @effects restarts the scale on the chosen instrument if it is playing, and
-         *     otherwise plays a single note on it
-         */
         private void previewInstrument() {
             if (scaleAction.isPlaying()) {
                 // Restart the scale so it is heard on the newly chosen instrument.
@@ -704,16 +660,8 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         /**
-         * Restores the selection whenever Swing clears it.
-         *
-         * <p>A single-selection {@code JList} still lets a modifier-click deselect the
-         * chosen row, leaving no selection at all. An instrument is always chosen — the
-         * preference always names one — so there is no such state to represent, and
-         * without this the binding would have to invent a program number to stand for
-         * "none", which every legitimate program already means something else.
-         *
-         * @effects registers a {@code ListSelectionListener} that re-selects the row the
-         *     list last held
+         * A modifier-click can deselect the chosen row, but an instrument is always chosen and no
+         * program number can stand for "none".
          */
         private void keepSelectionNonEmpty() {
             instrumentList.addListSelectionListener(new ListSelectionListener() {
@@ -843,15 +791,6 @@ public class PreferencesDialog extends BaseDialog {
                 }
             }
 
-            /**
-             * Builds a one-track MIDI sequence that selects {@code program} and then plays
-             * {@link #SCALE} at {@value #SCALE_TEMPO_BPM} BPM, each note held for half a beat.
-             *
-             * @param program the MIDI program (instrument) to select before the scale plays
-             * @return a new, unplayed {@link Sequence} ready to hand to a {@link
-             *     javax.sound.midi.Sequencer}
-             * @throws InvalidMidiDataException if a MIDI event in the sequence is malformed
-             */
             private static Sequence buildScaleSequence(int program) throws InvalidMidiDataException {
                 var sequence = new Sequence(Sequence.PPQ, MidiSequenceBuilder.PPQ, 0);
                 var track = sequence.createTrack();

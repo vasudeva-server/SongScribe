@@ -29,14 +29,11 @@ import songscribe.util.UIUtils;
 /**
  * The {@link SongSettingsDialog} Music tab: the song's tempo.
  *
- * <p>There is no key control here. A song has no key of its own — every line carries one, set
- * from the score. See {@code docs/key-changes.md}.
+ * <p>There is no key control here: a song has no key of its own. See
+ * {@code docs/key-changes.md}.
  *
- * <p>Nothing on this tab can be wrong. The controls are a note-value combo, a bounded spinner, a
- * description combo and a checkbox, so every state they can reach describes a tempo — which is why
- * this tab has no {@code InputVerifier} and contributes nothing to validation. The one pair that
- * would not describe a visible tempo is barred inside {@link TempoSection} by two bindings, so it
- * is unreachable rather than rejected.
+ * <p>Nothing on this tab can be wrong: every state its controls can reach describes a tempo, so
+ * it has no {@code InputVerifier} and contributes nothing to validation.
  */
 final class SongSettingsMusicTab extends BaseDialog.Tab {
 
@@ -66,20 +63,13 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
     }
 
     /**
-     * Sets every control on this tab to show {@code input}.
-     *
-     * <p>Whatever is put in comes back out: {@link #gather()} called straight afterwards, with
+     * Whatever is put in comes back out: {@link #gather()} called straight afterwards, with
      * nothing else touched, answers the same tempo.
-     *
-     * @param input the settings this opening of the dialog is showing
      */
     void populate(SongSettingsInput input) {
         tempoSection.setTempo(input.tempo());
     }
 
-    /**
-     * @return the tempo this tab's controls now describe, for every state they can reach
-     */
     Tempo gather() {
         return tempoSection.getTempo();
     }

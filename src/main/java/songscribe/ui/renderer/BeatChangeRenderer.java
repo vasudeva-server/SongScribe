@@ -25,13 +25,6 @@ import java.awt.Graphics2D;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.StaffElement;
 
-/**
- * Renders beat change indicators (note = note format).
- * <p>
- * Beat changes show equivalence between two note values, e.g., "♩ = ♪."
- * indicating that the quarter note of the old tempo equals the dotted
- * eighth note of the new tempo.
- */
 public final class BeatChangeRenderer extends MetronomeRenderer {
 
     private static final BeatChangeRenderer INSTANCE = new BeatChangeRenderer();

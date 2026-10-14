@@ -36,26 +36,15 @@ import songscribe.ui.component.ScoreView;
 /**
  * Installs native macOS trackpad-pinch zoom on a {@link ScoreView}.
  * <p>
- * A trackpad pinch produces native {@code NSEvent} magnification, not a
- * scroll-wheel event, so it is delivered through the {@code com.apple.eawt.event}
- * gesture API rather than the wheel path. Each magnify event is routed through the
- * same anchored-zoom machinery as the other zoom paths so pinch behaves identically
- * (continuous, clamped, anchored under the cursor).
- * <p>
- * These classes exist only in the macOS JDK, so this is the <em>only</em> file
- * importing {@code com.apple.eawt.event}, and it must be referenced only on macOS
- * (its single caller is guarded by {@code SystemInfo.isMacOS}) so it is never
- * class-loaded on another platform.
+ * {@code com.apple.eawt.event} exists only in the macOS JDK, so this is the <em>only</em> file
+ * importing it, and it must be referenced only on macOS (its single caller is guarded by
+ * {@code SystemInfo.isMacOS}).
  */
 public final class PinchZoomGesture {
 
     private PinchZoomGesture() {
     }
 
-    /**
-     * Attaches a magnification listener that zooms {@code scoreView} in or out
-     * around the cursor in response to trackpad-pinch gestures.
-     */
     public static void installOn(ScoreView scoreView) {
         MagnificationListener listener = event -> onMagnify(scoreView, event);
         GestureUtilities.addGestureListenerTo(scoreView, listener);
@@ -66,11 +55,7 @@ public final class PinchZoomGesture {
         event.consume();
     }
 
-    /**
-     * Returns the cursor position in {@code scoreView}-local coordinates, or
-     * {@code null} to anchor at the viewport center when the pointer is
-     * unavailable or falls outside the view.
-     */
+    /** {@code null} when the pointer is unavailable or outside the view. */
     @Nullable
     private static Point cursorAnchor(ScoreView scoreView) {
         // A MagnificationEvent carries no location (it is an InputEvent, not a

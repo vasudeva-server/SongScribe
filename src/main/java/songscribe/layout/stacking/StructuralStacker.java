@@ -61,36 +61,24 @@ import songscribe.layout.TupletGeometry;
 /**
  * Stacks structural-tier decorations (tier 3): tuplets, hairpins, text dynamics,
  * and endings (volta brackets).
- * <p>
- * Operates on the structural {@link StaffExtents} layer, which starts as a copy
- * of the note-attached layer's top extents. All calculations are in staff-space units.
  */
 public class StructuralStacker {
 
-    /**
-     * Vertical margin between hairpins and elements below during stacking.
-     */
     public static final double HAIRPIN_MARGIN_SS = 1.0;
-    /**
-     * Margin from reference point to ending bracket
-     */
     public static final double ENDING_MARGIN_SS = 1.0;
 
     /**
-     * LilyPond {@code TupletBracket.staff-padding}: the outer endpoints floor to the staff-line
-     * centerline widened by this before the slope rise is taken (tuplet-bracket.cc, {@code staff.widen}).
+     * LilyPond {@code TupletBracket.staff-padding}: outer endpoints floor to the staff-line
+     * centerline widened by this.
      */
     public static final double TUPLET_STAFF_PADDING_SS = 0.25;
 
     /**
      * How far below a dynamics group's shared reference line a text dynamic's glyph baseline sits,
-     * from LilyPond's {@code DynamicText.Y-offset} ({@code scale-by-font-size -0.6}, commented
-     * "center on an 'm'"). Placing the baseline here puts the glyph's x-height center on the line,
-     * which is stable across glyphs whose ascenders and descenders differ.
+     * from LilyPond's {@code DynamicText.Y-offset}.
      * <p>
      * Not to be confused with {@link NoteAttachedStacker#DYNAMIC_PADDING_SS}, which happens to
-     * share this value but comes from {@code DynamicLineSpanner.padding} and means something else
-     * entirely. Do not collapse the two.
+     * share this value but means something else entirely. Do not collapse the two.
      */
     public static final double DYNAMIC_TEXT_BASELINE_OFFSET_SS = 0.6;
 
@@ -103,37 +91,18 @@ public class StructuralStacker {
     private final StackingContext context;
     private final StackingLayer structuralLayer;
 
-    /**
-     * Makes the stacker for the line in {@code context}, reserving in {@code structuralExtents}.
-     *
-     * @param context           the line being stacked and the builder layouts are recorded in
-     * @param structuralExtents the structural extents layer this stacker owns
-     */
     public StructuralStacker(StackingContext context, StaffExtents structuralExtents) {
         this.context = context;
         structuralLayer =
             new StackingLayer(structuralExtents, context.getBuilder().decorationLayouts());
     }
 
-    /**
-     * Stacks the tuplet brackets (tier 3a).
-     * <p>
-     * Split from {@link #stackRemaining} because the outside-priority scripts (fermata, trill) stack
-     * between the two: they float above the bracket, so it must reserve its footprint first. See
-     * {@link VerticalStackingCalculator} for the full tier order.
-     */
+    /** Split from {@link #stackRemaining} because the outside-priority scripts stack between the two. */
     public void stackTuplets() {
         stackTuplets(context.getLine(), context.getColumnsByElement(), context.getBuilder());
     }
 
-    /**
-     * Stacks the rest of the structural tier in order: hairpins and text dynamics, then endings.
-     * <p>
-     * Hairpins and text dynamics are placed together, group by group, rather than as two separate
-     * sweeps: a hairpin and the dynamic beside it share one reference line (see
-     * {@link DynamicGrouper}), which is impossible when the second sweep stacks outside whatever
-     * the first one reserved.
-     */
+    /** Hairpins and text dynamics are placed together, group by group, since a group shares one reference line. */
     public void stackRemaining() {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
@@ -148,9 +117,6 @@ public class StructuralStacker {
         stackEndings(line, columnsByElement, builder);
     }
 
-    /**
-     * Stacks all tuplet brackets for the line.
-     */
     private void stackTuplets(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
@@ -209,54 +175,15 @@ public class StructuralStacker {
     }
 
     /**
-     * Computes the tuplet bracket's left-endpoint ceiling ({@code leftYSs}) so the tilted bracket
-     * line clears every non-rest column's actual top ({@code getAbsoluteTopYSs()}). Pure and
-     * package-visible for independent unit testing.
+     * The bracket floats above the real tips and never shortens a stem to meet the line. A raw
+     * ceiling with no margin baked in — the caller applies the single margin gap. With an empty tip
+     * list (all-rest span) the ceiling collapses to {@link Double#POSITIVE_INFINITY}.
      * <p>
-     * The bracket floats above the real tips, exactly as LilyPond does — it never shortens a stem to
-     * meet the line. Unbeamed forced stems are already shortened bracket-independently (see
-     * {@link NoteGeometry#forcedShorteningSs}) and beamed stems already carry their quanted length,
-     * so their reported tips are the final ones and the bracket sits low on them without any
-     * trimming; a genuinely natural, full-length interior stem floats the bracket above it.
-     * <p>
-     * A flat box that clears only the tallest tip can still dip below an intermediate one once
-     * tilted, so each tip is projected back to the left endpoint along the slope and the highest
-     * (smallest Y) projection wins:
-     * <pre>
-     *   leftYSs = min over columns ( getAbsoluteTopYSs() − slope · (xᵢ − anchorXSs) )
-     * </pre>
-     * This is a raw ceiling with no margin baked in — the caller applies the single margin gap;
-     * baking a margin in here too would double it.
-     * <p>
-     * The {@code min} picks the binding tip (up = smaller Y). The right endpoint is
-     * {@code leftYSs + dySs}. With an empty tip list (all-rest span) there is nothing to clear, so
-     * the ceiling collapses to {@link Double#POSITIVE_INFINITY} and the caller's extents floor wins.
-     * <p>
-     * <b>Arm reach.</b> The visible bracket does not stop at the outer note columns: its vertical
-     * arms are drawn at {@code leftArmXSs}/{@code rightArmXSs}, which extend a notehead-plus-extension
-     * beyond the anchor/end columns. On a sloped bracket the arm on the downhill side keeps
-     * descending past its column, so a line that merely clears the note over its own X can still let
-     * the extended arm dip into that same note. LilyPond avoids this by fitting the
-     * whole bracket to its visual X-bounds — the arm edges — rather than the note span
-     * (tuplet-bracket.cc, {@code calc_position_and_height}). We mirror that by folding the anchor and
-     * end <b>notehead tips</b> in a second time, projected from the arm X positions, so the extended
-     * arms clear the noteheads by the same margin the interior gets. The arm-edge fold deliberately
-     * omits articulation: LilyPond folds scripts only at their own center X, so scripts are cleared
-     * by the interior loop (which folds each notehead tip at its column's X and each script at the
-     * script's own center X), never projected from the arm edge — projecting a script from the
-     * downhill arm X over-lifts the trailing arm.
-     * <p>
-     * <b>Script center X.</b> A script's clearance point is folded at its own center X, not the
-     * column reference X, matching LilyPond's {@code script_x.center()}. The column reference X is the
-     * notehead's left edge, so on a descending bracket projecting a script from there instead of its
-     * center under-clears it — and drops the downhill arm — by {@code slope · (centerX − refX)}.
+     * The vertical arms extend beyond the outer columns, so the anchor and end notehead tips are
+     * folded a second time from the arm X positions. Scripts are folded only at their own center X,
+     * never from the arm edge.
      *
-     * @param nonRestColumns  ordered spanned columns with rests already excluded
-     * @param bracketLine     the bracket's slope origin, run and rise, and the X of each arm
-     * @param obstacleTopSs   the raw obstacle top each column presents to the bracket
-     * @param scriptObstacles the above-staff scripts (accent/staccato) each column presents, each
-     *                        with its top edge and center X (empty when none)
-     * @return the left-endpoint ceiling {@code leftYSs} in layout-Y staff-space units
+     * @param nonRestColumns ordered spanned columns with rests already excluded
      */
     static double computeTupletClearanceLeftYSs(
         List<ElementColumn> nonRestColumns,
@@ -302,31 +229,17 @@ public class StructuralStacker {
     }
 
     /**
-     * A tuplet bracket's line before its height is placed: where its slope starts, the run and
-     * rise the slope is expressed over, and the X of each drawn arm.
-     *
-     * @param anchorXSs   X of the anchor (left) element column — the slope origin
-     * @param widthSs     anchor→end element run the slope is expressed over
-     * @param dySs        bracket-line rise over {@code widthSs} (0 when flat/vetoed)
-     * @param leftArmXSs  X of the left arm (visual bracket left edge)
-     * @param rightArmXSs X of the right arm (visual bracket right edge)
+     * @param widthSs anchor→end element run the slope is expressed over
+     * @param dySs    bracket-line rise over {@code widthSs} (0 when flat/vetoed)
      */
     record BracketLine(
         double anchorXSs, double widthSs, double dySs, double leftArmXSs, double rightArmXSs) {
     }
 
     /**
-     * The obstacle top a column presents to the bracket, staff-top-clamped, WITHOUT any
-     * articulation. Used both by the interior tip fold and the arm-reach fold so a script is never
-     * projected from the arm edge — LilyPond folds scripts only at their own center X
-     * (tuplet-bracket.cc, avoid-scripts). The raw top comes from {@code obstacleTopSs} so a beamed
-     * up-stem column can report its beam edge rather than its tucked-in stem tip.
-     * <p>
-     * Staff-top clamp: a tip below the top staff line raises to the staff-padding-widened staff top
-     * (never lower), so the bracket stays at least the margin above the staff. The ceiling is the
-     * staff-line centerline widened by {@link #TUPLET_STAFF_PADDING_SS}, matching LilyPond's
-     * {@code staff.widen(0.25)} and the slope path's floor in {@link #computeTupletSlopeDySs} — not
-     * the bare centerline, which would let the bracket sit 0.25ss too low against within-staff notes.
+     * The obstacle top a column presents to the bracket, staff-top-clamped, WITHOUT any articulation,
+     * so a script is never projected from the arm edge. The staff-top ceiling is the staff-line
+     * centerline widened by {@link #TUPLET_STAFF_PADDING_SS}.
      */
     private static double columnTipTopSs(
         ElementColumn column, ToDoubleFunction<? super ElementColumn> obstacleTopSs) {
@@ -334,18 +247,7 @@ public class StructuralStacker {
         return Math.min(obstacleTopSs.applyAsDouble(column), staffTopCeilingYSs);
     }
 
-    /**
-     * The raw (unclamped) obstacle top a column presents to the always-above tuplet: for a beamed
-     * up-stem column the beam's outer (top) edge, otherwise the column's natural stem/head tip.
-     * <p>
-     * A beamed up-stem's rendered stem is shortened so it tucks inside the beam and never protrudes
-     * past the beam's outer edge, so the column's {@link ElementColumn#getAbsoluteTopYSs()} — the
-     * natural stem tip — sits <em>below</em> the beam the tuplet must actually clear. Measuring to it
-     * lets the number/bracket drop onto the beam; the beam's outer edge is the real
-     * ceiling. The beam layout's {@link LayoutResult.StemLayout#topYSs()} is that outer edge for an
-     * up-stem beam, in the same staff-Y space as {@code getAbsoluteTopYSs()}. Every other column
-     * (unbeamed, or a down-stem beam whose beam sits below the noteheads) keeps its natural tip.
-     */
+    /** A beamed up-stem's natural stem tip sits below the beam; the beam's outer edge is the real ceiling. */
     double rawObstacleTopSs(ElementColumn column) {
         var element = column.getElement();
         var naturalTopYSs = column.getAbsoluteTopYSs();
@@ -359,18 +261,7 @@ public class StructuralStacker {
         return naturalTopYSs;
     }
 
-    /**
-     * The above-staff scripts (staccato/accent) a column presents to the bracket, each as a
-     * {@link ScriptObstacle} carrying its top edge and center X. Empty when the note has none, so the
-     * column is then governed solely by its own tip.
-     * <p>
-     * Only staccato and accent count: these are the close, priority-less scripts LilyPond's tuplet
-     * bracket avoids (tuplet-bracket.cc, "avoid-scripts"). Their placed positions are read straight
-     * from the note-attached tier's {@link LayoutResult.DecorationLayout}s — written into the shared
-     * builder before this tier runs — and the script's outer (top) edge is the ceiling the bracket
-     * clears, folded at the script's center X. Noteheads, ties, accidentals, and the outer scripts
-     * trill/fermata (which float outside the bracket) are ignored.
-     */
+    /** Only staccato and accent count; the outer scripts (trill, fermata) float outside the bracket. */
     private List<ScriptObstacle> scriptObstacles(ElementColumn column) {
         var obstacles = new ArrayList<ScriptObstacle>();
 
@@ -400,18 +291,9 @@ public class StructuralStacker {
         return obstacles;
     }
 
-    /**
-     * A script's clearance point for a tuplet bracket: its outer (top) edge Y and the center X at
-     * which LilyPond folds it into the bracket's point set (tuplet-bracket.cc, {@code script_x.center()}).
-     */
     record ScriptObstacle(double topYSs, double centerXSs) {}
 
-    /**
-     * Collects the spanned {@link ElementColumn}s of a span in reading order, skipping
-     * rest columns. Leading, trailing, and interior rests are all excluded so the resulting list
-     * holds only pitched tips — the outer entries are the non-rest end columns (mirroring
-     * LilyPond's {@code get_bounds}).
-     */
+    /** Leading, trailing, and interior rests are all excluded. */
     static List<ElementColumn> collectNonRestSpannedColumns(
         Line line,
         Span<?> element,
@@ -434,28 +316,12 @@ public class StructuralStacker {
     }
 
     /**
-     * Computes the tuplet bracket's slope rise ({@code dySs}) from the note contour, following
-     * LilyPond's raw-rise → contour-veto → slope-clamp pipeline. Pure and package-visible for
-     * independent unit testing.
-     * <p>
-     * Sign convention: layout Y is up-negative while {@code getStaffPosition()} increases downward,
-     * so a higher right-end note gives BOTH a negative tipRise (smaller top Y) AND a negative
-     * staffRise (smaller staff position) — the two agree in sign. The veto keeps the slope only when
-     * they do; a disagreement (or a flat staff/contour) collapses the slope to 0.
-     * <p>
-     * The slope is the rise between the outer endpoints' <em>staff-floored</em> tops (each floored to
-     * the staff-top centerline widened by {@link #TUPLET_STAFF_PADDING_SS}, mirroring LilyPond's
-     * {@code unite(staff)} — an endpoint inside the staff contributes the staff edge, not its tip)
-     * spread over LilyPond's head/stem-edge run ({@code x0…x1}, see {@link #boundEdgeXSs}), then
-     * re-expressed as a rise over {@code widthSs} so the clearance and render stages share one run
-     * basis. Because the edge run is wider than the note-center span, the drawn slope is
-     * proportionally shallower than the raw tip contour — matching {@code tuplet-bracket.cc}. The
-     * residual gap vs LilyPond is the different horizontal spacing engine, not a bug.
+     * Layout Y is up-negative while {@code getStaffPosition()} increases downward. The slope is kept
+     * only when the tip rise and the staff rise agree in sign; a disagreement (or a flat staff or
+     * contour) collapses it to 0. The result is expressed over {@code widthSs} so the clearance and
+     * render stages share one run basis.
      *
      * @param nonRestColumns ordered spanned columns with rests already excluded
-     * @param widthSs        anchor→end element run the returned rise is expressed over
-     * @param obstacleTopSs  the raw obstacle top each column presents to the bracket
-     * @return the slope rise {@code dySs} = slope × {@code widthSs}; 0.0 when flat or vetoed
      */
     static double computeTupletSlopeDySs(
         List<ElementColumn> nonRestColumns,
@@ -504,18 +370,10 @@ public class StructuralStacker {
     }
 
     /**
-     * Returns the bracket bound edge X for an outer endpoint column, mirroring LilyPond's
-     * {@code get_x_bound_item}: a note whose stem points toward the (always-UP) bracket — an
-     * up-stem — is bounded by its stem edge; any other column by its note-head outer edge. The
-     * bound is head/stem only, so ledger lines, dots, accidentals, and flags are excluded
-     * ({@code note-column.cc}). This is {@code TupletRenderer}'s arm-edge geometry without the
-     * visual {@code ARM_EXTENSION_SS} overhang, which is not a bound edge.
+     * Mirrors LilyPond's {@code get_x_bound_item}: an up-stem is bounded by its stem edge, any other
+     * column by its note-head outer edge; ledger lines, dots, accidentals and flags are excluded.
      *
      * @param column the outer non-rest column
-     * @param end    which end of the bracket {@code column} bounds: {@link SpanEnd#RIGHT}
-     *               contributes {@code x1}, its right edge; {@link SpanEnd#LEFT} contributes
-     *               {@code x0}, its left edge
-     * @return the bound edge X in ss
      */
     private static double boundEdgeXSs(ElementColumn column, SpanEnd end) {
         var headLeftXSs = column.getXSs();
@@ -537,14 +395,9 @@ public class StructuralStacker {
     }
 
     /**
-     * Places one {@link DynamicGrouper.Group}.
-     * <p>
-     * A group of one has no baseline to share, so it goes through the same single-element path it
-     * always did. A group of two or more is placed in two passes: every member's own demand is
-     * computed first, then all of them are placed against the most outward of those demands. The
-     * split is the whole point — a member that reserved its footprint before its neighbours had
-     * been measured would push those neighbours off the shared line, which is exactly the defect
-     * this replaces.
+     * A group of two or more is placed in two passes: every member's own demand first, then all
+     * placed against the most outward. A member that reserved before its neighbours were measured
+     * would push them off the shared line.
      */
     private void stackDynamicsGroup(
         DynamicGrouper.Group group,
@@ -586,11 +439,6 @@ public class StructuralStacker {
         }
     }
 
-    /**
-     * Places a group of one, which shares its line with nothing and so needs neither of the two
-     * passes: a lone hairpin stacks at its anchored ceiling and a lone text dynamic at its clamped
-     * support, exactly as each did before grouping existed.
-     */
     private void stackSoloMember(
         DynamicGrouper.Member member,
         Line line,
@@ -608,9 +456,7 @@ public class StructuralStacker {
     }
 
     /**
-     * Resolves a group member's footprint and the reference line it demands on its own, or
-     * {@code null} when the member is a text dynamic whose element has no column. Reserves
-     * nothing.
+     * Null when the member is a text dynamic whose element has no column. Reserves nothing.
      */
     private @Nullable DynamicPlacement<?> resolvePlacement(
         DynamicGrouper.Member member,
@@ -634,11 +480,7 @@ public class StructuralStacker {
         return null;
     }
 
-    /**
-     * A hairpin's placement. LilyPond centers the wedge's full Y-extent on the group's line
-     * ({@code Hairpin.self-alignment-Y} is {@code CENTER}), so its inner edge — the bottom, above
-     * the staff — sits half its height below the line.
-     */
+    /** The wedge is centered on the group's line, so its inner edge sits half its height below it. */
     private DynamicPlacement<Hairpin> resolveHairpinPlacement(
         Hairpin hairpin,
         Line line,
@@ -654,35 +496,17 @@ public class StructuralStacker {
             innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
     }
 
-    /**
-     * The footprint a hairpin occupies: from its left tip to its right tip.
-     *
-     * @param endpoints the hairpin's resolved endpoints
-     * @return the hairpin's horizontal footprint
-     */
     private static Footprint hairpinFootprint(HairpinEndpoints.Endpoints endpoints) {
         return new Footprint(endpoints.x1Ss(), endpoints.widthSs());
     }
 
-    /**
-     * The anchor a hairpin stacks against: above the staff, at its anchor element's seat, with
-     * {@link #HAIRPIN_MARGIN_SS}.
-     *
-     * @param endpoints the hairpin's resolved endpoints
-     * @return the hairpin's staff anchor
-     */
     private static StaffAnchor hairpinAnchor(HairpinEndpoints.Endpoints endpoints) {
         var staffPosition = ElementSeat.seatSp(endpoints.spanColumns().anchor()).value();
 
         return new StaffAnchor(Direction.UP, staffPosition, HAIRPIN_MARGIN_SS);
     }
 
-    /**
-     * A text dynamic's placement. Unlike a hairpin, the glyph is not centered on the group's line:
-     * LilyPond drops its baseline {@link #DYNAMIC_TEXT_BASELINE_OFFSET_SS} below it, so the
-     * x-height center rather than the bounding-box center lands on the line. Its inner edge — the
-     * glyph's bottom — is therefore that drop plus however far the ink descends past the baseline.
-     */
+    /** The glyph's baseline sits {@link #DYNAMIC_TEXT_BASELINE_OFFSET_SS} below the group's line, not centered on it. */
     private DynamicPlacement<DynamicAttachment> resolveDynamicPlacement(
         DynamicAttachment dynamic, ElementColumn column) {
 
@@ -695,36 +519,14 @@ public class StructuralStacker {
             innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
     }
 
-    /**
-     * The footprint a text dynamic occupies over its column: its advance box, placed where
-     * {@link HairpinEndpoints} places it.
-     *
-     * @param column  the column of the element the dynamic is attached to
-     * @param dynamic the text dynamic
-     * @return the dynamic's horizontal footprint
-     */
     private static Footprint dynamicFootprint(ElementColumn column, DynamicAttachment dynamic) {
         return new Footprint(HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic),
             HairpinEndpoints.dynamicWidthSs(dynamic));
     }
 
     /**
-     * One group member resolved for placement.
-     * <p>
-     * {@code innerEdgeOffsetSs} is what makes the two member kinds interchangeable in the passes:
-     * it is how far the member's inner edge sits below the group's reference line, so pass 1 reads
-     * {@code referenceYSs = innerEdgeYSs - innerEdgeOffsetSs} and pass 2 inverts it. Half the
-     * height for a centered hairpin, the baseline drop plus the glyph's descent for a text dynamic.
-     * <p>
-     * The member's height is not a component: it is always the element's own, read where it is
-     * placed, so a placement cannot carry a height its element disagrees with.
-     *
-     * @param <E>               the member's element type, which must own its height
-     * @param element           the hairpin or text dynamic
-     * @param footprint         the member's horizontal footprint
-     * @param marginSs          the margin recorded with the member's layout
-     * @param innerEdgeOffsetSs how far the member's inner edge sits below the group's reference line
-     * @param referenceYSs      the reference line this member would demand on its own
+     * {@code innerEdgeOffsetSs} is how far the member's inner edge sits below the group's reference
+     * line. The member's height is always the element's own, never a component.
      */
     private record DynamicPlacement<E extends LineElement & IntrinsicHeight>(
         E element,
@@ -734,12 +536,7 @@ public class StructuralStacker {
         double referenceYSs) {
     }
 
-    /**
-     * Stacks one hairpin. Its horizontal endpoints come from {@link HairpinEndpoints}, not from the
-     * anchor and end column positions the way a tuplet bracket's do: a hairpin's tips are pulled
-     * back from adjacent text dynamics and neighbouring hairpins, so they are not a plain function
-     * of where its two bound columns sit.
-     */
+    /** The horizontal endpoints come from {@link HairpinEndpoints}, not from the bound columns' positions. */
     private void stackHairpin(
         Hairpin hairpin,
         Line line,
@@ -751,13 +548,6 @@ public class StructuralStacker {
             hairpin, hairpinFootprint(endpoints), hairpinAnchor(endpoints));
     }
 
-
-    /**
-     * Stacks text dynamics (DynamicAttachment) for the given column.
-     * <p>
-     * Positions text dynamics (pp, p, mp, mf, f, ff) in the structural tier
-     * using collision detection against previously placed elements.
-     */
     private void stackTextDynamics(ElementColumn column) {
         var note = column.getElement();
         var dynamic = note.findAttachment(DynamicAttachment.class);
@@ -770,14 +560,6 @@ public class StructuralStacker {
             dynamic, Outline.flat(dynamicFootprint(column, dynamic)), DYNAMIC_SIDE);
     }
 
-    /**
-     * Stacks all endings (volta brackets) for the line.
-     * <p>
-     * Each ending computes its two brackets (split at the REPEAT_RIGHT barline), then collision
-     * regions are created for each bracket and stacked together as one element. The ending's
-     * layout is recorded as a {@link LayoutResult.DecorationLayout.Volta} carrying those
-     * brackets, which is where the renderer reads them.
-     */
     private void stackEndings(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,

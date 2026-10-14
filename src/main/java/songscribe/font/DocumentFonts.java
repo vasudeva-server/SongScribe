@@ -31,17 +31,9 @@ import songscribe.prefs.SystemPrefsKey;
 
 /**
  * Mutable holder for the eight document-level font roles.
- *
- * <p>Only {@code ScoreView} and the load path retain a reference to this object.
- * External code receives individual {@link Font} instances or reads through
- * the {@link DocumentFontsHolder} interface.
  */
 public final class DocumentFonts implements DocumentFontsHolder {
 
-    /**
-     * Maps each font role to its corresponding name and size {@link SystemPrefsKey} pair.
-     * Declared once here; {@link #defaultFonts()} iterates over this table.
-     */
     private record FontPrefsKeys(FontKey key, SystemPrefsKey nameKey, SystemPrefsKey sizeKey) {}
 
     private static final FontPrefsKeys[] FONT_PREFS_KEYS = {
@@ -59,7 +51,7 @@ public final class DocumentFonts implements DocumentFontsHolder {
 
     public DocumentFonts() {}
 
-    /** Independent copy — mutations to either instance do not affect the other. */
+    /** Independent copy: mutations to either instance do not affect the other. */
     public DocumentFonts(DocumentFonts other) {
         fonts.putAll(other.fonts);
     }
@@ -79,24 +71,17 @@ public final class DocumentFonts implements DocumentFontsHolder {
         fonts.put(key, font);
     }
 
-    /** Resolves the font by PS name and size, then stores it. Used by the IO load path. */
     public void setFont(FontKey key, String psName, int size) {
         fonts.put(key, InstalledFonts.createFont(psName, size));
     }
 
     /**
-     * Builds a {@code DocumentFonts} populated from the bundled {@code system-defaults.json},
-     * ignoring any user preference overrides. Used wherever a fresh document or reset action
-     * needs the canonical font set.
+     * Ignores any user preference overrides.
      */
     public static DocumentFonts defaultFonts() {
         return buildFrom(Prefs::getDefaultString, Prefs::getDefaultInt);
     }
 
-    /**
-     * Table-driven builder: iterates {@link #FONT_PREFS_KEYS} and calls the supplied
-     * value-source functions to resolve each font name and size from the system defaults.
-     */
     private static DocumentFonts buildFrom(
         Function<? super SystemPrefsKey, String> nameSource,
         ToIntFunction<? super SystemPrefsKey> sizeSource

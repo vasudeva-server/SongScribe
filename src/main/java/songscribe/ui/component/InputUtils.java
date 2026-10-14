@@ -46,11 +46,8 @@ public final class InputUtils {
     /** Sentinel passed as {@code maxChars} to impose no length limit. */
     public static final int NO_MAX_CHARS = Integer.MAX_VALUE;
 
-    /** Which shape of number a numeric filter admits. */
     public enum NumericFormat {
-        /** Digits only. */
         INTEGER("\\d+"),
-        /** Digits and the decimal point. */
         DECIMAL("[\\d\\.]+");
 
         private final String regex;
@@ -121,20 +118,14 @@ public final class InputUtils {
     }
 
     /**
-     * Holds {@code field} to {@code maxLines} lines, refusing a break the user enters past the
-     * limit and folding a surplus break within pasted text into a space; see
-     * {@link MaxLinesDocumentFilter}.
-     *
-     * @param field    the field to filter
-     * @param maxLines the number of lines the field may hold; at least 1
+     * @param maxLines at least 1
      */
     public static void addMaxLinesFilter(JTextComponent field, int maxLines) {
         ((AbstractDocument) field.getDocument()).setDocumentFilter(new MaxLinesDocumentFilter(maxLines));
     }
 
     /**
-     * @return {@code component}'s document, or {@code null} when it holds no text of its own, as a
-     *     {@link JSpinner} does not
+     * @return {@code null} when {@code component} holds no text of its own, as a spinner
      */
     private static @Nullable AbstractDocument documentOf(JComponent component) {
         if (component instanceof JTextComponent textComponent) {
@@ -145,41 +136,27 @@ public final class InputUtils {
     }
 
     /**
-     * An edit a filter has been asked to judge: the document's {@code [offset, offset + length)}
-     * giving way to {@code text}.
-     *
-     * @param offset where the replaced stretch starts
-     * @param length how many characters it covers; zero for a plain insertion
-     * @param text   what goes in their place
-     * @param attrs  the attributes to insert it under, or {@code null} to insert unattributed,
-     *               which is what a programmatic {@code setText} passes
+     * @param attrs {@code null} to insert unattributed, which is what a programmatic
+     *              {@code setText} passes
      */
     public record ProposedEdit(int offset, int length, String text, @Nullable AttributeSet attrs) {
 
-        /**
-         * @return {@code doc}'s text with this edit applied — what the document would hold were
-         *     the edit let through
-         */
         String prospectiveTextIn(Document doc) throws BadLocationException {
             var current = doc.getText(0, doc.getLength());
             return current.substring(0, offset) + text + current.substring(offset + length);
         }
 
-        /** @return whether {@code doc} is still within {@code maxChars} once this edit lands */
         boolean fitsIn(Document doc, int maxChars) {
             return doc.getLength() - length + text.length() <= maxChars;
         }
 
-        /** @return this edit with {@code replacement} going in instead of {@link #text()} */
         ProposedEdit withText(String replacement) {
             return new ProposedEdit(offset, length, replacement, attrs);
         }
     }
 
     /**
-     * Base for this class's document filters. Each subclass says what to do with a proposed
-     * edit; the two overrides that reach it, and the input-method case neither of them judges,
-     * are the same for all of them and live here.
+     * Base for this class's document filters.
      */
     public abstract static class EditFilter extends DocumentFilter {
 
@@ -214,13 +191,9 @@ public final class InputUtils {
             applyEdit(fb, new ProposedEdit(offset, length, text, attrs));
         }
 
-        /**
-         * Carries {@code edit} out, alters it, or refuses it — beeping when it does either of
-         * the last two, which is the signal every filter here gives.
-         */
+        /** Beeps when it alters or refuses {@code edit}, which is the signal every filter here gives. */
         protected abstract void applyEdit(FilterBypass fb, ProposedEdit edit) throws BadLocationException;
 
-        /** Lets {@code edit} through unaltered. */
         protected final void accept(FilterBypass fb, ProposedEdit edit) throws BadLocationException {
             super.replace(fb, edit.offset(), edit.length(), edit.text(), edit.attrs());
         }
@@ -292,21 +265,12 @@ public final class InputUtils {
     }
 
     /**
-     * A filter that holds its document to a fixed number of lines.
+     * A filter that holds its document to a fixed number of lines. An insertion of nothing but
+     * line breaks (pressing Enter) past the limit is refused; one carrying text goes in with the
+     * surplus breaks folded away, so the text is not lost. A beep means a break was dropped.
      *
-     * <p>An edit that would add a line past the limit is handled by what it carries. An insertion
-     * of nothing but line breaks — pressing Enter — is refused outright, since it carries no text
-     * a fold could preserve and a space in its place is a character nobody asked for. An insertion
-     * carrying text goes in with the surplus breaks folded away, per
-     * {@link StringUtils#foldSurplusLineBreaks(String, int)}, because refusing it would lose that
-     * text. Either way the filter beeps to say the break was not taken — the same signal the
-     * sibling filters give when they alter or refuse an edit.
-     *
-     * <p>Line endings are normalized on the way in, so the document only ever holds line feeds
-     * and a beep means a break was dropped rather than merely rewritten.
-     *
-     * <p>A beep is all a filter may do. {@link AbstractDocument} holds its write lock across the
-     * call, and a modal dialog would pump the event queue inside that lock; an alert belongs to an
+     * <p>A beep is all a filter may do: {@link AbstractDocument} holds its write lock across the
+     * call, and a modal dialog would pump the event queue inside it. An alert belongs to an
      * {@link javax.swing.InputVerifier}, which runs outside the write.
      */
     public static final class MaxLinesDocumentFilter extends EditFilter {
@@ -352,12 +316,8 @@ public final class InputUtils {
         }
 
         /**
-         * Rewrites the one stretch in which {@code folded} differs from {@code current}, which is
-         * what the document holds.
-         *
-         * <p>The stretch is found by comparing rather than assumed to sit at the insertion: the
-         * surplus break is not always one of the inserted characters, since typing a break ahead
-         * of an existing one makes the existing one surplus.
+         * The stretch is found by comparing, not assumed to sit at the insertion: typing a break
+         * ahead of an existing one makes the existing one surplus.
          */
         private static void replaceDifference(
             FilterBypass fb,
@@ -389,7 +349,6 @@ public final class InputUtils {
             );
         }
 
-        /** @return whether {@code text} holds line breaks and nothing else */
         private static boolean isOnlyLineBreaks(String text) {
             return (
                 !text.isEmpty() &&

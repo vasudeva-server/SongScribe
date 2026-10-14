@@ -22,25 +22,17 @@ package songscribe.io.musicxml;
 /**
  * The MusicXML vocabulary shared by {@link MusicXmlReader} and
  * {@link MusicXmlWriter}: element names, attribute names, and the attribute
- * values both sides depend on. Centralised so a change on one side cannot
- * silently diverge from the other.
+ * values both sides depend on.
  *
- * <p>Bar-style, repeat-direction, and barline-location <em>values</em> live in
- * {@link BarlineStyleMapping}, which owns the barline mapping.
- *
- * <p>The class is public only so that tests outside this package can build
- * MusicXML fixtures from the same vocabulary the codec uses, rather than
- * restating the literals. Members stay package-private by default; a member is
- * widened to public only when such a test needs it.
+ * <p>The class is public only so that tests outside this package can build MusicXML fixtures
+ * from the same vocabulary.
  */
 public final class MusicXmlTags {
 
     private MusicXmlTags() {}
 
     /**
-     * Supported and emitted MusicXML schema version. Also the minimum the
-     * reader accepts: documents at this version or later are read
-     * (forward-compatible); older ones are rejected.
+     * The minimum version the reader accepts; older documents are rejected.
      */
     public static final String VERSION_VALUE = "4.0";
 

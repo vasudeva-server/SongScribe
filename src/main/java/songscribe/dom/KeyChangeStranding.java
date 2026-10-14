@@ -27,41 +27,22 @@ import songscribe.dom.StaffElementRun.EffectiveRange;
 /**
  * The mid-line key changes an edit that moves a key strands, and the sweep that removes them.
  *
- * <p>A key change that restates the key already in effect draws nothing and is deliberately
- * not representable, so the edit that strands one removes it, together with the element it is
- * paired with, in the same undo step as the edit itself — see {@code docs/key-changes.md},
- * <em>A mid-line change never restates the key already in effect</em>. This type is that rule
- * in two halves: each factory is the pure, pre-mutation query that says what an edit will
- * strand, computed before anything commits; {@link #sweep} and its two deferred forms are the
- * removal, called inside the edit's modification bracket.
+ * <p>A key change that restates the key already in effect draws nothing and is not
+ * representable, so the edit that strands one removes it, together with the element it is
+ * paired with, in the same undo step as the edit itself — see {@code docs/key-changes.md}. Each
+ * factory is the pure, pre-mutation query that says what an edit will strand; {@link #sweep} and
+ * its two deferred forms are the removal, called inside the edit's modification bracket.
  *
- * <p>Nothing here is put to the notator. A stranded key change carries no information the
- * document does not already hold, so removing it needs no consent and is never refused.
- *
- * <p>Every factory asks the song what inherits from the line the edit lands on, supposing that
- * line leaves off in the key the edit will leave it in — {@link Song#inheritanceFrom} — so a
- * stranding reaches exactly the lines the song re-derives once the edit commits. A line the edit
- * leaves running in the key it already ran in has nothing stranded on it: a committed line never
- * holds a key change restating the key in effect where it stands, and a line whose running key is
- * unchanged has the same key in effect at every element.
- *
- * <p>Removing a stranded key change can neither create nor hide another, and moves the key in
- * effect nowhere — it deletes a step that steps to the value already held. That is what lets the
- * whole list be computed once, before the edit, without the edit's own removals invalidating it.
- *
- * @param lines every line the edit strands a key change on or could have, in song order, each
- *              carrying the ranges to remove from it
+ * <p>Removing a stranded key change is never put to the notator or refused, and can neither
+ * create nor hide another, so the whole list is computed once, before the edit.
  */
 public record KeyChangeStranding(List<Stranded> lines) {
 
     /**
      * One line a key move reaches, with what the move strands on it.
      *
-     * @param line   the line, in its pre-edit state
      * @param ranges the inclusive ranges to remove from {@code line}, ascending and pairwise
-     *               disjoint; each is a stranded key change widened to the pair it belongs to,
-     *               as {@link StaffElementRun#redundantKeyChangeRanges(Key)} reports them. Empty
-     *               when the move strands nothing on the line
+     *               disjoint; empty when the move strands nothing on the line
      */
     public record Stranded(Line line, List<EffectiveRange> ranges) {
 
@@ -69,13 +50,6 @@ public record KeyChangeStranding(List<Stranded> lines) {
             ranges = List.copyOf(ranges);
         }
 
-        /**
-         * The stranding {@code runningKey} causes on {@code line} once the line runs in it.
-         *
-         * @param line       the line, in its pre-edit state
-         * @param runningKey the key {@code line} will run in once the edit commits
-         * @return the line and its stranded ranges
-         */
         static Stranded under(Line line, Key runningKey) {
             return new Stranded(line, line.redundantKeyChangeRanges(runningKey));
         }
@@ -161,21 +135,10 @@ public record KeyChangeStranding(List<Stranded> lines) {
     }
 
     /**
-     * Removes every stranded key change on every line here, each together with the element it
-     * is paired with.
-     *
-     * <p>The document is briefly in a state where the key has not moved yet and a key change
-     * that restates it is already gone. Nothing observes it: what a line inherits is derived
-     * state the key move recomputes, and undo replays the bracket's mutations in reverse, each
-     * restoring what it recorded.
-     *
-     * <p>An edit that goes on to move the elements of one of these lines uses
+     * An edit that goes on to move the elements of one of these lines uses
      * {@link #sweepExcept} and {@link #sweepDeferred} instead.
      *
-     * @throws IllegalStateException if the song has neither an open modification bracket nor
-     *     suspended mutation tracking
-     * @effects mutates every line here that has a stranded range, into the open modification
-     *     bracket
+     * <p>The song has an open modification bracket or suspended mutation tracking.
      */
     public void sweep() {
         for (var stranded : lines) {
@@ -184,19 +147,10 @@ public record KeyChangeStranding(List<Stranded> lines) {
     }
 
     /**
-     * Sweeps every line here but {@code deferred}, whose own removals wait for
-     * {@link #sweepDeferred}.
+     * Leaves {@code deferred} alone: the ranges stranded there name pre-edit indices, which
+     * removing them before the edit reads the line would invalidate.
      *
-     * <p>For an edit that goes on to move the elements of one line after this: the ranges it
-     * strands there name pre-edit indices, so removing them now would take the wrong elements,
-     * and removing them before the edit reads that line would move the indices the edit is
-     * measuring against.
-     *
-     * @param deferred the line whose sweep waits
-     * @throws IllegalStateException if the song has neither an open modification bracket nor
-     *     suspended mutation tracking
-     * @effects mutates every line here but {@code deferred} that has a stranded range, into the
-     *     open modification bracket
+     * <p>The song has an open modification bracket or suspended mutation tracking.
      */
     public void sweepExcept(Line deferred) {
         for (var stranded : lines) {
@@ -207,20 +161,10 @@ public record KeyChangeStranding(List<Stranded> lines) {
     }
 
     /**
-     * Removes the stranded key changes on {@code deferred}, each range shifted by
-     * {@code indexShift} first.
+     * Removes the ranges stranded on {@code deferred}, shifted by {@code indexShift}: positive
+     * where the edit left more elements ahead of them than it found, negative where fewer.
      *
-     * <p>Every such range begins at or past the first index the edit leaves standing after
-     * itself, so an edit that inserts or removes elements at that boundary moves all of them by
-     * the same amount, and the shift is that amount: positive where the edit left more elements
-     * ahead of them than it found, negative where it left fewer.
-     *
-     * @param deferred   the line whose sweep {@link #sweepExcept} deferred
-     * @param indexShift how far its ranges have moved since the factory reported them
-     * @throws IllegalStateException if the song has neither an open modification bracket nor
-     *     suspended mutation tracking
-     * @effects mutates {@code deferred}, into the open modification bracket, when it has a
-     *     stranded range; nothing when {@code deferred} is not among the lines here
+     * <p>The song has an open modification bracket or suspended mutation tracking.
      */
     public void sweepDeferred(Line deferred, int indexShift) {
         for (var stranded : lines) {
@@ -233,10 +177,6 @@ public record KeyChangeStranding(List<Stranded> lines) {
         }
     }
 
-    /**
-     * The lines after {@code line} that run in the key it leaves off in, each with what that key
-     * strands on it once {@code line} leaves off in {@code keyAtEndOfLine}, in song order.
-     */
     private static List<Stranded> inheritingLinesAfter(Line line, Key keyAtEndOfLine) {
         return line.getSong().inheritanceFrom(line, keyAtEndOfLine).inheriting().stream()
             .map(inheritance -> Stranded.under(inheritance.line(), inheritance.inheritedKey()))

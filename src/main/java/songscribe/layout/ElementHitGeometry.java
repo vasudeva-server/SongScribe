@@ -27,22 +27,14 @@ import songscribe.dom.StaffElement;
 
 /**
  * The clickable rectangle of a note head, in layout space: X in line-local staff spaces, Y in
- * staff spaces relative to the staff midline.
- * <p>
- * Production code reaches it through {@link LayoutResult#elementHitRectSs}, which places the
- * <em>expanded</em> rect at the element's column, so a thin or short element is still comfortably
- * clickable. The hit registry holds that rect for the element, and the score points at a flagged
- * element with the same one.
+ * staff spaces relative to the staff midline. Production code reaches it through
+ * {@link LayoutResult#elementHitRectSs}.
  */
 public final class ElementHitGeometry {
 
     /**
-     * Smallest clickable extent of an element, in pixels. Elements narrower or shorter than this
-     * are expanded symmetrically up to it so they can still be hit.
-     * <p>
-     * A pixel constant is safe to bake into layout geometry because {@link DocumentScale} is a
-     * fixed document scale: it does not vary with on-screen zoom, so this converts to a constant
-     * number of staff spaces.
+     * A pixel constant is safe in layout geometry only because {@link DocumentScale} does not
+     * vary with on-screen zoom.
      */
     private static final int MIN_HIT_SIZE_PX = 8;
 
@@ -50,16 +42,7 @@ public final class ElementHitGeometry {
     }
 
     /**
-     * Builds the hit rectangle for {@code element} into {@code out}: the element's note head,
-     * expanded symmetrically to at least {@value #MIN_HIT_SIZE_PX} px in each dimension, so a
-     * narrow or short element stays clickable and the rectangle stays centered on what is drawn.
-     *
-     * @param elementXSs the element column's origin X, in line-local staff spaces
-     * @param element    the element to measure
-     * @param out        the rectangle to write into; reused across a loop to avoid allocating
-     *                   one rect per element
-     * @effects overwrites {@code out} with the rectangle, in line-local, midline-relative staff
-     *     spaces
+     * @param out overwritten with the result
      */
     public static void elementHitRectSs(double elementXSs, StaffElement element, Rectangle2D.Double out) {
         var elementType = element.getType();

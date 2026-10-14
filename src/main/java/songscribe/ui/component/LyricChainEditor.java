@@ -33,16 +33,9 @@ import songscribe.message.mutation.ElementField;
 import songscribe.util.LogUtils;
 
 /**
- * The hyphen-chain and melisma-chain algebra an open {@link LyricEditor} session performs on
- * one script of one {@link Line}. Every operation here is expressed in element indices and
- * reads or writes only the model, so it can be exercised without a Swing component.
- *
- * <p>This is a level above the repairs on {@link LyricRun}, not a replacement for them: those
- * answer "an element changed, make the chains around it well-formed again," while these are
- * the specific chain rewrites the editor's keystrokes ask for — clearing a placeholder ends
- * the word or gives up the carrier, {@code _} builds a chain backward or forward. Each one is
- * written in terms of the {@code LyricRun} repairs and {@link LyricRun#modifyElement}, so every
- * write lands inside the mutation bracket and undo sees it.
+ * The hyphen-chain and melisma-chain operations an open {@link LyricEditor} session performs on
+ * one script of one {@link Line}. Reads or writes only the model, so it can be exercised
+ * without a Swing component.
  *
  * <p><b>Bracketing:</b> only {@link #buildBackwardChain} opens its own modification bracket —
  * it is the whole of what the {@code _} keystroke writes. Every other mutating method here must
@@ -55,7 +48,6 @@ final class LyricChainEditor {
 
     private final Line line;
 
-    /** The script the owning editor session captured when it opened. */
     private final Song.Script script;
 
     LyricChainEditor(Line line, Song.Script script) {
@@ -65,10 +57,8 @@ final class LyricChainEditor {
 
     /**
      * Whether the element at {@code currentIndex} carries no syllable of its own but sits between
-     * a syllable that continues into the next word part and the syllable that part lands on — the
-     * gap a word's hyphen is drawn across. Opening such an element prefills the hyphen placeholder.
-     * A gap with no syllable after it is not one: the chain dangles there, which is the editor's
-     * dismiss adjustment to repair.
+     * a continuing syllable and the one it lands on. A gap with no syllable after it is not one:
+     * the chain dangles there, for the editor's dismiss adjustment to repair.
      */
     boolean isInsideHyphenChain(int currentIndex) {
         if (line.getElement(currentIndex).getLyricForScript(script) != null) {
@@ -88,14 +78,6 @@ final class LyricChainEditor {
             && line.hasFollowingTextBearingLyric(currentIndex, script);
     }
 
-    /**
-     * Ends the hyphenated word that ran through the element at {@code currentIndex}, called when
-     * the user clears the placeholder standing for its hyphen. Making the predecessor word-final
-     * also drops the continuation from the syllable that followed, via
-     * {@link LyricRun#setSyllableBoundary}.
-     *
-     * <p>Must be called inside an open modification bracket.
-     */
     void breakHyphenChain(int currentIndex) {
         var backIndex = line.previousLyricBearingIndex(currentIndex, script);
 
@@ -117,14 +99,6 @@ final class LyricChainEditor {
         line.setSyllableBoundary(backIndex, script, true, false);
     }
 
-    /**
-     * Ends the melisma that ran through the element at {@code currentIndex}, called when the user
-     * clears the placeholder standing for its extender. The element gives up its carrier lyric,
-     * then {@link #breakChainAtCurrentElement} closes the chain behind it and clears the carriers
-     * ahead of it.
-     *
-     * <p>Must be called inside an open modification bracket.
-     */
     void breakMelismaChain(int currentIndex) {
         trace("breakMelismaChain: giving up the carrier at {}", currentIndex);
 
@@ -134,12 +108,6 @@ final class LyricChainEditor {
         breakChainAtCurrentElement(currentIndex);
     }
 
-    /**
-     * Severs the melisma chain running through {@code currentIndex} in both directions: the
-     * predecessor stops handing one on, and the carriers ahead are cleared.
-     *
-     * <p>Must be called inside an open modification bracket.
-     */
     void breakChainAtCurrentElement(int currentIndex) {
         terminatePrecedingContinueChain(currentIndex);
         clearForwardCarriers(currentIndex);
@@ -177,12 +145,6 @@ final class LyricChainEditor {
         }
     }
 
-    /**
-     * Clears every melisma carrier after {@code currentIndex}, stopping at the first
-     * text-bearing syllable or once the chain's {@code STOP} has been cleared.
-     *
-     * <p>Must be called inside an open modification bracket.
-     */
     void clearForwardCarriers(int currentIndex) {
         var effectiveCount = line.effectiveElementCount();
 
@@ -213,13 +175,7 @@ final class LyricChainEditor {
     }
 
     /**
-     * Retroactively builds a {@code CONTINUE} chain from the lyric-bearing element at
-     * {@code backIndex} through {@code currentIndex}, which becomes the chain's {@code STOP}
-     * carrier. This is the whole of what the empty-editor {@code _} keystroke writes, so it
-     * opens its own modification bracket.
-     *
-     * @param currentIndex the element the editor is open on, which becomes the chain's carrier
-     * @param backIndex    the lyric-bearing element the chain runs back to, never negative
+     * @param backIndex never negative
      */
     void buildBackwardChain(int currentIndex, int backIndex) {
         var backElement = line.getElement(backIndex);
@@ -270,11 +226,7 @@ final class LyricChainEditor {
     }
 
     /**
-     * Runs the chain forward from a melisma-starting syllable at {@code currentIndex} to its
-     * {@code STOP} carrier at {@code nextIndex}, then repairs the syllable past the chain. The
-     * start itself is the editor's commit, so it is not written here.
-     *
-     * <p>Must be called inside an open modification bracket — the same one the commit runs in.
+     * The start itself is the editor's commit, so it is not written here.
      */
     void markMelismaCarrierRun(int currentIndex, int nextIndex) {
         // Elements skipped between here and the carrier — such as the host of a paired
@@ -306,16 +258,10 @@ final class LyricChainEditor {
             indexElement.putLyric(existing.withExtend(newExtend)));
     }
 
-    /** Whether a lyric with this extender state hands a melisma on to the elements after it. */
     static boolean sustainsMelisma(Lyric.Extend extend) {
         return extend == Lyric.Extend.START || extend == Lyric.Extend.CONTINUE;
     }
 
-    /**
-     * Returns the word-final counterpart of a text-bearing syllable's {@code syllabic}:
-     * {@code BEGIN} collapses to {@code SINGLE} and {@code MIDDLE} to {@code END}; already
-     * word-final values pass through.
-     */
     private static Lyric.Syllabic wordFinalSyllabic(Lyric.@Nullable Syllabic syllabic) {
         return switch (syllabic) {
             case BEGIN -> Lyric.Syllabic.SINGLE;
@@ -326,15 +272,7 @@ final class LyricChainEditor {
     }
 
     /**
-     * A one-line rendering of every element's lyric in the edited script, for the editor's trace.
-     * Each element appears as its index followed by its state: {@code -} for no lyric, {@code ~}
-     * for a carrier (no syllable of its own), otherwise the quoted text and its syllabic. The
-     * extender state and the compound flag follow when they are set. For example:
-     *
-     * <pre>0="a"/SINGLE/START 1=~/STOP 2="b"/SINGLE 3=-</pre>
-     *
-     * <p>Called only from a caller that has already checked that tracing is on — this walks the
-     * whole line and builds a string every time.
+     * Call only with tracing on: it walks the whole line.
      */
     String lyricRowDescription() {
         var description = new StringBuilder();
@@ -371,11 +309,6 @@ final class LyricChainEditor {
         return description.toString();
     }
 
-    /**
-     * Records one decision the chain machinery made. Carries no editor state of its own, so the
-     * editor pairs these with its own {@code logState} where the state that drove the decision
-     * also matters.
-     */
     private static void trace(String format, @Nullable Object... args) {
         if (LogUtils.isTracingLyrics(LOG)) {
             LOG.debug(format, args);

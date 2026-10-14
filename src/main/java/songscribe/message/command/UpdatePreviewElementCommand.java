@@ -22,26 +22,13 @@ package songscribe.message.command;
 
 import songscribe.message.Message;
 
-/**
- * This class is the superclass of any message that will modify
- * the music sheet's active note. This allows the ScoreView class
- * to listen for these messages and update the active note accordingly.
- */
+/** The superclass of any message that modifies the active preview note; {@code ScoreView} listens for it. */
 public class UpdatePreviewElementCommand extends Message {
 
-    /** How much of the preview element the command has to rebuild. */
     public enum Scope {
-        /**
-         * Re-apply the decoration toggles (dots, accidental, articulations) to the
-         * existing preview element. Its type is unchanged.
-         */
         DECORATIONS,
 
-        /**
-         * Recreate the preview element from the selected actions. Required whenever the
-         * element's <em>type</em> may have changed — rest mode, or the duration/non-duration
-         * selection — since decorating in place cannot turn a rest back into a note.
-         */
+        /** Required whenever the element's type may have changed; decorating in place cannot turn a rest back into a note. */
         ELEMENT
     }
 

@@ -36,38 +36,15 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 
-/**
- * Abstract base renderer for metronome-style markings (tempo and beat change).
- * <p>
- * Provides the shared font constant, the content-painting primitive
- * {@link #drawContent}, and the render sequence {@link #renderAttachment} used by
- * {@link TempoChangeRenderer} and {@link BeatChangeRenderer}.
- */
 public abstract class MetronomeRenderer implements ElementRenderer<StaffElement> {
 
-    /** Bravura font scaled for metronome glyph display. */
     protected static final Font TEMPO_NOTE_FONT = RenderingUtils.getMusicFont().deriveFont(RenderingUtils.FONT_SIZE * MetronomeAttachment.NOTE_SCALE);
 
     /**
-     * Draws one metronome marking's positioned content at the given position.
-     * <p>
-     * The whole marking — glyphs, "=", BPM and description — was typeset by
-     * {@link MetronomeContent} at layout time, so this walks the items and decides
-     * nothing. It measures no advance, resolves no font and computes no position on
-     * either axis; every item carries its own. That is the point of the method, not an
-     * incidental property.
-     * <p>
-     * Deciding anything here would reintroduce the possibility of the drawn ink
-     * disagreeing with the measured box that layout, hit testing and vertical stacking
-     * all rely on — and measuring specifically would put a {@code TextLayout}
-     * construction back into the paint loop, for every marking on screen, on every
-     * scroll and every zoom step.
-     *
-     * @param g2      graphics context
-     * @param content the positioned content to paint
-     * @param xSs     left edge of the content (staff spaces)
-     * @param ySs     decoration-layout top Y position (staff spaces)
-     * @param color   the color for both the glyphs and the text
+     * {@link MetronomeContent} typeset the whole marking at layout time, so this decides nothing:
+     * deciding here could let the drawn ink disagree with the measured box that layout, hit
+     * testing and vertical stacking rely on, and measuring would put a {@code TextLayout}
+     * construction back into the paint loop.
      */
     static void drawContent(
         Graphics2D g2,
@@ -101,15 +78,6 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         }
     }
 
-    /**
-     * Draws the marking owned by the given attachment: the shared render sequence for
-     * every metronome-style decoration that hangs off a note.
-     *
-     * @param element    the note owning the attachment
-     * @param attachment the attachment being drawn
-     * @throws IllegalStateException if the stacking pass recorded no typeset layout for
-     *                               {@code attachment}
-     */
     protected void renderAttachment(
         StaffElement element,
         MetronomeAttachment attachment,

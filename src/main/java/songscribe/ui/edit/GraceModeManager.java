@@ -60,15 +60,6 @@ import static songscribe.message.MessageCenter.post;
 
 /**
  * Manages the grace note pairing state machine.
- *
- * <p>A mouse-down while a grace action is selected moves {@code INACTIVE} to {@code GRACE_NOTE},
- * provided the room check passes. From there a drag-left or Escape cancels; a drag-right onto an
- * existing next note pairs directly ({@code GRACE_NOTE_PAIRED}); and a click, or a drag-right with
- * no next note, enters {@code GRACE_NOTE_INSERT} to preview a host note the user has yet to create.
- * Entering that state computes the host-note insertion preview once and holds it fixed until the
- * user clicks or cancels. {@code GRACE_NOTE_INSERT} either cancels (click miss or Escape) or commits to
- * {@code GRACE_NOTE_PAIRED} on a left-click or line change. Both cancel and success paths run
- * through {@code FINISH}, which tears the interaction down and returns to {@code INACTIVE}.
  */
 public final class GraceModeManager {
 
@@ -80,7 +71,7 @@ public final class GraceModeManager {
         FINISH
     }
 
-    public static final int GRACE_SLOP_PX = 4;
+    private static final int GRACE_SLOP_PX = 4;
     public static final long MIN_DRAG_MILLIS = 500;
 
     @Nullable
@@ -92,13 +83,7 @@ public final class GraceModeManager {
     // State
     private State state = State.INACTIVE;
 
-    /**
-     * The grace note the interaction is building and where it sits: {@code note} is on
-     * {@code line} at {@code index}, and {@code component} displays that line. Present whenever
-     * {@link #state} is not {@link State#INACTIVE}, so a present record proves all four —
-     * {@link #enterGraceNote} builds it just before the state leaves {@code INACTIVE}, and
-     * {@link #resetState} drops it just after the state returns there.
-     */
+    /** Present whenever {@link #state} is not {@link State#INACTIVE}. */
     private record ActiveGrace(NoteElement note, int index, Line line, LineComponent component) {}
 
     @Nullable
@@ -130,11 +115,6 @@ public final class GraceModeManager {
     // pairing owes the repairs. An append has no neighbor after it and owes none.
     private boolean insertionRepairsOwed = false;
 
-    /**
-     * A note the untracked grace insertion's chain walk restamped, with the state it held
-     * before. The pairing bracket records the restamp from {@code saved}, so undo puts that
-     * state back; an abort's removal walk restores it without a record.
-     */
     private record SavedAccidentalState(Line line, NoteElement.SavedAccidental saved) {}
 
     // The notes the untracked insertion's walk restamped, in walk order, until the pairing
@@ -146,10 +126,6 @@ public final class GraceModeManager {
         instance = this;
     }
 
-    /**
-     * Returns whether any GraceModeManager instance is currently active.
-     * Used by UIAction.enableFromGraceModeState() to check grace mode status.
-     */
     public static boolean isActive() {
         return instance != null && instance.isInProgress();
     }
@@ -158,19 +134,11 @@ public final class GraceModeManager {
         return state != State.INACTIVE;
     }
 
-    /**
-     * Returns whether the given element is a grace note flagged for cancellation.
-     * Used by {@code LineRenderer.getElementColor()} to draw the note in red.
-     */
     public static boolean isPendingCancel(StaffElement element) {
         return instance != null && instance.pendingCancel && instance.isGraceNote(element);
     }
 
-    /**
-     * Returns whether the given element is a grace note with a pending drag-right connect.
-     * Used by {@code LineRenderer.renderSlides()} to draw a preview glissando — render-only
-     * state, so the drag never mutates the element's slide (see {@code mouseDragged}).
-     */
+    /** Render-only state: the drag never mutates the element's slide. */
     public static boolean isPendingConnect(StaffElement element) {
         return instance != null && instance.pendingConnect && instance.isGraceNote(element);
     }
@@ -179,21 +147,11 @@ public final class GraceModeManager {
         return activeGrace != null && element == activeGrace.note();
     }
 
-    /**
-     * Returns whether any grace note has a pending drag-right connect, regardless of
-     * element. Lets {@code LineRenderer} skip its per-element scan in the common case
-     * of no active grace-mode drag.
-     */
     public static boolean hasPendingConnect() {
         return instance != null && instance.pendingConnect;
     }
 
-    /**
-     * Returns the locked insertion x-position in staff spaces for the host note.
-     * Computed dynamically from the grace note's current layout position plus
-     * one column width to the right. Returns 0 if grace mode is not in progress or the
-     * layout is unavailable.
-     */
+    /** Returns 0 if grace mode is not in progress or the layout is unavailable. */
     public double getLockedInsertionXSs() {
         var grace = activeGrace;
 
@@ -224,19 +182,11 @@ public final class GraceModeManager {
             + Math.abs(hostLeftExtentSs);
     }
 
-    /**
-     * Returns the {@link LineComponent} that contains the grace note, or null if not in progress.
-     */
+    /** Null if not in progress. */
     public @Nullable LineComponent getGraceLineComponent() {
         return activeGrace != null ? activeGrace.component() : null;
     }
 
-    /**
-     * Returns the active grace record, which every caller past {@link State#INACTIVE} is
-     * entitled to.
-     *
-     * @throws IllegalStateException if grace mode is not in progress
-     */
     private ActiveGrace requireActiveGrace() {
         var grace = activeGrace;
 
@@ -248,56 +198,28 @@ public final class GraceModeManager {
     }
 
     /**
-     * Returns the index at which the host note will be inserted — the slot immediately
-     * after the grace note. This is the single definition of the host slot; callers must
-     * not recompute it from the grace note's index.
-     * <p>
-     * Valid throughout grace mode, i.e. whenever {@link #isInProgress()} is true: the grace
-     * note's index is recorded before the state leaves {@link State#INACTIVE} and is only
-     * cleared after it returns there.
-     *
-     * @return the index of the slot after the grace note
-     * @throws IllegalStateException if grace mode is not in progress
+     * The single definition of the host slot; callers must not recompute it from the grace
+     * note's index. Valid whenever {@link #isInProgress()} is true.
      */
     public int getHostInsertionIndex() {
         return requireActiveGrace().index() + 1;
     }
 
-    /**
-     * Returns the index of the grace note whose host-note insertion preview is showing on
-     * {@code lineComponent}, or null when no host preview is showing there.
-     * <p>
-     * Gates the preview glissando between the already-inserted grace note and the host ghost
-     *: while the host is only a preview the grace note carries no slide of its own,
-     * so the connecting line is render-only state derived from here rather than from the DOM.
-     * The index rides along with the predicate so {@link ActiveGrace#index()} needs no accessor
-     * of its own outside this package.
-     */
+    /** Null when no host preview is showing on {@code lineComponent}. */
     public @Nullable Integer hostPreviewGraceIndexOn(LineComponent lineComponent) {
         return isShowingHostPreviewOn(lineComponent) ? requireActiveGrace().index() : null;
     }
 
-    /**
-     * Returns whether the host-note insertion preview is showing on {@code lineComponent}, i.e.
-     * the grace note is waiting for the host the user is positioning.
-     */
     boolean isShowingHostPreviewOn(LineComponent lineComponent) {
         return state == State.GRACE_NOTE_INSERT && lineComponent == getGraceLineComponent();
     }
 
-    /**
-     * Returns the host-note insertion preview cached on entry to {@link State#GRACE_NOTE_INSERT}.
-     * Null if not in that state or the host note would not fit on the line (in which case
-     * {@link #enterGraceNoteInsert} would have aborted and reset the state).
-     */
+    /** Null if not in {@link State#GRACE_NOTE_INSERT} or the host note would not fit on the line. */
     public InsertionSpacingCalculator.@Nullable InsertionResult getHostInsertionPreview() {
         return cachedHostInsertion;
     }
 
-    /**
-     * Computes the host-note insertion preview for {@code grace}. Returns null if no preview
-     * element is showing or the host note would not fit on the line.
-     */
+    /** Null if no preview element is showing or the host note would not fit on the line. */
     private InsertionSpacingCalculator.@Nullable InsertionResult computeHostInsertion(ActiveGrace grace) {
         var previewElement = EditModeManager.getPreviewElement();
 
@@ -631,11 +553,6 @@ public final class GraceModeManager {
         PreviewElementManager.restorePreviewElement(grace.component());
     }
 
-    /**
-     * Commits the grace-note pairing. When {@code connectNext} is true the grace note
-     * connects to the already-existing next pitched note (drag-right); when false a new
-     * host note is inserted at the locked x position (click in GRACE_NOTE_INSERT).
-     */
     private void enterGraceNotePaired(boolean connectNext, LineComponent lineComponent) {
         var grace = requireActiveGrace();
         var note = grace.note();
@@ -755,11 +672,7 @@ public final class GraceModeManager {
         commit();
     }
 
-    /**
-     * Cancels the in-progress grace operation, leaving no undo step. The grace note was
-     * inserted without mutation tracking, so it is removed the same way — a cancelled
-     * operation must not appear in the undo history.
-     */
+    /** Leaves no undo step: a cancelled operation must not appear in the undo history. */
     private void abort() {
         var grace = activeGrace;
 
@@ -782,19 +695,11 @@ public final class GraceModeManager {
         resetState();
     }
 
-    /**
-     * Finalizes a successful grace-note pairing. The pairing's mutations were already
-     * recorded by {@link #enterGraceNotePaired}'s modification bracket; this only tears
-     * down the grace-mode UI state.
-     */
+    /** Records nothing: {@link #enterGraceNotePaired}'s modification bracket already did. */
     private void commit() {
         resetState();
     }
 
-    /**
-     * Restores action states and clears all grace-mode tracking fields. Shared teardown
-     * for {@link #abort()} and {@link #commit()}.
-     */
     private void resetState() {
         // Restore only the actions grace mode disabled — those lacking ENABLED_IN_GRACE_MODE —
         // to their pre-grace-mode state. The actions that stayed live (duration, embellishments,
@@ -834,40 +739,23 @@ public final class GraceModeManager {
     // Private helper methods
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns whether the mouse is at least {@link #GRACE_SLOP_PX} to the left
-     * of the grace note's left edge. Used for cancel detection during drag and
-     * click in the insert phase.
-     */
     private boolean isMouseLeftOfGraceNote(MouseEvent e) {
         var grace = requireActiveGrace();
         var threshold = cancelThresholdPx(grace);
         return threshold != null && mouseXDocPx(grace, e) <= threshold;
     }
 
-    /**
-     * Returns whether the mouse is at least {@link #GRACE_SLOP_PX} to the right
-     * of the grace note's right edge. Used for connect detection during drag.
-     */
     private boolean isMouseRightOfGraceNote(MouseEvent e) {
         var grace = requireActiveGrace();
         var threshold = connectThresholdPx(grace);
         return threshold != null && mouseXDocPx(grace, e) >= threshold;
     }
 
-    /**
-     * Returns the event's x in document pixels. The thresholds are fixed-scale document
-     * pixels, so the view-pixel event x is converted before comparing.
-     */
     private static int mouseXDocPx(ActiveGrace grace, MouseEvent e) {
         return grace.component().getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).positionPx();
     }
 
-    /**
-     * Returns the rightmost X (in document pixels) at which a drag is considered a cancel
-     * gesture, i.e. the grace note's left edge minus {@link #GRACE_SLOP_PX}, or null when
-     * layout is unavailable.
-     */
+    /** Null when layout is unavailable. */
     private static @Nullable Integer cancelThresholdPx(ActiveGrace grace) {
         var layout = grace.component().getLayoutResult();
 
@@ -879,11 +767,7 @@ public final class GraceModeManager {
         return DocumentScale.ssToPx(graceXSs).positionPx() - GRACE_SLOP_PX;
     }
 
-    /**
-     * Returns the leftmost X (in document pixels) at which a drag is considered a connect
-     * gesture, i.e. the grace note's right edge plus {@link #GRACE_SLOP_PX}, or null when
-     * layout is unavailable.
-     */
+    /** Null when layout is unavailable. */
     private static @Nullable Integer connectThresholdPx(ActiveGrace grace) {
         var layout = grace.component().getLayoutResult();
 
@@ -901,10 +785,6 @@ public final class GraceModeManager {
         return DocumentScale.ssToPx(rightEdgeSs).positionPx() + GRACE_SLOP_PX;
     }
 
-    /**
-     * Returns whether the grace note has an eligible host note immediately
-     * following it (a pitched note at the next index).
-     */
     private boolean hasEligibleHostNote() {
         var line = requireActiveGrace().line();
         var nextIndex = getHostInsertionIndex();

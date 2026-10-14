@@ -21,11 +21,6 @@ package songscribe.dom;
 
 /**
  * A diatonic pitch class — the letter of a note, with no octave and no accidental.
- *
- * <p>Each constant carries the two numbers that define the staff's pitch lattice, and
- * they are stated nowhere else: its offset within a staff-position octave group, and its
- * semitone within the octave. Staff positions count downward, so within a group the pitch
- * descends as the position rises, and the offsets run B, A, G, F, E, D, C.
  */
 public enum PitchClass {
     C(6, 0),
@@ -36,7 +31,6 @@ public enum PitchClass {
     A(1, 9),
     B(0, 11);
 
-    /** Diatonic steps in one octave, which is also one staff-position group. */
     public static final int STEPS_PER_OCTAVE = values().length;
 
     private static final PitchClass[] BY_GROUP_OFFSET = byGroupOffset();
@@ -50,29 +44,16 @@ public enum PitchClass {
     }
 
     /**
-     * Returns the pitch class at {@code staffPosition}, ignoring its octave.
-     *
      * @param staffPosition a staff position in half staff spaces from the middle line
-     * @return the pitch class there; never null, for any int
      */
     public static PitchClass at(int staffPosition) {
         return BY_GROUP_OFFSET[Math.floorMod(staffPosition, STEPS_PER_OCTAVE)];
     }
 
-    /**
-     * Returns this pitch class's position within a staff-position octave group.
-     *
-     * @return 0 for B through 6 for C, each constant its own value
-     */
     int groupOffset() {
         return groupOffset;
     }
 
-    /**
-     * Returns this pitch class's semitone within the octave.
-     *
-     * @return 0 for C through 11 for B, ascending in letter order
-     */
     int semitone() {
         return semitone;
     }

@@ -60,11 +60,6 @@ import songscribe.ui.component.score.SubtitleComponent;
 import songscribe.ui.component.score.TitleComponent;
 import songscribe.util.UIUtils;
 
-
-/**
- * The {@link SongSettingsDialog} Title tab: song number, title, and subtitle,
- * each with its own font chooser and a live preview of what the score renders.
- */
 final class SongSettingsTitleTab extends BaseDialog.Tab {
 
     private static final int SONG_NUMBER_MIN = 1;
@@ -219,32 +214,17 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     }
 
     /**
-     * The width in pixels a preview wrapping at {@code lineWidthSs} occupies, at the
-     * natural size a detached preview renders at. Rounded up because it is a size.
-     *
-     * @return the line width in pixels
+     * Rounded up because it is a size.
      */
     private static int lineWidthPx(Ss lineWidthSs) {
         return DocumentScale.ssToPx(lineWidthSs.value()).sizePx();
     }
 
     /**
-     * A {@link SongSettingsLayout.PreviewRow} one score line wide plus a gap at each end.
-     * <p>
-     * The content width is the song's line width, which is also the width the preview
-     * wraps at, so the wrap happens at an edge the user can see: a title that nearly
-     * fills the line looks like one. A row sized to its preview instead lets a one-line
-     * title reach the full line width — wider than the dialog, which does not re-pack
-     * while the user types — and run off both sides of the page area.
-     * <p>
-     * The gap at each end is padding outside that width, not a narrowing of it: the
-     * preview still wraps at the line width, and the padding is what keeps text that
-     * fills the line from touching the edge of the colored area.
-     * <p>
-     * The height stays the preview's own, taken through the superclass's zero-gap
-     * {@link FlowLayout} that keeps the preview at its preferred size, so an empty preview
-     * (zero preferred height) collapses the row to zero height instead of leaving a
-     * colored band.
+     * One score line wide plus a gap at each end, so the preview wraps at an edge the user can
+     * see and cannot run wider than the dialog, which does not re-pack while the user types. The
+     * gap is padding outside that width. The height stays the preview's own, so an empty preview
+     * collapses the row instead of leaving a colored band.
      */
     static final class FixedWidthPreviewRow extends SongSettingsLayout.PreviewRow {
 
@@ -263,16 +243,12 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
             ));
         }
 
-        /** The line width plus the gap at each end, which is the row's own width. */
         private int paddedWidthPx() {
             return lineWidthPx + 2 * horizontalPaddingPx;
         }
 
         /**
-         * Sets the width this row occupies, which is the width its preview wraps at.
-         *
-         * @effects revalidates, so a width arriving after the dialog is laid out still
-         *     reaches the layout
+         * Revalidates, so a width arriving after layout still reaches it.
          */
         private void setLineWidthPx(int lineWidthPx) {
             this.lineWidthPx = lineWidthPx;
@@ -362,27 +338,17 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     }
 
     /**
-     * The subtitle as the score renders it, which is what both the preview and the
-     * collapse test read — one name so neither can normalize a subtitle differently
-     * from the other.
-     *
-     * @return the normalized subtitle
+     * The one name for the subtitle as the score renders it, so the preview and the collapse test
+     * cannot normalize it differently.
      */
     private String normalizedSubtitle() {
         return SongMetadata.normalizeSubtitle(subtitle.get());
     }
 
     /**
-     * The two controls a caller can be sent to on this tab.
-     * <p>
-     * {@link SongSettingsDialog#show} hands one of these straight to
-     * {@code showTab} as the caret target, so the section-to-field mapping is an identity
-     * a test can assert rather than a chain of enums to follow.
-     *
-     * <p>The title control is the text area itself, not the scroll pane it is shown in:
-     * a viewport takes no caret and no focus.
-     *
-     * @return the control the title is typed into
+     * {@link SongSettingsDialog#show} hands this straight to {@code showTab} as the caret target.
+     * The control is the text area itself, not the scroll pane: a viewport takes no caret and no
+     * focus.
      */
     JTextComponent getTitleField() {
         return titleField;
@@ -425,12 +391,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     }
 
     /**
-     * Sets every control on this tab to show {@code input}.
-     *
-     * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
-     * with nothing else touched, answer the same title, number, subtitle and two fonts.
-     *
-     * @param input the settings this opening of the dialog is showing
+     * Whatever is put in comes back out.
      */
     void populate(SongSettingsInput input) {
         var metadata = input.metadata();

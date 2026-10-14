@@ -22,28 +22,15 @@ package songscribe.util;
 /**
  * A value that can hand out a copy nothing else holds a reference into.
  *
- * <p>It exists for the dialog interface. {@code DialogController.ops()} copies what {@code read()}
- * answers before any dialog sees it, so a dialog editing what it was given cannot reach the
- * document through it. Because that type parameter is bounded by this interface, a type that has
- * not said how it copies cannot be a dialog's input at all — the check is the compiler's rather
- * than a reviewer's, which is the whole reason the bound is here instead of a rule in a guide.
+ * <p>The dialog interface bounds its input by this type, so a dialog editing what it was given
+ * cannot reach the document through it.
  *
- * <p><strong>Implementing this is the claim that {@link #copy()} is deep enough.</strong> An
- * immutable type answers {@code this}, and that is the whole of its obligation; a mutable one
- * returns an instance sharing no mutable state with the original. Nothing can check which of the
- * two a given type is, so the declaration is what carries the promise — implementing this on a
- * mutable type whose {@code copy()} is shallow states something untrue.
- *
- * <p>Not {@link Cloneable}, which declares no method at all, and not {@code Object.clone()}, which
- * is protected: neither can be called through a type parameter, so neither can carry a bound.
+ * <p>Implementing this is the claim that {@link #copy()} is deep enough: an immutable type
+ * answers {@code this}; a mutable one returns an instance sharing no mutable state.
  *
  * @param <T> the implementing type itself, so a copy is never a sibling type
  */
 public interface Copyable<T extends Copyable<T>> {
 
-    /**
-     * @return a value equal to this one that shares no mutable state with it, or {@code this} where
-     *         the type is immutable and there is no mutable state to share
-     */
     T copy();
 }

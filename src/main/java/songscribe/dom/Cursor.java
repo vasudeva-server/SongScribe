@@ -24,18 +24,10 @@ package songscribe.dom;
  * element: the index may be one past the last element of its line, where an insertion lands or a
  * removal took place.
  *
- * @param lineIndex the line's index among the song's lines
- * @param index     the index on that line
- * @invariant {@code 0 <= lineIndex} and {@code 0 <= index}
+ * <p>{@code lineIndex} and {@code index} are not negative.
  */
 public record Cursor(int lineIndex, int index) implements Comparable<Cursor> {
 
-    /**
-     * Orders cursors in song order: by line, then by index within the line.
-     *
-     * @param other the cursor to compare with
-     * @return negative, zero or positive as this cursor comes before, at or after {@code other}
-     */
     @Override
     public int compareTo(Cursor other) {
         var byLine = Integer.compare(lineIndex, other.lineIndex);
@@ -43,20 +35,12 @@ public record Cursor(int lineIndex, int index) implements Comparable<Cursor> {
     }
 
     /**
-     * The place {@code count} indices further along this cursor's line.
-     *
-     * @param count how many indices to move; {@code 0 <= count}
-     * @return the cursor on the same line at {@code index + count}
+     * @param count {@code 0 <= count}
      */
     public Cursor plus(int count) {
         return new Cursor(lineIndex, index + count);
     }
 
-    /**
-     * The place after this one on its line.
-     *
-     * @return {@code plus(1)}
-     */
     public Cursor next() {
         return plus(1);
     }

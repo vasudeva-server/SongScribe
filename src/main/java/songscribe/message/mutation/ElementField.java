@@ -22,76 +22,27 @@ package songscribe.message.mutation;
 
 import java.util.EnumSet;
 
-/**
- * Identifies which fields changed on an element in an {@link ElementModification} mutation.
- * Populated incrementally as {@link ElementModification} emitters are added.
- */
 public enum ElementField {
-    /** The element's slide (fall, glissando, or slide-out) was set or cleared. */
     SLIDE,
-
-    /**
-     * The element's pitch (staff position and stem direction) was changed.
-     * Emitted by {@code NoteDragHandler} when a note is pitch-dragged.
-     */
     PITCH,
-
-    /** The element's trill flag was toggled. Emitted by {@code toggleTrill}. */
     TRILL,
-
-    /**
-     * The note's {@code Stem} was changed — forced to a direction, or handed back to the score.
-     * Emitted by {@code modifyStemDirection}.
-     */
     STEM,
-
-    /** The element's fermata flag was toggled. Emitted by {@code FermataAction}. */
     FERMATA,
-
-    /**
-     * The note's {@code AccidentalState}, set by a selection action's intent, a pitch shift's
-     * {@code Adopting}, or the chain walk's restamp.
-     */
     ACCIDENTAL,
-
-    /**
-     * The element's dot count was changed. Emitted by {@code DotAction}.
-     * Duration-affecting: see {@link #DURATION_AFFECTING}.
-     */
     DOT_COUNT,
-
-    /** The element's articulation list was changed. Emitted by articulation actions. */
     ARTICULATION,
-
-    /** The element's dynamic attachment was changed. Emitted by {@code DynamicMarkingAction}. */
     DYNAMIC_ATTACHMENT,
-
-    /** The element's tempo change was set or cleared. Emitted by {@code TempoChangeDialog}. */
     TEMPO_CHANGE,
-
-    /** The element's beat change was set or cleared. Emitted by {@code BeatChangeDialog}. */
     BEAT_CHANGE,
-
-    /** The element's annotation was set or cleared. Emitted by {@code AnnotationDialog}. */
     ANNOTATION,
-
-    /** The syllable relation on one or more of the element's lyrics was changed. */
     LYRIC,
 
     /**
-     * A mid-line key change's key was changed. Emitted by {@code KeyChangeDialogController}.
-     *
-     * <p>{@code Song.maintainKeyInvariant} re-derives what every following line inherits off the
-     * resulting {@link ElementModification}, so this field is what keeps a key edit propagating
-     * through undo and redo as well as forward.
+     * {@code Song.maintainKeyInvariant} re-derives what every following line inherits off the
+     * resulting {@link ElementModification}, so a key edit propagates through undo and redo too.
      */
     KEY;
 
-    /**
-     * Fields that change an element's effective duration. A tuplet removes itself when a
-     * modification inside its bracket rewrites a field in this set — see
-     * {@code Tuplet.outcomeFor}. Add new duration-affecting fields here to extend the
-     * tuplet-immutability policy.
-     */
+    /** A modification inside a tuplet's bracket that rewrites a field in this set removes the tuplet; see {@code Tuplet.outcomeFor}. */
     public static final EnumSet<ElementField> DURATION_AFFECTING = EnumSet.of(DOT_COUNT);
 }

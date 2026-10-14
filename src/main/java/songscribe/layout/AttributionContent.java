@@ -38,21 +38,8 @@ import songscribe.font.TextMeasurement;
 
 /**
  * The positioned, measured content of the song's attribution block — the credit, date and place
- * lines drawn above the right end of the first line's staff.
- * <p>
- * It typesets at natural scale in staff space and takes no zoom factor: the view transform supplies
- * zoom, exactly as it does for every other decoration. Each line is boxed to the full vertical
- * extent of its font, and the lines are centered against {@link #widthSs} at typeset time, so the
- * renderer positions nothing.
- * <p>
- * {@link #widthSs} is never zero: two independent guarantees give the block ink. {@link
- * SongAttribution}'s constructor passes both the composer and the lyricist through {@link
- * Song#coercePerson}, so both names are non-blank on every construction path, and {@link
- * AttributionFormatter#buildCredits} always emits a Words and a Music line whose role labels have
- * ink.
- * <p>
- * Like every other {@link DecorationContent}, it is rebuilt by every layout pass and holds no
- * cache. Nothing invalidates it, because nothing outlives the layout that produced it.
+ * lines drawn above the right end of the first line's staff. Lines are centered against
+ * {@link #widthSs} at typeset time, so the renderer positions nothing.
  *
  * @param lines    the typeset lines, top to bottom, positioned relative to the block's top-left
  *                 corner
@@ -63,40 +50,16 @@ import songscribe.font.TextMeasurement;
 public record AttributionContent(List<TextItem> lines, double widthSs, double heightSs)
     implements DecorationContent {
 
-    /**
-     * Leading between consecutive lines, in staff spaces: the fixed vertical gap between the
-     * descender of one line and the ascender of the next. Lines are boxed to the rendered height of
-     * {@link #LINE_BOX_REFERENCE} and separated only by this gap. No leading is added before the
-     * first line or after the last.
-     */
     private static final double LEADING_SS = 0.5;
 
-    /**
-     * Additional vertical gap, in staff spaces, inserted above the first sub-attribution line — at
-     * the transition from the credit lines to the date and place lines — on top of the normal
-     * {@link #LEADING_SS} leading.
-     */
     private static final double SUB_ATTRIBUTION_GAP_SS = 0.5;
 
-    /**
-     * Reference glyphs whose rendered ink defines the uniform line-box height. The cap height of
-     * {@code T} contributes the ascent and the descender of {@code y} the descent, so every line is
-     * boxed to the font's full vertical extent regardless of which characters it contains.
-     */
     private static final String LINE_BOX_REFERENCE = "Ty";
 
     public AttributionContent {
         lines = List.copyOf(lines);
     }
 
-    /**
-     * Builds the content the score draws: the song's own attribution lines, in the document's
-     * attribution and sub-attribution fonts.
-     *
-     * @param song  the song whose credits, dates and place are depicted
-     * @param fonts the document fonts the block is set in
-     * @return the positioned, measured block
-     */
     public static AttributionContent forSong(Song song, DocumentFontsHolder fonts) {
         return forLines(
             AttributionFormatter.lines(song.getMetadata().attribution(), song.showTranslation()),
@@ -105,16 +68,12 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
     }
 
     /**
-     * Builds the content for an explicit list of lines, for the settings dialog's preview of
-     * attribution text the user has not committed to the song yet.
-     *
-     * @param lines              the lines to typeset, in order; never empty, no line blank, and
+     * @param lines             the lines to typeset, in order; never empty, no line blank, and
      *                           every credit line precedes every sub-attribution line
      * @param attributionFont    the font for {@link FontKey#ATTRIBUTION} lines, sized in document
      *                           pixels
      * @param subAttributionFont the font for {@link FontKey#SUB_ATTRIBUTION} lines, sized in
      *                           document pixels
-     * @return the positioned, measured block
      */
     public static AttributionContent forLines(
         List<AttributionLine> lines,
@@ -181,10 +140,6 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
         return new AttributionContent(items, widthSs, offsetSs);
     }
 
-    /**
-     * One line after measurement, before the block's width is known. Centering resolves against
-     * that width, so each line's ink is held here until every line has been measured.
-     */
     private record MeasuredLine(
         String text,
         Font scaledFont,
@@ -192,19 +147,11 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
         double inkXSs,
         double baselineOffsetSs) {}
 
-    /**
-     * The vertical extent every line set in {@code font} is boxed to, in staff spaces.
-     *
-     * @param ascentSs the ink distance from the baseline up to the box top
-     * @param heightSs the full ink height, ascent plus descent
-     */
     private record LineBox(double ascentSs, double heightSs) {}
 
     /**
-     * Measures the line box for {@code font} from the ink of {@link #LINE_BOX_REFERENCE}.
-     * <p>
-     * The fractional outline bounds rather than device-pixel-snapped ones are what let the box
-     * scale linearly with the zoomed font, so line spacing does not jump as the zoom changes.
+     * Fractional outline bounds, not device-pixel-snapped ones, so line spacing does not jump as
+     * the zoom changes.
      */
     private static LineBox lineBox(Font font) {
         var boundsPx = TextMeasurement.requireVisualBounds(LINE_BOX_REFERENCE, font);
@@ -214,10 +161,6 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
             DocumentScale.pxToSs(boundsPx.getHeight()));
     }
 
-    /**
-     * Returns the index of the first sub-attribution line, or {@code null} when there are none,
-     * which is what places the transition gap exactly once or not at all.
-     */
     private static @Nullable Integer firstSubAttributionIndex(List<AttributionLine> lines) {
         for (var i = 0; i < lines.size(); i++) {
             if (lines.get(i).font() != FontKey.ATTRIBUTION) {

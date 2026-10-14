@@ -71,26 +71,24 @@ final class BeamScoring {
     // LilyPond's robust_list_ref clamp-to-last behavior.
     // ---------------------------------------------------------------------
 
-    /** {@code beamed-lengths}: nominal beamed stem length per beam count. */
+    /** {@code beamed-lengths}. */
     static final double[] BEAMED_LENGTHS_SS = { 3.26, 3.5, 3.6 };
 
-    /** {@code beamed-minimum-free-lengths}: free stem length from chord to beams. */
+    /** {@code beamed-minimum-free-lengths}. */
     static final double[] BEAMED_MINIMUM_FREE_LENGTHS_SS = { 1.83, 1.5, 1.25 };
 
     /** {@code beamed-extreme-minimum-free-lengths}: LilyPond defines only two entries. */
     static final double[] BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS = { 2.0, 1.25 };
 
-    /** {@code beamed-stem-shorten}: shortening applied when stems are forced. */
+    /** {@code beamed-stem-shorten}. */
     static final double[] BEAMED_STEM_SHORTEN_SS = { 1.0, 0.5, 0.25 };
 
     // ---------------------------------------------------------------------
     // Quant scoring parameters (Beam_quant_parameters::fill, beam-quanting.cc).
     // ---------------------------------------------------------------------
 
-    /** Number of staff-spaces of quant candidates searched on each side. */
     static final int REGION_SIZE = 2;
 
-    /** Tolerance for treating two beam positions as equal. */
     static final double BEAM_EPS = 1e-3;
 
     static final double SECONDARY_BEAM_DEMERIT = 10.0;
@@ -107,31 +105,22 @@ final class BeamScoring {
     // Tuning values that LilyPond writes as bare literals inside the scorers.
     // ---------------------------------------------------------------------
 
-    /** Weight applied by {@code shrink_extra_weight} to negative deviations. */
     private static final double SHRINK_EXTRA_WEIGHT_FACTOR = 1.5;
 
-    /** Scales the initial "distance from the ideal offset" tie-breaker demerit. */
     private static final double INITIAL_DEMERIT_SCALE = 1000.0;
 
-    /** Half a staff space of padding between a notehead and the beam's quant range. */
     private static final double QUANT_RANGE_PADDING_SS = 0.5;
 
-    /** Divisor of the staff line thickness giving leniency to borderline gaps. */
     private static final double FORBIDDEN_QUANT_FUDGE_FACTOR = 2.2;
 
-    /** Demerit charged for any staff line inside a beam gap, before the distance term. */
     private static final double FORBIDDEN_QUANT_FIXED_DEMERIT = 0.39;
 
-    /** Offset that turns {@code Math.floor} into LilyPond's {@code round_halfway_up}. */
     private static final double ROUND_HALF_UP_OFFSET = 0.5;
 
-    /** How close to an inter quant a horizontal beam must be to be penalized. */
     private static final double HORIZONTAL_INTER_QUANT_TOLERANCE_SS = 0.01;
 
-    /** Distance between adjacent staff lines, in staff spaces. */
     static final double STAFF_LINE_STEP_SS = 1.0;
 
-    /** Format used for every number in this class's debug output. */
     private static final String LOG_NUMBER_FORMAT = "%.3f";
 
     // ---------------------------------------------------------------------
@@ -141,15 +130,11 @@ final class BeamScoring {
     static final double SLOPE_DAMPING_COEFFICIENT = 0.6;
     static final double DAMPING = 1.0;
 
-    /** Concaveness value at or above which the beam is forced flat. */
     static final double CONCAVE_FORCE_FLAT = 10000.0;
 
     /**
-     * How far past the stem-length feasibility bound the beam is placed when the
-     * unquanted position violates that bound. LilyPond's {@code point_in_interval}
-     * (beam-quanting.cc:442) picks a point this far inside a half-open interval
-     * rather than sitting exactly on its edge, which keeps the whole quant
-     * candidate window in feasible territory instead of straddling the minimum.
+     * How far past the stem-length feasibility bound the beam is placed when the unquanted position
+     * violates it (LilyPond's {@code point_in_interval}).
      */
     static final double FEASIBLE_POINT_INSET_SS = 2.0;
 
@@ -157,16 +142,12 @@ final class BeamScoring {
     // Geometry — matches the renderer, NOT LilyPond's raw numbers.
     // ---------------------------------------------------------------------
 
-    /** Half-height of a 5-line staff, in staff spaces (LilyPond's staff radius). */
     static final double STAFF_RADIUS_SS = Staff.STAFF_HALF_SS;
 
-    /** Beam thickness in staff spaces (LilyPond's {@code beam_thickness}). */
     static final double BEAM_THICKNESS_SS = BeamMetrics.BEAM_THICKNESS_SS;
 
-    /** Center-to-center distance between stacked beams, in staff spaces. */
     static final double BEAM_TRANSLATION_SS = BeamMetrics.BEAM_TRANSLATION_SS;
 
-    /** Staff line thickness in staff spaces (LilyPond's {@code slt}). */
     static final double STAFF_LINE_THICKNESS_SS = EngravingConstants.STAFF_LINE_THICKNESS_SS;
 
     // ---------------------------------------------------------------------
@@ -193,40 +174,27 @@ final class BeamScoring {
     /**
      * One stem of the beam group, in scoring space.
      *
-     * @param xSs        X in staff spaces, relative to the first stem
-     * @param headYUpSs  the notehead's Y-up position in staff spaces
+     * @param xSs         X in staff spaces, relative to the first stem
+     * @param headYUpSs   the notehead's Y-up position in staff spaces
      * @param headHalfPos the notehead's integer Y-up half-space position
-     * @param beamCount  number of beams at this stem
      */
     record StemInput(double xSs, double headYUpSs, int headHalfPos, int beamCount) {}
 
-    /**
-     * Per-stem beam-side stem-end limits, in scoring space (real Y-up ss).
-     *
-     * @param idealYUpSs    the preferred stem end
-     * @param shortestYUpSs the shortest acceptable stem end
-     */
+    /** Per-stem beam-side stem-end limits, in scoring space (real Y-up ss). */
     record StemInfo(double idealYUpSs, double shortestYUpSs) {}
 
     /**
      * The solved beam position: the Y of the center of the beam farthest from the
      * noteheads, at the first and last stem's X, in scoring space (Y-up ss).
-     *
-     * @param leftYUpSs  the position at the first stem
-     * @param rightYUpSs the position at the last stem
      */
     record BeamPosition(double leftYUpSs, double rightYUpSs) {}
 
-    /** +1 for stems up, -1 for stems down. */
     private final int dirSign;
 
-    /** Fraction of the group's stems whose direction is forced (0-1). */
     private final double forcedFraction;
 
-    /** The largest beam count over all stems of the group. */
     private final int maxBeamCount;
 
-    /** X of the last stem, relative to the first (0 for a single-column group). */
     private final double xSpan;
 
     // The per-stem inputs, unpacked into parallel arrays. LilyPond holds these in
@@ -239,13 +207,10 @@ final class BeamScoring {
     private final double[] stemHeadYs;
     private final int[] stemHeadHalfPositions;
 
-    /** Beam count of the first stem — only the edges' counts are ever scored. */
     private final int edgeBeamCountLeft;
 
-    /** Beam count of the last stem. */
     private final int edgeBeamCountRight;
 
-    /** Demerit charged per forbidden-quant hit, shared by both edges. */
     private final double extraDemerit;
 
     // Stem-info terms that depend only on the group's max beam count and forced
@@ -321,7 +286,6 @@ final class BeamScoring {
     // Stem info (port of Stem::calc_stem_info, lily/stem.cc)
     // ---------------------------------------------------------------------
 
-    /** Computes and caches the ideal and shortest stem ends for every stem. */
     void computeStemInfos() {
         for (var i = 0; i < stemCount; i++) {
             var info = calcStemInfo(stemHeadYs[i]);
@@ -331,26 +295,14 @@ final class BeamScoring {
     }
 
     /**
-     * Port of {@code Stem::calc_stem_info} with {@code staff_space = 1},
-     * {@code length-fraction = 1}, no tremolo, no {@code no-stem-extend} and no
-     * knee. LilyPond computes in "direction-multiplied" space (as if the stem
-     * pointed up) and multiplies by the direction only at the end; this port
-     * keeps that structure so the clamps read the same as the original.
-     *
-     * <p>Every term but {@code noteStart} is fixed for the whole group and is
-     * computed once in the constructor.
-     *
-     * @param stem the stem to measure
-     * @return the stem's ideal and shortest beam-side ends, in real Y-up ss
+     * Port of {@code Stem::calc_stem_info} with {@code staff_space = 1}, {@code length-fraction = 1},
+     * no tremolo, no {@code no-stem-extend} and no knee. Every term but {@code noteStart} is fixed
+     * for the whole group and computed once in the constructor.
      */
     StemInfo calcStemInfo(StemInput stem) {
         return calcStemInfo(stem.headYUpSs());
     }
 
-    /**
-     * @param headYUpSs the notehead's Y-up position in staff spaces
-     * @return the stem's ideal and shortest beam-side ends, in real Y-up ss
-     */
     private StemInfo calcStemInfo(double headYUpSs) {
         // Direction-multiplied space: positive is "away from the notehead".
         var noteStart = headYUpSs * dirSign;
@@ -366,7 +318,6 @@ final class BeamScoring {
         return new StemInfo(idealY * dirSign, (noteStart + minimumLengthSs) * dirSign);
     }
 
-    /** Port of LilyPond's {@code robust_list_ref}: clamps the index to the last entry. */
     private static double listRef(double[] values, int index) {
         return values[Math.clamp(index, 0, values.length - 1)];
     }
@@ -377,12 +328,8 @@ final class BeamScoring {
     // ---------------------------------------------------------------------
 
     /**
-     * Runs the ideal-position pipeline, producing {@link #unquantedLeftY},
-     * {@link #unquantedRightY} and {@link #musicalDy}. Mirrors the sequence in
-     * {@code Beam_scoring_problem::Beam_scoring_problem}.
-     *
-     * <p>Requires {@link #computeStemInfos()} to have run, and a non-degenerate
-     * group ({@link #xSpan} != 0) — degenerate groups short-circuit earlier.
+     * Requires {@link #computeStemInfos()} to have run, and a non-degenerate group
+     * ({@link #xSpan} != 0) — degenerate groups short-circuit earlier.
      */
     void computeUnquantedPositions() {
         leastSquaresPositions();
@@ -393,11 +340,6 @@ final class BeamScoring {
         logStage("shiftRegionToValid");
     }
 
-    /**
-     * Logs the unquanted position after one pipeline stage.
-     *
-     * @param stage the name of the stage that just ran
-     */
     private void logStage(String stage) {
         if (!LogUtils.isTracingBeams(LOG)) {
             return;
@@ -415,19 +357,10 @@ final class BeamScoring {
         );
     }
 
-    /**
-     * @param value a number destined for debug output
-     * @return the value formatted to a readable number of decimals
-     */
     private static String fmt(double value) {
         return String.format(LOG_NUMBER_FORMAT, value);
     }
 
-    /**
-     * Port of {@code Beam_scoring_problem::least_squares_positions}. Every stem
-     * is "normal" here, so the first/last normal stems are simply the first and
-     * last, and {@code stem_ypositions_} is uniformly 0 (single staff).
-     */
     private void leastSquaresPositions() {
         if (stemCount == 0) {
             return;
@@ -463,16 +396,9 @@ final class BeamScoring {
         musicalDy = dy;
     }
 
-    /** A least-squares line through the stems' ideal points. */
     private record LeastSquaresFit(double slope, double offset) {}
 
-    /**
-     * Port of {@code minimise_least_squares} (lily/least-squares.cc) over the
-     * stems' {@code (xSs, idealYUpSs)} points.
-     *
-     * @return the fitted slope and Y-intercept; a degenerate system yields slope
-     *         0 and the mean Y (0 when there are no points)
-     */
+    /** A degenerate system yields slope 0 and the mean Y (0 when there are no points). */
     private LeastSquaresFit minimiseLeastSquares() {
         var sx = 0.0;
         var sy = 0.0;
@@ -499,13 +425,6 @@ final class BeamScoring {
         return new LeastSquaresFit(slope, (sy - slope * sx) / count);
     }
 
-    /**
-     * Port of {@code set_minimum_dy}: a dy smaller than the smallest quant would
-     * incur absurd direction-sign penalties, so raise its magnitude to that quant.
-     *
-     * @param dy the raw dy
-     * @return the dy, with its magnitude raised to the smallest quant offset
-     */
     private static double setMinimumDy(double dy) {
         if (dy == 0.0) {
             return 0.0;
@@ -515,11 +434,6 @@ final class BeamScoring {
         return Math.signum(dy) * Math.max(Math.abs(dy), smallestQuant);
     }
 
-    /**
-     * Port of {@code Beam_scoring_problem::slope_damping}. The control flow of the
-     * original is preserved exactly: a concave beam zeroes the damping factor,
-     * which then skips the damping formula altogether.
-     */
     private void slopeDamping() {
         if (stemCount <= 1) {
             return;
@@ -558,14 +472,6 @@ final class BeamScoring {
         }
     }
 
-    /**
-     * Port of {@code Beam_scoring_problem::calc_concaveness}. Single noteheads
-     * make LilyPond's "close" and "far" head positions identical, so its average
-     * of two {@code calc_positions_concaveness} calls collapses to one.
-     *
-     * @return {@link #CONCAVE_FORCE_FLAT} for a concave beam, else the normalized
-     *         concaveness magnitude
-     */
     private double calcConcaveness() {
         if (stemCount <= 2) {
             return 0.0;
@@ -588,14 +494,7 @@ final class BeamScoring {
         return calcPositionsConcaveness(stemHeadHalfPositions, dirSign);
     }
 
-    /**
-     * Port of {@code is_concave_single_notes}. A beam is concave when the middle
-     * notes get closer to the beam than the outer notes do.
-     *
-     * @param positions integer Y-up half-space head positions, in stem order
-     * @param beamDir   +1 for stems up, -1 for stems down
-     * @return whether the beam is concave
-     */
+    /** A beam is concave when the middle notes get closer to the beam than the outer notes do. */
     private static boolean isConcaveSingleNotes(int[] positions, int beamDir) {
         var last = positions.length - 1;
         var coveringDown = Math.min(positions[0], positions[last]);
@@ -637,14 +536,6 @@ final class BeamScoring {
         return allCloser;
     }
 
-    /**
-     * Port of {@code calc_positions_concaveness}: the normalized deviation of the
-     * inner notes from the line connecting the first and last note.
-     *
-     * @param positions integer Y-up half-space head positions, in stem order
-     * @param beamDir   +1 for stems up, -1 for stems down
-     * @return the normalized concaveness magnitude
-     */
     private static double calcPositionsConcaveness(int[] positions, int beamDir) {
         var last = positions.length - 1;
         double dy = positions[last] - positions[0];
@@ -667,11 +558,8 @@ final class BeamScoring {
     }
 
     /**
-     * Port of {@code Beam_scoring_problem::shift_region_to_valid}, without the
-     * collision minefield (beams here never collide with anything but staff
-     * lines, and a minefield with no forbidden intervals returns its input). What
-     * remains is the stem-length feasibility clamp: shift the beam so that no stem
-     * ends up shorter than its allowed minimum, keeping the slope.
+     * Port of {@code shift_region_to_valid} without the collision minefield, since beams here never
+     * collide with anything but staff lines. What remains is the stem-length feasibility clamp.
      */
     private void shiftRegionToValid() {
         if (stemCount == 0) {
@@ -707,19 +595,6 @@ final class BeamScoring {
     // Quant candidates (port of Beam_configuration + generate_quants)
     // ---------------------------------------------------------------------
 
-    /**
-     * The per-scorer demerit contributions for one candidate, kept apart from the
-     * running total so debug output can attribute a candidate's score to the
-     * scorer responsible for it.
-     *
-     * @param initial         the seed tie-breaker from {@code newConfig}
-     * @param stemLengths     {@link #scoreStemLengths}
-     * @param slopeDirection  {@link #scoreSlopeDirection}
-     * @param slopeMusical    {@link #scoreSlopeMusical}
-     * @param slopeIdeal      {@link #scoreSlopeIdeal}
-     * @param horizontalInter {@link #scoreHorizontalInterQuants}
-     * @param forbiddenQuants {@link #scoreForbiddenQuants}
-     */
     private record Demerits(
         double initial,
         double stemLengths,
@@ -763,16 +638,6 @@ final class BeamScoring {
         }
     }
 
-    /**
-     * One candidate beam placement and the demerits scored against it. Only the
-     * running best (and, under debug logging, the best flat candidate) is ever
-     * materialized — see {@link #chooseBestConfiguration()}.
-     *
-     * @param leftY    the beam center Y at the first stem
-     * @param rightY   the beam center Y at the last stem
-     * @param initial  the seed tie-breaker demerit, kept for debug attribution
-     * @param demerits the total demerits scored against this placement
-     */
     private record Candidate(double leftY, double rightY, double initial, double demerits) {
 
         double dy() {
@@ -781,14 +646,8 @@ final class BeamScoring {
     }
 
     /**
-     * Port of the {@code quant_range_} setup in {@code init_instance_variables}:
-     * the beam center must clear the edge stem's notehead by the beam stack's
-     * height plus half a staff space.
-     *
-     * @param headYUpSs the edge stem's notehead Y-up position
-     * @param beamCount the edge stem's beam count
-     * @return the bound on that edge's candidate Y — a lower bound for stems up,
-     *         an upper bound for stems down
+     * @return the bound on that edge's candidate Y — a lower bound for stems up, an upper bound
+     *         for stems down
      */
     double quantBound(double headYUpSs, int beamCount) {
         var widen = QUANT_RANGE_PADDING_SS
@@ -797,22 +656,11 @@ final class BeamScoring {
         return headYUpSs + dirSign * widen;
     }
 
-    /**
-     * @param y     a candidate edge Y
-     * @param bound the bound from {@link #quantBound(double, int)}
-     * @return whether the candidate lies inside the edge's quant range
-     */
     boolean withinQuantRange(double y, double bound) {
         return dirSign > 0 ? y >= bound : y <= bound;
     }
 
-    /**
-     * Port of {@code Beam_scoring_problem::generate_quants}, without the knee and
-     * collision region widening and without {@code grid_shift} (which only applies
-     * to more than four beams — SongScribe caps out at three).
-     *
-     * @return the quant offset applied to each edge, one per candidate position
-     */
+    /** Without the knee and collision region widening, and without {@code grid_shift} (more than four beams only; SongScribe caps at three). */
     private static double[] quantOffsets() {
         var baseQuants = new double[] { STRADDLE_SS, SIT_SS, INTER_SS, HANG_SS };
         var offsets = new double[REGION_SIZE * 2 * baseQuants.length];
@@ -830,13 +678,8 @@ final class BeamScoring {
     }
 
     /**
-     * Generates and scores every in-range left/right quant combination, keeping
-     * only the best. LilyPond materializes the whole candidate list and sorts it
-     * lazily; nothing here needs a candidate after a better one is found, so
-     * generation and scoring are fused and only an improvement allocates.
-     *
-     * @return the lowest-demerit candidate, or null when every combination fell
-     *         outside the edges' quant ranges
+     * @return the lowest-demerit candidate, or null when every combination fell outside the edges'
+     *         quant ranges
      */
     @Nullable
     private Candidate chooseBestConfiguration() {
@@ -898,31 +741,14 @@ final class BeamScoring {
     // score_collisions is dropped: beams here only score against staff lines.
     // ---------------------------------------------------------------------
 
-    /**
-     * Port of {@code shrink_extra_weight}: takes the magnitude of {@code x}, but
-     * weights it up when it is negative.
-     *
-     * @param x      the deviation
-     * @param factor the weight applied when {@code x} is negative
-     * @return the weighted magnitude
-     */
     private static double shrinkExtraWeight(double x, double factor) {
         return Math.abs(x) * (x < 0.0 ? factor : 1.0);
     }
 
-    /** Port of LilyPond's {@code my_modf}: the fractional part, always positive. */
     private static double myModf(double x) {
         return x - Math.floor(x);
     }
 
-    /**
-     * Runs every applicable scorer against a candidate placement.
-     *
-     * @param leftY   the beam center Y at the first stem
-     * @param rightY  the beam center Y at the last stem
-     * @param initial the seed tie-breaker demerit
-     * @return the candidate's total demerits
-     */
     private double score(double leftY, double rightY, double initial) {
         return initial
             + scoreStemLengths(leftY, rightY)
@@ -933,15 +759,6 @@ final class BeamScoring {
             + scoreForbiddenQuants(leftY, rightY);
     }
 
-    /**
-     * Re-runs the scorers to attribute a candidate's total to the scorer
-     * responsible for it. Only the one or two candidates that reach debug output
-     * are broken down this way, so the repeated scoring costs nothing in the
-     * normal case.
-     *
-     * @param candidate the candidate to describe
-     * @return the per-scorer contributions behind its total
-     */
     private Demerits breakdownOf(Candidate candidate) {
         var leftY = candidate.leftY();
         var rightY = candidate.rightY();
@@ -957,18 +774,9 @@ final class BeamScoring {
     }
 
     /**
-     * Port of {@code score_stem_lengths}, minus the knee branches. The whole group
-     * shares one direction, so LilyPond's per-direction score/count split collapses
-     * to a single running total. The {@code base_lengths_} term is structurally 0
-     * here: it is the offset from the beam position to the beam rank a stem
-     * terminates at, and every SongScribe stem terminates at the outer beam.
-     * French beaming does not change that — it shortens inner stems
-     * at drawing time only, and LilyPond likewise excludes it from quanting
-     * ("French Beaming is irrelevant for beam quanting", {@code beam-quanting.cc}).
-     *
-     * @param leftY  the beam center Y at the first stem
-     * @param rightY the beam center Y at the last stem
-     * @return the demerits charged
+     * Port of {@code score_stem_lengths}, minus the knee branches. The {@code base_lengths_} term is
+     * structurally 0, since every SongScribe stem terminates at the outer beam. French beaming
+     * shortens inner stems at drawing time only, and LilyPond likewise excludes it from quanting.
      */
     double scoreStemLengths(double leftY, double rightY) {
         var total = 0.0;
@@ -985,15 +793,7 @@ final class BeamScoring {
         return total / stemCount;
     }
 
-    /**
-     * Port of {@code score_slope_direction}: going against the damped slope is
-     * harshly penalized, except that a flat beam is a defensible choice when the
-     * damped slope was near zero anyway.
-     *
-     * @param leftY  the beam center Y at the first stem
-     * @param rightY the beam center Y at the last stem
-     * @return the demerits charged
-     */
+    /** A flat beam is a defensible choice when the damped slope was near zero anyway. */
     double scoreSlopeDirection(double leftY, double rightY) {
         var dy = rightY - leftY;
         var dampedDy = unquantedRightY - unquantedLeftY;
@@ -1009,41 +809,18 @@ final class BeamScoring {
         return DAMPING_DIRECTION_PENALTY;
     }
 
-    /**
-     * Port of {@code score_slope_musical}: penalizes a slope steeper than the one
-     * the music itself suggests.
-     *
-     * @param leftY  the beam center Y at the first stem
-     * @param rightY the beam center Y at the last stem
-     * @return the demerits charged
-     */
     double scoreSlopeMusical(double leftY, double rightY) {
         return MUSICAL_DIRECTION_FACTOR
             * Math.max(0.0, Math.abs(rightY - leftY) - Math.abs(musicalDy));
     }
 
-    /**
-     * Port of {@code score_slope_ideal}: penalizes deviation from the damped slope.
-     *
-     * @param leftY  the beam center Y at the first stem
-     * @param rightY the beam center Y at the last stem
-     * @return the demerits charged
-     */
     double scoreSlopeIdeal(double leftY, double rightY) {
         var dampedDy = unquantedRightY - unquantedLeftY;
         var deviation = Math.abs(dampedDy) - Math.abs(rightY - leftY);
         return shrinkExtraWeight(deviation, SHRINK_EXTRA_WEIGHT_FACTOR) * IDEAL_SLOPE_FACTOR;
     }
 
-    /**
-     * Port of {@code score_horizontal_inter_quants}. For a horizontal beam inside
-     * the staff, an inter quant puts a staff line in a visually wrong place, which
-     * is worse than the generic forbidden-quant case.
-     *
-     * @param leftY  the beam center Y at the first stem
-     * @param rightY the beam center Y at the last stem
-     * @return the demerits charged
-     */
+    /** For a horizontal beam inside the staff, an inter quant is worse than the generic forbidden-quant case. */
     double scoreHorizontalInterQuants(double leftY, double rightY) {
         if (rightY - leftY != 0.0 || Math.abs(leftY) >= STAFF_RADIUS_SS) {
             return 0.0;
@@ -1059,15 +836,6 @@ final class BeamScoring {
         return 0.0;
     }
 
-    /**
-     * Port of {@code score_forbidden_quants}. The first block penalizes staff lines
-     * falling inside the white gaps between stacked beams; the second penalizes the
-     * specific quants that make a secondary beam land badly.
-     *
-     * @param leftY  the beam center Y at the first stem
-     * @param rightY the beam center Y at the last stem
-     * @return the demerits charged
-     */
     double scoreForbiddenQuants(double leftY, double rightY) {
         var dy = rightY - leftY;
         var demerits = staffLinesInBeamGaps(leftY, edgeBeamCountLeft)
@@ -1081,15 +849,6 @@ final class BeamScoring {
         return demerits;
     }
 
-    /**
-     * First block of {@code score_forbidden_quants}: a staff line falling inside
-     * one of the white gaps between this edge's stacked beams reads as a printing
-     * error, and the closer it sits to the middle of the gap the worse it looks.
-     *
-     * @param edgeY         the beam center Y at this edge
-     * @param edgeBeamCount how many beams reach this edge
-     * @return the demerits charged
-     */
     double staffLinesInBeamGaps(double edgeY, int edgeBeamCount) {
         var demerits = 0.0;
 
@@ -1118,17 +877,6 @@ final class BeamScoring {
         return demerits;
     }
 
-    /**
-     * Second block of {@code score_forbidden_quants}: with the beam sloping the
-     * wrong way, a secondary beam landing on {@code sit} (up) or {@code hang}
-     * (down) — or, with three beams, on {@code straddle} — puts the inner beam in
-     * a bad place against the staff.
-     *
-     * @param edgeY         the beam center Y at this edge
-     * @param edgeBeamCount how many beams reach this edge
-     * @param dy            the candidate's slope, as a rise over the group
-     * @return the demerits charged
-     */
     double badSecondaryQuant(double edgeY, int edgeBeamCount, double dy) {
         var fraction = myModf(edgeY);
         var wrongWay = dirSign > 0 ? dy <= BEAM_EPS : dy >= BEAM_EPS;
@@ -1157,24 +905,16 @@ final class BeamScoring {
     // ---------------------------------------------------------------------
 
     /**
-     * Solves the beam position for one beam group.
-     *
-     * @param stems          the group's stems, in element order, in scoring space
+     * @param stems          in element order, in scoring space
      * @param dirSign        +1 for stems up, -1 for stems down
      * @param forcedFraction the fraction of the group's stems whose direction is
      *                       forced (0-1)
-     * @return the beam's outer-beam center Y at the first and last stem, Y-up ss
      */
     static BeamPosition solve(List<StemInput> stems, int dirSign, double forcedFraction) {
         return new BeamScoring(stems, dirSign, forcedFraction).solve();
     }
 
-    /**
-     * Runs the whole pipeline. Degenerate groups short-circuit here, which is why
-     * none of the scorers or the damping/shift routines need a zero-span guard.
-     *
-     * @return the best-scoring beam position
-     */
+    /** Degenerate groups short-circuit here, so no scorer or damping/shift routine needs a zero-span guard. */
     private BeamPosition solve() {
         computeStemInfos();
         logInputs();
@@ -1209,7 +949,6 @@ final class BeamScoring {
     // Debug output
     // ---------------------------------------------------------------------
 
-    /** Logs the group's inputs and the stem info derived from them. */
     private void logInputs() {
         if (!LogUtils.isTracingBeams(LOG)) {
             return;
@@ -1238,13 +977,7 @@ final class BeamScoring {
     }
 
     /**
-     * Logs the winning candidate alongside the best flat candidate, so a beam that
-     * came out angled can be compared scorer-by-scorer against the flat option that
-     * lost to it.
-     *
-     * @param considered how many candidates were scored
-     * @param best       the winner
-     * @param bestFlat   the best flat candidate, or null if none was in range
+     * @param bestFlat null if none was in range
      */
     private void logChoice(int considered, Candidate best, @Nullable Candidate bestFlat) {
         if (!LogUtils.isTracingBeams(LOG)) {
@@ -1261,10 +994,6 @@ final class BeamScoring {
         }
     }
 
-    /**
-     * @param label     what the candidate is (winner, best flat, …)
-     * @param candidate the candidate to describe
-     */
     private void logCandidate(String label, Candidate candidate) {
         LOG.debug(
             "  {}: left={} right={} dy={} demerits={} [{}]",

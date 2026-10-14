@@ -35,34 +35,19 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
  * {@code FlatLaf.properties}: FlatLaf's tooltip, measured at the scale of the screen it appears
  * on.
  * <p>
- * Swing measures a component's text under the transform of the component's own graphics
- * configuration. The tooltip manager asks a new tooltip for its size before the tooltip is in any
- * window, so the tooltip has no graphics configuration and its text is measured at 1x. On a 2x
- * screen the text is then painted with glyph widths rounded at 2x. The two widths differ a little
- * on each glyph, so a long line paints wider or narrower than it measured, and its right padding
- * shrinks or grows.
- * <p>
- * Until a tooltip is in a window, this UI therefore measures it under the graphics configuration
- * of the component it belongs to, which is on the screen the tooltip appears on.
+ * A new tooltip is asked for its size before it is in any window, so it has no graphics
+ * configuration and its text is measured at 1x, then painted at 2x on a 2x screen with
+ * different glyph widths: a long line paints wider or narrower than it measured. Until a tooltip
+ * is in a window, this UI measures it under the graphics configuration of the component it
+ * belongs to.
  */
 public final class ScreenScaleToolTipUI extends FlatToolTipUI {
 
-    /**
-     * Returns the UI shared by every tooltip. {@code UIManager} finds this method by reflection.
-     *
-     * @param component the tooltip the UI is for
-     * @return the shared UI
-     */
+    /** {@code UIManager} finds this method by reflection. */
     public static ComponentUI createUI(JComponent component) {
         return FlatUIUtils.createSharedUI(ScreenScaleToolTipUI.class, ScreenScaleToolTipUI::new);
     }
 
-    /**
-     * Returns the tooltip's size as it paints on the screen of its component.
-     *
-     * @return the size FlatLaf gives the tooltip, measured under the graphics configuration of its
-     *     component while the tooltip itself has none
-     */
     @Override
     public Dimension getPreferredSize(JComponent component) {
         var toolTip = (JToolTip) component;
@@ -88,10 +73,6 @@ public final class ScreenScaleToolTipUI extends FlatToolTipUI {
         return probe.getPreferredSize();
     }
 
-    /**
-     * A tooltip that is never shown, only measured, under a graphics configuration it is given
-     * rather than one it gets from a window.
-     */
     private static final class MeasuringToolTip extends JToolTip {
 
         private final GraphicsConfiguration measuringConfiguration;

@@ -23,13 +23,7 @@ package songscribe.dom;
 import songscribe.smufl.Notehead;
 
 /**
- * A note, drawn from a notehead.
- *
- * <p>The notehead rather than its glyph is what is carried, because a note's bounds and
- * its stem attachment point are both asked for by notehead: only the stemmed arm of
- * {@link Notehead} has stem anchors, and carrying the glyph alone would throw that
- * distinction away.
- *
- * @param notehead the notehead the note is drawn with
+ * A note, drawn from a notehead. The notehead rather than its glyph is carried because only the
+ * stemmed arm of {@link Notehead} has stem anchors.
  */
 public record NoteheadAppearance(Notehead notehead) implements ElementAppearance {}

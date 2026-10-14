@@ -30,9 +30,8 @@ import songscribe.dom.ElementType;
  * and their MusicXML {@code <bar-style>}, {@code <repeat direction>}, and
  * {@code location} representations.
  *
- * <p>{@code REPEAT_LEFT_RIGHT} is intentionally absent from both maps — the
- * writer decomposes it into a straddling barline pair, and the reader
- * recomposes it from that pair, so the mapping is handled at a higher level.
+ * <p>{@code REPEAT_LEFT_RIGHT} is absent from both maps: it is written as a straddling barline
+ * pair and recomposed from it, at a higher level.
  */
 public final class BarlineStyleMapping {
 
@@ -98,9 +97,7 @@ public final class BarlineStyleMapping {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the MusicXML representation for the given barline/repeat
-     * {@link ElementType}, or {@code null} if the type has no entry in the
-     * forward map (e.g. {@code REPEAT_LEFT_RIGHT}).
+     * Returns {@code null} if the type has no entry (e.g. {@code REPEAT_LEFT_RIGHT}).
      */
     @Nullable
     public static BarlineEntry forElementType(ElementType type) {
@@ -108,13 +105,10 @@ public final class BarlineStyleMapping {
     }
 
     /**
-     * Returns the {@link ElementType} for the given MusicXML {@code <bar-style>}
-     * and optional {@code <repeat direction>}, or {@code null} if the combination
-     * is not recognised.
+     * Returns {@code null} if the combination is not recognised.
      *
-     * <p>When {@code repeatDirection} is non-null, the with-repeat map is
-     * consulted first so that {@code light-heavy + backward} resolves to
-     * {@code REPEAT_RIGHT} rather than {@code FINAL_DOUBLE_BARLINE}.
+     * <p>A non-null {@code repeatDirection} wins: {@code light-heavy + backward} is
+     * {@code REPEAT_RIGHT}, not {@code FINAL_DOUBLE_BARLINE}.
      */
     @Nullable
     public static ElementType forBarStyle(String barStyle, @Nullable String repeatDirection) {
@@ -132,11 +126,6 @@ public final class BarlineStyleMapping {
     // Value type
     // -------------------------------------------------------------------------
 
-    /**
-     * Carries the MusicXML fields needed to emit a {@code <barline>} element:
-     * the {@code <bar-style>} text, an optional {@code <repeat direction>}
-     * attribute value, and the {@code location} attribute value.
-     */
     public record BarlineEntry(
         String barStyle,
         @Nullable String repeatDirection,

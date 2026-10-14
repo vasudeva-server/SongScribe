@@ -24,22 +24,13 @@ import java.awt.Font;
 import songscribe.util.Copyable;
 
 /**
- * The font {@link FontDialog} opens on.
- *
- * <p>It exists because {@link Font} is a JDK class and cannot be made {@link Copyable}, which
- * {@link DialogController}'s input bound requires. Wrapping is the only way a type we do not own
- * crosses the dialog interface, and stating that here is what keeps the bound total rather than
- * total-with-exceptions.
- *
- * @param font the font to show as selected when the chooser opens
+ * The font {@link FontDialog} opens on. It exists because {@link Font} is a JDK class and cannot
+ * be made {@link Copyable}, which {@link DialogController}'s input bound requires.
  */
 public record FontChoice(Font font) implements Copyable<FontChoice> {
 
     /**
-     * {@inheritDoc}
-     *
-     * @return {@code this}. {@link Font} is immutable, so there is nothing for a copy to separate —
-     *         which is the fact this record's existence asserts.
+     * {@link Font} is immutable, so there is nothing for a copy to separate.
      */
     @Override
     public FontChoice copy() {

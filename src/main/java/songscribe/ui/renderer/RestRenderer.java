@@ -32,14 +32,6 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
-/**
- * Renders rest elements.
- * <p>
- * A rest is drawn as its type's glyph at its type's seat, followed by its augmentation dots.
- * All coordinates are in staff-space units; the Graphics2D scale transform
- * applied by LineComponent handles pixel conversion.
- * Rests don't have stems, flags, or accidentals.
- */
 public final class RestRenderer implements ElementRenderer<RestElement> {
 
     // Gap in staff spaces between the rest glyph's advance and its first dot.
@@ -48,15 +40,9 @@ public final class RestRenderer implements ElementRenderer<RestElement> {
     // Singleton instance
     private static final RestRenderer INSTANCE = new RestRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private RestRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static RestRenderer getInstance() {
         return INSTANCE;
     }
@@ -85,17 +71,10 @@ public final class RestRenderer implements ElementRenderer<RestElement> {
         }
     }
 
-    /**
-     * Calculates the Y position for a rest in staff-space units, from its type's glyph seat.
-     */
     double calculateRestYSs(RestElement rest, double middleLineYSs) {
         return middleLineYSs + rest.seatSp().toSs();
     }
 
-    /**
-     * Renders the augmentation dots of a dotted rest, the first one {@link #DOT_GAP_SS} past the
-     * glyph's advance width.
-     */
     private void renderDots(Graphics2D g2, RestElement rest) {
         if (rest.dots() == Dots.NONE) {
             return;

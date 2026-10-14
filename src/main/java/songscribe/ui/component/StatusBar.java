@@ -49,9 +49,8 @@ import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
 /**
- * Status bar pinned at the bottom of the main window. In insert mode, displays
- * a plain-language description of the current preview element (the element
- * that will be inserted next), left-aligned across the bar.
+ * Status bar pinned at the bottom of the main window. In insert mode, describes the current
+ * preview element.
  */
 public final class StatusBar extends JPanel {
 

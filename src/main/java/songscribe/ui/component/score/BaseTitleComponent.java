@@ -42,92 +42,40 @@ import songscribe.util.StringUtils;
 /**
  * Abstract base for title-style text components (title, subtitle).
  * <p>
- * Handles wrap, clamp and measurement. Subclasses supply the text via
- * {@link #songText()}, the number of lines they render via {@link #maxRenderedLines()},
- * and an optional leading gap via {@link #topGapPx()}.
- * <p>
- * Text that wraps past {@link #maxRenderedLines()} is clipped rather than shrunk: the
- * leading lines are drawn, the surplus is not, and the drawn block takes the overflow
- * colour. The component therefore always sizes to exactly what it draws.
- * <p>
- * When {@link #songText()} is non-empty the component stacks {@link #topGapPx()} rows of leading
- * gap above the wrapped text block, so its total height is the gap plus the block, and it
- * reports the width of the text it draws — the widest wrapped line — not the song's line
- * width. The line width remains the wrap constraint only. Centering the component on the
- * page is the parent's responsibility; within the component each wrapped line is centered
- * on the component's own width.
- * When {@link #songText()} is empty the component collapses to {@code (0, 0)}
- * and no gap is emitted — a subtitle with no text takes up no space.
- * <p>
- * The preview mechanism ({@link #setPreview}) lets settings dialogs render unsaved text
- * without mutating the song — and without holding one, since a {@link Preview} supplies both
- * the text and the width to wrap it at.
+ * Text that wraps past {@link #maxRenderedLines()} is clipped rather than shrunk, and the drawn
+ * block takes the overflow colour. The component always sizes to exactly what it draws: its
+ * width is the widest wrapped line, not the song's line width, and with empty
+ * {@link #songText()} it collapses to {@code (0, 0)}. Centering on the page is the parent's
+ * responsibility.
  */
 public abstract class BaseTitleComponent extends ScoreComponent {
 
     /**
-     * Text this component draws in place of the song's own, and the width to wrap it at.
-     *
-     * <p>The two travel together because they are the two things this component would
-     * otherwise read out of the song, and a preview that supplied only one of them would
-     * still need a song for the other. Supplying both is what lets a settings dialog show
-     * unsaved text without holding the document.
-     *
-     * @param text        the text to draw; empty draws nothing and collapses the component
-     * @param wrapWidthSs the width the text may occupy before it wraps, as an {@link Ss}
+     * Lets a settings dialog show unsaved text without holding the document: both values travel
+     * together, since supplying only one would still need a song for the other.
      */
     public record Preview(String text, Ss wrapWidthSs) {}
 
-    /**
-     * What to draw instead of the song, or {@code null} to draw the song.
-     */
+    /** {@code null} draws the song. */
     @Nullable
     private Preview preview;
 
-    /**
-     * Draws {@code preview} in place of the song's own text and line width, or restores
-     * rendering from the song when {@code null}.
-     *
-     * <p>A component showing a preview needs no song and never consults one, so this is the
-     * whole of what a detached preview has to be given.
-     */
     public void setPreview(@Nullable Preview preview) {
         this.preview = preview;
         revalidate();
         repaint();
     }
 
-    /**
-     * The part of the song this component displays, which Song Settings opens to and
-     * focuses. {@link TitleComponent} and {@link SubtitleComponent} share a tab but are
-     * edited in different fields, so each names its own.
-     */
     protected abstract SongSettingsDialog.Section editorSection();
 
     /**
-     * Opens Song Settings at {@link #editorSection()}, with that section's field focused —
-     * so a double-click lands the caret in the very text that was clicked.
+     * No hit testing: the component is exactly as wide as its text, so a click that reached it
+     * is a click on the title. An empty title therefore has no hit area; this is deliberate,
+     * since a phantom target would swallow clicks aimed at the staff below.
      * <p>
-     * No hit testing is needed: this component is exactly as wide as the text it draws,
-     * so a click that reached it is a click on the title.
-     * <p>
-     * The same property means an empty title or subtitle has no hit area at all —
-     * {@link #getPreferredSize} returns {@code (0, 0)}, so there is nothing to
-     * double-click and the field is reached through the menu instead. Accepted
-     * deliberately: giving empty text a phantom click target would mean inventing bounds
-     * for something that draws nothing, and every score would carry an invisible strip
-     * that swallows clicks aimed at the staff below it. The gesture reveals what is
-     * already on the page; it is not the way to put something there.
-     * <p>
-     * The dialog is opened through {@code SONG_SETTINGS_ACTION.openAt}, so the gesture and the
-     * menu item go through the one opening path, and it is shown and dropped: a dialog serves
-     * one opening and is disposed on close. That action constant is populated by
-     * {@code Actions.initialize}, which has run before any score component is inside a
-     * visible {@code ScoreView}; it is deliberately not null-guarded, so a
-     * startup-ordering regression fails loudly rather than becoming a gesture that silently
-     * does nothing. The gesture's playback condition is applied by {@link ScoreComponent}'s
-     * own click handling before this method is reached and is deliberately not re-derived
-     * here.
+     * {@code SONG_SETTINGS_ACTION} is deliberately not null-guarded, so a startup-ordering
+     * regression fails loudly instead of becoming a gesture that silently does nothing. The
+     * playback condition is applied by {@link ScoreComponent} before this method is reached.
      */
     @Override
     protected boolean openEditor() {
@@ -135,13 +83,6 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         return true;
     }
 
-    /**
-     * The line width in pixels the text is allowed to occupy, used for wrapping only:
-     * the preview's width when one is set, otherwise the document line width, scaled by this
-     * component's zoom. On the score it tracks the view zoom; a detached preview (no
-     * {@code ScoreView}) resolves to {@link songscribe.ui.ViewScale#IDENTITY} and so renders
-     * at natural size.
-     */
     private int lineWidthPx() {
         var currentPreview = preview;
 
@@ -159,49 +100,22 @@ public abstract class BaseTitleComponent extends ScoreComponent {
     }
 
     /**
-     * Returns the song text for this component.
-     * <p>
-     * Subclasses return the appropriate field from the song (e.g. numbered title,
-     * subtitle). Called each time the component is painted or measured.
-     *
-     * @return the text to display, or empty string for none
+     * @return empty string for none
      */
     protected abstract String songText();
 
     /**
-     * The greatest number of rendered lines this component draws.
-     * <p>
-     * At or below the cap every wrapped line is drawn in the normal colour. Above it, the
-     * first {@code maxRenderedLines()} lines are drawn, the surplus is not drawn at all,
-     * and every drawn line takes the overflow colour — the whole of the signal that text
-     * is missing.
-     * <p>
-     * Abstract rather than defaulted so a further subclass cannot compile without
-     * deciding what it caps at.
-     *
-     * @return the rendered line cap, at least 1
+     * @return at least 1
      */
     protected abstract int maxRenderedLines();
 
-    /**
-     * Returns the top gap in pixels to prepend before the text block.
-     * <p>
-     * Default is {@code 0}. Override to insert spacing above this component
-     * (e.g. the subtitle gap between title and subtitle).
-     *
-     * @return top gap in pixels
-     */
     protected int topGapPx() {
         return 0;
     }
 
     /**
-     * The text to draw, or null when there is nothing to draw.
-     * <p>
-     * Deliberately answerable without {@link FontMetrics}. A component that has neither a
-     * song nor a preview has never been given a font either, and
-     * {@code getFontMetrics(null)} throws, so {@link #getPreferredSize} has to settle this
-     * <em>before</em> it measures.
+     * Null when there is nothing to draw. Answerable without {@link FontMetrics}: a component
+     * with neither song nor preview has no font, and {@code getFontMetrics(null)} throws.
      */
     private @Nullable String textToRenderOrNull() {
         var currentPreview = preview;
@@ -219,34 +133,21 @@ public abstract class BaseTitleComponent extends ScoreComponent {
     }
 
     /**
-     * One wrapped line together with the ink it paints.
-     * <p>
-     * {@code ink} is null when the line has no ink at all — a blank line — in which case
-     * it neither contributes width nor needs positioning.
+     * {@code ink} is null for a blank line.
      */
     private record MeasuredLine(String text, @Nullable Rectangle2D ink) {
 
         /**
-         * The width this line needs, rounded up because it is a size: leaving a fraction
-         * of a pixel unreserved is leaving a fraction of a pixel clipped.
+         * Rounded up: a fraction of a pixel left unreserved is a fraction clipped.
          */
         int widthPx() {
             return ink == null ? 0 : (int) Math.ceil(ink.getWidth());
         }
 
         /**
-         * The x to draw at so this line's ink is centered in {@code containerWidth}.
-         * <p>
-         * Centering the ink rather than the advance box centers the box the reader
-         * actually sees: the advance box excludes ink past the last glyph's advance and
-         * includes the left side bearing. Subtracting the ink's own origin offset pulls a
-         * negative left bearing — the overhang of a "W" — back inside the component
-         * rather than letting it paint outside.
-         * <p>
-         * Fractional, and drawn at a fractional x, so that a component sized to
-         * {@link #widthPx()} contains its widest line exactly. Rounding to a whole pixel
-         * here would put up to half a pixel of ink back outside the bounds the width was
-         * chosen to guarantee.
+         * Centers the ink, not the advance box, and pulls a negative left bearing back inside the
+         * component. Fractional, so a component sized to {@link #widthPx()} contains its widest
+         * line exactly.
          */
         float centeredX(int containerWidth) {
             if (ink == null) {
@@ -258,82 +159,48 @@ public abstract class BaseTitleComponent extends ScoreComponent {
     }
 
     /**
-     * The component's text measured once — the font's metrics and every wrapped line's
-     * ink, all taken through {@link TextMeasurement}.
-     * <p>
-     * Sizing and painting both go through this, which is what makes "the component is
-     * exactly as wide as the text it draws" true rather than nearly true. Measuring the
-     * two independently let them wrap the text at different words, and the wider of the
-     * two results would then be painted into bounds sized for the narrower one.
-     * <p>
-     * {@code lines} is never empty: {@link #measureText} is reached only for non-empty
-     * text, {@link StringUtils#wrapText} always yields at least one line, and clamping to
-     * {@link #maxRenderedLines()} cannot empty a non-empty list — which rests on that
-     * method's promise to answer at least 1, since a cap of 0 would empty it and
-     * {@link #topInkPaddingPx} and {@link #bottomInkPaddingPx} index into it unguarded.
-     *
-     * @param clamped whether the wrap produced more lines than {@link #maxRenderedLines()},
-     *                so {@code lines} holds only the leading ones and the block draws in
-     *                the overflow colour
+     * Sizing and painting both go through this, so the component is exactly as wide as the text
+     * it draws. {@code lines} is never empty: {@link #topInkPaddingPx} and
+     * {@link #bottomInkPaddingPx} index it unguarded, which rests on
+     * {@link #maxRenderedLines()} being at least 1.
      */
     private record MeasuredText(FontMetrics metrics, List<MeasuredLine> lines, boolean clamped) {
 
-        /** The width of the widest line, and so of the component. */
         int maxWidthPx() {
             return lines.stream().mapToInt(MeasuredLine::widthPx).max().orElse(0);
         }
 
-        /** The wrapped lines' own height, before any allowance for overshooting ink. */
         int blockHeightPx() {
             return TextMeasurement.textBlockHeight(metrics, lines.size());
         }
 
-        /** Room above the first baseline for ink that overshoots the nominal ascent. */
         int topInkPaddingPx() {
             return TextMeasurement.extraInkAbovePx(lines.getFirst().ink(), metrics.getAscent());
         }
 
-        /** Room below the last baseline for ink that overshoots the nominal descent. */
         int bottomInkPaddingPx() {
             return TextMeasurement.extraInkBelowPx(lines.getLast().ink(), metrics.getDescent());
         }
     }
 
     /**
-     * Everything {@link #measureText} reads. Two calls with equal keys must produce equal
-     * measurements, which is what lets the last result be reused.
+     * Everything {@link #measureText} reads: equal keys must produce equal measurements.
      */
     private record MeasureKey(String text, Font font, int lineWidthPx) {}
 
-    /** A measurement together with the key it was taken under, so the two cannot disagree. */
     private record Memo(MeasureKey key, MeasuredText measured) {}
 
-    /** The last measurement and its key, or null before the first one. */
+    /** Null before the first measurement. */
     @Nullable
     private Memo memo;
 
     /**
-     * Wraps {@code text} to {@link #lineWidthPx()}, clamps it to {@link #maxRenderedLines()}
-     * and captures each surviving line's ink.
+     * Memoized under {@link MeasureKey}, which holds every input that can vary.
+     * <strong>No invalidation hook is needed or wanted:</strong> nothing here can go stale, so
+     * do not add a listener to clear it.
      * <p>
-     * {@link #lineWidthPx()} is the width the text is allowed to occupy, not the
-     * component's width; the component's width comes from
-     * {@link MeasuredText#maxWidthPx()} on the lines produced here.
-     * <p>
-     * The clamp happens before the ink is measured: building a glyph vector for a line
-     * nobody sees is work this method does on every paint and every layout pass.
-     * <p>
-     * The result is memoized under {@link MeasureKey}, which holds every input that can
-     * vary, each derived per call rather than held. <strong>No invalidation hook is needed
-     * or wanted:</strong> a preview moves the text and the width, a metadata edit moves
-     * {@link #songText()}, a font change moves {@link #getFont()}, and zoom moves both the
-     * font and the width. There is no state here to go stale, so do not add a listener to
-     * clear this.
-     * <p>
-     * {@link #maxRenderedLines()} is also read here and is deliberately not in the key: it
-     * is fixed per component class. A subclass whose cap varied over its lifetime would
-     * need it added, since the memo would otherwise answer with a measurement clamped to
-     * the old cap.
+     * {@link #maxRenderedLines()} is deliberately not in the key because it is fixed per
+     * component class; a subclass whose cap varied would need it added.
      */
     private MeasuredText measureText(String text) {
         var font = zoomedFont(getFont());

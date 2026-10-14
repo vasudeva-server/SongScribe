@@ -31,12 +31,6 @@ import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
 
-/**
- * Renders fermata symbols above or below notes.
- * <p>
- * A fermata indicates that a note should be held longer than its written duration.
- * The symbol consists of a dot under an arc (like an eyebrow over an eye).
- */
 public final class FermataRenderer implements ElementRenderer<StaffElement> {
 
     // ==========================================================================
@@ -53,15 +47,9 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
     // Singleton instance
     private static final FermataRenderer INSTANCE = new FermataRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private FermataRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static FermataRenderer getInstance() {
         return INSTANCE;
     }
@@ -107,14 +95,6 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
         }
     }
 
-    /**
-     * Renders a fermata for a note if it has one.
-     *
-     * @param g2    Graphics context
-     * @param note  The note to check
-     * @param invariants   Line invariants
-     * @param frame Per-element frame
-     */
     public void renderFermata(
         Graphics2D g2,
         StaffElement note,

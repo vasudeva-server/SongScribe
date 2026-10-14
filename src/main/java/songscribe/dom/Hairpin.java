@@ -30,23 +30,18 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * A hairpin dynamic marking: a crescendo or a diminuendo, as its {@link Kind} says.
  * <p>
- * A hairpin is a wedge-shaped marking placed above the staff that indicates
- * a gradual change in volume. It has one horizontal and one vertical user offset, and each moves
- * the whole hairpin; the user cannot move one end on its own.
+ * A hairpin has one horizontal and one vertical user offset, each moving the whole hairpin.
  * <p>
  * Every attached hairpin meets every invariant below. {@link #spanning} and {@link #createCopy}
- * are the only ways to make one. Why the rules are what they are is in
- * {@code docs/hairpin-editing.md}; the paths that put a hairpin on a line, and what keeps every
- * rule once it is there, are in {@code docs/span-invalidation.md}.
+ * are the only ways to make one. See {@code docs/hairpin-editing.md} and
+ * {@code docs/span-invalidation.md}.
  *
  * @invariant it starts on a pitched note, or on a grace note whose host is a pitched note
  * @invariant it ends on a pitched note, never on a rest
  * @invariant it holds at least {@value Span#MIN_PITCHED_NOTES} pitched notes, as
  *            {@link Span#holdsEnoughPitchedNotes} counts them: a grace note and a rest do not
- *            count, so a grace note and its host count once. The endpoint rules alone do not
- *            give this, because a hairpin from a grace note to its host meets both, and a wedge
- *            cannot slope from a note to itself. {@link #spanning}, {@link #outcomeFor} and the
- *            deletion reshape all judge it
+ *            count, so a grace note and its host count once; a wedge cannot slope from a note
+ *            to itself
  * @invariant its range holds no repeat and no bar other than {@link ElementType#SINGLE_BARLINE}
  * @invariant it shares at most one element with a hairpin of the opposite {@link Kind}, where
  *            one ends and the other starts
@@ -54,30 +49,14 @@ import songscribe.dom.StaffElementRun.ElementRange;
 public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight {
 
     /**
-     * Height of the hairpin opening in staff-space units. LilyPond's {@code Hairpin.height}
-     * grob property ({@code scm/define-grobs.scm}) is {@code 0.6666}, a <em>half</em>-height:
-     * {@code Hairpin::print} ({@code lily/hairpin.cc:335-336}) draws the two wedge segments at
-     * {@code Offset(x, starth)} and {@code Offset(x, -starth)} where {@code starth == height},
-     * so the full mouth opening is twice the property value.
+     * Twice LilyPond's {@code Hairpin.height} ({@code 0.6666}), which is a <em>half</em>-height.
      */
     public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.3332;
 
-    /** The heading a removed or refused hairpin is reported under. */
     private static final String REPORT_HEADING_KEY = Strings.REPORT_HAIRPINS_REMOVED;
 
-    /** Whether this is a crescendo or a diminuendo. */
     private final Kind kind;
 
-    /**
-     * Creates a hairpin of {@code kind} over two elements. Its two callers are the two ways to
-     * make a hairpin, and the class Javadoc states why each one's range is allowed:
-     * {@link #spanning} calls it once it has judged the range, and {@link #createCopy} for the
-     * sweep's joined hairpin and for a clipboard copy.
-     *
-     * @param kind          Whether the hairpin is a crescendo or a diminuendo
-     * @param anchorElement The starting element of the hairpin
-     * @param endElement    The ending element of the hairpin
-     */
     private Hairpin(Kind kind, StaffElement anchorElement, StaffElement endElement) {
         super(StaffElement.class, anchorElement, endElement);
         this.kind = kind;
@@ -159,29 +138,13 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         return new Spanning.Spanned<>(hairpin, convergence.absorbed());
     }
 
-    /** A refusal of a hairpin, under the hairpin's report heading. */
     private static Spanning<Hairpin> refused(String reasonKey, Spanning.Cause cause) {
         return new Spanning.Refused<>(reasonKey, cause, REPORT_HEADING_KEY);
     }
 
     /**
-     * Returns the range a hairpin of {@code kind} over {@code span} of {@code line} holds once
-     * {@link Span#addTo} has applied {@link Displacement#ABSORB_ADJACENT}, and the hairpins it
-     * absorbs on the way. Nothing on the line changes.
-     * <p>
-     * The range widens over every hairpin of {@code kind} that overlaps it or sits within
-     * {@link LineSpans#SPAN_ADJACENCY_REACH} of either end, and repeats until the range stops
-     * growing, since absorbing one hairpin can bring a further one into reach. The displacement
-     * that {@link Span#addTo} applies computes the same widening, so the range this answers is
-     * the range adding the hairpin produces.
-     *
-     * @param line the line the hairpin would be on
-     * @param kind whether the hairpin would be a crescendo or a diminuendo
-     * @param span the range the hairpin would cover; both of its indices are indices of
-     *     {@code line}
-     * @return the converged range, which holds {@code span}, and every hairpin of {@code kind}
-     *     inside it; the range is {@code span} and the list is empty when no hairpin of
-     *     {@code kind} is in reach
+     * Must agree with the widening the displacement in {@link Span#addTo} applies, so the range
+     * this answers is the range adding the hairpin produces.
      */
     private static Convergence converge(Line line, Kind kind, ElementRange span) {
         // The reach and the same-kind test are the ones the displacement applies, so the range
@@ -190,29 +153,15 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         return new Convergence(absorption.range(), absorption.absorbedAs(Hairpin.class));
     }
 
-    /**
-     * What adding a hairpin over a range makes of it: the range it holds once it has absorbed
-     * the same-kind hairpins in reach, and those hairpins. {@link #converge} answers it.
-     *
-     * @param range    the converged range, which holds the requested one
-     * @param absorbed every hairpin the widening took in; empty when nothing was in reach
-     */
     private record Convergence(ElementRange range, List<Hairpin> absorbed) {
     }
 
-    /**
-     * Which of the two hairpins this is.
-     *
-     * @return the kind this hairpin was created with
-     */
     public Kind getKind() {
         return kind;
     }
 
     /**
-     * {@link Displacement#ABSORB_ADJACENT}: a hairpin drawn flush against a same-kind one
-     * continues it rather than starting a second — one uninterrupted dynamic gesture, one
-     * hairpin.
+     * A hairpin drawn flush against a same-kind one continues it rather than starting a second.
      */
     @Override
     protected Displacement displacement() {
@@ -220,10 +169,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Narrows the kind test to a hairpin of the same {@link Kind}, so a crescendo never
-     * displaces a diminuendo, nor a diminuendo a crescendo.
-     *
-     * @return {@code true} when {@code other} is a hairpin whose {@link Kind} is this one's
+     * Narrowed to the same {@link Kind}, so a crescendo never displaces a diminuendo.
      */
     @Override
     boolean isSameKindAs(Span<?> other) {
@@ -286,17 +232,6 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         return outcomeForRepointing(change, line.getElement(range.begin()), line.getElement(range.end()));
     }
 
-    /**
-     * Answers a change that removes no element: the hairpin keeps both of its endpoints,
-     * so what is at stake is whether those endpoints are still legal in the projection,
-     * whether what lies between them is still wide enough to slope across — a
-     * replacement can turn a pitched note into a grace note, which does not count — and whether
-     * the range now holds a repeat or a bar other than a single barline, which an insertion or
-     * a replacement can put there.
-     *
-     * @param anchor this hairpin's anchor element, as found in the pre-change line
-     * @param end    this hairpin's end element, as found in the pre-change line
-     */
     private SpanOutcome outcomeForRepointing(ElementChange change, StaffElement anchor, StaffElement end) {
         var projected = change.projectedElements();
         var anchorIndex = change.projectedEndpointIndexOf(anchor);
@@ -326,14 +261,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Answers a deletion, pulling each endpoint in to the nearest survivor that can hold
-     * it, or removing the hairpin with {@link Strings#REPORT_REASON_ENDPOINT_DELETED}
-     * when what survives is too narrow to slope across.
-     * <p>
-     * A deletion never judges rule 4 ({@link #holdsNonSingleBar}): it removes elements and adds
-     * none, so it cannot put a repeat or a bar inside a range that held none.
-     *
-     * @param span this hairpin's span in the pre-deletion line
+     * A deletion never judges rule 4 ({@link #holdsNonSingleBar}): it adds no element.
      */
     private SpanOutcome outcomeForDeletion(
         ElementChange.Deletion deletion,
@@ -385,21 +313,10 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Returns whether the first element of {@code span} in {@code candidates} can begin a
-     * hairpin over {@code span}: rule 1 of the class invariant.
-     * <p>
-     * A pitched note always can. A grace note belongs to the note it precedes, so it
-     * can begin one when that note is pitched — anchoring on the grace note rather than
-     * its host keeps the hairpin over what the user actually selected. Anything else,
-     * including a grace note with no host within reach, cannot.
-     * <p>
-     * {@link #spanning}, {@link #outcomeFor} and the deletion reshape all read this, so no path
-     * that makes or keeps a hairpin can anchor it somewhere a new one could not start.
-     *
-     * @param candidates the elements to test against, in document order
-     * @param span       the hairpin's span in {@code candidates}; its end bounds the host lookahead
-     * @return {@code true} when the element at {@code span.begin()} is a pitched note, or a grace
-     *     note followed, within {@code span}, by a pitched note
+     * A grace note can begin a hairpin when its host is pitched: anchoring on it keeps the
+     * hairpin over what the user selected. {@link #spanning}, {@link #outcomeFor} and the
+     * deletion reshape all read this, so no path can anchor a hairpin where a new one could not
+     * start.
      */
     private static boolean canAnchorAt(List<? extends StaffElement> candidates, ElementRange span) {
         var index = span.begin();
@@ -412,33 +329,16 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Returns whether the element at {@code index} in {@code candidates} can end a
-     * hairpin: rule 2 of the class invariant. Only a pitched note can; a rest, a grace note
-     * and every other element cannot.
-     * <p>
-     * {@link #spanning}, {@link #outcomeFor} and the deletion reshape all read this, so no path
-     * that makes or keeps a hairpin can end it somewhere a new one could not end.
-     *
-     * @param candidates the elements to test against, in document order
-     * @param index      the index in {@code candidates} of the element to test
-     * @return {@code true} when the element at {@code index} is a pitched note
+     * Read by every path that makes or keeps a hairpin, so none can end one where a new one
+     * could not end.
      */
     private static boolean canEndAt(List<? extends StaffElement> candidates, int index) {
         return candidates.get(index).getType().isPitchedNote();
     }
 
     /**
-     * Returns whether {@code span} holds a repeat or a bar other than a
-     * {@link ElementType#SINGLE_BARLINE}: the bar that breaks rule 4 of the class invariant. A
-     * single barline only divides measures, and a hairpin may run across it.
-     * <p>
-     * {@link #spanning} and {@link #outcomeFor} both read this, so no path that makes or keeps a
-     * hairpin can leave such a bar inside it.
-     *
-     * @param candidates the elements to test against, in document order
-     * @param span       the range to examine in {@code candidates}, endpoints included
-     * @return {@code true} when any element in {@code span} is a bar whose type is not
-     *     {@link ElementType#SINGLE_BARLINE}
+     * A single barline only divides measures, and a hairpin may run across it. Read by every
+     * path that makes or keeps a hairpin.
      */
     private static boolean holdsNonSingleBar(List<? extends StaffElement> candidates, ElementRange span) {
         for (var index = span.begin(); index <= span.end(); index++) {
@@ -453,16 +353,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Returns the post-deletion position of this hairpin's anchor, given that its
-     * elements survive over {@code survivors}.
-     * <p>
-     * The anchor is the first survivor that can begin one: a pitched note, or a grace note
-     * whose host is one, matching what the app allows when the hairpin is drawn. A surviving
-     * anchor that still can stays where it is. One that cannot, such as a grace note whose host
-     * the deletion takes, is passed over like a deleted one.
-     *
-     * @return the anchor's position in {@code candidates}, or {@code null} when no survivor can
-     *     begin a hairpin
+     * @return {@code null} when no survivor can begin a hairpin
      */
     private @Nullable Integer resolveBeginIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
         var first = survivors.begin();
@@ -478,12 +369,10 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Returns the post-deletion position of this hairpin's end, given that its elements
-     * survive over {@code survivors}. A surviving end stays where it is; a deleted one moves
-     * in to the last surviving pitched note, so a deletion never pulls an end onto a rest.
+     * A deleted end moves in to the last surviving pitched note, so a deletion never pulls an
+     * end onto a rest.
      *
-     * @return the end's position in {@code candidates}, or {@code null} when no survivor can
-     *     end a hairpin
+     * @return {@code null} when no survivor can end a hairpin
      */
     private @Nullable Integer resolveEndIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
         var first = survivors.begin();
@@ -513,34 +402,19 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * Which of the two hairpins one is: a crescendo, getting louder and opening to the right
-     * ({@literal <}), or a diminuendo, getting softer and opening to the left ({@literal >}).
-     * <p>
-     * It names the kind before there is an instance to ask, which is what both the
-     * MusicXML reader (holding a wedge open while its end note is awaited) and the
-     * hairpin menu (resolving what one item would do) need. Where an instance is in
-     * hand, ask it: {@link Hairpin#getKind()}.
+     * Names the kind before there is an instance to ask, as the MusicXML reader and the hairpin
+     * menu need.
      */
     public enum Kind {
         CRESCENDO,
         DIMINUENDO;
 
-        /**
-         * The other kind — the one this may share an endpoint with.
-         *
-         * @return {@link #DIMINUENDO} for {@link #CRESCENDO}, and {@link #CRESCENDO} for
-         *     {@link #DIMINUENDO}
-         */
         public Kind opposite() {
             return this == CRESCENDO ? DIMINUENDO : CRESCENDO;
         }
 
         /**
-         * Whether {@code span} is a hairpin of this kind: the same-kind test a hairpin's
-         * displacement applies ({@link Hairpin#isSameKindAs}), stated before a hairpin exists.
-         *
-         * @param span a span of any kind
-         * @return {@code true} when {@code span} is a {@link Hairpin} whose kind is this one
+         * {@link Hairpin#isSameKindAs}, stated before a hairpin exists.
          */
         boolean matches(Span<?> span) {
             return span instanceof Hairpin hairpin && hairpin.kind == this;

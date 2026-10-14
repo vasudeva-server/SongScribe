@@ -23,24 +23,13 @@ import songscribe.util.Copyable;
 
 public record BeatChange(BeatUnit duration, BeatUnit beat) implements Copyable<BeatChange> {
 
-    /**
-     * {@inheritDoc}
-     *
-     * @return {@code this}. Both components are {@link BeatUnit} constants, so a beat change holds
-     *         no mutable state for a copy to separate.
-     */
     @Override
     public BeatChange copy() {
         return this;
     }
 
     /**
-     * Translates a legacy beat-change enum name into the new record form. Called from the IO
-     * layer when reading v2.4-or-earlier files. Each canonical name is paired with its
-     * underscore-less form (the same stripping rule {@code StaffElementIO}'s accidental-map
-     * loop applies), except for the two cases noted below, which pair the canonical name with a
-     * historical misspelling that must keep being accepted because it was actually written into
-     * old {@code .mssw} files.
+     * Accepts the historical misspellings that were actually written into old {@code .mssw} files.
      */
     public static BeatChange fromLegacyName(String legacyName) {
         return switch (legacyName) {

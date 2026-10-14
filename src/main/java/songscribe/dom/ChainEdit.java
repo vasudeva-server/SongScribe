@@ -53,33 +53,24 @@ import songscribe.message.mutation.TieRemoval;
  * reach from this alone — see {@link AccidentalChain#walk}.
  *
  * <p>The edited range covers the elements of one line from {@link #start()} up to
- * {@link #end()}, indexed as the song stands after the edit: an insertion covers what it inserted, a
- * modification covers the one element, a removal is the empty range at the point it removed
- * from, and a swap that also moves its line's key covers the line from its start through what it
- * inserted.
+ * {@link #end()}, indexed as the song stands after the edit.
  *
- * <p>Every edit comes from one of the factories here, each of which states what its edit means;
- * the constructor is private so that no edit exists that a factory did not describe.
+ * <p>The constructor is private so that no edit exists that a factory did not describe.
  *
  * <p>Immutable.
  */
 public final class ChainEdit {
 
-    /**
-     * How far the walk goes past the edited range.
-     */
     public enum Reach {
         /**
-         * To the first untouched note at each position the edit reaches: after that note what
-         * is in force is its own sounding alteration, which the edit did not change.
+         * After the first untouched note at a position, what is in force there is that note's
+         * own sounding, which the edit did not change.
          */
         TO_UNTOUCHED_NOTE,
 
         /**
-         * To the next key change, because the edit changed the key a later note is in — a key
-         * change inserted, removed or altered, a line's own key changed, or a line with its own
-         * key or a key change removed — and every note up to there is decided against a key
-         * that may have moved.
+         * The edit changed the key a later note is in, so every note up to the next key change is
+         * decided against a key that may have moved.
          */
         TO_NEXT_KEY_CHANGE;
 
@@ -108,38 +99,24 @@ public final class ChainEdit {
         return start;
     }
 
-    /**
-     * @return the place one past the edited range, on its line
-     */
     public Cursor end() {
         return start.plus(length);
     }
 
     /**
-     * @return every staff position a removed note held, and the position a moved note held
-     *     before it moved: the positions whose next note must be decided again even though
-     *     nothing in the range now stands at them; unmodifiable
+     * @return the positions whose next note must be decided again even though nothing in the
+     *     range now stands at them; unmodifiable
      */
     public Set<StaffPosition> vacated() {
         return vacated;
     }
 
-    /**
-     * @return how far the walk goes past the edited range
-     */
     public Reach reach() {
         return reach;
     }
 
     /**
-     * The edit that inserted {@code inserted} at {@code start}, the elements now standing at
-     * {@code start.index()..start.index() + inserted.size() - 1}.
-     *
-     * @param start    the place the first inserted element stands at
-     * @param inserted the inserted elements, in line order
-     * @return the edit, covering the inserted elements, vacating nothing, reaching the next key
-     *     change when any of them {@link ElementType#endsAccidentalsInForce() ends what is in
-     *     force}
+     * @param start the place the first inserted element stands at
      */
     public static ChainEdit inserted(Cursor start, List<? extends StaffElement> inserted) {
         return new ChainEdit(start, inserted.size(), Set.of(), reachOf(inserted));
@@ -159,18 +136,6 @@ public final class ChainEdit {
         return new ChainEdit(start, 0, positionsOf(removed), reachOf(removed));
     }
 
-    /**
-     * The edit that swapped {@code removed} at {@code start} for {@code inserted}, which now
-     * stands at {@code start.index()..start.index() + inserted.size() - 1}.
-     *
-     * @param start    the place the first removed element stood at and the first inserted one
-     *                 stands at
-     * @param removed  the removed elements, in line order
-     * @param inserted the inserted elements, in line order
-     * @return the edit, covering the inserted elements, vacating the position of every removed
-     *     note, reaching the next key change when any removed or inserted element
-     *     {@link ElementType#endsAccidentalsInForce() ends what is in force}
-     */
     public static ChainEdit replaced(
         Cursor start, List<? extends StaffElement> removed, List<? extends StaffElement> inserted) {
 
@@ -202,30 +167,13 @@ public final class ChainEdit {
         return new ChainEdit(at, 1, vacated, Reach.of(endsInForce(before) || endsInForce(after)));
     }
 
-    /**
-     * The edit that changed the key the line at {@code lineIndex} establishes at its own start.
-     *
-     * @param lineIndex the line's index
-     * @return the edit, an empty range at the line's start, vacating nothing, reaching the next
-     *     key change
-     */
     public static ChainEdit lineRekeyed(int lineIndex) {
         return rekeyingFrom(new Cursor(lineIndex, 0));
     }
 
     /**
-     * The edit that changed the key the line at {@code start.lineIndex()} starts in and swapped
-     * {@code removed} at {@code start} for {@code inserted}, which now stands at
-     * {@code start.index()..start.index() + inserted.size() - 1}. Every element on the line from
-     * its start through the inserted ones is under the moved key, so the edited range covers them
-     * all, as a key set on the line by hand reaches from the line's start.
-     *
-     * @param start    the place the first removed element stood at and the first inserted one
-     *                 stands at
-     * @param removed  the removed elements, in line order
-     * @param inserted the inserted elements, in line order
-     * @return the edit, covering the line's elements from its start through the inserted
-     *     elements, vacating the position of every removed note, reaching the next key change
+     * Every element from the line's start through the inserted ones is under the moved key, so
+     * the edited range covers them all.
      */
     public static ChainEdit lineRekeyedAndReplaced(
         Cursor start, List<? extends StaffElement> removed, List<? extends StaffElement> inserted) {
@@ -236,27 +184,12 @@ public final class ChainEdit {
         );
     }
 
-    /**
-     * The edit that put a key in force at {@code at} without moving any element: what the load
-     * pass starts from at the song's first element, at every key change and at every line with
-     * its own key.
-     *
-     * @param at the place the key takes effect at
-     * @return the edit, an empty range at that place, vacating nothing, reaching the next key
-     *     change
-     */
     public static ChainEdit rekeyingFrom(Cursor at) {
         return new ChainEdit(at, 0, Set.of(), Reach.TO_NEXT_KEY_CHANGE);
     }
 
     /**
-     * The edit that inserted {@code line} into its song, with every element it holds.
-     *
-     * @param line the inserted line; one of its song's lines
-     * @return the edit, covering the line's elements, vacating nothing, reaching the next key
-     *     change when the line has its own key — every later line that inherits then starts in
-     *     it — or when any of its elements
-     *     {@link ElementType#endsAccidentalsInForce() ends what is in force}
+     * Every later line that inherits starts in the line's own key.
      */
     private static ChainEdit lineInserted(Line line) {
         var elements = line.getElements();
@@ -267,17 +200,6 @@ public final class ChainEdit {
         );
     }
 
-    /**
-     * The edit that removed {@code removed} from the song, the line that followed it now
-     * standing at {@code lineIndex}.
-     *
-     * @param lineIndex the index the following line now stands at; the line count when the
-     *                  removed line was the last
-     * @param removed   the removed line
-     * @return the edit, an empty range at the start of the line at {@code lineIndex}, vacating
-     *     the position of every note the removed line held, reaching the next key change when
-     *     the removed line had its own key or held a key change
-     */
     private static ChainEdit lineRemoved(int lineIndex, Line removed) {
         var elements = removed.getElements();
 
@@ -349,7 +271,6 @@ public final class ChainEdit {
         return modified(placeOn(modification.line(), modification.index()), before, after);
     }
 
-    /** The place at {@code index} on {@code line}, one of its song's lines. */
     private static Cursor placeOn(Line line, int index) {
         return new Cursor(line.index(), index);
     }

@@ -24,27 +24,20 @@ import songscribe.dom.Tempo;
 import songscribe.message.Message;
 
 /**
- * Announces that the song's tempo is to become {@code tempo}.
- *
- * <p>The tempo is carried whole. A sender that means to change one of its values reads the
- * song's current tempo, changes that value, and sends the result.
+ * Announces that the song's tempo is to become {@code tempo}, carried whole.
  */
 public class TempoDidChangeNotification extends Message {
 
     private final Tempo tempo;
 
     /**
-     * @param tempo the tempo the song is to take, which must be a copy detached from the song's
-     *              own instance. The receiver copies its values onto the live instance, so a
-     *              sender that passed the live instance would be asking it to copy from itself.
+     * @param tempo must be a copy detached from the song's own instance; the receiver copies its
+     *              values onto the live one
      */
     public TempoDidChangeNotification(Tempo tempo) {
         this.tempo = tempo;
     }
 
-    /**
-     * @return the tempo the song is to take
-     */
     public Tempo getTempo() {
         return tempo;
     }

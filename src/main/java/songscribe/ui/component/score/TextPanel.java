@@ -36,38 +36,22 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * Container panel for under-lyrics text sections.
- * <p>
- * Contains:
- * <ul>
- *   <li>{@link UnderLyricsComponent} - main lyrics text</li>
- *   <li>{@link BanglaLyricsComponent} - Bengali lyrics</li>
- *   <li>{@link TranslationComponent} - translation with header</li>
- * </ul>
- * <p>
- * Uses vertical box layout with appropriate spacing between sections.
  */
 public class TextPanel extends JPanel {
 
-    /** Under-lyrics component. */
     private final UnderLyricsComponent underLyricsComponent;
 
-    /** Bangla lyrics component. */
     private final BanglaLyricsComponent banglaLyricsComponent;
 
-    /** Translation component. */
     private final TranslationComponent translationComponent;
 
-    /** The song model. */
     @Nullable
     private Song song;
 
-    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    /** Null when detached (tests). */
     @Nullable
     private ScoreView scoreView;
 
-    /**
-     * Creates a new TextPanel.
-     */
     public TextPanel() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
@@ -86,11 +70,6 @@ public class TextPanel extends JPanel {
         add(translationComponent);
     }
 
-    /**
-     * Sets the song and updates all child components.
-     *
-     * @param song The song
-     */
     public void setSong(Song song) {
         this.song = song;
         underLyricsComponent.setSong(song);
@@ -100,10 +79,6 @@ public class TextPanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Sets the owning {@link ScoreView} and fans it out to the once-created leaf
-     * components so their text scales with the view zoom.
-     */
     public void setScoreView(ScoreView scoreView) {
         this.scoreView = scoreView;
         underLyricsComponent.setScoreView(scoreView);
@@ -111,14 +86,10 @@ public class TextPanel extends JPanel {
         translationComponent.setScoreView(scoreView);
     }
 
-    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
     private ViewScale viewScale() {
         return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
-    /**
-     * Returns the song.
-     */
     public Song getSong() {
         if (song == null) {
             throw RuntimeError.exit("song not initialized");
@@ -127,23 +98,14 @@ public class TextPanel extends JPanel {
         return song;
     }
 
-    /**
-     * Returns the under-lyrics component.
-     */
     public UnderLyricsComponent getUnderLyricsComponent() {
         return underLyricsComponent;
     }
 
-    /**
-     * Returns the Bangla lyrics component.
-     */
     public BanglaLyricsComponent getBanglaLyricsComponent() {
         return banglaLyricsComponent;
     }
 
-    /**
-     * Returns the translation component.
-     */
     public TranslationComponent getTranslationComponent() {
         return translationComponent;
     }
@@ -176,15 +138,6 @@ public class TextPanel extends JPanel {
         super.paintComponent(g);
     }
 
-    /**
-     * Calculates the union width across all text sections.
-     * <p>
-     * This is the maximum width of lyrics, Bangla lyrics, and translation,
-     * used to center all sections at the same X position.
-     *
-     * @param g2 Graphics context
-     * @return Union width in pixels
-     */
     private double calculateUnionWidth(Graphics2D g2) {
         double maxWidth = 0;
 

@@ -34,18 +34,14 @@ import songscribe.ui.FlatLafProps;
 
 public class ScorePanel extends JPanel implements Scrollable {
 
-    /** Subtracted from the visible height when computing a vertical block increment. */
     static final int VERTICAL_BLOCK_DECREMENT = 10;
 
-    /** Subtracted from the visible width when computing a horizontal block increment. */
     static final int HORIZONTAL_BLOCK_DECREMENT = 20;
 
     private final Component content;
 
-    /** Cached from the LAF in {@link #updateUI}, avoiding a property lookup on every layout pass. */
     private int minHorizontalPaddingPx;
 
-    /** Cached from the LAF in {@link #updateUI}, avoiding a property lookup on every layout pass. */
     private int minVerticalPaddingPx;
 
     public ScorePanel(Component content) {

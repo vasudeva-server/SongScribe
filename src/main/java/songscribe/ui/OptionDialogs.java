@@ -55,10 +55,6 @@ public final class OptionDialogs {
 
     private OptionDialogs() {}
 
-    /**
-     * Controls dialog suppression for testing. When true, all dialog
-     * methods log instead of showing UI.
-     */
     public static void setSuppressDialogs(boolean suppress) {
         suppressDialogs = suppress;
     }
@@ -79,10 +75,6 @@ public final class OptionDialogs {
         );
     }
 
-    /**
-     * Shows an error message dialog. Beeps before showing the dialog
-     * (unless suppressed).
-     */
     public static void showErrorMessage(
         @Nullable Component parent,
         String titleKey,
@@ -275,15 +267,9 @@ public final class OptionDialogs {
     }
 
     /**
-     * Pads each message label's width so the final glyph is never clipped.
-     *
-     * <p>JOptionPane bursts a plain-text message into JLabels that BasicLabelUI
-     * sizes to the integer advance width. FlatLaf paints with fractional/LCD
-     * subpixel metrics whose glyph ink extends a couple pixels past that advance,
-     * clipping the last character. A render-context measurement can't
-     * reliably recover that overhang on a HiDPI screen (the realized context is 2x,
-     * so its pixel bounds are device pixels), so instead pad by a small fixed
-     * amount — the slack is invisible trailing space on left-aligned message text.
+     * FlatLaf's subpixel glyph ink extends past the integer advance width that BasicLabelUI
+     * sizes the labels to, clipping the last character. A measurement cannot reliably recover
+     * that overhang on HiDPI, so the padding is a small fixed amount.
      */
     private static void padMessageLabels(Container container) {
         for (var component : container.getComponents()) {
@@ -338,15 +324,7 @@ public final class OptionDialogs {
         return args.length == 0 ? Strings.get(key) : Strings.get(key, args);
     }
 
-    /**
-     * Whether a window that blocks for the user would go unanswered — either the
-     * environment has no display, or a test asked for suppression.
-     * <p>
-     * Public so that windows outside this class (which are not built from
-     * {@code JOptionPane} and so cannot route through the methods above) honor the
-     * same flag rather than declaring a second one that tests would have to know
-     * about separately.
-     */
+    /** Public so windows not built from {@code JOptionPane} honor the same flag. */
     public static boolean isSuppressed() {
         return GraphicsEnvironment.isHeadless() || suppressDialogs;
     }

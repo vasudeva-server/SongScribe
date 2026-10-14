@@ -25,20 +25,14 @@ import java.util.List;
  * What {@link DialogController#validate} answers: whether the values a dialog gathered may be
  * committed, and if not, why not.
  *
- * <p><strong>Validity is the absence of failures, not a separate flag.</strong> There is no state
- * in which a result claims to be valid while naming reasons it is not, because {@link #isValid()}
- * is derived from {@link #failures()} rather than stored beside it. The corollary a caller may
- * rely on: a rejection always carries at least one failure, so a user who is blocked always has
- * something to read. An empty failure list means the input is acceptable — it never means
- * "rejected, reason unknown".
+ * <p><strong>Validity is the absence of failures, not a separate flag:</strong> a rejection always
+ * carries at least one failure, and an empty list never means "rejected, reason unknown".
  *
- * <p>The failures keep the order the controller reported them in, and that is the order a presenter
- * shows them in; a controller that has a most-important failure puts it first. Instances are
- * immutable: {@link #failures()} answers an unmodifiable list unaffected by later changes to the
- * list the constructor was given.
+ * <p>The failures keep the order the controller reported them in, which is the order a presenter
+ * shows them in. Instances are immutable: {@link #failures()} answers an unmodifiable list
+ * unaffected by later changes to the list the constructor was given.
  *
- * @param failures every reason the input was refused, in presentation order; empty when it was
- *                 accepted
+ * @param failures in presentation order; empty when the input was accepted
  */
 public record ValidationResult(List<ValidationFailure> failures) {
 
@@ -46,31 +40,14 @@ public record ValidationResult(List<ValidationFailure> failures) {
         failures = List.copyOf(failures);
     }
 
-    /**
-     * The outcome for input a controller accepts, and the answer from a controller with nothing to
-     * reject.
-     *
-     * @return a result carrying no failures
-     */
     public static ValidationResult valid() {
         return new ValidationResult(List.of());
     }
 
-    /**
-     * The outcome for input refused for a single reason. Use the canonical constructor when there
-     * is more than one.
-     *
-     * @param failure the reason the input was refused
-     * @return a result carrying exactly {@code failure}
-     */
     public static ValidationResult invalid(ValidationFailure failure) {
         return new ValidationResult(List.of(failure));
     }
 
-    /**
-     * @return {@code true} when the input may be applied, which is exactly when
-     *         {@link #failures()} is empty
-     */
     public boolean isValid() {
         return failures.isEmpty();
     }

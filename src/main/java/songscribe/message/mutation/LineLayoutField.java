@@ -20,13 +20,7 @@
 
 package songscribe.message.mutation;
 
-/**
- * Identifies which line-level layout property changed in a {@link LineLayoutChange} mutation.
- * Each constant carries the expected runtime type of {@code oldValue} and {@code newValue};
- * {@link LineLayoutChange}'s canonical constructor validates values against this type.
- */
 public enum LineLayoutField {
-    /** Y-position of lyrics baseline (staff spaces). */
     LYRICS_Y_POS_SS(Double.class);
 
     private final Class<?> expectedType;

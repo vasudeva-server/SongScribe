@@ -24,17 +24,12 @@ import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 
 /**
- * The two straight segments of a dynamics hairpin. A crescendo opens from a narrow tip on the left
- * to a wide mouth on the right; a diminuendo is the mirror image, opening to the left.
- * <p>
- * All coordinates are plain staff-space values; the caller resolves them from layout before
- * calling. This class holds no layout or renderer dependency.
+ * The two straight segments of a dynamics hairpin, in staff-space values.
  */
 public final class HairpinShape {
 
     private HairpinShape() {}
 
-    /** Which side of a hairpin its narrow tip is on. */
     public enum Tip {
         /** Tip on the left, mouth on the right: a crescendo. */
         LEFT,
@@ -43,14 +38,7 @@ public final class HairpinShape {
         RIGHT
     }
 
-    /**
-     * Builds the two hairpin segments: from the tip, at the vertical middle of its side of
-     * {@code boundsSs}, to the top and bottom corners of the other side.
-     *
-     * @param boundsSs the wedge's bounds, in staff spaces
-     * @param tip      which side the tip is on
-     * @return the two segments, the one meeting the top edge first
-     */
+    /** The segment meeting the top edge comes first. */
     public static Line2D.Double[] lines(Rectangle2D boundsSs, Tip tip) {
         var leftXSs = boundsSs.getMinX();
         var rightXSs = boundsSs.getMaxX();

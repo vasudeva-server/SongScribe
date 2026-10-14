@@ -54,10 +54,6 @@ public final class AppearanceManager {
     private AppearanceManager() {
     }
 
-    /**
-     * Initializes the appearance on startup. Reads the preference, installs the
-     * appropriate LAF, and registers the OS theme listener if needed.
-     */
     public static void init() {
         var preference = getPreference();
         var isDark = resolveIsDark(preference);
@@ -76,10 +72,6 @@ public final class AppearanceManager {
         }
     }
 
-    /**
-     * Switches to the theme indicated by the given preference. Called when the
-     * user changes the appearance preference.
-     */
     public static void switchTheme(Appearance preference) {
         var currentPreference = getPreference();
 
@@ -103,16 +95,10 @@ public final class AppearanceManager {
         }
     }
 
-    /**
-     * Returns the current appearance preference.
-     */
     public static Appearance getPreference() {
         return Prefs.getChoice(PrefsKey.APPEARANCE, Appearance.class);
     }
 
-    /**
-     * Resolves a preference to whether dark mode should be used.
-     */
     static boolean resolveIsDark(Appearance preference) {
         return switch (preference) {
             case DARK -> true;

@@ -25,25 +25,14 @@ import songscribe.layout.StaffExtents;
 import songscribe.layout.SupportPadding;
 
 /**
- * The inputs LilyPond's {@code Side_position_interface::aligned_side} places an element by: the
- * side of the staff it sits on and its three paddings.
+ * The inputs LilyPond's {@code Side_position_interface::aligned_side} places an element by.
  *
- * @param direction        the side of the staff: {@link Direction#UP} above, {@link Direction#DOWN}
- *                         below
- * @param paddingSs        the gap the element keeps from whatever its footprint contacts
- * @param staffPaddingSs   the minimum gap the element keeps from the staff line when the staff
- *                         clamp is the outward constraint
- * @param horizonPaddingSs how far beyond its own footprint the element looks for a support
+ * @param staffPaddingSs the minimum gap the element keeps from the staff line when the staff
+ *                       clamp is the outward constraint
  */
 record AlignedSide(
     Direction direction, double paddingSs, double staffPaddingSs, double horizonPaddingSs) {
 
-    /**
-     * Returns the two paddings a {@link StaffExtents#clearance} query reads: the element's own
-     * padding and its horizon padding.
-     *
-     * @return {@link #paddingSs()} and {@link #horizonPaddingSs()} as a {@link SupportPadding}
-     */
     SupportPadding supportPadding() {
         return new SupportPadding(paddingSs, horizonPaddingSs);
     }

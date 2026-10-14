@@ -35,22 +35,11 @@ import songscribe.util.Copyable;
  * A key, identified by its position on the circle of fifths: negative for a flat key,
  * positive for a sharp key, zero for no accidentals.
  *
- * <p>The signed count <em>is</em> the key. It carries the accidental type and how many there are
- * in one value, so there is no pair to hold consistent and no combination outside the fifteen
- * declared here — an eight-sharp key is unwriteable rather than rejected at run time. The
- * constants run in fifths order, so {@link #values()} is the order a key list shows the user and
- * {@link #ordinal()} tracks {@link #fifths()}.
+ * <p>The constants run in fifths order, so {@link #values()} is the order a key list shows the
+ * user and {@link #ordinal()} tracks {@link #fifths()}.
  *
- * <p>Two independent formats already speak this encoding: MusicXML's {@code <fifths>} and MIDI's
- * {@code FF 59} {@code sf} byte. It is the circle-of-fifths position, a fact about keys rather
- * than about either file format, which is why it lives here and both writers read it off a key
- * instead of deriving it.
- *
- * <p>There is no mode. Every key this program represents is major: MusicXML's {@code <key>}
- * carries an optional {@code <mode>} child, and the writer emits {@code major} for it, but nothing
- * here stores one, because this program reads only MusicXML it wrote itself (see "Only SongScribe
- * documents are read" in {@code docs/musicxml-object-model.md}), so no minor or modal key can ever
- * enter the model.
+ * <p>There is no mode: every key is major, because only MusicXML SongScribe wrote is read (see
+ * {@code docs/musicxml-object-model.md}).
  */
 public enum Key implements Copyable<Key> {
     SEVEN_FLATS(-7),
@@ -62,8 +51,8 @@ public enum Key implements Copyable<Key> {
     ONE_FLAT(-1),
 
     /**
-     * C major. A real key, not an "unset" marker, and the key a signature is understood to be
-     * drawn <em>from</em> when nothing states what precedes it.
+     * A real key, not an "unset" marker; a signature is understood to be drawn <em>from</em> it
+     * when nothing states what precedes it.
      */
     NO_ACCIDENTALS(0),
 
@@ -76,15 +65,11 @@ public enum Key implements Copyable<Key> {
     SEVEN_SHARPS(7),
     ;
 
-    /** Maximum number of accidentals in any standard key signature. */
     public static final int MAX_ACCIDENTAL_COUNT = 7;
 
     /**
      * The key a new song's line 0 starts in, and the key assumed for a document that names none.
-     *
-     * <p>Named separately from the value it holds because it states a policy rather than a
-     * key: a call site that means "whatever a song starts in" must not read as one that
-     * means five flats specifically.
+     * Named separately from the value it holds because it states a policy rather than a key.
      */
     public static final Key DEFAULT = FIVE_FLATS;
 
@@ -110,19 +95,7 @@ public enum Key implements Copyable<Key> {
     }
 
     /**
-     * Returns the key at the given position on the circle of fifths.
-     *
-     * <p>The range is this type's to state, so it is enforced here rather than at each reader
-     * that decodes a document. A caller reading untrusted input catches and converts, which is
-     * what a document boundary is for: see {@code MeasureMapper.applyFifths} for MusicXML's
-     * {@code <fifths>} and {@code LegacyKeyType.keyFor} for {@code .mssw}'s tag pair.
-     *
-     * @param fifths the position: flats negative, sharps positive, zero for no accidentals, with
-     *               a magnitude of at most {@value #MAX_ACCIDENTAL_COUNT}
-     * @return the key at that position; never null
-     * @throws IllegalArgumentException if {@code |fifths|} exceeds
-     *                                  {@value #MAX_ACCIDENTAL_COUNT}, which no key
-     *                                  this program can represent ever does
+     * A caller reading untrusted input catches the range failure and converts it.
      */
     public static Key ofFifths(int fifths) {
         if (Math.abs(fifths) > MAX_ACCIDENTAL_COUNT) {
@@ -136,64 +109,29 @@ public enum Key implements Copyable<Key> {
     }
 
     /**
-     * Returns every key, exactly once, in fifths order.
-     *
-     * <p>The same immutable list is returned on every call, so a caller that holds it — a combo
-     * model or a cell renderer's entry list — pays for it once and may keep the reference rather
-     * than copying it. Preferred over {@link #values()}, which allocates a fresh array per call.
-     *
-     * @return every {@link Key}, from {@link #SEVEN_FLATS} to {@link #SEVEN_SHARPS}; immutable
+     * The same immutable list is returned on every call, so a caller may keep the reference.
      */
     public static List<Key> allKeys() {
         return ALL_KEYS;
     }
 
-    /**
-     * Returns this key's position on the circle of fifths.
-     *
-     * @return the signed count: negative for a flat key, positive for a sharp key, zero for
-     *         {@link #NO_ACCIDENTALS}, with a magnitude of at most
-     *         {@value #MAX_ACCIDENTAL_COUNT}
-     */
     public int fifths() {
         return fifths;
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @return {@code this}. A key is one of fifteen enum constants and has no state to separate,
-     *         so identity is what a copy of it means.
-     */
     @Override
     public Key copy() {
         return this;
     }
 
-    /**
-     * Returns how many accidentals this key's signature draws.
-     *
-     * @return {@link #fifths()}'s magnitude: {@code 0..}{@value #MAX_ACCIDENTAL_COUNT}
-     */
     public int accidentalCount() {
         return accidentalCount;
     }
 
-    /**
-     * Returns whether this key's accidentals are flats.
-     *
-     * @return {@code true} for a flat key; {@code false} for a sharp key and for
-     *         {@link #NO_ACCIDENTALS}, which draws neither
-     */
     public boolean isFlatKey() {
         return fifths < 0;
     }
 
-    /**
-     * Returns whether this key places an accidental on {@code pitchClass}.
-     *
-     * @return always {@code false} for {@link #NO_ACCIDENTALS}
-     */
     private boolean altersPitchClass(PitchClass pitchClass) {
         // NO_ACCIDENTALS needs no guard: its count is zero, so this loop never runs.
         var pitchClasses = isFlatKey() ? FLAT_PITCH_CLASSES : SHARP_PITCH_CLASSES;
@@ -215,40 +153,24 @@ public enum Key implements Copyable<Key> {
         return altersPitchClass(pitchClass) ? signatureAccidental() : Accidental.NATURAL;
     }
 
-    /**
-     * The alteration this key applies to the pitch class written at {@code position}:
-     * {@link #alterationFor} of {@link PitchClass#at}.
-     *
-     * @param position a staff position
-     * @return the alteration, NATURAL where the key does not alter that pitch class
-     */
     public Accidental alterationAt(StaffPosition position) {
         return alterationFor(PitchClass.at(position.value()));
     }
 
     /**
      * One accidental of a key signature or of its cancellation, ready to be laid out.
-     *
-     * @param glyph           the glyph to draw
-     * @param staffPositionSp staff position relative to the middle line
-     * @param leadingGapSs    extra space in front of this accidental, separating it from the group
-     *                        to its left; zero for every accidental except the first of a group
-     *                        that follows another group
      */
     public record DrawnAccidental(SMuFLGlyph glyph, int staffPositionSp, double leadingGapSs) {
 
         /**
-         * Gap from a cancellation (the run of naturals) to the key signature that follows it —
-         * the order LilyPond itself always uses, and the only order this program draws. LilyPond
-         * {@code KeyCancellation} {@code space-alist}: the {@code key-signature} entry, an
-         * {@code extra-space} of {@value}.
+         * Gap from a cancellation (the run of naturals) to the key signature that follows it,
+         * after LilyPond's {@code KeyCancellation} {@code space-alist} {@code extra-space} of
+         * {@value}.
          */
         public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
 
-        /** Extra space after a natural whose neighbour's vertical extent it overlaps. */
         private static final double NATURAL_OVERLAP_KERNING_SS = 0.3;
 
-        /** Extra space after a natural that merely touches its neighbour at the corners. */
         private static final double NATURAL_TOUCHING_KERNING_SS = 0.15;
 
         // LilyPond models each accidental's silhouette on a grid of half staff positions:
@@ -306,14 +228,6 @@ public enum Key implements Copyable<Key> {
             return inkWidthSs + naturalKerningSs(staffPositionSp, next.staffPositionSp);
         }
 
-        /**
-         * Returns the extra space LilyPond inserts to the right of a natural so that its
-         * vertical right edge clears the left edge of the accidental beside it.
-         *
-         * @param staffPositionSp     staff position of the natural
-         * @param nextStaffPositionSp staff position of the accidental to its right
-         * @return the extra space in staff spaces, zero when the two extents clear each other
-         */
         private static double naturalKerningSs(int staffPositionSp, int nextStaffPositionSp) {
             // SongScribe staff positions grow downward, LilyPond's grow upward.
             var upwardSp = -staffPositionSp;
@@ -387,26 +301,12 @@ public enum Key implements Copyable<Key> {
         return List.copyOf(accidentals);
     }
 
-    /**
-     * Returns the accidentals this key draws for itself, with no cancellation — what a staff
-     * header shows. Equivalent to {@link #accidentalsFrom} with {@link #NO_ACCIDENTALS} as the
-     * source.
-     *
-     * @return its accidentals in fifths order, each with a zero leading gap; empty for
-     *         {@link #NO_ACCIDENTALS}. The returned list is immutable.
-     */
     public List<DrawnAccidental> signatureAccidentals() {
         return accidentalsFrom(NO_ACCIDENTALS);
     }
 
     /**
-     * Returns how wide the drawn change from {@code sourceKey} into this key is: the sum of every
-     * accidental's advance and leading gap. It excludes
-     * {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}, which is the caller's to add.
-     *
-     * @param sourceKey the key in effect before the change
-     * @return the laid-out width in staff spaces; zero when {@code sourceKey} is this key, and
-     *         never negative
+     * Excludes {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}, which is the caller's to add.
      */
     public double widthSsFrom(Key sourceKey) {
         var accidentals = accidentalsFrom(sourceKey);
@@ -423,27 +323,16 @@ public enum Key implements Copyable<Key> {
     }
 
     /**
-     * Returns how wide this key's own signature is — what a staff header reserves for it.
-     *
-     * <p>The answer is {@link #widthSsFrom}'s for a change out of {@link #NO_ACCIDENTALS}, so a
-     * signature in the header and the same signature drawn as a cautionary at the end of the
-     * previous line cannot drift apart in width.
-     *
-     * @return the width in staff spaces; zero for {@link #NO_ACCIDENTALS}, and never negative
+     * {@link #widthSsFrom}'s answer for a change out of {@link #NO_ACCIDENTALS}, so a header
+     * signature and the same signature drawn as a cautionary cannot drift apart in width.
      */
     public double signatureWidthSs() {
         return widthSsFrom(NO_ACCIDENTALS);
     }
 
     /**
-     * Returns how tall this key's own signature is — the ink height of the accidental it draws.
-     *
-     * <p>Kerning and inter-glyph vertical variation are out of scope: every accidental in a
-     * signature is the same glyph, so one glyph's height answers for the run. It is here rather
-     * than on the header element for the reason {@link #signatureWidthSs()} is, so that a
-     * signature drawn anywhere measures the same.
-     *
-     * @return the height in staff spaces; zero for {@link #NO_ACCIDENTALS}, which draws nothing
+     * Every accidental in a signature is the same glyph, so one glyph's height answers for the
+     * run.
      */
     public double signatureHeightSs() {
         if (this == NO_ACCIDENTALS) {
@@ -454,28 +343,16 @@ public enum Key implements Copyable<Key> {
     }
 
     /**
-     * Returns the glyph this key's signature is drawn with.
-     *
-     * <p>Private and undefined for {@link #NO_ACCIDENTALS}, which draws no accidental; every
-     * caller here has already excluded it.
+     * Undefined for {@link #NO_ACCIDENTALS}, which draws no accidental.
      */
     private SMuFLGlyph accidentalGlyph() {
         return signatureAccidental().glyph();
     }
 
-    /** The accidental type this key's signature draws: flats for a flat key, sharps otherwise. */
     private Accidental signatureAccidental() {
         return isFlatKey() ? Accidental.FLAT : Accidental.SHARP;
     }
 
-    /**
-     * Builds one group of accidentals — a cancellation run or a signature run — all drawn with the
-     * same glyph, at the staff positions {@code key}'s accidental order gives them.
-     *
-     * <p>{@code precedingCount} is how many accidentals already stand to the left. Only the first
-     * accidental of a group that follows another group is pushed away; within a group the glyphs
-     * nest with no gap.
-     */
     private static List<DrawnAccidental> groupOf(Key key, SMuFLGlyph glyph, int precedingCount) {
         var staffPositions = key.isFlatKey() ? FLAT_STAFF_POSITIONS : SHARP_STAFF_POSITIONS;
         var groupGapSs = precedingCount == 0 ? 0 : DrawnAccidental.CANCELLATION_TO_KEY_GAP_SS;

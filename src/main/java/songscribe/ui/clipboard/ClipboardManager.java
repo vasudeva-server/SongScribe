@@ -28,12 +28,8 @@ import songscribe.message.notification.ClipboardDidChangeNotification;
 /**
  * Manages clipboard state for copy/paste operations.
  *
- * <p>This is app-global: it is constructed once by
- * {@link songscribe.ui.component.ScoreView}, which is never recreated —
- * only its {@code song} is swapped — so it is
- * not cleared on document close. A clone's {@code line} back-reference keeps
- * that one {@code Song} reachable until the next copy replaces it — bounded,
- * harmless, and pre-existing.
+ * <p>This is app-global and is not cleared on document close; a clone's {@code line}
+ * back-reference keeps that one {@code Song} reachable until the next copy replaces it.
  */
 public final class ClipboardManager {
 
@@ -44,24 +40,15 @@ public final class ClipboardManager {
     // Fragment accessors
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the current fragment, or {@code null} if the clipboard is empty.
-     */
+    /** {@code null} if the clipboard is empty. */
     public @Nullable Fragment getFragment() {
         return fragment;
     }
 
-    /**
-     * Returns the number of elements in the current fragment, or 0 if the
-     * clipboard is empty.
-     */
     public int getSize() {
         return fragment == null ? 0 : fragment.elements().size();
     }
 
-    /**
-     * Returns whether the clipboard is empty.
-     */
     public boolean isEmpty() {
         return fragment == null;
     }
@@ -70,19 +57,11 @@ public final class ClipboardManager {
     // Fragment mutators
     // -------------------------------------------------------------------------
 
-    /**
-     * Replaces the current fragment with {@code fragment}.
-     *
-     * @param fragment The newly captured fragment
-     */
     public void setFragment(Fragment fragment) {
         this.fragment = fragment;
         MessageCenter.post(new ClipboardDidChangeNotification());
     }
 
-    /**
-     * Clears the clipboard.
-     */
     public void clear() {
         fragment = null;
         MessageCenter.post(new ClipboardDidChangeNotification());

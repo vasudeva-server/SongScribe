@@ -32,15 +32,8 @@ import songscribe.ui.ZoomController;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
-/**
- * Steps the score zoom to the next discrete {@link ZoomController} stop in one
- * direction. The zoom-in and zoom-out variants differ only in their icon,
- * accelerator, the {@link ZoomController} step they invoke, and the boundary at
- * which they disable, so both are produced from a single parameterized class.
- */
 public final class ZoomAction extends UIAction {
 
-    /** Icon size (in points) shared by the zoom-in and zoom-out variants. */
     public static final int ZOOM_ICON_SIZE = 18;
 
     private final Runnable zoomOperation;
@@ -101,12 +94,6 @@ public final class ZoomAction extends UIAction {
         zoomOperation.run();
     }
 
-    /**
-     * Folds the direction-specific zoom boundary on top of the base enabled
-     * state (which honors {@link Flag#DISABLE_WHEN_EDITING_TEXT}), so the action
-     * is disabled whenever text is being edited or the zoom is already at this
-     * variant's limit.
-     */
     @Override
     public boolean updateEnabledState() {
         var enabledState = super.updateEnabledState()

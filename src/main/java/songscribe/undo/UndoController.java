@@ -69,75 +69,43 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.UndoStateDidChangeNotification;
 
 /**
- * Application-level undo/redo engine. Each {@link SongDidChangeNotification} (one
- * outermost modification bracket) is pushed as a single undo step; undo/redo replays
- * that recorded batch through {@link MutationReplayer}, which runs it inside
- * {@link Song#replay}. SongScribe is single-document, so one stack pair is correct.
+ * Application-level undo/redo engine. SongScribe is single-document, so one stack pair is correct.
  *
- * <p>See {@code docs/undo.md} for the step-by-step flow, the round-trip and identity
- * guarantees the engine owes the rest of the application, and the design rationale.
+ * <p>See {@code docs/undo.md} for the flow and the round-trip and identity guarantees.
  *
- * <h2>Invariants</h2>
  * <ul>
- *   <li><b>One bracket, one step.</b> However many mutations an edit accumulates, and
- *       however deeply its brackets nest, the user undoes it with one Undo. What counts as
- *       one edit is therefore decided by whoever opens the outermost bracket, not here.
- *   <li><b>The two stacks partition the history.</b> Every recorded step is on exactly one
- *       of them, and their concatenation is the document's edit sequence from the current
- *       position. A forward edit discards the redo side, so redo is a line, not a tree.
- *   <li><b>Clean is a position, not a content comparison.</b> The document is clean exactly
- *       while the undo stack's top is the step that was on top at the last save, or at the
- *       load when the load left the song as its file holds it (or both are empty). Reaching
- *       an identical document by another route does not make it clean.
- *   <li><b>Replay is invisible to recording.</b> The bracket the engine opens to replay a
- *       step posts a {@link SongDidChangeNotification} like any other, and subscribers
- *       repaint from it, but it is never itself recorded as a step.
- *   <li><b>Steps are non-empty.</b> Guaranteed by
- *       {@link SongDidChangeNotification}: an empty bracket posts nothing. A step with no
- *       mutations would have no label and nothing to replay.
+ *   <li>One bracket, one step: whoever opens the outermost bracket decides what counts as one
+ *       edit.
+ *   <li>Clean is a position, not a content comparison: the document is clean exactly while the
+ *       undo stack's top is the step that was on top at the last save (or the load, when the
+ *       load left the song as its file holds it). Reaching an identical document by another
+ *       route does not make it clean.
+ *   <li>Replay posts a {@link SongDidChangeNotification} like any edit but is never recorded as
+ *       a step.
  * </ul>
  *
- * <p>EDT only, by contract; no synchronization is performed on the stacks, the replay guard
- * or the pending op-name.
+ * <p>EDT only, by contract; no synchronization.
  *
- * <h2>Lifecycle</h2>
- * {@link #initialize(Supplier)} attaches the singleton to the message bus and tells it where
- * to find the open document. It is idempotent in its subscription — subscription is
- * deliberately not a constructor side effect, since the singleton is also constructed
- * lazily the first time an outermost modification bracket
- * ({@link Song#withModification(Runnable)}) reads the pending op-name. Until it runs, no
- * document is open as far as the engine can tell, so undo and redo do nothing.
- *
- * <p>Once {@link #initialize(Supplier)} has run, the controller is attached for the process. A
- * document load empties the stacks and places the clean marker at the start of the new
- * history (see {@link #documentDidLoad}) while leaving the controller attached and
- * recording.
+ * <p>Subscription is not a constructor side effect, since the singleton is also constructed
+ * lazily by the first outermost modification bracket. Until {@link #initialize(Supplier)}
+ * runs, undo and redo do nothing; afterwards the controller stays attached for the process,
+ * across document loads.
  */
 public final class UndoController {
 
     private static final Logger LOG = LoggerFactory.getLogger(UndoController.class);
 
     /**
-     * The most undo steps the stack retains. Pushing past it evicts the oldest step,
-     * which is what makes an edit permanently un-undoable, and — when the evicted step
-     * is the one the last save marked clean — the document permanently modified.
+     * The most undo steps retained. A push past it evicts the oldest step; if that was the
+     * clean marker, the document can no longer return to clean.
      */
-    public static final int UNDO_STACK_MAX_DEPTH = 50;
+    private static final int UNDO_STACK_MAX_DEPTH = 50;
 
-    /**
-     * One undo step: the recorded mutation batch from a single outermost modification
-     * bracket, and the op-name its initiator declared (or {@code null} for the type-based
-     * fallback label). Each instance has a distinct identity, so it doubles as the
-     * reference-compared clean marker.
-     */
+    /** Compared by identity, so a step doubles as the clean marker. A null op-name selects the type-based label. */
     private record UndoStep(List<Mutation> mutations, @Nullable String opName) {
     }
 
-    /**
-     * Sentinel marking the "clean" position when the undo stack was empty at save
-     * time. A freshly allocated {@link UndoStep} so reference comparison against
-     * pushed steps is unambiguous.
-     */
+    /** Freshly allocated so identity comparison against pushed steps is unambiguous. */
     private static final UndoStep BASELINE =
         new UndoStep(Collections.unmodifiableList(new ArrayList<>()), null);
 
@@ -172,30 +140,16 @@ public final class UndoController {
     private UndoController() {
     }
 
-    /**
-     * Makes a controller that finds the open document through {@code target}, for a test that
-     * drives the engine without the main window. The caller subscribes it to the bus.
-     */
+    /** For a test that drives the engine without the main window; the caller subscribes it. */
     UndoController(Supplier<@Nullable ReplayTarget> target) {
         this.target = target;
     }
 
     /**
-     * Subscribes the singleton to the bus in force, attaching it for the rest of the process,
-     * and sets where it finds the open document.
-     * Registers on every call, unguarded: the bus ignores a listener it already holds, and a
-     * call made after the bus in force has changed must reach the new bus.
+     * Registers on every call, unguarded: a call made after the bus in force has changed must
+     * reach the new bus.
      *
-     * <p>Subscription is deliberately not a constructor side effect: the singleton is
-     * also constructed lazily the first time an outermost modification bracket
-     * ({@link Song#withModification(Runnable)}) reads the pending op-name, which orders it
-     * against nothing in particular. Keeping subscription
-     * explicit means only a call to this method ever attaches the controller, at a point
-     * startup chooses.
-     *
-     * @param target gives the open document, or {@code null} when none is open; read at each
-     *     undo, redo and save
-     * @effects the controller begins recording mutations posted on the bus in force
+     * @param target gives the open document, or {@code null} when none is open
      */
     public static void initialize(Supplier<@Nullable ReplayTarget> target) {
         INSTANCE.target = target;
@@ -203,25 +157,8 @@ public final class UndoController {
     }
 
     /**
-     * Records a completed forward edit as one new undo step, so that a subsequent
-     * {@link #undo()} reverses exactly the edit this notification describes.
-     *
-     * <p>Afterwards {@link #canUndo()} is true, {@link #canRedo()} is false — a forward
-     * edit discards the redo branch, so redo is linear rather than a tree — and the
-     * document is modified unless the pushed step happens to be the clean marker again.
-     * The step's label follows from the notification's op-name; see {@link #undoLabel()}.
-     *
-     * <p>The stack retains at most {@value #UNDO_STACK_MAX_DEPTH} steps; a push past
-     * that evicts the oldest, and if the evicted step was the clean marker the document
-     * can no longer return to clean. Posts {@link UndoStateDidChangeNotification} so the
-     * Edit menu follows.
-     *
-     * <p>A notification posted by the engine's own replay bracket is ignored: replaying a
-     * step must not push a step, or undo could never empty the stack.
-     *
-     * <p>Runs at {@link Message#HIGH_PRIORITY} so that lower-priority subscribers reading
-     * {@link #canUndo()} or {@link #undoLabel()} while handling the same notification see
-     * the step already pushed.
+     * Runs at {@link Message#HIGH_PRIORITY} so that lower-priority subscribers reading
+     * {@link #canUndo()} or {@link #undoLabel()} see the step already pushed.
      */
     @Handler(priority = Message.HIGH_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
@@ -245,25 +182,7 @@ public final class UndoController {
     }
 
     /**
-     * Reverses the most recent recorded step, restoring the document to the state it held
-     * immediately before that step's edit — the round-trip guarantee stated in
-     * {@code docs/undo.md}. The step moves to the redo stack, so {@link #canRedo()} is then
-     * true and {@link #redo()} re-applies it.
-     *
-     * <p>Elements are restored in place rather than replaced, so anchors held by spans and
-     * by the current selection stay valid across any interleaving of undo and redo.
-     *
-     * <p>A no-op, posting nothing, when {@link #canUndo()} is false or no document is open.
-     * Otherwise the document's modified flag is recomputed against the save point (see
-     * {@link #documentWasSaved}) and {@link UndoStateDidChangeNotification} is posted. The
-     * replay itself posts a {@link SongDidChangeNotification} describing the inverse
-     * mutations — which is how the score repaints — without recording a new step.
-     *
-     * <p>Never throws. A replay that fails is an engine bug, not a caller error: the model
-     * is then mid-step and matches neither stack, so both stacks are cleared and the
-     * document is forced modified, leaving the user able to save but not to undo further.
-     *
-     * <p>EDT only.
+     * Never throws: a failed replay clears both stacks and forces the document modified.
      */
     public static void undo() {
         INSTANCE.performUndo();
@@ -274,20 +193,7 @@ public final class UndoController {
             MutationReplayer.undoBatch(song, fonts, step.mutations()), redoStack::push);
     }
 
-    /**
-     * Re-applies the most recently undone step, restoring the document to the state it held
-     * immediately after that step's original edit. The step moves back to the undo stack.
-     *
-     * <p>The redo stack holds only steps put there by {@link #undo()} and is discarded by the
-     * next forward edit, so redo is reachable only along the path just undone.
-     *
-     * <p>A no-op, posting nothing, when {@link #canRedo()} is false or no document is open.
-     * In every other respect — in-place restoration, the recomputed modified flag, the posted
-     * notifications, and the never-throws fail-safe — it
-     * matches {@link #undo()}.
-     *
-     * <p>EDT only.
-     */
+    /** Never throws, as {@link #undo()}. */
     public static void redo() {
         INSTANCE.performRedo();
     }
@@ -297,18 +203,11 @@ public final class UndoController {
             MutationReplayer.redoBatch(song, fonts, step.mutations()), undoStack::push);
     }
 
-    /** Replays one step with one of {@link MutationReplayer}'s two batch replays. */
     @FunctionalInterface
     private interface StepReplay {
         void replay(Song song, FontTarget fonts, UndoStep step);
     }
 
-    /**
-     * Replays the step on top of {@code source} with {@code replay}, then moves it from
-     * {@code source} to {@code destination}. Does nothing when {@code source} is empty or no
-     * document is open. A replay that throws goes to {@link #handleReplayFailure} instead.
-     * Either way, recomputes the modified flag and posts {@link UndoStateDidChangeNotification}.
-     */
     private void replayTop(Deque<UndoStep> source, StepReplay replay, Consumer<UndoStep> destination) {
         var replayTarget = target.get();
 
@@ -336,13 +235,7 @@ public final class UndoController {
         MessageCenter.post(new UndoStateDidChangeNotification());
     }
 
-    /**
-     * A replay exception is always an engine bug: the recorded batch could not be
-     * reproduced, so the model is now mid-step and desynced from both stacks. Clear
-     * both stacks and force {@code modified = true} (via {@code cleanValid = false})
-     * so no further undo acts on the desynced model and the user is prompted to save
-     * before losing work. The step's full mutation list is logged for diagnosis.
-     */
+    /** A replay exception is an engine bug that leaves the model mid-step, desynced from both stacks. */
     private void handleReplayFailure(UndoStep step, RuntimeException e) {
         LOG.error("Undo/redo replay failed; clearing history. Step mutations: {}", step.mutations(), e);
         undoStack.clear();
@@ -350,21 +243,7 @@ public final class UndoController {
         cleanValid = false;
     }
 
-    /**
-     * Marks the current position in the undo history as the saved state. The document is
-     * clean exactly while the undo stack's top is the step that was on top here, so undoing
-     * past the save point marks it modified and redoing back to it marks it clean again.
-     *
-     * <p>The position is held by reference, not by content: two edits that happen to produce
-     * identical documents are still distinct positions, and only the recorded one is clean.
-     *
-     * <p>The history survives a save — both stacks are left as they are. What does not
-     * survive is eviction: once the marked step is dropped at
-     * {@value #UNDO_STACK_MAX_DEPTH}, the saved state is unreachable and the document stays
-     * modified however far back the user undoes.
-     *
-     * <p>A no-op when no document is open.
-     */
+    /** The clean position is held by reference, not by content. */
     @Handler
     public void documentWasSaved(DocumentWasSavedNotification message) {
         var replayTarget = target.get();
@@ -379,17 +258,9 @@ public final class UndoController {
     }
 
     /**
-     * Discards the outgoing document's history: a document that has just been opened or
-     * created has nothing to undo, and replaying a step recorded against the previous
-     * document would corrupt this one. Both stacks are cleared and no op-name is pending.
-     *
-     * <p>The empty history is the clean position when the load left the song as its file
-     * holds it. When the load changed the song, nothing in the history is clean: the
-     * document is modified now, and stays modified however far back the user undoes, until
-     * it is saved. Leaves the controller attached.
-     *
-     * @effects sets the loaded song's modified flag from the clean position, then posts
-     *     {@link UndoStateDidChangeNotification} so the Edit menu follows
+     * Replaying a step recorded against the previous document would corrupt the new one.
+     * When the load changed the song, the document stays modified however far back the user
+     * undoes, until it is saved.
      */
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
@@ -402,49 +273,25 @@ public final class UndoController {
         MessageCenter.post(new UndoStateDidChangeNotification());
     }
 
-    /**
-     * Recomputes the modified flag against the reference-based clean marker. The
-     * document is clean only while the marker is valid and the undo stack's current top is
-     * the exact step that was on top at the last save (or both are the empty BASELINE).
-     */
     private void recomputeModified(Song song) {
         var atCleanPosition = cleanStep == (undoStack.isEmpty() ? BASELINE : undoStack.peek());
         song.setModified(!cleanValid || !atCleanPosition);
     }
 
-    /**
-     * Sets the Tier-A op-name that the next outermost modification bracket will capture.
-     * {@link #withPendingOpName} is the only caller, because it pairs the set with its restore.
-     * EDT-only.
-     */
+    /** {@link #withPendingOpName} is the only caller: it pairs the set with its restore. */
     private static void setPendingOpName(@Nullable String opName) {
         INSTANCE.pendingOpName = opName;
     }
 
-    /**
-     * The Tier-A op-name a bracket opening now would capture. Read by the song's
-     * modification bracket at the outermost-bracket transition. EDT-only.
-     *
-     * @return the pending op-name, or {@code null} when no dispatch has declared one and
-     *         an edit opening now would fall back to a type-based label
-     */
+    /** @return the pending op-name, or {@code null} when none is declared (the type-based label applies) */
     public static @Nullable String getPendingOpName() {
         return INSTANCE.pendingOpName;
     }
 
     /**
-     * Runs {@code body} with {@code opName} pending, so the outermost modification bracket
-     * that opens synchronously inside it captures that name, and restores the previously
-     * pending name afterwards — including when {@code body} throws.
-     *
-     * <p>Restoring rather than clearing is what makes the bracket nest: a dispatch that runs
-     * inside another one hands the outer name back when it returns, instead of leaving the
-     * next unrelated edit to adopt whatever this one set.
-     *
-     * <p>Every path that opens a bracket outside the {@code UIAction} dispatch template has to
-     * do this for itself — the last-insertion keys and paste placement both bypass it — so the
-     * save/set/restore lives here, next to the state it guards, rather than being written out
-     * again at each of those call sites.
+     * Restores the outer name on return rather than clearing, so nested dispatches do not leak
+     * a name to the next unrelated edit. Every bracket opened outside the {@code UIAction}
+     * dispatch template must use this.
      */
     public static void withPendingOpName(@Nullable String opName, Runnable body) {
         withPendingOpNameResult(opName, () -> {
@@ -453,12 +300,6 @@ public final class UndoController {
         });
     }
 
-    /**
-     * The value-returning form of {@link #withPendingOpName(String, Runnable)}, for a body
-     * whose outcome the caller must inspect after the name is restored.
-     *
-     * @return whatever {@code body} returned, unchanged
-     */
     public static <T> T withPendingOpNameResult(@Nullable String opName, Supplier<T> body) {
         var priorOpName = getPendingOpName();
         setPendingOpName(opName);
@@ -470,41 +311,18 @@ public final class UndoController {
         }
     }
 
-    /**
-     * @return {@code true} when a step is available to reverse — equivalently, when
-     *         {@link #undo()} would change the document rather than do nothing
-     */
     public static boolean canUndo() {
         return !INSTANCE.undoStack.isEmpty();
     }
 
-    /**
-     * @return {@code true} when a previously undone step is available to re-apply —
-     *         equivalently, when {@link #redo()} would change the document
-     */
     public static boolean canRedo() {
         return !INSTANCE.redoStack.isEmpty();
     }
 
-    /**
-     * The Edit-menu label for Undo, naming the operation the next {@link #undo()} would
-     * reverse: the plain {@code "Undo"} when {@link #canUndo()} is false, the top step's
-     * declared op-name verbatim when its initiator declared one, and otherwise a label
-     * derived from the kind of edit the step's dominant mutation records — never a bare
-     * {@code "Undo"} over a non-empty stack.
-     *
-     * @return the localized label, ready to display as-is
-     */
     public static String undoLabel() {
         return INSTANCE.composeLabel(INSTANCE.undoStack, Strings.ACTION_EDIT_UNDO, Strings.ACTION_EDIT_UNDO_LABELED);
     }
 
-    /**
-     * The Edit-menu label for Redo, naming the operation the next {@link #redo()} would
-     * re-apply. Composed exactly as {@link #undoLabel()} is, from the redo stack.
-     *
-     * @return the localized label, ready to display as-is
-     */
     public static String redoLabel() {
         return INSTANCE.composeLabel(INSTANCE.redoStack, Strings.ACTION_EDIT_REDO, Strings.ACTION_EDIT_REDO_LABELED);
     }
@@ -528,10 +346,7 @@ public final class UndoController {
         return Strings.get(labeledKey, opName(dominantMutation(step.mutations())));
     }
 
-    /**
-     * How strongly a mutation's kind names the step it is in, declared weakest first, so a
-     * later constant outranks an earlier one.
-     */
+    /** Declared weakest first: a later constant outranks an earlier one. */
     private enum LabelPrecedence {
         SPAN_OR_TIE,
         PROPERTY,
@@ -539,12 +354,6 @@ public final class UndoController {
         LINE
     }
 
-    /**
-     * The precedence of {@code mutation}'s kind. Exhaustive over the sealed {@link Mutation}
-     * hierarchy, so a new mutation type cannot go unranked.
-     *
-     * @return the tier {@code mutation} competes in for naming its step
-     */
     private static LabelPrecedence precedenceOf(Mutation mutation) {
         return switch (mutation) {
             case LineInsertion _, LineDeletion _ -> LabelPrecedence.LINE;
@@ -558,14 +367,7 @@ public final class UndoController {
         };
     }
 
-    /**
-     * Selects the step's dominant mutation: the first of those with the highest
-     * {@link LabelPrecedence}. Companion ordering is not uniform, so "first mutation"
-     * would mislabel — e.g. deleting a tuplet-spanned note (tuplet-removal companion
-     * emitted first) must still read "Delete Note". Callers pass a non-empty step.
-     *
-     * @return the mutation the step's label is derived from
-     */
+    /** Callers pass a non-empty step. */
     private static Mutation dominantMutation(List<? extends Mutation> step) {
         Mutation dominant = step.getFirst();
 
@@ -578,16 +380,6 @@ public final class UndoController {
         return dominant;
     }
 
-    /**
-     * The fallback name for a step that declared none of its own, resolved here rather than
-     * returned as a key: a delete label carries its own plural as a choice suffix, so it needs
-     * the element count, and only the mutation holds that. Exhaustive over the sealed
-     * {@link Mutation} hierarchy, as {@link #precedenceOf} is, so a new mutation type cannot go
-     * unnamed. See {@code OpNames}, which builds the declared names.
-     *
-     * @param dominant the step's dominant mutation
-     * @return the localized operation name
-     */
     private static String opName(Mutation dominant) {
         return switch (dominant) {
             case ElementInsertion _ -> Strings.get(Strings.ACTION_EDIT_OP_ADD_NOTE);
@@ -609,10 +401,6 @@ public final class UndoController {
         };
     }
 
-    /**
-     * The operation-name key for adding or removing {@code span}, by its kind. Exhaustive over
-     * the sealed {@link Span} hierarchy, so a new kind cannot go unnamed.
-     */
     private static String spanOpNameKey(Span<?> span) {
         return switch (span) {
             case Beam _ -> Strings.ACTION_EDIT_OP_BEAMING;

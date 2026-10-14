@@ -30,43 +30,20 @@ import songscribe.dom.ViewPx;
 /**
  * A zoom level and the typed conversions across the view boundary it defines.
  * <p>
- * The document is authored at a fixed scale
- * ({@link DocumentScale#PIXELS_PER_STAFF_SPACE} pixels per staff space,
- * i.e. 100% zoom): {@link Ss} staff spaces and {@link DocPx} document pixels
- * both live at that scale. A {@code ViewScale} folds the current on-screen zoom
- * on top of it, converting either regime to {@link ViewPx} view pixels — the
- * unit Swing components, mouse input, and overlay bounds operate in.
+ * Immutable: a zoom change produces a new instance through {@link #withZoomPercent}, so a
+ * stored reference is a snapshot — code that must follow a view's zoom fetches the view's
+ * current instance at use.
  * <p>
- * An immutable value: a zoom change produces a new instance through
- * {@link #withZoomPercent}, so a reference already handed out keeps reporting the
- * zoom it was taken at. The {@code ScoreView} that owns a zoom holds the current
- * instance and is the sole source of truth for it; off-score consumers with no
- * view (dialog previews, exporters) read the shared {@link #IDENTITY} instead.
- * A stored reference is therefore a snapshot — code that must follow a view's zoom
- * fetches the view's current instance at use.
- * <p>
- * EDT-only by contract: all reads must occur on the AWT event-dispatch thread. No
- * locking is performed.
+ * EDT-only by contract; no locking.
  */
 public final class ViewScale {
 
-    /**
-     * The zoom at which a view renders the document at its authored scale, as a
-     * percentage — and so also the divisor converting any zoom percentage to a
-     * fraction.
-     */
     private static final int NATURAL_ZOOM_PERCENT = 100;
 
-    /**
-     * Shared identity scale (natural size). Read through the {@code getViewScale()}
-     * null fallback of off-score components; sharing one instance is safe because
-     * the class is immutable.
-     */
     public static final ViewScale IDENTITY = new ViewScale();
 
     private final int zoomPercent;
 
-    /** Creates a scale at natural size — the document's own authoring scale. */
     public ViewScale() {
         this(NATURAL_ZOOM_PERCENT);
     }
@@ -90,7 +67,6 @@ public final class ViewScale {
         return new ViewScale(zoomPercent);
     }
 
-    /** The current zoom as a fraction of the document scale (1.0 at natural size). */
     public double factor() {
         return zoomPercent / (double) NATURAL_ZOOM_PERCENT;
     }
@@ -115,7 +91,6 @@ public final class ViewScale {
         return new DocPx(viewPx.value() / factor());
     }
 
-    /** Returns {@code baseFont} scaled by the current zoom factor. */
     public Font zoomedFont(Font baseFont) {
         var zoomFactor = factor();
 

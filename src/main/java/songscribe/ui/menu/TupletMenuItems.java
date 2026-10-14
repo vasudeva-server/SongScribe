@@ -37,22 +37,16 @@ import songscribe.ui.component.MainFrame;
  * Builds the grade items shared by the Notation &gt; Tuplet submenu and the toolbar tuplet
  * popup.
  * <p>
- * A grade the selection cannot become is left out entirely rather than shown disabled, so
- * the list only ever offers choices that would do something. When no grade is left, a
- * single disabled item says so. The grade of the tuplet the selection already carries is
- * always listed, even when the span could not be turned into that grade again — otherwise
- * a selection that visibly is a tuplet would show nothing checked.
+ * A grade the selection cannot become is left out rather than shown disabled. The grade of
+ * the tuplet the selection already carries is always listed, so a selection that visibly is a
+ * tuplet shows something checked.
  */
 public final class TupletMenuItems {
 
     private TupletMenuItems() {
     }
 
-    /**
-     * Replaces the container's items with the ones the current selection allows. The
-     * container is a {@link JMenu} or a {@link JPopupMenu}; both route {@code add} and
-     * {@code removeAll} to the same popup contents.
-     */
+    /** @param container a {@link JMenu} or a {@link JPopupMenu} */
     public static void rebuild(Container container) {
         container.removeAll();
 
@@ -75,12 +69,7 @@ public final class TupletMenuItems {
         }
     }
 
-    /**
-     * The grade of the tuplet the selection already carries.
-     *
-     * @return the grade, or {@code null} when the selection carries no tuplet or there is
-     *     no score to ask
-     */
+    /** @return {@code null} when the selection carries no tuplet or there is no score to ask */
     @Nullable
     private static TupletGrade existingGrade() {
         var ctrl = MainFrame.getInstance().getScoreViewController();

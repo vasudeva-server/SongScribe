@@ -31,16 +31,6 @@ import songscribe.dom.BeatUnit;
  * their MusicXML beat-unit representation: a type token ({@code <beat-unit>}
  * or {@code <metronome-type>}) plus a dot count ({@code <beat-unit-dot/>} or
  * {@code <metronome-dot/>}).
- *
- * <p>The token vocabulary is the same MusicXML {@code note-type-value} set used
- * for {@code <type>}, so the tokens come from {@link NoteTypeMapping} rather than
- * being redeclared here.
- *
- * <p>The same token/dot pair serves both the tempo {@code <metronome>} form
- * (beat-unit + per-minute) and the metric-modulation form
- * (two {@code <metronome-note>}s related by {@code <metronome-relation>}) —
- * see {@code MusicXmlWriter#writeTempoDirection} and
- * {@code MusicXmlWriter#writeMetricModulationDirection}.
  */
 final class BeatUnitMapping {
 
@@ -98,13 +88,7 @@ final class BeatUnitMapping {
     // Value types
     // -------------------------------------------------------------------------
 
-    /**
-     * Carries the MusicXML beat-unit token and dot count for a {@link BeatUnit}.
-     */
     record BeatUnitEntry(String token, int dotCount) {}
 
-    /**
-     * Reverse-map key: a MusicXML beat-unit token paired with its dot count.
-     */
     private record BeatUnitKey(String token, int dotCount) {}
 }

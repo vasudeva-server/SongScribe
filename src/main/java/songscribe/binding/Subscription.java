@@ -20,24 +20,11 @@
 package songscribe.binding;
 
 /**
- * A registered observation, handed back by {@link ObservableValue#observe} so the
- * registrant can undo it.
- *
- * <p>Holding one of these is the only way to stop observing. An observation that
- * nobody cancels lives as long as the value it observes, which for a Swing control
- * is as long as the dialog holding it.
+ * A registered observation, handed back by {@link ObservableValue#observe}. One that nobody
+ * cancels lives as long as the value it observes.
  */
 public interface Subscription {
 
-    /**
-     * Ends the observation, so the registered action is not run again.
-     *
-     * <p>Idempotent: a second and every later call is a no-op, never an error. That
-     * is what lets an owner cancel unconditionally on teardown without tracking
-     * whether some earlier path already did.
-     *
-     * @effects releases the observation. The observed value keeps notifying its
-     *     other observers; only this one is detached.
-     */
+    /** Idempotent: a later call is a no-op, so an owner may cancel unconditionally on teardown. */
     void cancel();
 }

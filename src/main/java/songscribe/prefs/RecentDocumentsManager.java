@@ -42,10 +42,6 @@ public final class RecentDocumentsManager {
         loadFromPrefs();
     }
 
-    /**
-     * Loads the RECENT_FILES pref into {@code paths}, skipping malformed entries
-     * and persisting if any non-existent paths were pruned.
-     */
     private void loadFromPrefs() {
         paths.clear();
         var strings = Prefs.getStringList(PrefsKey.RECENT_FILES);

@@ -26,9 +26,6 @@ package songscribe.layout;
  */
 public enum SpanEnd {
 
-    /** The end nearer the start of the line. */
     LEFT,
-
-    /** The end nearer the end of the line. */
     RIGHT
 }

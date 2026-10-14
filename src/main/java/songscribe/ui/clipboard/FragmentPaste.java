@@ -35,43 +35,13 @@ import songscribe.dom.StaffElementRun;
  * Lands a fragment on a line: the paste itself, once the gestures around it have settled what
  * lands and where, and that it fits.
  *
- * <p>Every paste runs the same sequence, in this order:
+ * <p>The order of the steps is forced. The straddle rule and the destination removals read
+ * indices of the line as it stood before the paste, so they precede the deletion and the
+ * insertion. The target rule and the report entries read the fragment's spans through their
+ * anchors' line, so they follow the insertion. Every clone is in before the first span is added,
+ * because a span added while its endpoints carry no line resolves its indices against nothing.
  *
- * <ol>
- *   <li>Sweep the key changes the fragment's key strands on every line inheriting past this
- *       one.</li>
- *   <li>Reconcile the fragment's spans against the line ({@link PasteSpanReconciliation#reconcile},
- *       the straddle rule).</li>
- *   <li>Remove the destination spans the paste straddles, each reported.</li>
- *   <li>Delete the range a paste-replace replaces.</li>
- *   <li>Insert the fragment's elements.</li>
- *   <li>Settle the fragment's spans against the line as the insertion left it
- *       ({@link PasteSpanReconciliation#settle}, the target rule).</li>
- *   <li>Report every fragment span the paste leaves out.</li>
- *   <li>Add the settled spans.</li>
- *   <li>Sweep the key changes the fragment's key strands on this line.</li>
- * </ol>
- *
- * <p>The order is forced. The straddle rule and the destination removals read indices of the
- * line as it stood before the paste, so they come before the deletion and the insertion. The
- * target rule and the report entries read the fragment's spans through their anchors' line, so
- * they come after the insertion; a refused span is never added, so it needs no undo of its own.
- * Every clone is in before the first span is added, because adding a span re-parents only the
- * span: a span added while its endpoints still carry no line resolves its indices against
- * nothing, and the hairpin merge {@link Span#addTo} runs reads those same indices.
- *
- * <p><b>The stranding sweeps bracket the paste.</b> The key the fragment leaves the line in
- * reaches every line inheriting past it, and a key change it leaves restating the key in effect
- * is removed, with the element it is paired with, in the paste's own undo step. The ranges are
- * computed against the line before any mutation. Those on the other lines are swept first,
- * since nothing in the paste moves them. Those on this line are swept last, shifted by what the
- * paste moved them by, so every index the paste itself resolves is still the one it was measured
- * against.
- *
- * <p>A fragment with no elements — one whose only content was a key change restating the key in
- * effect, with its barline — places nothing. Its paste is the stranding sweep, the deletion a
- * paste-replace owes, and the report of any span it left out; the straddle rule, which exists
- * because material lands inside a span, does not run.
+ * <p>A fragment with no elements places nothing, and the straddle rule does not run.
  */
 public final class FragmentPaste {
 
@@ -176,10 +146,6 @@ public final class FragmentPaste {
         stranding.sweepDeferred(line, insertIndex + clones.size() - successorIndex);
     }
 
-    /**
-     * Reports each of {@code strandedSpans}, on {@code line} when some element it covered landed
-     * there.
-     */
     private static void reportStranded(Line line, List<Fragment.StrandedSpan> strandedSpans) {
         var song = line.getSong();
 

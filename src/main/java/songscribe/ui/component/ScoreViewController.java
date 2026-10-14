@@ -125,7 +125,6 @@ import songscribe.util.UIUtils;
 
 /**
  * Coordinates message handling for the ScoreView component.
- * Handles all @Handler methods for messages posted to the MessageCenter.
  */
 public final class ScoreViewController {
 
@@ -192,13 +191,9 @@ public final class ScoreViewController {
     }
 
     /**
-     * Syncs the preview element with the selected duration or bar action.
-     * <p>
-     * Delegates to {@link EditModeManager#makePreviewElement()}, which prefers the selected
-     * action's type but falls back to a default type when neither action group has a selection.
-     * That fallback matters: a delete discards the saved action states, which can leave both
-     * groups deselected, and without it edit mode would be left with no preview element at all
-     * and no way to ever recreate one.
+     * {@link EditModeManager#makePreviewElement()} must fall back to a default type when neither
+     * action group has a selection: a delete can leave both deselected, and edit mode would
+     * have no preview element and no way to recreate one.
      */
     private void syncPreviewElementWithSelectedDuration() {
         score.setPreviewElement(EditModeManager.makePreviewElement());
@@ -221,8 +216,7 @@ public final class ScoreViewController {
     }
 
     /**
-     * The index of the line that has a line selection, for a caller already inside a
-     * precondition that guarantees one is selected.
+     * For a caller already inside a precondition that guarantees a line is selected.
      */
     private int requireSelectedLine() {
         var selectedLine = selectionCoordinator.getSelectedLine();
@@ -260,33 +254,13 @@ public final class ScoreViewController {
     }
 
     /**
-     * Shared shell for a command that acts on the last insertion: beam, tie, glissando and fall
-     * all gate on the same two preconditions and answer for the outcome under the same rule,
-     * differing only in which operation they run.
+     * {@code MODIFIED} re-points the key at the element just acted on, so a second press toggles
+     * the same pair back off; {@code REFUSED} beeps; {@code REPORTED} is silent because an error
+     * dialog is already on screen.
      *
-     * <p>{@code operation} performs the edit and reports what it did. Each outcome has exactly
-     * one response: {@code MODIFIED} re-points the key at the element it just acted on, so a
-     * second press toggles the same pair back off; {@code REFUSED} beeps, because a silent
-     * failure leaves the user unable to tell the press registered at all; {@code REPORTED} says
-     * nothing, because an error dialog is already on screen and a beep as it is dismissed reads
-     * as a second, separate failure.
-     *
-     * <p>Re-pointing is safe here, and only here, because message posting is synchronous: the
-     * operation has returned, so its bracket has closed and the notification that cleared the
-     * slot has already been delivered. That is what lets the outcome be observed rather than
-     * predicted — an operation cannot arm ahead of its own gate without leaving the slot armed
-     * on the refusing paths, where no commit ever arrives to consume it.
-     *
-     * <p>{@code targetAction} is the menu action the key falls through to when the binding is
-     * disabled, and supplies the Tier-A undo label through the same
-     * {@code UndoController.withPendingOpName} bracket {@code UIAction.actionPerformed} uses.
-     * These commands arrive from key bindings that bypass {@code UIAction} entirely, so without
-     * it the step falls through to {@code UndoController.opNameKey}'s mutation-kind fallback and
-     * the key labels the very same edit differently from the menu action that also performs it —
-     * "Undo Beaming" against the menu's "Undo Toggle Beam". Reading the label off the action is
-     * what makes those two agree by construction, and it already answers {@code null} for the
-     * Tier-B operations that label their own bracket ({@code SlideOperations} does, via
-     * {@code OpNames}).
+     * <p>{@code targetAction} supplies the undo label, because these key bindings bypass
+     * {@code UIAction} and would otherwise label the edit differently from the menu action that
+     * also performs it.
      */
     private void handleLastInsertionCommand(
         UIAction targetAction,
@@ -552,13 +526,6 @@ public final class ScoreViewController {
         repaintDebounce.trigger();
     }
 
-    /**
-     * The union, over this notification's mutations, of the lines {@code reachedBy} answers for
-     * each, or an empty set when it answers none for every one of them.
-     * <p>
-     * A set rather than a list because two mutations in one batch routinely reach the same
-     * lines, and because the panel loop asks membership rather than order.
-     */
     private static Set<Line> linesReached(
         SongDidChangeNotification message, Function<Mutation, List<Line>> reachedBy) {
         Set<Line> reach = null;
@@ -579,30 +546,17 @@ public final class ScoreViewController {
     }
 
     /**
-     * Every line whose drawn key content this notification's mutations moved, or an empty set
-     * when none of them moves a key.
-     * <p>
-     * A key move's layout effect reaches past the line the mutation names. It runs
-     * forward through every line that inherits the moved key — each of whose headers is solved
-     * from the key it runs in — and back one line, whose trailing space is solved from the
-     * cautionary it leads into. Without this the line before the change redraws its cautionary
-     * from the live document while keeping the spacing it was solved with, and an inheriting line
-     * goes on drawing the key it was in before the edit.
-     * <p>
-     * {@link Song#keyMoveReach} is the one answer; this only unions it over the batch, where a
-     * key change and the accidentals the chain walk restamps after it routinely reach the same
-     * lines.
+     * A key move's layout effect reaches forward through every line inheriting the moved key and
+     * back one line, whose trailing space is solved from the cautionary it leads into; without
+     * those, such lines keep stale spacing or the old key.
      */
     private static Set<Line> keyMoveReach(SongDidChangeNotification message) {
         return linesReached(message, message.getSong()::keyMoveReach);
     }
 
     /**
-     * Returns whether the notification carries any mutation that requires line layout
-     * invalidation: line-scoped element changes (including per-note lyric edits, which
-     * arrive as {@code ElementModification} with {@code ElementField.LYRIC}), or line
-     * insert/delete. Song-wide {@code LyricsChange} mutations target legacy text
-     * fields and do not affect rendered layout.
+     * Song-wide {@code LyricsChange} mutations target legacy text fields and do not affect
+     * rendered layout.
      */
     private static boolean hasLineLayoutMutation(SongDidChangeNotification message) {
         for (var mutation : message.getMutations()) {
@@ -617,15 +571,8 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns whether the notification carries any mutation that changes how <em>every</em>
-     * line is laid out, and so costs the whole song a re-solve.
-     * <p>
-     * A font or layout-property change reaches every line by definition. A metadata change
-     * reaches every line only when it redefined the song's beat, which regroups beams and
-     * revalidates tuplets throughout. The rest of the metadata — the title, the number, the
-     * subtitle, the attribution, the footnotes, and a tempo edit that only changed how the
-     * marking reads — is drawn outside the staves or on line 0 alone, and is dealt with by
-     * {@link #invalidateMetadataViews} at the cost of the one line it belongs to.
+     * A metadata change reaches every line only when it redefined the song's beat; the rest is
+     * drawn outside the staves or on line 0 alone (see {@link #invalidateMetadataViews}).
      */
     private static boolean invalidatesEveryLine(SongDidChangeNotification message) {
         for (var mutation : message.getMutations()) {
@@ -642,12 +589,9 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns whether {@code change} is a tempo change that redefined the song's beat.
-     * <p>
-     * {@link MetadataField#TEMPO} is one coarse field covering both the tempo type — the beat —
-     * and how the tempo is displayed, so the field alone cannot answer this and the recorded
-     * values have to. The casts hold because {@link MetadataChange}'s constructor validates
-     * every value against {@link MetadataField#getExpectedType()}.
+     * {@link MetadataField#TEMPO} covers both the beat and its display, so the recorded values
+     * decide. The casts hold because {@link MetadataChange}'s constructor validates every value
+     * against {@link MetadataField#getExpectedType()}.
      */
     private static boolean redefinesBeat(MetadataChange change) {
         return change.field() == MetadataField.TEMPO
@@ -655,18 +599,8 @@ public final class ScoreViewController {
     }
 
     /**
-     * Invalidates what the metadata in {@code message} is actually drawn by: the header and
-     * footer components that carry it, and line 0, the only line that lays out the attribution
-     * block and the tempo mark (see {@code LineComponent.performLayout}).
-     * <p>
-     * The header and footer components measure their text on every sizing pass, so they have no
-     * cache to clear — they only have to be marked invalid, so that the {@link
-     * ScoreView#relayoutPage} the caller ends on measures them afresh instead of being handed the
-     * size they had before the edit.
-     * <p>
-     * Runs whatever the staff branch above decided, since a batch can carry a metadata change
-     * beside a line-scoped one. Invalidating line 0 a second time when that branch already did
-     * costs nothing.
+     * Runs whatever the staff branch decided, since a batch can carry a metadata change beside a
+     * line-scoped one.
      */
     private static void invalidateMetadataViews(SongDidChangeNotification message, MainPanel mainPanel) {
         var firstLineAffected = false;
@@ -702,7 +636,6 @@ public final class ScoreViewController {
         }
     }
 
-    /** Drops {@code component}'s cached size so the next layout pass measures it afresh. */
     private static void invalidate(JComponent component) {
         component.invalidate();
         component.repaint();
@@ -824,36 +757,9 @@ public final class ScoreViewController {
     }
 
     /**
-     * Deletes whatever the Backspace / Delete keystroke should delete, dispatching on what is
-     * selected. The lyric branch owns its own cleanup and returns; every other branch falls
-     * through to the shared tail.
-     *
-     * <p>The branches, checked in order:
-     *
-     * <ul>
-     *   <li>A selected {@code HitTarget.Lyric} clears the lyric via {@code modifyElement(LYRIC)},
-     *       then restores action states, clears the selection, repaints and returns — it does not
-     *       reach the shared tail.
-     *   <li>A non-null element range deletes it with {@code deleteElementRange()}. A tie whose end
-     *       note the range takes is untied with it.
-     *   <li>A non-null selected target dispatches on its kind in {@code deleteSelectedTarget()}: a
-     *       slide, articulation or attachment goes through {@code modifyElement}; every span kind
-     *       — ending, trill, hairpin, beam, tuplet — through its own {@code removeFrom}; a tie
-     *       through {@code removeTie}, once, on its anchor's line, even when it crosses a line
-     *       break. An attachment resolves further to its own field (fermata, dynamic,
-     *       annotation, beat change, tempo change).
-     *   <li>Otherwise, if {@code canDeleteLine()} allows it, the line itself is removed. Taking a
-     *       line out moves the key every following line inherits, so this branch removes with it
-     *       any mid-line key change the move strands, exactly as an inserted key change does.
-     * </ul>
-     *
-     * <p>The two branches that move a key — the element range and the line — compute what they
+     * The two branches that move a key — the element range and the line — compute what they
      * strand before opening a bracket and sweep it inside, so the stranded key changes and the
-     * deletion are one undo step. Neither asks anything: the song's chain walk after the bracket
-     * closes re-decides every note the deletion reaches.
-     *
-     * <p>Every branch but the lyric one falls through to the shared tail, which restores the
-     * selected action states and deselects the score.
+     * deletion are one undo step.
      */
     void handleDelete() {
         var song = score.getSong();
@@ -938,15 +844,10 @@ public final class ScoreViewController {
     }
 
     /**
-     * Deletes the selected target from {@code line}, each variant in its own
-     * modification bracket so the undo step is named after what was deleted.
-     * <p>
-     * Every notation object that can be directly selected is deleted here, each through the
-     * tracked removal API that owns it, so Delete and the object's own toolbar toggle can
-     * never disagree. The two remaining selectable kinds are deliberately a no-op rather than
-     * falling through to the whole-line delete.
-     * <p>
-     * {@link #handleDelete} carries the diagram of how a keystroke reaches each arm below.
+     * Each variant is deleted in its own modification bracket so the undo step is named after
+     * what was deleted, through the tracked removal API that owns it, so Delete and the
+     * object's toolbar toggle cannot disagree. The two remaining selectable kinds are
+     * deliberately a no-op rather than falling through to the whole-line delete.
      */
     private void deleteSelectedTarget(Line line, HitTarget.Selectable target) {
         switch (target) {
@@ -1031,12 +932,7 @@ public final class ScoreViewController {
     }
 
     /**
-     * Resolves {@code owner}'s index on {@code line}, or null when there is no owner or it is
-     * no longer on the line.
-     * <p>
-     * Both failures are logged because every caller silently swallows the user's keystroke when
-     * this returns null, and a Delete that does nothing with no diagnostic is the worst outcome
-     * this feature can produce.
+     * Null when there is no owner or it is no longer on the line.
      */
     private static @Nullable Integer resolveOwnerIndex(Line line, @Nullable StaffElement owner) {
         if (owner == null) {
@@ -1053,15 +949,8 @@ public final class ScoreViewController {
         return line.getElementIndex(owner);
     }
 
-    /**
-     * What a single attachment removal changes on its owner element: the field the mutation is
-     * recorded under, and the mutation itself.
-     */
     private record AttachmentRemovalPlan(ElementField field, Runnable mutator) {}
 
-    /**
-     * Deletes {@code attachment} from its owner element on {@code line}.
-     */
     private void deleteAttachment(Line line, Attachment attachment) {
         var element = attachment.owner();
         var elementIndex = resolveOwnerIndex(line, element);
@@ -1092,25 +981,8 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns the key changes a deletion of {@code bounds} strands, on {@code line} and on every
-     * line inheriting past it. Pure and pre-mutation: callers compute it <b>before</b> opening a
-     * modification bracket and hand it to {@link #deleteElementRange}, which sweeps it inside.
-     *
-     * <p>The range is widened exactly as {@link Line#deleteRange} widens it — a paired grace
-     * note before the range does not survive its host, and a trailing breath mark, or the barline a
-     * key change sits behind, goes with the range — so the key changes counted are the ones the
-     * deletion really removes.
-     *
-     * <p><b>The stranding is more than this line.</b> A deletion that takes a mid-line key change
-     * with it moves the key every following line inherits, so it strands what an inserted key
-     * change strands, ending where the inheritance chain does. A deletion that removes no key
-     * change leaves the line's end key where it was, so {@link KeyChangeStranding#ofMidLineEdit}
-     * reaches nothing past this line — which is why it is computed unconditionally rather than
-     * behind a test for what the range holds. See {@code docs/key-changes.md}.
-     *
-     * @param line   the line the deletion happens on
-     * @param bounds the range that really goes
-     * @return the stranding the deletion owes; empty on every line when it moves no key
+     * Callers compute it <b>before</b> opening a modification bracket and hand it to
+     * {@link #deleteElementRange}, which sweeps it inside. See {@code docs/key-changes.md}.
      */
     private static KeyChangeStranding deletionStranding(Line line, StaffElementRun.EffectiveRange bounds) {
         var range = bounds.range();
@@ -1126,21 +998,15 @@ public final class ScoreViewController {
     }
 
     /**
-     * Sweeps the key changes a deletion of {@code range} on {@code line} strands, then deletes
-     * that range through {@link Line#deleteRange}. Callers are responsible for clearing the
-     * selection before calling this.
+     * Callers clear the selection first and open the outermost bracket, which names the undo
+     * step; the bracket opened here only nests.
      * <p>
-     * Names no undo step of its own: every caller opens the outermost bracket and names the
-     * step there, and the op-name is captured only at the outermost bracket, so the bracket
-     * opened here only nests.
+     * Not fit-gated: the range freed the head and accidental of the note after it, so the line
+     * can never get wider.
      * <p>
-     * Deletion is not fit-gated: the song's chain walk after the bracket closes may write an
-     * accidental on the first note after the range at a position the range held one at, but the
-     * range freed that note's head and its accidental, so the line can never get wider.
-     * <p>
-     * The stranding is the caller's, in {@code stranding}, computed before any bracket opens
-     * against the pre-removal line, which is why it is swept before the range goes: its ranges
-     * name pre-removal indices, all past the range, which the removal would move.
+     * {@code stranding} is computed by the caller before any bracket opens, against the
+     * pre-removal line; its ranges name pre-removal indices, so it is swept before the range
+     * goes.
      */
     private void deleteElementRange(
         Line line,
@@ -1154,35 +1020,20 @@ public final class ScoreViewController {
     }
 
     /**
-     * Outcome of {@link #tryInsertFragment}. Only {@link #INSERTED} means the line was mutated;
-     * every other constant leaves it untouched.
+     * Only {@link #INSERTED} means the line was mutated.
      */
     public enum FragmentInsertOutcome {
         /** The paste happened, or the gesture was spent on a fragment that reduced to nothing. */
         INSERTED,
-        /** The fit gate refused the paste and the "line full" error was shown. */
         LINE_FULL,
-        /** The clipboard holds nothing. */
         EMPTY,
-        /** The user declined a confirm about the paste itself, so the gesture is over. */
         CANCELLED,
-        /**
-         * An error alert was shown about the chosen point, nothing was mutated, and the user may
-         * pick another point.
-         */
+        /** The user may pick another point. */
         DECLINED_BY_ALERT
     }
 
-    /** Index of the "Remove & paste" button in {@link #confirmRemoveLeadingBreathMark}'s options. */
     private static final int REMOVE_AND_PASTE_OPTION = 0;
 
-    /**
-     * Confirms removing the breath mark a fragment leads with, when the line cannot take it at
-     * the chosen point, so the rest of the fragment can be pasted.
-     *
-     * @return {@code true} when the user chose "Remove & paste"; {@code false} on Cancel or a
-     *     closed dialog
-     */
     private static boolean confirmRemoveLeadingBreathMark() {
         var cancelLabel = Strings.get(Strings.BUTTON_CANCEL);
         var removeLabel = Strings.get(Strings.BUTTON_REMOVE_AND_PASTE);
@@ -1200,77 +1051,26 @@ public final class ScoreViewController {
     }
 
     /**
-     * Inserts the clipboard fragment into {@code line} at {@code insertIndex},
-     * first deleting {@code deleteRange} when present (paste-replace). The fit
-     * check runs against the pre-delete line, so on {@code LINE_FULL} nothing has
-     * been mutated: the "line full" error is shown, a caller-opened bracket stays
-     * empty, and no notification is posted. Callers decide recovery.
+     * Must be called inside a modification bracket, so paste-replace's delete and insert are one
+     * undo step. A refusal mutates nothing, leaves the caller's bracket empty and posts no
+     * notification; callers decide recovery.
      *
-     * <p><b>A breath mark stands only immediately after a duration element</b>, and the paste
-     * keeps that on both of its ends before the fit gate runs. A fragment leading with a breath
-     * mark the line cannot take at {@code insertIndex} ({@link StaffElementRun#canLeadRunAt}) is
-     * refused with the "A breath mark cannot be placed here" alert and {@code DECLINED_BY_ALERT}
-     * when the breath mark is the whole fragment; otherwise a confirm offers "Remove &amp;
-     * paste", which drops the leading breath mark and pastes the rest, and Cancel, which returns
-     * {@code CANCELLED}. A fragment whose last element may not stand before the breath mark at
-     * {@code insertIndex} ({@link StaffElementRun#canTrailRunAt}) is refused with the "These
-     * elements may not be inserted before a breath mark" alert and {@code DECLINED_BY_ALERT}.
-     * Both refusals leave the line untouched.
+     * <p>A breath mark stands only immediately after a duration element, and no bar line stands
+     * first in the song ({@link SongStart}); the paste enforces both on the fragment's ends
+     * before the fit gate runs. At the song-start slot, leading bar lines are dropped, and the
+     * key of the last key change dropped with them becomes {@code line}'s own key, inside the
+     * caller's bracket.
      *
-     * <p><b>No bar line stands first in the song</b> ({@link SongStart}). When {@code insertIndex}
-     * is the song-start slot ({@link StaffElementRun#isSongStartAt}) and the fragment starts with
-     * one or more bar lines, the paste drops each of them, with the key change that may sit
-     * behind one, and pastes the rest. The drop happens before the breath-mark test and the fit
-     * gate, so every later step sees the run that lands. It asks nothing: once the paste is
-     * certain to happen, it records one {@link SongStart#removedEntry} for {@code line} into the
-     * open bracket's report, and a fragment span with an endpoint on a dropped element is not
-     * pasted and is reported with the other spans the paste leaves out. When the drop takes a key
-     * change, the key of the last one it takes becomes {@code line}'s own key
-     * ({@link Line#setKey}), set inside the caller's bracket ahead of the fragment, so the paste
-     * and the key move are one undo step; the key reaches the lines inheriting from {@code line}
-     * as a key set by hand does, and the paste sweeps each key change it then leaves restating
-     * the key in effect.
+     * <p>A fragment carrying a key change re-keys the lines inheriting past it, so the paste
+     * removes every key change it leaves restating the key in effect. A line a moved key leaves
+     * overflowing is <b>not</b> fit-gated.
      *
-     * <p>Must be called inside a modification bracket — both paste-replace and
-     * paste-mode placement supply their own, so delete + insert form one undo step.
+     * <p>The paste reports every span it removes or leaves out into the open bracket's report.
      *
-     * <p><b>The paste is gated on the accidentals it will draw.</b> The chain walk runs over a
-     * projection of the destination line with the clones in place, so the fit check measures each
-     * clone as it will sound where it lands and every later note whose chain the paste changes —
-     * on this line and, through {@link AccidentalFitGate}, on any other line a restamp widens.
-     * The projection ({@link ProjectedEdit}) starts the line in the key the paste leaves it
-     * starting in — the moved key when the drop at the song start takes a key change, and the
-     * line's running key otherwise — so the walk decides each accidental, and the fit check
-     * measures the line's opening key signature, in that key, although the key itself moves only
-     * once the paste lands.
-     *
-     * <p><b>A fragment carrying a key change re-keys more than this line.</b> The key it
-     * leaves the destination line in reaches every line inheriting past it, so the paste removes
-     * every key change it leaves restating the key already in effect — one of the fragment's own
-     * included — together with the barline behind it, exactly as a key change written by hand
-     * does. A line a moved key leaves overflowing, with no restamp on it, is <b>not</b> fit-gated:
-     * it renders overflowing and flagged, which is what the program does everywhere outside the
-     * edits {@code KeyEditFitCalculator} covers.
-     *
-     * <p><b>The paste reports every span it removes or leaves out.</b> Once the gates pass,
-     * {@link FragmentPaste#paste} lands the fragment: it records into the open bracket's report
-     * each destination span the paste lands inside, each fragment span a span kind's rule drops
-     * or refuses where it landed, and each fragment span whose endpoint went with a key change the
-     * paste dropped. The report is shown when the caller's bracket closes. A refusal reports
-     * nothing.
-     *
-     * @param line   The destination line
-     * @param target Where the fragment lands: a plain index, or a range this paste deletes
-     *               first and the index it leaves the fragment at
-     * @return {@code EMPTY} when the clipboard holds nothing; {@code LINE_FULL} when the fit gate
-     *     refused the paste; {@code DECLINED_BY_ALERT} when a breath-mark alert refused the chosen
-     *     point and the notator may pick another; {@code CANCELLED} when the notator declined a
-     *     confirm; and {@code INSERTED} when the paste happened. {@code INSERTED} also covers the
-     *     case where the fragment reduced to nothing because every key change it carried restates
-     *     the key already running here, or because it held nothing but bar lines dropped at the
-     *     start of the song — the gesture is spent and the caller should complete it, even though
-     *     no element was placed; a paste-replace has still deleted its range, and a dropped key
-     *     change has still moved its key. Only {@code INSERTED} means the line was mutated
+     * @return {@code INSERTED} also when the fragment reduced to nothing (every key change it
+     *     carried restates the running key, or it held only bar lines dropped at the start of
+     *     the song): the gesture is spent and the caller should complete it. Only
+     *     {@code INSERTED} means the line was mutated
      */
     public FragmentInsertOutcome tryInsertFragment(Line line, StaffElementRun.InsertionTarget target) {
         var fragment = clipboardManager.getFragment();
@@ -1400,7 +1200,6 @@ public final class ScoreViewController {
         return FragmentInsertOutcome.INSERTED;
     }
 
-    /** Whether the first element of {@code fragment} is a bar line; {@code false} when it is empty. */
     private static boolean leadsWithBar(Fragment fragment) {
         var elements = fragment.elements();
 
@@ -1408,24 +1207,15 @@ public final class ScoreViewController {
     }
 
     /**
-     * What a paste changes in the song on its own, beyond landing its fragment.
-     *
-     * @param entries  the change-report entries to record
-     * @param movedKey the key a dropped key change moves onto the destination line, or
-     *                 {@code null} when the paste moves none
+     * @param movedKey {@code null} when the paste moves none
      */
     private record SongChanges(List<RecordedChange> entries, @Nullable Key movedKey) {
     }
 
     /**
-     * Records {@code songChanges} into the open bracket's report, makes their moved key the
-     * destination line's own key, then lands what is left of a paste through
-     * {@link FragmentPaste#paste}. The changes are made only here, once the paste is certain to
-     * happen, so a refused paste leaves the bracket empty.
-     *
-     * <p>The key is set before the fragment lands, so the paste measures the key changes it
-     * strands — on the line from where the fragment ends, and on every line inheriting past it —
-     * against the key the line now starts in, and sweeps them as a key set by hand sweeps them.
+     * The changes are made only once the paste is certain to happen, so a refused paste leaves
+     * the bracket empty. The key is set before the fragment lands, so the stranded key changes
+     * are measured against the key the line now starts in.
      */
     private static void landFragment(
         Line line, StaffElementRun.InsertionTarget target, Fragment.Reduction reduction,
@@ -1501,11 +1291,6 @@ public final class ScoreViewController {
         }
     }
 
-    /**
-     * Selects every element on the active line. When the line itself is selected, this
-     * swaps that whole-line selection for a selection of its elements — an empty line has
-     * nothing to swap to, so its line selection stands.
-     */
     @Handler
     public void handleSelectAllElements(SelectAllElementsCommand message) {
         if (selectionCoordinator.getActiveLine() != null) {

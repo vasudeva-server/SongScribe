@@ -23,48 +23,23 @@ package songscribe.ui.renderer;
 
 import songscribe.dom.Song;
 
-/**
- * Interface providing render-time data for the Renderer.
- * <p>
- * RenderContext decouples Renderer from ScoreView, enabling:
- * <ul>
- *   <li>Pure rendering: (model + layout) → pixels</li>
- *   <li>Testability: Mock context for unit tests</li>
- *   <li>Clean separation of concerns</li>
- * </ul>
- * <p>
- * ScoreView implements this interface to provide rendering data.
- */
 public interface RenderContext {
 
     // -------------------------------------------------------------------------
     // Core data
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the song (music model) to render.
-     */
     Song getSong();
 
     // -------------------------------------------------------------------------
     // Coordinate system
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the X position where key signature accidentals are drawn.
-     */
     int getLeadingKeysPosPx();
 
     // -------------------------------------------------------------------------
     // Selection state (for highlighting)
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns whether the element at the given index is selected.
-     *
-     * @param elementIndex The element index within the line
-     * @param lineIndex    The staff line index
-     * @return true if the element is selected
-     */
     boolean isElementSelected(int elementIndex, int lineIndex);
 }

@@ -1,7 +1,8 @@
 # Classifying a Contract, and the Confirmation Checkpoint
 
-The contracts step writes every contract the target earns. Most can be written
-straight through; some may not be decided alone. This file is how to tell them
+The contracts step writes every clause that `.claude/guides/contracts.md` allows
+and the target needs, and every full contract a test derives from. Most can be
+written straight through; some may not be decided alone. This file is how to tell them
 apart and what to do with the second kind.
 
 The rule this implements is `~/.claude/rules/development.md`:
@@ -45,9 +46,7 @@ The promise is determinable from something you can point at:
   `docs/messages.md`, `docs/undo.md`, `docs/lifecycle.md`. If the arrangement is
   already described there, the method contract cites it rather than re-deciding
   it;
-- **collections, parsing, string handling, serialization round-trips**, and
-  dispatch or delegation whose only promise is *this call reaches that
-  collaborator*.
+- **collections, parsing, string handling, serialization round-trips.**
 
 Pointing at the source is the qualifying move. If you cannot name what makes the
 promise true, it is not mechanical — you are reading it off the implementation,

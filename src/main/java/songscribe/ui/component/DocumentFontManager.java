@@ -34,13 +34,8 @@ import songscribe.message.mutation.FontChange;
  * Owns one {@link ScoreView}'s document typography: the authoritative {@link DocumentFonts}
  * and the {@link LyricRenderMetrics} derived from the lyrics font.
  * <p>
- * The two live together because the metrics are a cache of the lyrics font's hyphen and space
- * widths, so every write to the fonts is a potential invalidation of the metrics.
- * {@link #applyFonts} is the single place that keeps them in step.
- * <p>
- * {@code ScoreView} is the only caller and exposes each operation below as a delegate. The
- * view's own deferred-init members ({@code song}, {@code mainPanel}) are reached back through
- * it rather than mirrored here, so there is exactly one answer to "is there a document yet".
+ * The metrics cache the lyrics font's hyphen and space widths, so every write to the fonts
+ * invalidates them; {@link #applyFonts} is the single place that keeps them in step.
  */
 final class DocumentFontManager {
 
@@ -59,10 +54,7 @@ final class DocumentFontManager {
     }
 
     /**
-     * Returns internal document font storage. Do not retain — the reference is swapped on
-     * each font change.
-     *
-     * @throws IllegalStateException if called before the fonts have been bootstrapped
+     * Do not retain: the reference is swapped on each font change.
      */
     DocumentFonts getFonts() {
         if (documentFonts == null) {
@@ -77,11 +69,8 @@ final class DocumentFontManager {
     }
 
     /**
-     * Installs new document fonts and cascades them through the component tree.
-     * <p>
-     * Called by the load path ({@link ScoreView#openFile} after {@link ScoreView#setSong}) and
-     * by new-document creation. Unlike {@link #setFonts}, this is not undoable and does not
-     * record a {@link FontChange} mutation — it establishes the starting state, not a user edit.
+     * Not undoable: records no {@link FontChange} mutation, since it establishes the starting
+     * state, not a user edit.
      */
     void installFonts(DocumentFonts fonts) {
         documentFonts = fonts;
@@ -89,18 +78,8 @@ final class DocumentFontManager {
     }
 
     /**
-     * Replaces the document fonts and cascades the change.
-     *
-     * <p>If {@code newFonts.equals(getFonts())} the call is a no-op: no mutation is
-     * recorded, no cascade runs.
-     *
-     * <p>Otherwise records a single {@link FontChange} mutation inside the song's
-     * modification bracket — a commit that changes multiple roles produces one undoable
-     * group, not one per role.
-     *
-     * <p><b>Cost:</b> each non-no-op call triggers a full {@link LyricRenderMetrics} rebuild
-     * and one Swing {@code revalidate()} pass. For batched changes, construct a single
-     * {@link DocumentFonts} and call this method once rather than role-by-role.
+     * Records a single {@link FontChange} mutation, so a commit that changes several roles is
+     * one undoable group.
      */
     void setFonts(DocumentFonts newFonts) {
         var oldFonts = getFonts();
@@ -118,12 +97,6 @@ final class DocumentFontManager {
         );
     }
 
-    /**
-     * Applies the current fonts to each JComponent leaf and rebuilds lyric render metrics.
-     * Each call triggers one {@link LyricRenderMetrics} rebuild and one Swing
-     * {@code revalidate()} pass on the ScoreView subtree. For batched font changes, build a
-     * single {@link DocumentFonts} and call {@link #setFonts} once rather than role-by-role.
-     */
     void applyFonts() {
         var fonts = getFonts();
         var mainPanel = scoreView.getMainPanel();
@@ -146,9 +119,7 @@ final class DocumentFontManager {
     }
 
     /**
-     * Returns the song-wide lyric metrics, or null when StaffPanel has not populated them yet.
-     * Unlike {@link #getLyricRenderMetrics()} this never exits: it is for callers that may run
-     * before the first layout and can space a projection as if the line had no lyrics.
+     * Null when StaffPanel has not populated them yet.
      */
     @Nullable LyricRenderMetrics findLyricRenderMetrics() {
         return lyricRenderMetrics;
@@ -164,9 +135,8 @@ final class DocumentFontManager {
     }
 
     /**
-     * Rebuilds {@link LyricRenderMetrics} from the current lyrics font if it has changed.
-     * Must be called before any line layout runs so that {@code LineComponent.performLayout}
-     * reads up-to-date hyphen and space widths.
+     * Must be called before any line layout runs, so layout reads up-to-date hyphen and space
+     * widths.
      */
     void rebuildLyricRenderMetrics() {
         // isInitialized() is ScoreView's "has a song" test. The metrics are song-wide, so

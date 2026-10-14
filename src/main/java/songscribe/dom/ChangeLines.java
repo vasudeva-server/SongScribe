@@ -24,28 +24,14 @@ package songscribe.dom;
  * place stays right whatever else the same edit or load does to the song before its report is
  * built.
  *
- * <p>Most changes are made on one line ({@link #on}). A tie across a line break names two lines:
- * the line its anchor is on, and the line after it. A mark that a damaged file opens on one line
- * and closes on a later one names every line from its start mark to its stop mark.
- *
  * @param first the line the change starts on
  * @param last  the line the change ends on
  * @invariant {@code first} and {@code last} are lines of one song
- * @invariant {@code last} is {@code first} or a later line of the song. The record does not
- *     check it, because every producer guarantees it: {@link #on} names one line; the tie rule
- *     names a tie's anchor line and the line its walk reaches, which is that line or the one
- *     after it; and the MusicXML reader names a span's start mark's line and the line of the
- *     stop mark that its forward walk reaches after the start. No line moves relative to
- *     another once a change on it is recorded
+ * @invariant {@code last} is {@code first} or a later line of the song; the record does not
+ *     check it, because every producer guarantees it
  */
 public record ChangeLines(Line first, Line last) {
 
-    /**
-     * Returns the place of a change made on {@code line} alone.
-     *
-     * @param line the line the change was made on
-     * @return the lines {@code line} to {@code line}
-     */
     public static ChangeLines on(Line line) {
         return new ChangeLines(line, line);
     }

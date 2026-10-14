@@ -40,15 +40,9 @@ import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
- * Renders per-element lyric syllable text beneath the staff.
- * <p>
- * Reads {@link LyricBoxLayout} entries from the current
- * {@link LayoutResult} and draws each syllable at the lyric
- * baseline provided by that line's own {@link LayoutResult}. It also draws the
- * {@link LintMark.MissingLyric} mark: the placeholder box
- * {@link LineInvariants#lintOn} says a "?" is drawn in, in
- * {@link LyricRenderMetrics#placeholderFont()} and {@link ScoreView#getLintColor()}, so the mark
- * stands exactly where the missing syllable would. Stateless.
+ * Renders per-element lyric syllable text beneath the staff, and the {@link LintMark.MissingLyric}
+ * "?" in the placeholder box {@link LineInvariants#lintOn} names, so the mark stands exactly
+ * where the missing syllable would.
  */
 public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
 

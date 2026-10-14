@@ -28,9 +28,7 @@ import songscribe.Strings;
 import songscribe.layout.AccidentalFitGate;
 
 /**
- * Tells the user why the fit gate refused an edit. The edited line's refusal is worded by each
- * edit, since it names what was being added; the refusal for another line is the same for every
- * edit, because the edit only changed which accidentals that line draws.
+ * Tells the user why the fit gate refused an edit.
  */
 public final class FitRefusals {
 
@@ -38,16 +36,7 @@ public final class FitRefusals {
         // Prevent instantiation - utility class with static methods only
     }
 
-    /**
-     * Answers whether {@code verdict} accepts the edit, and tells the user when it does not.
-     *
-     * @param verdict              the fit gate's verdict for the edit
-     * @param parent               the component to parent the alert on, or {@code null} for the
-     *                             default
-     * @param tellEditedLineFull   shows the edit's own alert for an edited line with no room
-     * @return {@code true} exactly when {@code verdict} is {@link AccidentalFitGate.Verdict#FITS}
-     * @effects on a refusal, shows one error alert
-     */
+    /** @param parent {@code null} for the default */
     public static boolean accepts(
         AccidentalFitGate.Verdict verdict, @Nullable Component parent, Runnable tellEditedLineFull) {
 

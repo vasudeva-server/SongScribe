@@ -42,24 +42,13 @@ import songscribe.ui.action.UIAction;
 /**
  * Keeps the toolbar actions in step with the score's selection.
  * <p>
- * A {@link UIAction} shows two things about the selection: whether it applies to what is
- * selected (enabled), and whether what is selected already carries its attribute (selected).
- * Both are derived here, and neither is a property of the selection itself — which is why none
- * of this lives on {@link SelectionCoordinator}, whose job is to know what is selected, not what
- * the toolbar should look like as a result.
- * <p>
- * <b>Reflecting and freezing are the same concern.</b> While something is selected, the actions
- * describe the selection rather than the user's standing choices — the duration button the user
- * picked before selecting, say. So the states are saved as a selection becomes active and
- * restored when it goes away, and reflection runs over exactly the same set of actions in
- * between. Splitting the two apart would leave the save/restore half owning a list of actions it
- * never reflects onto, for the sole benefit of the half that does.
- * <p>
- * The action lists are discovered once, by scanning {@link Actions} reflectively, and cached.
+ * While something is selected, the actions describe the selection rather than the user's
+ * standing choices, so their states are saved as a selection becomes active and restored when
+ * it goes away. Reflection runs over exactly the same set of actions as the save and restore.
  */
 public final class ActionReflector implements Disposable {
 
-    /** The selection this reflects. Read-only: nothing here changes what is selected. */
+    /** Read-only: nothing here changes what is selected. */
     private final SelectionCoordinator coordinator;
 
     // Lazy-initialized list of all reflectable actions discovered from Actions.
@@ -86,11 +75,7 @@ public final class ActionReflector implements Disposable {
         subscription = new MessageSubscription(this);
     }
 
-    /**
-     * Removes this reflector from the message bus. Idempotent.
-     *
-     * <p>Called by {@link SelectionCoordinator#dispose()}, which owns this instance.
-     */
+    /** Idempotent. */
     @Override
     public void dispose() {
         subscription.dispose();
@@ -100,9 +85,6 @@ public final class ActionReflector implements Disposable {
     // Action discovery
     // -------------------------------------------------------------------------
 
-    /**
-     * Scans all static fields in Actions for UIAction instances matching the given predicate.
-     */
     private <T> List<T> collectActions(Class<? extends T> type, Predicate<? super UIAction> filter) {
         var result = new ArrayList<T>();
 
@@ -159,10 +141,8 @@ public final class ActionReflector implements Disposable {
     }
 
     /**
-     * Lazily discovers all actions whose state needs to be saved/restored during selection.
-     * This includes reflectable actions (whose selected state reflects selection content)
-     * and non-reflectable actions with DISABLE_WHEN_BAR_SELECTED (whose enabled state
-     * may change due to mutual exclusivity).
+     * Includes non-reflectable actions with DISABLE_WHEN_BAR_SELECTED, whose enabled state
+     * may change due to mutual exclusivity.
      */
     private List<UIAction> getManagedActions() {
         if (managedActions == null) {
@@ -180,11 +160,6 @@ public final class ActionReflector implements Disposable {
     // Action state save/restore
     // -------------------------------------------------------------------------
 
-    /**
-     * Saves the current selected and enabled state of all managed actions.
-     * Does nothing if states have already been saved (prevents overwriting
-     * a previous save).
-     */
     public void saveActionStates() {
         if (!savedActionStates.isEmpty()) {
             return;
@@ -197,10 +172,6 @@ public final class ActionReflector implements Disposable {
         }
     }
 
-    /**
-     * Restores all managed actions to their previously saved states and clears
-     * the saved state map. Does nothing if no states have been saved.
-     */
     public void restoreActionStates() {
         if (savedActionStates.isEmpty()) {
             return;
@@ -221,18 +192,9 @@ public final class ActionReflector implements Disposable {
     }
 
     /**
-     * Restores only the selected state of all managed actions, leaving their enabled
-     * state untouched, then clears the saved state map.
-     * <p>
-     * This is the correct restore after a mutation such as a delete. The saved enabled
-     * states are stale — the song has changed, so each action must re-derive whether it
-     * applies to the new content. The saved selected states are not stale: they record
-     * which duration/bar button the user had chosen before selecting, which is user
-     * intent rather than a property of the song.
-     * <p>
-     * Discarding the selected states instead would latch both duration action groups
-     * empty for the rest of the session, because selection reflection deselects every
-     * duration button for a non-uniform selection and nothing else ever reselects one.
+     * The restore after a mutation such as a delete: saved enabled states are stale and
+     * re-derived, saved selected states are the user's intent and are kept. Discarding them
+     * would latch both duration action groups empty for the rest of the session.
      */
     public void restoreSelectedActionStates() {
         if (savedActionStates.isEmpty()) {
@@ -248,23 +210,14 @@ public final class ActionReflector implements Disposable {
         savedActionStates.clear();
     }
 
-    /**
-     * Clears saved action states without restoring them.
-     * Used when the operation that saved states completes successfully
-     * and the current state should be kept.
-     */
     public void clearSavedActionStates() {
         savedActionStates.clear();
     }
 
     /**
-     * Restores only the actions that lack the given flag to their previously saved state,
-     * then clears all saved states. Actions carrying the flag are left at their current state.
-     * <p>
-     * This is the restore for a mode that disables every action not declaring itself safe,
-     * such as grace mode with {@link UIAction.Flag#ENABLED_IN_GRACE_MODE}: the actions the mode
-     * disabled are exactly the ones lacking the flag, and those are put back, while the actions
-     * the user could still operate during the mode keep the state they now hold.
+     * The restore for a mode that disables every action lacking {@code flag}, such as grace mode
+     * with {@link UIAction.Flag#ENABLED_IN_GRACE_MODE}; actions carrying it keep their current
+     * state.
      */
     public void restoreActionStatesLackingFlag(UIAction.Flag flag) {
         if (savedActionStates.isEmpty()) {
@@ -312,38 +265,23 @@ public final class ActionReflector implements Disposable {
         }
     }
 
-    /**
-     * Reflects the current selection onto all reflectable toolbar actions.
-     * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
-     * the selection-changed message.
-     */
+    /** Fires at LOW_PRIORITY so it runs after all UIAction handlers. */
     @Handler
     public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
         triggerReflection();
     }
 
     /**
-     * Discards the reflection guard, so the next reflection recomputes from the elements now
-     * on the line rather than short-circuiting on an unchanged range.
-     * <p>
-     * Called by {@link SelectionCoordinator} alongside its own cache invalidation: an index
-     * names a different element once a mutation has shifted, replaced or removed what was
-     * there, so a range that compares equal to the last reflected one no longer describes the
-     * same content.
+     * Called with {@link SelectionCoordinator}'s cache invalidation: after a mutation a range
+     * equal to the last reflected one may no longer describe the same content.
      */
     void invalidateReflectionGuard() {
         lastReflectedSelection = null;
     }
 
     /**
-     * Re-reflects action state when a mutation changes the content of the
-     * selected line without changing the selection range.
-     * <p>
-     * An undo/redo (e.g. toggling a fermata or trill on the selected note, then
-     * undoing it) reverts the element's attributes but leaves the selection range
-     * intact. {@link #triggerReflection()} would short-circuit on the unchanged
-     * range and leave toggle actions stuck in their pre-undo checked state, so we
-     * clear the guard and force a fresh reflection.
+     * An undo/redo reverts attributes but leaves the range intact, so {@link #triggerReflection()}
+     * would short-circuit and leave toggle actions stuck; the guard is cleared.
      */
     @Handler
     public void songDidChangeReflectSelection(SongDidChangeNotification message) {
@@ -384,9 +322,6 @@ public final class ActionReflector implements Disposable {
         triggerReflection();
     }
 
-    /**
-     * Reflects the current selection onto all reflectable toolbar actions.
-     */
     private void triggerReflection() {
         var actions = getReflectableActions();
 
@@ -457,10 +392,6 @@ public final class ActionReflector implements Disposable {
         updateGraceNoteActionEnabled(hasGraceNote);
     }
 
-    /**
-     * Reflects a single element's attributes onto all reflectable toolbar actions.
-     * Used when grace note pairing is complete to mirror the host note's attributes.
-     */
     public void reflectElement(StaffElement element) {
         for (var reflectable : getReflectableActions()) {
             reflectable.setSelected(reflectionOf(reflectable, element) == Reflection.MATCHES);
@@ -469,29 +400,12 @@ public final class ActionReflector implements Disposable {
         updateGraceNoteActionEnabled(element.getType().isGraceNote());
     }
 
-    /** How one reflectable action stands toward one element. */
     private enum Reflection {
-        /** The action does not act on an element of this kind at all. */
         NOT_ADMITTED,
-
-        /** The action acts on this element, and the element already carries its attribute. */
         MATCHES,
-
-        /** The action acts on this element, and the element carries something else. */
         DIFFERS
     }
 
-    /**
-     * Narrows {@code element} to the type {@code reflectable} acts on and asks whether it already
-     * matches. Both questions live here so the element the match is asked about is the narrowed
-     * one, which is what the action's type argument promises and what a wildcard alone cannot hold
-     * across two separate calls.
-     *
-     * @param reflectable the action to interrogate
-     * @param element     the element to test
-     * @param <E>         the element type this action acts on, captured from {@code reflectable}
-     * @return how the action stands toward the element
-     */
     private static <E extends StaffElement> Reflection reflectionOf(
         UIAction.Reflectable<E> reflectable, StaffElement element) {
 

@@ -38,12 +38,6 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.STROKE;
 
-/**
- * Renders crescendo and diminuendo hairpins.
- * <p>
- * Crescendo: opens from left to right (gets louder)
- * Diminuendo: opens from right to left (gets softer)
- */
 public final class HairpinRenderer {
 
     // ==========================================================================
@@ -58,15 +52,9 @@ public final class HairpinRenderer {
     // Singleton instance
     private static final HairpinRenderer INSTANCE = new HairpinRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private HairpinRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static HairpinRenderer getInstance() {
         return INSTANCE;
     }
@@ -76,11 +64,7 @@ public final class HairpinRenderer {
     // ==========================================================================
 
     /**
-     * Computes the two wedge lines of a hairpin from its decoration layout.
-     *
-     * @param layout      The pre-computed layout (with offsets already applied)
-     * @param kind        Which hairpin this is — decides the wedge direction
-     * @param invariants  The line's rendering invariants
+     * @param layout The pre-computed layout (with offsets already applied)
      */
     static Line2D.Double[] computeHairpinLines(
         LayoutResult.DecorationLayout layout,
@@ -104,13 +88,8 @@ public final class HairpinRenderer {
     }
 
     /**
-     * Renders a single hairpin from its decoration layout, in the selection color when
-     * {@code hairpin} is the selected decoration.
-     *
-     * @param hairpin    The hairpin being rendered; its subtype decides the wedge direction
-     * @param layout     The pre-computed layout (with offsets already applied)
-     * @param g2         Graphics context with scale transform
-     * @param invariants The line's rendering invariants
+     * @param layout The pre-computed layout (with offsets already applied)
+     * @param g2     Graphics context with scale transform
      */
     private void renderSingleHairpin(
         Hairpin hairpin,
@@ -137,13 +116,6 @@ public final class HairpinRenderer {
         }
     }
 
-    /**
-     * Renders all hairpins (crescendo and diminuendo) for a line using layout results.
-     * <p>
-     * Iterates all {@link Hairpin} entries in the layout (both new spans and those
-     * bridged from legacy intervals during layout), reading each one's wedge direction
-     * from its own {@link Hairpin#getKind()}.
-     */
     public void renderHairpinsFromLine(
         Graphics2D g2,
         LineInvariants invariants

@@ -63,23 +63,13 @@ import songscribe.layout.LineLayoutProvider;
  * Builds the whole {@link ScorePartwise} graph for a {@link Song}: the header, the single
  * part, its measures, and then the adjustment passes that attach everything spanning more
  * than one node.
- *
- * <p>The graph is finished before any span is looked at: each span is walked once and attached
- * to the nodes it touches, through the handles {@link BuildIndex} recorded as the builders
- * emitted them.
- *
- * <p>Nothing here knows about files, streams or containers — it takes a {@code Song} and
- * returns a {@code ScorePartwise}. {@link MusicXmlSerializer} owns the transition to text, so
- * compressed {@code .mxl} output can reuse this class untouched.
  */
 final class ScorePartwiseBuilder {
 
-    /** {@code <part-name>} is emitted empty: SongScribe songs are single, unnamed parts. */
     private static final String EMPTY_PART_NAME = "";
 
     /**
-     * The {@code number} every tuplet bracket and wavy line carries. SongScribe has one span
-     * level, so no two are ever open at once and the number never has to distinguish them.
+     * SongScribe has one span level, so the number never has to distinguish spans.
      */
     private static final int SINGLE_SPAN_NUMBER = 1;
 
@@ -90,18 +80,8 @@ final class ScorePartwiseBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the complete {@code <score-partwise>} graph for {@code song}.
-     *
-     * <p>The emitted sequence is: movement info, identification,
-     * defaults, credits, a {@code <part-list>} holding one {@code <score-part id="P1">}, then
-     * the part itself.
-     *
-     * @param song the song to build
-     * @param fonts the document fonts, emitted under {@code <defaults>} and {@code <credit>}
-     * @param layoutProvider supplies the line geometry the glissando endpoints come from
-     * @param clock supplies the current date for the write-forward {@code <rights>} year and
-     *     {@code <encoding-date>}, so both are deterministic under test
-     * @return the finished graph, adjustment passes already applied
+     * {@code clock} supplies the date for the write-forward {@code <rights>} year and
+     * {@code <encoding-date>}, so both are deterministic under test.
      */
     static ScorePartwise build(
             Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider, Clock clock) {
@@ -136,13 +116,8 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Creates the {@code <part-list>} with its single {@code <score-part id="P1">} and the
-     * matching {@code <part>}, and returns the part.
-     *
-     * <p>{@code Part.setId} takes an {@code Object} because the attribute is an XML
-     * {@code IDREF}: the {@code ScorePart} instance itself is passed and JAXB resolves it to
-     * that part's {@code id}. Passing the string {@code "P1"} here marshals as a reference to
-     * nothing.
+     * The {@code ScorePart} instance itself is passed to {@code Part.setId} (an {@code IDREF});
+     * the string {@code "P1"} marshals as a reference to nothing.
      */
     private static ScorePartwise.Part buildPart(BuildContext context, ScorePartwise scorePartwise) {
         var factory = context.factory();
@@ -165,11 +140,6 @@ final class ScorePartwiseBuilder {
         return part;
     }
 
-    /**
-     * The empty-song fallback: one measure carrying only the song-level tempo
-     * {@code <direction>} and the {@code <attributes>} block — no {@code <print>} and no
-     * {@code <barline>}, since there is no line to start or to break.
-     */
     private static Measure buildEmptySongMeasure(BuildContext context) {
         var measure = MeasureBuilder.buildMeasure(context, MusicXmlUnits.FIRST_MEASURE_NUMBER);
         var items = measure.getNoteOrBackupOrForward();
@@ -184,10 +154,6 @@ final class ScorePartwiseBuilder {
         return measure;
     }
 
-    /**
-     * Builds every line's measures into {@code part}, then runs the adjustment passes over the
-     * finished graph.
-     */
     private static void buildLines(BuildContext context, ScorePartwise.Part part) {
         var state = MeasureBuilder.newScoreState(context.song());
         var lines = context.song().getLines();
@@ -204,12 +170,8 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Inserts the song tempo {@code <direction>} as the very first child of measure 1, ahead
-     * of its {@code <print>}.
-     *
-     * <p>The song tempo is a property of the score, not of any note, so it is not bound to the
-     * first {@code <note>} the way a per-note tempo change is. The reader recovers it by
-     * position: the first tempo {@code <direction>} in the first {@code <measure>}.
+     * The song tempo is not bound to a note; the reader recovers it as the first tempo
+     * {@code <direction>} in the first {@code <measure>}.
      */
     private static void addSongTempoDirection(BuildContext context, ScorePartwise.Part part) {
         var tempo = DirectionBuilder.buildTempoDirection(context, context.song().getTempo());
@@ -224,21 +186,10 @@ final class ScorePartwiseBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Runs every adjustment pass, in order.
-     *
-     * <p><b>This order is observable in the output.</b> Several passes write into the same
-     * {@code Notations.getTiedOrSlurOrTuplet()} list, which marshals in list order, and
-     * nothing else would catch a wrong one: {@code <notations>} content is an unbounded choice
-     * in the schema so any order validates, and the reader is order-insensitive so a
-     * round-trip agrees with itself either way. {@link NoteBuilder#addNotation} therefore
-     * inserts by element-type rank rather than by arrival, which makes the sequence a property
-     * of that ranking rather than of this list — but members of <em>equal</em> rank keep their
-     * arrival order, so the two places where that matters ({@code <tied>} stop before start,
-     * {@code <slide>} stop before start) are each resolved inside a single pass.
-     *
-     * <p>Endings are absent from this list on purpose: {@code <ending>} is a child of
-     * {@code <barline>}, and {@link MeasureBuilder} owns the barlines, so it attaches them as
-     * it closes each line.
+     * Members of <em>equal</em> rank in {@code <notations>} keep their arrival order, so the two
+     * places where that matters ({@code <tied>} stop before start, {@code <slide>} stop before
+     * start) are each resolved inside a single pass. Endings are attached by
+     * {@link MeasureBuilder}, not here.
      */
     private static void runAdjustmentPasses(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         applyBeams(context, lines);
@@ -249,11 +200,6 @@ final class ScorePartwiseBuilder {
         applyHairpins(context, lines);
     }
 
-    /**
-     * Every glissando in the song, as the position of its owning note within its line's emitted
-     * notes. The destination is the following entry in that list, which is why a site is a
-     * position rather than a pair.
-     */
     private static List<GlissandoSite> glissandoSites(List<MeasureBuilder.LineOutput> lines) {
         var sites = new ArrayList<GlissandoSite>();
 
@@ -271,10 +217,7 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Attaches one {@code <beam number="N">} per active beam level to every note in each beam
-     * group.
-     *
-     * <p>A grace note inside the span is not a member, so it gets no {@code <beam>}: the beam
+     * A grace note inside the span is not a member, so it gets no {@code <beam>}: the beam
      * passes over it.
      */
     private static void applyBeams(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
@@ -287,7 +230,6 @@ final class ScorePartwiseBuilder {
         }
     }
 
-    /** Adds one {@code <beam>} per level in {@code levelValues}, numbered by its level. */
     private static void addBeams(
         BuildContext context, StaffElement element, EnumMap<BeamLevel, BeamValue> levelValues) {
         var pmNote = context.index().notes().get(element);
@@ -304,15 +246,6 @@ final class ScorePartwiseBuilder {
         }
     }
 
-    /**
-     * The {@code <beam>} value at each level {@code member} carries. The run of members at that
-     * level that {@code member} belongs to ({@link Beam.Member#runAt}) decides: a run of two or
-     * more gives {@code begin}/{@code continue}/{@code end} by the member's place in it, and a
-     * run of one is a partial-beam hook pointing the way {@link Beam.Member#stub} says.
-     *
-     * @param member a member of the beam being written
-     * @return a value for every level {@code member} carries, and none for a level it does not
-     */
     private static EnumMap<BeamLevel, BeamValue> beamValues(Beam.Member member) {
         var values = new EnumMap<BeamLevel, BeamValue>(BeamLevel.class);
 
@@ -329,7 +262,6 @@ final class ScorePartwiseBuilder {
         return values;
     }
 
-    /** The hook value for a member whose stub points the way {@code stub} says. */
     private static BeamValue hookValue(Beam.Stub stub) {
         return switch (stub) {
             case LEFT -> BeamValue.BACKWARD_HOOK;
@@ -338,7 +270,6 @@ final class ScorePartwiseBuilder {
         };
     }
 
-    /** The {@code begin}/{@code continue}/{@code end} value for {@code position} within {@code run}. */
     private static BeamValue runValue(int position, Beam.MemberRun run) {
         if (position == run.first()) {
             return BeamValue.BEGIN;
@@ -351,12 +282,6 @@ final class ScorePartwiseBuilder {
         return BeamValue.CONTINUE;
     }
 
-    /**
-     * Attaches the sound {@code <tie>} and the notation {@code <tied>} for every tie.
-     *
-     * <p>Each note is visited once and emits its stop before its start, so an interior note of
-     * a chain — the end of one tie and the anchor of the next — closes the loop.
-     */
     private static void applyTies(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
             var line = entry.line();
@@ -380,11 +305,7 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Adds the {@code <tie>}/{@code <tied>} pair for one end of {@code tie}, or nothing when
-     * this note is not that end.
-     *
-     * <p>{@code <tied orientation>} is write-forward: the reader ignores it, because tie
-     * direction is fully determined by the stems it is redrawn from.
+     * {@code <tied orientation>} is write-forward: the reader ignores it.
      */
     private static void addTie(
             BuildContext context,
@@ -408,15 +329,6 @@ final class ScorePartwiseBuilder {
         NoteBuilder.addNotation(context, pmNote, pmTied);
     }
 
-    /**
-     * Attaches the {@code <tuplet>} bracket: {@code type="start"} on the anchor, carrying the
-     * group's vertical position as {@code relative-y} when non-zero, and {@code type="stop"}
-     * on the end note.
-     *
-     * <p>The {@code <time-modification>} every member carries is not this pass's business —
-     * that is decided by the element's own position in the line, so {@link NoteBuilder} sets
-     * it while building the note.
-     */
     private static void applyTuplets(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
             var line = entry.line();
@@ -435,8 +347,7 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Attaches one {@code <tuplet>} bracket marker to {@code element}'s note and returns it, or
-     * returns null when the element has no note.
+     * Returns null when the element has no note.
      */
     private static org.audiveris.proxymusic.@Nullable Tuplet addTupletBracket(
             BuildContext context, StaffElement element, StartStop type) {
@@ -454,15 +365,6 @@ final class ScorePartwiseBuilder {
         return pmTuplet;
     }
 
-    /**
-     * Attaches the trill {@code <ornaments>}: {@code <trill-mark/>} plus
-     * {@code <wavy-line type="start">} on the anchor, and {@code <wavy-line type="stop">} on
-     * the end note.
-     *
-     * <p>A single-note trill has anchor == end, so all three land in one {@code <ornaments>}
-     * element — which is why {@link #ornamentsOf} reuses the note's existing one rather than
-     * creating a second. Rests carry no trill.
-     */
     private static void applyTrills(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
             var line = entry.line();
@@ -475,7 +377,6 @@ final class ScorePartwiseBuilder {
         }
     }
 
-    /** Attaches {@code <trill-mark/>} and the opening {@code <wavy-line>} to the anchor note. */
     private static void addTrillStart(BuildContext context, StaffElement element, Trill trill) {
         var pmNote = trilledNote(context, element);
 
@@ -495,8 +396,7 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Attaches one {@code <wavy-line>} marker to {@code element}'s note and returns it, or
-     * returns null when the note does not take one.
+     * Returns null when the note does not take one.
      */
     private static @Nullable WavyLine addWavyLine(
             BuildContext context, StaffElement element, StartStopContinue type) {
@@ -516,7 +416,7 @@ final class ScorePartwiseBuilder {
         return wavyLine;
     }
 
-    /** {@code element}'s note when it can carry a trill, else null — a rest never can. */
+    /** Null when {@code element}'s note cannot carry a trill — a rest never can. */
     private static @Nullable Note trilledNote(BuildContext context, StaffElement element) {
         if (element.getType().isRest()) {
             return null;
@@ -526,8 +426,7 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Returns {@code pmNote}'s {@code <ornaments>}, creating and attaching it on first use, so
-     * a note reached twice by one trill grows one element rather than two.
+     * A note reached twice by one trill grows one element rather than two.
      */
     private static Ornaments ornamentsOf(BuildContext context, Note pmNote) {
         for (var member : NoteBuilder.notationsOf(context, pmNote).getTiedOrSlurOrTuplet()) {
@@ -543,21 +442,11 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Attaches the {@code <slide>} pair of every glissando: {@code type="start"} on the note
-     * that owns it and {@code type="stop"} on the next emitted note.
+     * <b>Iterates glissandos, never lines:</b> a line with no glissando must not be laid out,
+     * because layout resolves the line's automatic stem directions as a side effect and would
+     * change that line's output.
      *
-     * <p><b>This pass iterates glissandos, never lines, and the difference is not stylistic.</b>
-     * Slide endpoints are the only geometry the writer emits, so a line with no glissando is
-     * deliberately never laid out: a layout costs real work <em>and</em> resolves the line's
-     * automatic stem directions as a side effect, so laying out a line no glissando touches
-     * would change that line's output. Walking lines and asking {@code layoutProvider}
-     * for each would lay out the whole song on every save. Each site reaches its line through
-     * the glissando that needs it, so a line with none is never reached; the cache keeps a line
-     * carrying several glissandos to one layout.
-     *
-     * <p>Glissandos are intra-line and cannot span a system break — the sites are recorded per
-     * line as the notes are emitted, so a dangling glissando on the last note of a line finds
-     * no target and simply emits no stop.
+     * <p>Glissandos are intra-line: a dangling one on the last note of a line emits no stop.
      */
     private static void applyGlissandos(BuildContext context, List<GlissandoSite> glissandos) {
         var layouts = new IdentityHashMap<Line, LayoutResult>();
@@ -589,13 +478,8 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Attaches one {@code <slide>} to {@code element}'s note, carrying the endpoint
-     * {@code type} names — the drawn line's end for a stop, its start for a start.
-     *
-     * <p>The coordinates come from the line's layout, so they are the ones the score is
-     * painted from. They are write-forward only; nothing on the read side looks at them. A
-     * glissando too short to draw stores no geometry, and is emitted without coordinates
-     * rather than dropped, since it is still musically present.
+     * The coordinates are write-forward only. A glissando too short to draw is emitted without
+     * coordinates rather than dropped, since it is still musically present.
      */
     private static void addSlide(
             BuildContext context,
@@ -626,12 +510,8 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Inserts each hairpin's wedge {@code <direction>}s immediately before the note they bind
-     * to — the start wedge before the anchor note, the stop wedge before the end note.
-     *
-     * <p>Both wedges bind <em>forward</em>, which is what gives the reader one uniform
-     * look-ahead rule. Stops precede starts on a note that carries both, so one hairpin's
-     * close and the next one's open keep a natural order.
+     * Stops precede starts on a note that carries both, so one hairpin's close and the next
+     * one's open keep a natural order.
      */
     private static void applyHairpins(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
@@ -668,11 +548,7 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * Inserts {@code wedge} immediately before everything the element contributed apart from
-     * its tempo and metric-modulation directions, so it lands before the annotation direction.
-     *
-     * <p>An element that produced no note has no anchor, and a wedge bound to it has nothing to
-     * bind to, so it is dropped rather than emitted loose.
+     * A wedge bound to an element that produced no note is dropped, not emitted loose.
      */
     private static void insertWedge(MeasureBuilder.ElementOutput output, Direction wedge) {
         var measure = output.measure();
@@ -692,10 +568,5 @@ final class ScorePartwiseBuilder {
         items.add(position, wedge);
     }
 
-    /**
-     * One glissando, as the position within its line's emitted notes of the note that owns it.
-     * The destination is the following entry in that list, which is why the site is a position
-     * rather than a pair.
-     */
     private record GlissandoSite(MeasureBuilder.LineOutput owner, int emittedIndex) {}
 }

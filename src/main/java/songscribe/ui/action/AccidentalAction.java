@@ -41,13 +41,12 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlayThread;
 
 /**
- * The toolbar control for one accidental. Against a note it reflects the note's place in its
- * accidental chain and pitches the note when toggled; the song's chain walk, not this action,
- * decides what is written.
+ * The toolbar control for one accidental. The song's chain walk, not this action, decides what is
+ * written.
  *
- * <p>Selected and enabled state are both decided from the note's {@link ChainedAccidental},
- * with {@code a} this action's accidental, {@code s} the note's sounding alteration and
- * {@code k} the key's alteration for the note's pitch class at the note:
+ * <p>Selected and enabled state follow the note's {@link ChainedAccidental}, with {@code a} this
+ * action's accidental, {@code s} the note's sounding alteration and {@code k} the key's alteration
+ * for the note's pitch class at the note:
  *
  * <table>
  *   <tr><th>state</th><th>selected ({@link #matchesElement})</th><th>enabled ({@link #canToggle})</th></tr>
@@ -57,13 +56,6 @@ import songscribe.ui.playback.PlayThread;
  *   <tr><td>{@code IMPLICIT}</td><td>{@code a == s}</td><td>{@code a != s}</td></tr>
  *   <tr><td>{@code CANCEL}</td><td>{@code a == s}</td><td>{@code a != s}</td></tr>
  * </table>
- *
- * <p>An {@code IN_KEY} note shows no accidental selected because it sounds its key, and the
- * key's own accidental cannot be pressed on it: that would change nothing. Every other note's
- * sounding accidental shows selected. Deselecting is allowed only on an {@code ANCHOR}, where
- * it returns the note to its key; a {@code REPETITION}, {@code IMPLICIT} or {@code CANCEL} note
- * already sounds what deselecting would give it, so its own accidental is disabled and a
- * different one can only be selected.
  */
 // Widens: the accidental glyph is drawn to the left of the notehead, inside the note's column.
 public final class AccidentalAction extends NoteOnlyAction implements UIAction.WidensColumn<NoteElement> {
@@ -71,14 +63,8 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ACCIDENTAL);
 
     /**
-     * The flags every accidental action carries: enabled for an empty selection — the preview
-     * note — or a single selected element, never for several. Whether an accidental may be
-     * toggled is decided per note by {@link #canToggle}, so the accidental controls act on one
-     * note at a time and that decision never spans a selection.
-     * <p>
      * Live in grace mode, where no staff selection is possible, so the toggle only decorates
-     * the preview: the host note the user is placing arrives with the chosen accidental and the
-     * pairing's tracked insertion walks the chain for it.
+     * the preview.
      */
     static final Flag[] ACCIDENTAL_FLAGS = withFlags(
         NoteOnlyAction.FLAGS,
@@ -86,7 +72,6 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
         Flag.ENABLED_IN_GRACE_MODE
     );
 
-    /** The icon font's point size for an accidental sign, on the toolbar and wherever else one is shown. */
     public static final int ICON_SIZE_PT = 18;
 
     private final Accidental accidental;
@@ -139,9 +124,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
     }
 
     /**
-     * The tagged icon text drawing {@code accidental} in the icon font, the way
-     * {@link UIAction#setIcon} reads it. Shared with every control that shows an accidental
-     * as the toolbar does, so the two can never draw a sign differently.
+     * Shared with every control that shows an accidental, so none draws a sign differently.
      */
     public static String iconText(Accidental accidental) {
         return switch (accidental) {
@@ -153,9 +136,6 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
         };
     }
 
-    /**
-     * The {@link Strings} key naming {@code accidental} to the user.
-     */
     public static String nameKey(Accidental accidental) {
         return switch (accidental) {
             case FLAT -> Strings.ACTION_ACCIDENTAL_FLAT;
@@ -234,20 +214,14 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
     }
 
     /**
-     * Pitches {@code element} with this action's accidental on {@link Toggle#APPLY}, and with its
-     * key's alteration on {@link Toggle#REMOVE}, leaving it {@link AccidentalState.Chosen} for
-     * the song's chain walk to stamp. Removal reaches here only on an {@code ANCHOR}, the one
-     * state {@link #canToggle} allows it on.
+     * Removal reaches here only on an {@code ANCHOR}, the one state {@link #canToggle} allows it
+     * on.
      */
     @Override
     public void applyToElement(Line line, int index, NoteElement element, Toggle toggle) {
         element.choose(toggle == Toggle.APPLY ? accidental : keyAlterationAt(line, index, element));
     }
 
-    /**
-     * The key's alteration for {@code note}'s pitch class at {@code index} in {@code line}:
-     * {@code k} in the class Javadoc's table.
-     */
     private static Accidental keyAlterationAt(Line line, int index, NoteElement note) {
         return line.keyBefore(index).alterationAt(note.getStaffPosition());
     }

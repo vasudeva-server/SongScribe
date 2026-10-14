@@ -27,18 +27,6 @@ import songscribe.layout.LineLayoutProvider;
 
 /**
  * Everything every builder in the write path needs, and nothing that varies per call.
- *
- * <p>Every builder method takes a {@code BuildContext} as its first parameter, plus only the
- * arguments that genuinely vary between calls ({@code Line}, {@code StaffElement}). Without it
- * each builder would grow its own five- or six-argument signature carrying these same values.
- *
- * <p>{@code ObjectFactory} is stateless, so one instance is shared for the whole build.
- *
- * @param song the document being written
- * @param fonts the fonts in use, for font-dependent metrics
- * @param factory the shared {@code ObjectFactory} used to create every ProxyMusic node
- * @param layoutProvider supplies line layout for builders that need it
- * @param index handles into the {@code ScorePartwise} graph, recorded as the builders emit
  */
 record BuildContext(
     Song song,

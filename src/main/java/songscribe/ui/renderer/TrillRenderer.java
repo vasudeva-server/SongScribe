@@ -37,9 +37,6 @@ import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
 
-/**
- * Renders trill markings (tr symbol + wavy line for extended trills).
- */
 public final class TrillRenderer {
 
     // ==========================================================================
@@ -52,15 +49,9 @@ public final class TrillRenderer {
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private TrillRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static TrillRenderer getInstance() {
         return INSTANCE;
     }
@@ -70,17 +61,10 @@ public final class TrillRenderer {
     // ==========================================================================
 
     /**
-     * Renders a trill glyph, plus the wavy line out to the ink's right edge when the trill spans
-     * a range. All coordinates in staff-space units (Graphics2D has scale transform applied).
-     * <p>
-     * The layout's bounds are the trill's ink extent ({@link TrillGeometry#inkExtentSs}): the
-     * glyph starts at its left edge and the wavy line ends at its right edge.
+     * The layout's bounds are the trill's ink extent ({@link TrillGeometry#inkExtentSs}).
      *
      * @param g2          Graphics context with scale transform
-     * @param trill       the trill being drawn
      * @param layout      the trill's layout, with offsets already applied
-     * @param trillTopYSs Y position of the trill top edge in component staff-space coordinates
-     * @param color       Color to use for the trill glyph and wavy line
      */
     private void renderTrill(
         Graphics2D g2,
@@ -109,9 +93,6 @@ public final class TrillRenderer {
         }
     }
 
-    /**
-     * Renders all trills for a line using layout results.
-     */
     public void renderTrillsFromLine(
         Graphics2D g2,
         LineInvariants invariants,

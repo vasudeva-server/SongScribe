@@ -24,8 +24,7 @@ import songscribe.message.Message;
 
 /**
  * Posted by {@code songscribe.ui.component.ActivationGate} when the application moves to the
- * background — the moment it activates the glass pane that will intercept the reactivating
- * click. Pairs with {@link ApplicationDidBecomeActiveNotification}.
+ * background. Pairs with {@link ApplicationDidBecomeActiveNotification}.
  */
 public class ApplicationDidEnterBackgroundNotification extends Message {
 }

@@ -43,20 +43,9 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 
 /**
- * Draws the two {@link Slide} kinds attached to a note: a connecting {@link Slide#GLISSANDO} (a
- * filled rectangle between two notes) and a trailing {@link Slide#FALL} (the
- * {@code brassFallLipShort} glyph hanging off the note's right).
- * <p>
- * The geometry itself is computed at layout time by {@link SlideGeometry} and stored on the line's
- * {@link LayoutResult} as a {@link LayoutResult.SlideLayout}, so this class only reads it and
- * converts from layout space (Y relative to the staff midline) to component space (Y relative to
- * the line component's top edge) as it draws.
- * <p>
- * The preview renders are the exception: they draw a slide for a note that does not own one yet, so
- * the layout has nothing stored for them and they compute their geometry through
- * {@link SlideGeometry} directly.
- * <p>
- * Slide data is stored on the source note via {@link NoteElement#getSlide()}.
+ * Draws the two {@link Slide} kinds attached to a note. Geometry is computed at layout time by
+ * {@link SlideGeometry}; only the preview renders, which draw a slide for a note that does not own
+ * one yet, compute it through {@link SlideGeometry} directly.
  */
 public final class SlideRenderer {
 
@@ -64,13 +53,8 @@ public final class SlideRenderer {
     // Constants
     // ==========================================================================
 
-    /**
-     * Layout space puts the staff midline at Y = 0, so a note context built for it takes 0 as its
-     * middle-line Y.
-     */
     private static final double LAYOUT_MIDLINE_Y_SS = 0.0;
 
-    /** No displacement: the note sits where the layout put it. */
     private static final double NO_SHIFT_SS = 0.0;
 
     /** The glissando stroke width as a multiple of the LilyPond base thickness. */
@@ -87,9 +71,6 @@ public final class SlideRenderer {
     private SlideRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static SlideRenderer getInstance() {
         return INSTANCE;
     }
@@ -98,13 +79,6 @@ public final class SlideRenderer {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Renders slides for all notes in a line.
-     *
-     * @param g2          Graphics context
-     * @param invariants  Line invariants
-     * @param frame       Element frame (line-level)
-     */
     public void renderSlidesFromLine(
         Graphics2D g2,
         LineInvariants invariants,
@@ -119,17 +93,6 @@ public final class SlideRenderer {
         }
     }
 
-    /**
-     * Renders the slide attached to a specific note: a trailing {@link Slide#FALL} glyph or a
-     * connecting {@link Slide#GLISSANDO} line.
-     *
-     * @param g2        Graphics context
-     * @param line      The line containing the note
-     * @param note      The note with the slide
-     * @param noteIndex Index of the note in the line
-     * @param invariants       Line invariants
-     * @param frame     Element frame (line-level)
-     */
     public void renderSlide(
         Graphics2D g2,
         Line line,
@@ -177,18 +140,10 @@ public final class SlideRenderer {
     }
 
     /**
-     * Determines the color for a slide based on playback and selection state.
-     * <p>
-     * Delegates to {@link LineInvariants#getElementColor(int)} for the common edit-mode /
-     * playback / selection checks on the owner note, and only when the note contributes no
-     * color of its own does the slide's own selection state show through.
-     * <p>
-     * A connecting glissando joins two notes and belongs to both, so selecting the note it
-     * lands on colors it as well as selecting the note it leaves. A fall has no target note
-     * and never picks up the following element's selection.
+     * A connecting glissando belongs to both its notes, so selecting either colors it. A fall has
+     * no target note and never picks up the following element's selection.
      *
-     * @param note      the note the slide hangs off, which is what a click on the slide selects
-     * @param noteIndex that note's index on the line
+     * @param note the note the slide hangs off, which is what a click on the slide selects
      */
     Color determineSlideColor(
         NoteElement note,
@@ -215,14 +170,7 @@ public final class SlideRenderer {
     }
 
     /**
-     * Renders a preview glissando line from the source note.
-     * <p>
-     * Used when the glissando tool is active and the mouse hovers over a zone.
-     * No notehead is shown — only the glissando preview.
-     *
-     * @param g2          Graphics context (staff-space coordinate system)
-     * @param sourceIndex Index of the source note in the line
-     * @param invariants  Line invariants
+     * @param g2 Graphics context (staff-space coordinate system)
      */
     public void renderPreviewGlissando(
         Graphics2D g2,
@@ -247,20 +195,11 @@ public final class SlideRenderer {
     }
 
     /**
-     * Renders a preview glissando from the note at {@code sourceIndex} to the hover preview
-     * element, which sits at {@code previewElementXSs} instead of in the layout.
-     * <p>
-     * Used while the grace-note host insertion preview is showing: the host note exists only as
-     * the ghost the user is positioning, so its geometry cannot be looked up the way
-     * {@link #renderPreviewGlissando}'s target is. Everything else — the attach extents, the
-     * end trimming, the minimum length — is the committed glissando's geometry.
+     * The host note exists only as the ghost the user is positioning, so its geometry cannot be
+     * looked up the way {@link #renderPreviewGlissando}'s target is. Everything else is the
+     * committed glissando's geometry.
      *
      * @param g2                Graphics context (staff-space coordinate system)
-     * @param sourceIndex       Index of the source note in the line
-     * @param line              The line containing the source note
-     * @param previewElement    The hover preview element to connect to
-     * @param previewElementXSs The preview element's origin X in the line's staff spaces
-     * @param invariants        Line invariants
      */
     public void renderPreviewGlissandoToPreviewElement(
         Graphics2D g2,
@@ -289,8 +228,7 @@ public final class SlideRenderer {
     // ==========================================================================
 
     /**
-     * Returns the fall glyph's drawn rect in layout space, or null when the layout holds none for
-     * this note.
+     * Null when the layout holds none for this note.
      */
     private static Rectangle2D.@Nullable Double fallBoundsSs(
         NoteElement note, int noteIndex, LayoutResult layoutResult, ElementFrame frame
@@ -320,13 +258,11 @@ public final class SlideRenderer {
     }
 
     /**
-     * Returns the glissando's drawn endpoints in layout space, or null when it is too short to
-     * draw or has no following note.
+     * Null when the glissando is too short to draw or has no following note.
      * <p>
-     * Normally these come straight from the layout. During the grace-note insert preview they are
-     * recomputed instead: the preview displaces elements from its insertion index onward without
-     * relaying the line out, and that index can fall between a glissando's two notes, which
-     * stretches the line rather than translating it.
+     * During the grace-note insert preview the endpoints are recomputed, because the preview
+     * displaces elements without relaying the line out, and its insertion index can fall between a
+     * glissando's two notes.
      */
     private static SlideGeometry.@Nullable Endpoints glissandoEndpointsSs(
         NoteElement note, int noteIndex, Line line, LayoutResult layoutResult, ElementFrame frame
@@ -342,7 +278,6 @@ public final class SlideRenderer {
         );
     }
 
-    /** Returns the grace-note insert preview's displacement for the element at {@code index}. */
     private static double previewShiftSs(int index, ElementFrame frame) {
         var previewShift = frame.previewShift();
         return previewShift != null && previewShift.displaces(index)
@@ -350,10 +285,6 @@ public final class SlideRenderer {
             : NO_SHIFT_SS;
     }
 
-    /**
-     * Builds the geometry context, in layout space, for the element at {@code elementIndex},
-     * displaced by {@code shiftSs} from where the layout put it.
-     */
     private static SlideGeometry.NoteContext noteContextSs(
         NoteElement element, int elementIndex, Line line, LayoutResult layoutResult, double shiftSs
     ) {
@@ -366,11 +297,8 @@ public final class SlideRenderer {
     }
 
     /**
-     * Builds the target context for a connecting glissando — the element after
-     * {@code sourceIndex} — or returns null when there is nothing to connect to.
-     * <p>
-     * A non-note follower (a barline at the line end, say) has no notehead geometry to attach to,
-     * so it counts as no follower at all, the same rule the layout pass applies.
+     * Null when there is nothing to connect to. A non-note follower counts as no follower, as in
+     * the layout pass.
      */
     private static SlideGeometry.@Nullable NoteContext targetContextSs(
         int sourceIndex, Line line, LayoutResult layoutResult, double shiftSs
@@ -392,11 +320,6 @@ public final class SlideRenderer {
     // Drawing
     // ==========================================================================
 
-    /**
-     * Draws the glissando between {@code src} and {@code tgt}, or nothing when the two are too
-     * close together to leave a drawable line. Used by the preview renders, which have no stored
-     * geometry to read.
-     */
     private void drawGlissandoIfDrawable(
         Graphics2D g2,
         SlideGeometry.NoteContext src,
@@ -411,16 +334,9 @@ public final class SlideRenderer {
     }
 
     /**
-     * Draws a rounded line between the glissando's endpoints.
-     * <p>
-     * The endpoints arrive in layout space (Y relative to the staff midline) and are drawn in
-     * component space, so every Y crosses through
-     * {@link RenderingUtils#layoutYToComponentYSs(double, double)}.
-     *
-     * @param g2            Graphics context (staff-space coordinate system)
+     * @param g2           Graphics context (staff-space coordinate system)
      * @param endpoints     the drawn segment's endpoints in layout space
      * @param middleLineYSs the line's middle-staff-line Y in component space
-     * @param color         Fill color for the glissando rectangle
      */
     private void drawGlissando(
         Graphics2D g2,
@@ -440,18 +356,12 @@ public final class SlideRenderer {
     }
 
     /**
-     * Draws the {@code brassFallLipShort} glyph so that its ink lands on {@code boundsSs}, which
-     * sits {@link NoteGeometry#FALL_GAP_SS} past the host note's column right edge at the note's
-     * notehead-center Y.
-     * <p>
-     * {@code boundsSs} is the glyph's bounding box translated by the {@code drawString} anchor, so
-     * subtracting the box's own offsets recovers that anchor exactly — the drawn glyph and the
-     * rect the hit test uses cannot drift apart.
+     * The glyph's ink lands on {@code boundsSs}, so the drawn glyph and the rect the hit test uses
+     * cannot drift apart.
      *
      * @param g2            Graphics context (staff-space coordinate system)
      * @param boundsSs      the glyph's drawn rect in layout space
      * @param middleLineYSs the line's middle-staff-line Y in component space
-     * @param color         the glyph color
      */
     private void drawFallGlyph(
         Graphics2D g2,

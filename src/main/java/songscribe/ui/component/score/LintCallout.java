@@ -31,39 +31,21 @@ import songscribe.lint.LintMark;
 import songscribe.ui.component.ScoreView;
 
 /**
- * The tooltip of one lint mark, shown on request rather than by the pointer: the tooltip a hover
- * on the mark shows, at the same place, after the mark's item is scrolled into view.
- * <p>
- * The tooltip manager shows a tooltip only for a mouse event, so this owns its own popup. It only
- * shows and hides that popup; {@link LintCalloutController} decides when.
+ * The tooltip of one lint mark, shown on request rather than by the pointer. The tooltip manager
+ * shows a tooltip only for a mouse event, so this owns its own popup; {@link LintCalloutController}
+ * decides when it shows.
  */
 final class LintCallout {
 
     private final ScoreView scoreView;
 
-    /** The popup on screen, or {@code null} while none shows. */
+    /** {@code null} while none shows. */
     private @Nullable Popup popup = null;
 
-    /**
-     * @param scoreView the score whose marks the callout shows
-     */
     LintCallout(ScoreView scoreView) {
         this.scoreView = scoreView;
     }
 
-    /**
-     * Hides the callout on screen, then scrolls the full height of the line that holds
-     * {@code mark} and the mark's item into view, and shows the mark's tooltip at its item.
-     *
-     * @param mark a mark of the song's current lint report, whose element is therefore in a line
-     *             of the song the score shows; the score draws every such mark
-     * @throws RuntimeError.ExitInProgressError, after raising the fatal-error dialog, when the
-     *         mark's element is in no line ({@link StaffElement#requireParentLine}), or when the
-     *         score has no component for that line ({@link ScoreView#requireLineComponent}).
-     *         Neither can happen: the song is linted at once after every change, so a mark of
-     *         the current report names an element in a line of the song, and the score has a
-     *         component for every line of its song.
-     */
     void show(LintMark mark) {
         hide();
 
@@ -76,11 +58,6 @@ final class LintCallout {
         popup = shown;
     }
 
-    /**
-     * Hides the callout on screen.
-     *
-     * @effects nothing when no callout shows
-     */
     void hide() {
         var shown = popup;
 
@@ -92,7 +69,6 @@ final class LintCallout {
         shown.hide();
     }
 
-    /** Answers whether the callout is on screen. */
     boolean isShowing() {
         return popup != null;
     }

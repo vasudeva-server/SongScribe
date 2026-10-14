@@ -27,27 +27,21 @@ import songscribe.prefs.PrefsValue;
 
 /**
  * All page geometry: physical page dimensions, margins, and content area
- * calculations. Reads the active page size from the {@link PrefsKey#PAGE_SIZE}
- * preference.
+ * calculations.
  */
 public final class PageModel {
 
-    /** Vertical margin (top and bottom) in inches. */
     private static final double VERTICAL_MARGIN_INCHES = 0.5;
 
-    /** Default horizontal margin per side in inches. */
     static final double DEFAULT_HORIZONTAL_MARGIN_INCHES = 0.5;
 
-    /** Minimum horizontal margin per side in inches. */
     private static final double MIN_HORIZONTAL_MARGIN_INCHES = 0.25;
 
-    /** Maximum line width in inches, derived from A4 width minus minimum horizontal margins. */
+    /** Derived from A4 width minus minimum horizontal margins. */
     public static final double MAX_LINE_WIDTH_INCHES = 7.77;
 
-    /** Minimum line width in inches. */
     public static final double MIN_LINE_WIDTH_INCHES = 5.0;
 
-    /** Physical page sizes. */
     public enum Size implements PrefsValue {
         LETTER(8.5, 11.0, "letter"),
         A4(8.27, 11.69, "a4");
@@ -78,48 +72,30 @@ public final class PageModel {
 
     private PageModel() {}
 
-    /** Returns the active page size from preferences. */
     public static Size getSize() {
         return Prefs.getChoice(PrefsKey.PAGE_SIZE, Size.class);
     }
 
-    /** Full page width in document pixels (fixed document scale, independent of view zoom). */
     public static DocPx getPageWidthPx() {
         return inchesToPx(getSize().widthInches());
     }
 
-    /** Full page height in document pixels (fixed document scale, independent of view zoom). */
     public static DocPx getPageHeightPx() {
         return inchesToPx(getSize().heightInches());
     }
 
-    /** Top margin in document pixels (fixed 0.5"). */
     public static DocPx getTopMarginPx() {
         return inchesToPx(VERTICAL_MARGIN_INCHES);
     }
 
-    /** Bottom margin in document pixels (fixed 0.5"). */
     public static DocPx getBottomMarginPx() {
         return inchesToPx(VERTICAL_MARGIN_INCHES);
     }
 
-    /**
-     * Horizontal margin per side, computed to center {@code lineWidth} within the page.
-     *
-     * @param lineWidth the width the content occupies
-     * @return the margin each side needs; zero when the line width equals or exceeds
-     *         the page width
-     */
     public static DocPx getHorizontalMarginPx(DocPx lineWidth) {
         return new DocPx(Math.max(0, (getPageWidthPx().value() - lineWidth.value()) / 2));
     }
 
-    /**
-     * Default line width in staff spaces: the content area, which is the page width
-     * less the default horizontal margin on each side. The whole calculation stays in
-     * staff spaces so that no intermediate whole-pixel rounding shifts the width every
-     * new song starts out with.
-     */
     public static double getDefaultLineWidthSs() {
         return DocumentScale.inchesToSs(
             getSize().widthInches() - 2 * DEFAULT_HORIZONTAL_MARGIN_INCHES);

@@ -25,13 +25,6 @@ import songscribe.dom.Direction;
 /**
  * The anchored ceiling or floor an element stacks against: the side of the staff, the staff
  * position the anchor is taken from, and the margin the element keeps beyond it.
- *
- * @param direction     the side of the staff: {@link Direction#UP} stacks against
- *                      {@link StackingUtils#anchorCeilingSs}, {@link Direction#DOWN} against
- *                      {@link StackingUtils#anchorFloorSs}
- * @param staffPosition the staff position the anchor is computed from
- * @param marginSs      the gap the element keeps beyond the anchor or the reservations under its
- *                      footprint, whichever lies further out
  */
 record StaffAnchor(Direction direction, int staffPosition, double marginSs) {
 }

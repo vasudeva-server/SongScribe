@@ -24,20 +24,14 @@ import java.util.List;
 
 /**
  * A {@link LyricRun} whose elements can be inserted and removed, and that repairs what such an
- * edit breaks: the lyric chains running through the edit's neighbors and the glissando left
- * pointing at nothing.
+ * edit breaks.
  *
- * <p>Two primitives are what an implementor supplies — {@link #addElement} and
- * {@link #removeRange} — and they are structural only: they put an element into the run or
- * take elements out and repair nothing around them. The edits an editor performs, {@link #insertRun},
- * {@link #deleteRange} and {@link #deleteRanges}, are built here on top of them together with
- * {@link LyricRun}'s chain repairs, so the sequence of repairs around an insertion or a deletion
- * is written once and every run edits by it.
+ * <p>An implementor supplies two structural primitives, {@link #addElement} and
+ * {@link #removeRange}; {@link #insertRun}, {@link #deleteRange} and {@link #deleteRanges} are
+ * built on them here, so the sequence of repairs is written once.
  *
- * <p>This interface promises nothing about undo. Whether an edit is recorded, and what it is
- * recorded into, is the implementor's: a {@link Line}, the one run that is edited, posts each
- * primitive and each repair through its song's modification bracket, and its primitives state
- * that rule and what they throw. The edits here inherit it from the primitives they call.
+ * <p>This interface promises nothing about undo: whether an edit is recorded, and into what, is
+ * the implementor's.
  */
 public interface EditableRun extends LyricRun {
 
@@ -46,30 +40,17 @@ public interface EditableRun extends LyricRun {
     // -------------------------------------------------------------------------
 
     /**
-     * Inserts {@code element} at {@code index}, shifting the elements from {@code index} on one
-     * place to the right. Structural only: repairs nothing around the insertion.
+     * Structural only: repairs nothing around the insertion.
      *
-     * @param index   the position {@code element} will occupy, {@code 0..}{@link #elementCount()}
-     * @param element the element to insert
-     * @throws IndexOutOfBoundsException if {@code index} is negative or greater than
-     *     {@link #elementCount()}
+     * @param index the position {@code element} will occupy, {@code 0..}{@link #elementCount()}
      */
     void addElement(int index, StaffElement element);
 
     /**
-     * Removes every element in the contiguous {@code range}, both ends included. Structural only:
-     * repairs nothing around the removal.
-     *
-     * @throws IndexOutOfBoundsException if {@code range} reaches past {@link #elementCount()}
+     * Structural only: repairs nothing around the removal.
      */
     void removeRange(ElementRange range);
 
-    /**
-     * Removes the element at {@code index}: {@link #removeRange} over the range of one.
-     *
-     * @throws IllegalArgumentException if {@code index} is negative
-     * @throws IndexOutOfBoundsException if {@code index} is {@link #elementCount()} or greater
-     */
     default void removeElement(int index) {
         removeRange(ElementRange.single(index));
     }

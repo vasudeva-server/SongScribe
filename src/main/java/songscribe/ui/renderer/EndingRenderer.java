@@ -37,27 +37,14 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 
-/**
- * Renders first and second ending brackets.
- * <p>
- * Endings are bracket lines that indicate which measures to play during
- * different iterations of a repeat. First ending is played the first time,
- * second ending is played on the repeat.
- */
 public final class EndingRenderer {
 
     // Singleton instance
     private static final EndingRenderer INSTANCE = new EndingRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private EndingRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static EndingRenderer getInstance() {
         return INSTANCE;
     }
@@ -66,12 +53,6 @@ public final class EndingRenderer {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Renders all first/second endings for a line.
-     *
-     * @param g2         Graphics context
-     * @param invariants Line invariants
-     */
     public void renderEndings(Graphics2D g2, LineInvariants invariants) {
         for (var entry : invariants.getLayoutResult().decorationLayouts().endings().entrySet()) {
             var volta = entry.getValue();
@@ -88,15 +69,6 @@ public final class EndingRenderer {
         }
     }
 
-    /**
-     * Draws a single ending bracket.
-     *
-     * @param g2      Graphics context
-     * @param bracket The bracket range to draw
-     * @param slot    Which of the ending's two brackets it is, which decides its label
-     * @param yTopSs  Top Y of the bracket in component staff-space units
-     * @param color   The color to draw the bracket and its label in
-     */
     private void drawEnding(
         Graphics2D g2,
         BracketRange bracket,

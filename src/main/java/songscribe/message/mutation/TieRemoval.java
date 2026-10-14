@@ -27,8 +27,7 @@ import songscribe.dom.NoteElement;
  * Mutation recording that a note was untied from the next note. The tie's end is derived, not
  * recorded — see {@link NoteElement#tie()}.
  *
- * @param line   {@code anchor}'s line
- * @param anchor the note that became untied
+ * @param line {@code anchor}'s line
  */
 public record TieRemoval(Line line, NoteElement anchor)
     implements Mutation, LineScopedMutation {

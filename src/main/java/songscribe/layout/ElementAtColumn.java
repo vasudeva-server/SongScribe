@@ -25,10 +25,6 @@ import songscribe.dom.StaffElement;
 /**
  * A staff element and the absolute X of its column: what a glyph drawn over the element's
  * notehead is positioned from.
- *
- * @param <E>       the element's type, so a caller that needs a note gets one back
- * @param element   the element
- * @param columnXSs the absolute X of the element's column, in staff spaces
  */
 public record ElementAtColumn<E extends StaffElement>(E element, double columnXSs) {
 }

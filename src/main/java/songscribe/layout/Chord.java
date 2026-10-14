@@ -23,21 +23,9 @@ package songscribe.layout;
 /**
  * A straight run from {@code (xStartSs, yStartSs)} to {@code (xEndSs, yEndSs)}, in staff spaces:
  * one chord of a sloped reservation, or of a profile's edge.
- *
- * @param xStartSs the run's start X
- * @param xEndSs   the run's end X
- * @param yStartSs the run's Y at its start
- * @param yEndSs   the run's Y at its end
  */
 public record Chord(double xStartSs, double xEndSs, double yStartSs, double yEndSs) {
 
-    /**
-     * Returns the run's slope, or zero where it is flat or degenerate.
-     *
-     * @return the rise per unit X; zero when {@code xEndSs <= xStartSs} or
-     *     {@code yStartSs == yEndSs}
-     * @invariant a non-zero slope implies {@code xEndSs > xStartSs}
-     */
     public double slopeSs() {
         var spanSs = xEndSs - xStartSs;
 

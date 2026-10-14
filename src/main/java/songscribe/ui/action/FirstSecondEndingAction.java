@@ -29,9 +29,8 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 
 /**
- * Makes a first/second ending from the selection. Its enabled state is judged when the menu
- * opens; the command judges the selection again when it runs, so a trigger that reaches it
- * after the selection changed acts on the selection as it is then.
+ * Makes a first/second ending from the selection. The command judges the selection again when
+ * it runs, so it acts on the selection as it is then.
  */
 public final class FirstSecondEndingAction extends UIAction {
 
@@ -46,12 +45,6 @@ public final class FirstSecondEndingAction extends UIAction {
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_MAKE_ENDING);
     }
 
-    /**
-     * Enables the action when {@code ctrl}'s selection can make an ending and the standard
-     * flags allow it, and disables it otherwise.
-     *
-     * @param ctrl the controller of the score whose selection the menu acts on
-     */
     public void validate(ScoreViewController ctrl) {
         if (!ctrl.canMakeFirstSecondEnding()) {
             setEnabled(false);

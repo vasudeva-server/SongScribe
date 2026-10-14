@@ -27,25 +27,15 @@ import songscribe.util.Copyable;
 
 /**
  * Everything {@code SongSettingsDialog} shows, as values: the whole of what the dialog knows
- * about the document it is editing.
+ * about the document. Read once per opening and treated as a snapshot; the dialog is modal, so
+ * nothing changes the document underneath it.
  *
- * <p>Read once per opening, by {@link DialogOps#read()}, and treated as a snapshot
- * from then on. The dialog is modal, so nothing can change the document underneath it, and
- * nothing here is re-read while it is up.
+ * <p>{@link SongSettingsOutput} is the answering half. The line width and the lyrics context are
+ * read-only: the dialog never writes them back.
  *
- * <p>{@link SongSettingsOutput} is the answering half, and carries the same three things the
- * dialog can edit. The last two components here — the line width and the lyrics context — are
- * read-only: the dialog measures its previews against them and never writes them back.
- *
- * @param metadata     the song's descriptive metadata, split across the Title and Attribution tabs
- * @param fonts        the document's fonts. The dialog edits six of the eight roles and copies the
- *                     rest through, which is why the whole holder arrives rather than six fonts
- * @param tempo        the song's tempo
- * @param lineWidthSs  the stored line width, as an {@link Ss}, which the Title tab's previews
- *                     wrap at so they break where the score does. Read and never written back —
- *                     the width belongs to page setup, and there is no control for it here
- * @param lyrics       what the Title and Attribution tabs need to know about the lyrics, which
- *                     this dialog does not edit
+ * @param fonts       the dialog edits six of the eight roles and copies the rest through, which
+ *                     is why the whole holder arrives
+ * @param lineWidthSs  read and never written back — the width belongs to page setup
  */
 public record SongSettingsInput(
     SongMetadata metadata,
@@ -56,13 +46,7 @@ public record SongSettingsInput(
 ) implements Copyable<SongSettingsInput> {
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>{@link DocumentFonts} is the one mutable component, so it is the one that is rebuilt;
-     * every other component is a value the document can safely share.
-     *
-     * @return an input whose fonts the document does not share, so the Fonts tab edits this
-     *         dialog's own values until OK
+     * {@link DocumentFonts} is the one mutable component, so it is the one that is rebuilt.
      */
     @Override
     public SongSettingsInput copy() {

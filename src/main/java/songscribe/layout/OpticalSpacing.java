@@ -27,108 +27,46 @@ import songscribe.dom.Direction;
 import songscribe.engraving.Staff;
 
 /**
- * A horizontal-spacing correction pass that ports three of LilyPond's optical-spacing corrections
- * ({@code lily/note-spacing.cc}, {@code lily/staff-spacing.cc}): small additive nudges to the ideal
- * (uncompressed) horizontal gap between adjacent note columns, compensating for optical illusions
- * caused by stem-direction geometry.
+ * A horizontal-spacing correction pass that ports three of LilyPond's optical-spacing corrections:
+ * small additive nudges to the ideal (uncompressed) gap between adjacent note columns,
+ * compensating for stem-direction illusions. The strut (collision floor) is never touched.
  *
- * <p>Corrections are folded in via {@link Spring#withCorrectionSs}, which shifts a spring's
- * {@code restSs} (the uncompressed ideal) and {@code levelOffsetSs} (so the correction survives
- * compression as a relative offset to the whitespace levelled by {@link SpringSpacer}) by the same
- * amount. {@code strutSs} (the hard collision floor) is never touched — these are perceptual
- * nudges, never collision-safety changes, matching LilyPond's own discipline.
+ * <p>A narrowing correction has no visible effect on a gap already at its strut; this is expected,
+ * not a bug to "fix" by inflating the constants.
  *
- * <p><b>Collision safety and the one-sided-narrowing property.</b> The solver never uses raw
- * {@code restSs} as a placed gap: it goes through {@link Spring#naturalLengthSs} (which floors
- * {@code restSs} at {@code strutSs}) and uses {@code strutSs} directly as the compression floor.
- * Two consequences follow:
+ * <p>Grace columns are ordinary columns here: the gap into a grace and the gap out of it to its
+ * host are both corrected, though the grace-to-host gap is {@code liftExempt}.
  *
- * <ul>
- *   <li>A <b>negative</b> (narrowing) correction that would push {@code restSs} below {@code strutSs}
- *       is safe — the gap simply pins at {@code strutSs}; it never breaches the collision floor.</li>
- *   <li>Because of that same clamp, a narrowing correction has <b>no visible effect</b> on a gap that
- *       is already at (or below) its strut floor: widening always applies, but narrowing is only
- *       observable where the gap has slack above the collision floor. This is expected behavior, not
- *       a bug — it is not "fixed" by inflating the constants.</li>
- * </ul>
+ * <p>A "knee" (a beam that changes stem direction mid-group) is not implemented.
  *
- * <p><b>Grace notes take corrections too.</b> LilyPond floats grace columns out of the main spacing
- * chain as loose columns, but when it drapes them back around their neighbours it still runs each
- * resulting gap through {@code Note_spacing::get_spacing} — and so through
- * {@code stem_dir_correction} ({@code lily/spacing-loose-columns.cc}). SongScribe has no separate
- * grace pass, so a grace column is simply an ordinary column here: the gap <em>into</em> a grace and
- * the gap <em>out of</em> it to its host are both corrected. A grace note always stems up
- * ({@link NoteGeometry#effectiveDirection}) on a shortened stem, so its vertical span is narrower
- * than a full note's and the overlap ramp yields a correspondingly gentler correction — the geometry
- * does the scaling, no grace-specific constant is needed.
- *
- * <p>The grace→host gap is {@code liftExempt} — it takes no lyric lift — but that says nothing about
- * corrections: it is corrected like every other gap, so the fixed distance the grace packs at is an
- * optical one rather than a mechanical one.
- *
- * <p>A "knee" (a beam that changes stem direction mid-group) is explicitly out of scope —
- * LilyPond has a separate {@code knee_correction} for it that this port does not implement.
- *
- * <p>On the screen-down Ss axis (negative is higher on the staff), each column's vertical span runs
- * from {@code getAbsoluteTopYSs} to {@code getAbsoluteBottomYSs} — notehead plus stem — and
- * {@code verticalOverlapSs = min(bottoms) - max(tops)}, positive only where the two spans intersect.
- * The ramp is {@code min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0)}.
- *
- * <ul>
- *   <li>A stem-up column followed by a stem-down one, with overlap and no knee, widens by
- *       {@code ramp} times {@link #OPPOSITE_STEM_MAX_CORRECTION_SS}; stem-down followed by stem-up
- *       narrows by the same amount.
- *   <li>Two same-direction columns whose staff positions differ by more than
- *       {@link #SAME_DIRECTION_THRESHOLD_SS} shift by
- *       {@link #SAME_DIRECTION_MAX_CORRECTION_SS}, widening when {@code curr} is the higher of the
- *       two.
- *   <li>A barline followed by a stem-down column, where the staff span and the column overlap,
- *       widens by {@code ramp} times {@link #DOWNSTEM_BARLINE_MAX_CORRECTION_SS}.
- *   <li>Every other pairing is uncorrected.
- * </ul>
- *
- * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
+ * <p>See {@code docs/layout-geometry.md}.
  */
 public final class OpticalSpacing {
 
-    /**
-     * Ported from LilyPond's NoteSpacing.stem-spacing-correction default (scm/define-grobs.scm).
-     * Package-private (rather than private) so {@code OpticalSpacingTest} can assert against it
-     * directly instead of duplicating the literal.
-     */
-    static final double OPPOSITE_STEM_MAX_CORRECTION_SS = 0.5;
+    /** From LilyPond's NoteSpacing.stem-spacing-correction default. */
+    private static final double OPPOSITE_STEM_MAX_CORRECTION_SS = 0.5;
 
-    /** Ported from LilyPond's NoteSpacing.same-direction-correction default (scm/define-grobs.scm). */
+    /** From LilyPond's NoteSpacing.same-direction-correction default. */
     static final double SAME_DIRECTION_MAX_CORRECTION_SS = 0.25;
 
     /**
      * Vertical overlap (Ss) at which the opposite-stem and downstem-after-barline corrections reach
-     * full strength. LilyPond derives an equivalent saturation point from a hardcoded constant
-     * applied inconsistently across two different internal unit scales; this is a single unified
-     * value used by both corrections here instead.
+     * full strength; one value for both.
      */
     static final double STEM_OVERLAP_SATURATION_SS = 3.5;
 
-    /** Minimum vertical gap (Ss) between two same-direction notes before the correction applies. */
     static final double SAME_DIRECTION_THRESHOLD_SS = 0.5;
 
-    /** Ported from LilyPond's StaffSpacing.stem-spacing-correction default (scm/define-grobs.scm). */
+    /** From LilyPond's StaffSpacing.stem-spacing-correction default. */
     static final double DOWNSTEM_BARLINE_MAX_CORRECTION_SS = 0.4;
 
     private OpticalSpacing() {
     }
 
     /**
-     * Applies the opposite-stem, same-direction, and downstem-after-barline optical-spacing
-     * corrections to {@code springs}.
+     * Every gap is corrected, lift-exempt ones included.
      *
-     * <p>Unlike {@link LyricLift#applyLyricLift}, which skips lift-exempt gaps, every gap is
-     * corrected here — the exemption is from the lyric lift only.
-     *
-     * @param springs One spring per adjacent column pair, as built by
-     *                {@link HorizontalSpacingCalculator#buildSprings}
      * @param columns The columns those springs span; {@code springs.size() + 1} entries
-     * @return New springs with corrected rests, in gap order; struts unchanged
      */
     public static List<Spring> applyCorrections(List<Spring> springs, List<ElementColumn> columns) {
         var corrected = new ArrayList<Spring>(springs.size());
@@ -147,42 +85,23 @@ public final class OpticalSpacing {
         return corrected;
     }
 
-    /**
-     * Length of the 1-D overlap between two vertical spans [topA, bottomA] and [topB, bottomB] in the
-     * screen-down Ss convention (smaller = higher). Non-positive when the spans do not intersect.
-     */
     private static double verticalOverlapSs(
         double topASs, double bottomASs, double topBSs, double bottomBSs) {
 
         return Math.min(bottomASs, bottomBSs) - Math.max(topASs, topBSs);
     }
 
-    /**
-     * Package-private (rather than private) so {@code OpticalSpacingTest} and
-     * {@link HorizontalSpacingCalculator}'s per-gap debug dump can read the ramp's input directly.
-     */
     static double verticalOverlapSs(ElementColumn columnA, ElementColumn columnB) {
         return verticalOverlapSs(
             columnA.getAbsoluteTopYSs(), columnA.getAbsoluteBottomYSs(),
             columnB.getAbsoluteTopYSs(), columnB.getAbsoluteBottomYSs());
     }
 
-    /**
-     * Ramps a correction from 0 up to {@code maxSs} as {@code overlapSs} grows from 0 to
-     * {@link #STEM_OVERLAP_SATURATION_SS}, saturating at {@code maxSs} beyond that.
-     */
     private static double saturatedMagnitudeSs(double overlapSs, double maxSs) {
         return Math.clamp(overlapSs / STEM_OVERLAP_SATURATION_SS, 0.0, 1.0) * maxSs;
     }
 
-    /**
-     * Widens the gap when {@code prev} stems up and {@code curr} stems down (their noteheads sit
-     * close together, so the stems visually crowd the gap), and narrows it in the opposite case,
-     * ramped by how much the two columns' vertical spans overlap.
-     *
-     * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
-     * as part of the summed correction.
-     */
+    /** Package-private so the per-gap debug dump can report this term on its own. */
     static double oppositeStemCorrectionSs(ElementColumn prev, ElementColumn curr) {
         var prevDirection = prev.stemDirection();
         var currDirection = curr.stemDirection();
@@ -210,13 +129,7 @@ public final class OpticalSpacing {
         return saturatedMagnitudeSs(overlapSs, OPPOSITE_STEM_MAX_CORRECTION_SS) * prevDirection.sign();
     }
 
-    /**
-     * Widens or narrows the gap between two same-direction-stem notes by a fixed step when their
-     * staff positions differ enough to look uneven, based on which of the two sits lower.
-     *
-     * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
-     * as part of the summed correction.
-     */
+    /** Package-private so the per-gap debug dump can report this term on its own. */
     static double sameDirectionCorrectionSs(ElementColumn prev, ElementColumn curr) {
         var prevDirection = prev.stemDirection();
         var currDirection = curr.stemDirection();
@@ -242,16 +155,10 @@ public final class OpticalSpacing {
     }
 
     /**
-     * Widens the gap after a barline when {@code curr} stems down, ramped by how much the downstem
-     * column's vertical span overlaps the barline's own span (the full staff height, symmetric about
-     * the middle line). Unconditionally additive - a downstem right after a barline always gets a
-     * little more room, never less. A grace note never reaches the formula: it always stems up.
+     * Unconditionally additive: a downstem right after a barline always gets a little more room,
+     * never less.
      *
-     * <p>The barline's span is stated here rather than read from {@code prev}, so the barline
-     * column's own vertical span (which is the same full staff height) is never counted twice.
-     *
-     * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
-     * as part of the summed correction.
+     * <p>Package-private so the per-gap debug dump can report this term on its own.
      */
     static double downstemAfterBarlineCorrectionSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.isBarline() || curr.stemDirection() != Direction.DOWN) {

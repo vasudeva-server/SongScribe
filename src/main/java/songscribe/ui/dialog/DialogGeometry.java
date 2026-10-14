@@ -25,6 +25,6 @@ import java.awt.Point;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Stores a dialog's saved geometry: position (always) and size (for resizable dialogs only).
+ * @param size null for a dialog that is not resizable
  */
 record DialogGeometry(Point location, @Nullable Dimension size) {}

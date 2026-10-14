@@ -33,23 +33,6 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
-/**
- * Renders bar lines and repeat signs using drawn primitives.
- * <p>
- * Per the SMuFL spec, scoring programs should draw barlines using primitives
- * rather than using the barline glyphs. Repeat dots still use the Bravura
- * {@link SMuFLGlyph#REPEAT_DOTS} glyph.
- * <p>
- * Handles:
- * <ul>
- *   <li>Single bar lines</li>
- *   <li>Double bar lines</li>
- *   <li>Final double bar lines (thin + thick)</li>
- *   <li>Left repeat</li>
- *   <li>Right repeat</li>
- *   <li>Left-right repeat</li>
- * </ul>
- */
 public final class BarRenderer implements ElementRenderer<BarElement> {
 
     // ==========================================================================
@@ -59,15 +42,9 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
     // Singleton instance
     private static final BarRenderer INSTANCE = new BarRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private BarRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static BarRenderer getInstance() {
         return INSTANCE;
     }
@@ -76,10 +53,6 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Renders a bar line or repeat sign by drawing its {@link BarAppearance}'s strokes,
-     * left to right, starting at the element's own origin.
-     */
     @Override
     public void render(
         LineInvariants invariants,
@@ -100,30 +73,15 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
     // ==========================================================================
 
     /**
-     * Draws a thin single barline spanning the staff, with its left edge at {@code xSs}.
+     * The one definition of a single barline, so one drawn from something other than an element
+     * (a {@code CautionaryKeySignature}'s) cannot differ in thickness or height.
      *
-     * <p>This is the one definition of what a single barline looks like, so a barline drawn from
-     * something other than an element — the barline a {@code CautionaryKeySignature} draws at the
-     * end of a line — cannot come out a different thickness or height from an element's.
-     *
-     * @param g2            Graphics context, in staff-space units
-     * @param xSs           Left edge X coordinate of the barline
-     * @param middleLineYSs Y coordinate of the staff's middle line, which the bar is centered on
+     * @param g2 Graphics context, in staff-space units
      */
     public static void drawSingleBarLine(Graphics2D g2, double xSs, double middleLineYSs) {
         drawStrokes(g2, BarAppearance.SINGLE_BARLINE, xSs, middleLineYSs);
     }
 
-    /**
-     * Draws a barline or repeat sign's strokes left to right, starting at {@code originXSs}
-     * and centered vertically on {@code middleLineYSs}.
-     *
-     * @param g2            Graphics context, in staff-space units
-     * @param appearance    the strokes to draw, left to right
-     * @param originXSs     X coordinate of the left edge of the first stroke
-     * @param middleLineYSs Y coordinate of the staff's middle line, which the strokes are
-     *                      centered on
-     */
     private static void drawStrokes(
         Graphics2D g2,
         BarAppearance appearance,
@@ -145,13 +103,7 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
     }
 
     /**
-     * Draws a single barline as a filled rectangle.
-     *
-     * @param g2      Graphics context (translated to middle line)
-     * @param leftX   Left edge X coordinate
-     * @param width   Barline width in staff spaces
-     * @param topY    Top Y coordinate
-     * @param bottomY Bottom Y coordinate
+     * @param g2 Graphics context (translated to middle line)
      */
     private static void drawBar(
         Graphics2D g2,
@@ -164,13 +116,7 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
     }
 
     /**
-     * Draws repeat dots using the Bravura {@link SMuFLGlyph#REPEAT_DOTS} glyph.
-     * <p>
-     * The glyph origin is at the bottom staff line (SMuFL barline convention),
-     * producing two dots in the inner staff spaces.
-     *
      * @param g2   Graphics context (translated to middle line)
-     * @param xSs  Left edge X coordinate for the dots in staff spaces
      * @param ySs  Y coordinate of the bottom staff line, the glyph's origin
      */
     private static void drawRepeatDots(Graphics2D g2, double xSs, double ySs) {

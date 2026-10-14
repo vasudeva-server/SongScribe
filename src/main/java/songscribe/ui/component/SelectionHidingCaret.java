@@ -46,9 +46,6 @@ public class SelectionHidingCaret extends DefaultCaret {
         super.paint(g);
     }
 
-    /**
-     * Returns true if there is an active selection (dot != mark)
-     */
     boolean isSelectionActive() {
         return getComponent() != null && getDot() != getMark();
     }

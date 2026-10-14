@@ -31,35 +31,21 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * What a rubber-band drag on one line may select, and how far across the staff it may reach.
+ * Both answers come from here so a painted band never lies over notation that refuses to
+ * highlight; neither limit nor membership is derived anywhere else.
  * <p>
- * A drag asks two questions, and both are answered from here so they cannot disagree: how far a
- * band's edge may travel, and which columns a band covers. Stating the answers separately is what
- * lets a painted band lie over notation that then refuses to highlight, so neither limit nor
- * membership is derived anywhere else.
+ * The song's auto-maintained terminal is excluded by where {@link #of} stops collecting columns.
  * <p>
- * The song's auto-maintained terminal is excluded exactly once, by where {@link #of} stops
- * collecting columns. Both answers follow from that one stopping point: the terminal
- * is not a member because it is not in the list, and the right-hand limit is where the list runs
- * out.
+ * An instance is a snapshot of one layout. Build a new one per drag event, since a line's content
+ * can change under a live gesture.
  * <p>
- * An instance is a snapshot of one layout. Build a new one per drag event rather than holding one
- * across a drag, since a line's content can change under a live gesture.
- *
- * @invariant the left limit never exceeds the right limit, because an instance exists only for a
- *            line carrying at least one selectable column, and every column of a line is laid out
- *            to the right of its header
+ * The left limit never exceeds the right limit.
  */
 public final class SweepRange {
 
     /**
-     * The gap a band's edge keeps from the staff header, so a sweep never touches it.
-     * <p>
-     * There is no matching gap on the right: the auto-maintained terminal is right-aligned with
-     * the end of the staff, so stopping at its left ink edge already leaves no reachable staff
-     * beyond it.
-     * <p>
-     * Document pixels rather than view pixels: the reachable range is then the same music at
-     * every zoom, which is the whole reason a band's endpoints are held in staff spaces.
+     * Document pixels rather than view pixels, so the reachable range is the same music at every
+     * zoom.
      */
     private static final double HEADER_GAP_PX = 1.0;
 
@@ -74,19 +60,10 @@ public final class SweepRange {
     }
 
     /**
-     * The sweep range for {@code line} under {@code layoutResult}.
-     * <p>
-     * Refusing to build is how a stale layout is reported, and it is the only report: a caller
-     * that gets {@code null} has no range to clamp against and no membership to test, so the
-     * gesture does nothing this frame rather than proceeding on a substituted answer.
-     *
-     * @param line         the line a drag is sweeping
-     * @param layoutResult the layout the drag is reading, which must be the one that laid
-     *                     {@code line} out
-     * @return the range, or {@code null} when the line holds nothing a drag could select — an
-     *         empty line, or one holding nothing but the terminal — or when the layout no longer
-     *         has a column for one of the line's elements, which means it went stale under a
-     *         live gesture
+     * @param layoutResult must be the one that laid {@code line} out
+     * @return {@code null} when the line holds nothing a drag could select (empty, or only the
+     *         terminal), or when the layout has no column for one of the line's elements because
+     *         it went stale under a live gesture
      */
     public static @Nullable SweepRange of(Line line, LayoutResult layoutResult) {
         var sweepableCount = line.effectiveElementCount();
@@ -120,35 +97,19 @@ public final class SweepRange {
     }
 
     /**
-     * {@code xSs} brought inside the stretch of staff a band's edge may reach.
-     * <p>
-     * The limits are the <i>staff</i> rather than the music on it, so a drag past the last column
-     * still reaches the bare staff beyond it. Both ends of a band go through this, so no press
-     * position can put an edge somewhere a drag could not have taken it.
-     *
-     * @param xSs a line-local x, in staff spaces
-     * @return {@code xSs}, or the nearer limit when it lies outside them
+     * The limits are the <i>staff</i> rather than the music on it. Both ends of a band go through
+     * this, so no press position can put an edge where a drag could not have taken it.
      */
     public double clamp(double xSs) {
         return Math.clamp(xSs, leftLimitSs, rightLimitSs);
     }
 
     /**
-     * The columns this range holds that the interval {@code [leftSs, rightSs]} touches.
-     * <p>
-     * A column is touched the moment the interval reaches its ink, not once the interval encloses
-     * the whole of it, and a column's ink runs from {@link ElementColumn#getLeftEdgeXSs} to
-     * {@link ElementColumn#getRightEdgeXSs} — so a leading accidental and trailing augmentation
-     * dots both count. Vertical position is not consulted, here or by any caller: a note four
-     * ledger lines up, a rest and a barline are all answered for identically.
-     * <p>
-     * The answer is a run rather than a set because a selection is a run. Column extents are
-     * ordered, so every column between the first and the last match is itself a match.
+     * A column is touched the moment the interval reaches its ink, which includes a leading
+     * accidental and trailing augmentation dots. Vertical position is not consulted.
      *
-     * @param leftSs  the interval's left end, in line-local staff spaces
-     * @param rightSs the interval's right end, which must not be less than {@code leftSs}
-     * @return the inclusive index range of touched columns, or {@code null} when the interval
-     *         touches none — it lies wholly in a gap, or wholly off the music
+     * @param rightSs must not be less than {@code leftSs}
+     * @return {@code null} when the interval touches no column
      */
     public @Nullable ElementRange overlapping(double leftSs, double rightSs) {
         @Nullable Integer begin = null;
@@ -170,13 +131,7 @@ public final class SweepRange {
     }
 
     /**
-     * The rightmost x a band's edge may reach: the left ink edge of the auto-maintained
-     * terminal's column, or the end of the staff when the line carries no terminal.
-     *
-     * @param sweepableCount the line's selectable column count, which is also the terminal's own
-     *                       element index when the line carries one
-     * @return the limit, or {@code null} when the line carries a terminal the layout has no
-     *         column for
+     * @return {@code null} when the line carries a terminal the layout has no column for
      */
     private static @Nullable Double rightLimitSs(
         Line line, LayoutResult layoutResult, int sweepableCount) {

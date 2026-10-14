@@ -20,10 +20,6 @@
 
 package songscribe.message.mutation;
 
-/**
- * Sealed marker interface for all song mutation types.
- * Subscribers use {@code instanceof} / pattern matching to filter to specific mutation types.
- */
 public sealed interface Mutation
     permits ElementInsertion, ElementDeletion, ElementModification, ElementReplacement,
             LineInsertion, LineDeletion,

@@ -30,12 +30,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * The staff geometry and pure functions of a staff position shared by all stacking delegates:
- * staff-line positions and ink edges, collision margins, and the anchor ceiling/floor
- * calculations.
- * <p>
- * Collision-aware placement, which reads and writes an extents layer, is on
- * {@link StackingLayer}.
+ * The staff geometry and pure functions of a staff position shared by all stacking delegates.
  */
 public final class StackingUtils {
 
@@ -91,12 +86,6 @@ public final class StackingUtils {
     private StackingUtils() {
     }
 
-    /**
-     * Returns the anchor ceiling Y for the given staff position, without consulting extents.
-     * <p>
-     * A position within or below the staff anchors at the top staff line.
-     * A position at or above the top staff line anchors above the notehead.
-     */
     public static double anchorCeilingSs(int staffPosition) {
         if (staffPosition > TOP_STAFF_LINE_POSITION) {
             return STAFF_TOP_Y_SS;
@@ -106,20 +95,13 @@ public final class StackingUtils {
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 
-    /**
-     * Clamps an obstacle's top Y to never sit lower (larger Y) than the top staff line, mirroring
-     * {@link #anchorCeilingSs}'s within-staff clamp for callers that bypass it (e.g. a sloped
-     * ceiling that must keep the raw per-tip Y rather than {@link #anchorCeilingSs}'s flattening).
-     */
     public static double staffTopClampSs(double obstacleTopYSs) {
         return Math.min(obstacleTopYSs, STAFF_TOP_Y_SS);
     }
 
     /**
      * The beam-resolved top Y of {@code element}'s stem, or {@code fallbackTopSs} when
-     * {@code builder} has not yet resolved a {@link LayoutResult.StemLayout} for it (no stem, or
-     * beam layout not yet computed). Shared by callers that need the post-beam-layout stem top,
-     * distinct from a pre-beam estimate such as {@link songscribe.layout.ElementColumn#getAbsoluteTopYSs()}.
+     * {@code builder} has not yet resolved a {@link LayoutResult.StemLayout} for it.
      */
     static double resolvedStemTopYSs(
         LayoutResultBuilder builder, StaffElement element, double fallbackTopSs) {
@@ -128,9 +110,6 @@ public final class StackingUtils {
         return stemLayout != null ? stemLayout.topYSs() : fallbackTopSs;
     }
 
-    /**
-     * Returns the anchor floor Y for the given staff position.
-     */
     public static double anchorFloorSs(int staffPosition) {
         if (staffPosition < BOTTOM_STAFF_LINE_POSITION) {
             return STAFF_BOT_Y_SS;
@@ -141,13 +120,9 @@ public final class StackingUtils {
     }
 
     /**
-     * Returns the staccato anchor ceiling Y for the given staff position.
-     * <p>
-     * Unlike {@link #anchorCeilingSs}, notes within the staff do not anchor at a fixed
-     * staff line: a note on an interior staff line anchors {@link #STACCATO_ON_LINE_DISTANCE_SS}
-     * from the note center (clearing the line), while a note in a space (including the top
-     * space) anchors {@link #STACCATO_BETWEEN_LINES_DISTANCE_SS} from the note center. Notes
-     * on or above the top staff line anchor the same as {@link #anchorCeilingSs}.
+     * Unlike {@link #anchorCeilingSs}, notes within the staff do not anchor at a fixed staff
+     * line: the distance from the note center is {@link #STACCATO_ON_LINE_DISTANCE_SS} on a
+     * line and {@link #STACCATO_BETWEEN_LINES_DISTANCE_SS} in a space.
      */
     public static double staccatoAnchorCeilingSs(int staffPosition) {
         if (staffPosition <= TOP_STAFF_LINE_POSITION) {
@@ -157,11 +132,6 @@ public final class StackingUtils {
         return staffPosition * Staff.HALF_SPACE_SS - staccatoDistanceSs(staffPosition);
     }
 
-    /**
-     * Returns the staccato anchor floor Y for the given staff position.
-     * <p>
-     * Mirrors {@link #staccatoAnchorCeilingSs} for below-staff placement.
-     */
     public static double staccatoAnchorFloorSs(int staffPosition) {
         if (staffPosition >= BOTTOM_STAFF_LINE_POSITION) {
             return anchorFloorSs(staffPosition);
@@ -170,10 +140,6 @@ public final class StackingUtils {
         return staffPosition * Staff.HALF_SPACE_SS + staccatoDistanceSs(staffPosition);
     }
 
-    /**
-     * The distance from a notehead's center to the center of its staccato dot inside the staff:
-     * an even staff position sits on a line, an odd one between two lines.
-     */
     private static double staccatoDistanceSs(int staffPosition) {
         return staffPosition % 2 == 0
             ? STACCATO_ON_LINE_DISTANCE_SS

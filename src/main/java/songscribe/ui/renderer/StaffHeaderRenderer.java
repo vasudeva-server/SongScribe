@@ -29,32 +29,19 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 
 /**
- * Renders the staff header — the treble clef and the key signature — at the start of a staff
- * line, at the positions the {@link StaffHeader} carries.
- * <p>
- * The clef is drawn so that its inner curve wraps around the G line (second line from bottom):
- * the SMuFL G clef's origin sits on that line. The signature is the run
- * {@link KeySignatureRenderer} draws wherever a key signature appears, painted here in the
- * element color: the header is not an element of the line, so no paint loop colors it for
- * selection or playback.
+ * Renders the staff header — the treble clef and the key signature — at the positions the
+ * {@link StaffHeader} carries. The signature is painted in the element color: the header is not
+ * an element of the line, so no paint loop colors it for selection or playback.
  */
 public final class StaffHeaderRenderer implements ElementRenderer<StaffHeader> {
 
-    /** Staff spaces from the middle line down to the G line, where the SMuFL G clef's origin sits. */
     private static final double G_LINE_BELOW_MIDDLE_SS = 1.0;
 
-    /** Singleton instance. */
     private static final StaffHeaderRenderer INSTANCE = new StaffHeaderRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private StaffHeaderRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static StaffHeaderRenderer getInstance() {
         return INSTANCE;
     }

@@ -32,29 +32,16 @@ import songscribe.ui.component.score.LineComponent;
 /**
  * Cleans up after a rubber-band drag that Swing failed to finish.
  * <p>
- * A drag paints a rectangle on the {@link LineComponent} it started on, and that component
- * clears it on mouseReleased. During a fast drag Swing sometimes never delivers that release
- * to it, leaving the rectangle painted over a drag that is long over. So the drag is recorded
- * here and a global AWT listener catches the release wherever it lands.
- * <p>
- * Nothing about the selection itself: what the drag selected is assigned through
- * {@link SelectionCoordinator} as the drag runs, and a release caught here changes none of it.
+ * During a fast drag Swing sometimes never delivers mouseReleased to the {@link LineComponent}
+ * that clears the rectangle, so a global AWT listener catches the release wherever it lands.
+ * It never changes the selection.
  */
 public final class SelectionDragTracker {
 
-    /**
-     * The LineComponent that currently has an active rubber-band drag, or null.
-     * Tracked so the global AWTEventListener can clean up if Swing fails to
-     * deliver mouseReleased to the originating LineComponent.
-     */
+    /** The LineComponent that currently has an active rubber-band drag, or null. */
     @Nullable
     private LineComponent draggingLine = null;
 
-    /**
-     * Global AWT listener that catches mouseReleased events which Swing sometimes
-     * fails to deliver to a LineComponent during fast rubber-band drags.
-     * Registered only while a drag is active and removed once the release is caught.
-     */
     private final AWTEventListener globalMouseReleasedListener = event -> {
         if (event instanceof MouseEvent me && me.getID() == MouseEvent.MOUSE_RELEASED) {
             if (draggingLine != null) {
@@ -71,10 +58,6 @@ public final class SelectionDragTracker {
 
     SelectionDragTracker() {}
 
-    /**
-     * Called by {@link LineComponent} when a rubber-band drag begins,
-     * so the tracker can install the safety-net AWTEventListener.
-     */
     public void dragDidStart(LineComponent lineComponent) {
         draggingLine = lineComponent;
         Toolkit.getDefaultToolkit().addAWTEventListener(

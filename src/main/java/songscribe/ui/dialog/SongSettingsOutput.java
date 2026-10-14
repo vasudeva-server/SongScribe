@@ -27,23 +27,15 @@ import songscribe.font.DocumentFonts;
  * What {@code SongSettingsDialog}'s four tabs say when OK is pressed — the answering half of
  * {@link SongSettingsInput}.
  *
- * <p><strong>Producible from any state the controls can reach.</strong> Every component here
- * exists whatever the user has done: the metadata fields accept any text, and the tempo comes
- * from a note-value combo, a bounded spinner, a description combo and a checkbox, so every state
- * they can reach is a tempo. Whether the values may be committed is
- * {@link DialogOps#validate()}'s question.
+ * <p><strong>Producible from any state the controls can reach.</strong> Whether the values may
+ * be committed is {@link DialogOps#validate()}'s question.
  *
  * <p>The two records that span tabs are assembled by the dialog, because no tab holds all of
- * either: the title, number and subtitle come from the Title tab and the rest of the metadata
- * from the Attribution tab; four of the six edited font roles come from three different tabs.
- * That is also why the commit is the dialog's and not a tab's — split across tabs it would be
- * several undo steps for one edit.
+ * either. That is also why the commit is the dialog's and not a tab's.
  *
- * @param metadata the metadata the Title and Attribution tabs together describe
- * @param fonts    the document's fonts with the six edited roles replaced, the other two
- *                 carried through from {@link SongSettingsInput#fonts()}
- * @param tempo    the tempo the Music tab's controls describe, built fresh from them and owned by
- *                 nobody else
+ * @param fonts   the six edited roles replaced, the other two carried through from
+ *                 {@link SongSettingsInput#fonts()}
+ * @param tempo    owned by nobody else
  */
 public record SongSettingsOutput(
     SongMetadata metadata,

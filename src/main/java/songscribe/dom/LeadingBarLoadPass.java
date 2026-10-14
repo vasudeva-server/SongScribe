@@ -28,12 +28,10 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * Removes every bar line that stands first in a freshly parsed song.
  *
  * <p>No bar line stands first in the song — the rule {@link SongStart} states, which every edit
- * that writes an element keeps. A file can still hold one: a song saved after a deletion left a
- * bar line first, which the model accepts and the lint rule flags, or a file written with a left
- * repeat at the start of its first measure. The pass removes each such bar line and reports the
- * line it was on. A key change behind the bar line goes with it, and the key it set becomes the
- * line's own key first, so the song sounds as the file wrote it. Nothing else is moved or
- * repaired into a place the file did not say.
+ * that writes an element keeps. The pass removes each such bar line and reports the line it was
+ * on. A key change behind the bar line goes with it, and the key it set becomes the line's own
+ * key first, so the song sounds as the file wrote it. Nothing else is moved or repaired into a
+ * place the file did not say.
  */
 final class LeadingBarLoadPass {
 
@@ -64,7 +62,6 @@ final class LeadingBarLoadPass {
      *     because the load runs with mutation tracking suspended and the sweep's report is silent
      *     then. Records to {@code report} one {@link SongStart#removedEntry} per bar line removed,
      *     naming the line it was on and whether the removal moved a key, in the order of removal
-     * @log one {@code INFO} line stating how many bar lines were removed, when any were
      */
     static void run(Song song, ChangeReport.Builder report) {
         var removedCount = 0;

@@ -27,17 +27,9 @@ import songscribe.Strings;
 /**
  * Drops every breath mark in a freshly parsed song that does not follow a duration element.
  *
- * <p>A breath mark stands only immediately after a pitched note or a rest — the invariant
- * {@link StaffElementRun#canInsertRunAt} guards at every edit. A file can still hold a breath
- * mark elsewhere: the legacy {@code .mssw} reader takes a flat element list as it stands, and
- * that list may put a breath mark after a barline or at the start of a line. The MusicXML
- * writer folds each breath mark into the {@code <note>} before it and the reader
- * appends it after that note again, so a {@code .musicxml} file cannot hold the state and the
- * pass finds nothing there.
- *
- * <p>The pass runs once the song is complete and removes each such breath mark, reporting the
- * line it was on so the user can be told. Nothing is moved or repaired into a place the file did
- * not say.
+ * <p>A breath mark stands only immediately after a pitched note or a rest, the invariant
+ * {@link StaffElementRun#canInsertRunAt} guards at every edit. The pass runs once the song is
+ * complete, and moves or repairs nothing into a place the file did not say.
  */
 final class BreathMarkLoadPass {
 
@@ -63,7 +55,6 @@ final class BreathMarkLoadPass {
      *     recorded to {@code report}, because the load runs with mutation tracking suspended
      *     and the sweep's report is silent then; records to {@code report}, in document order,
      *     each breath mark removed, with an entry that names the line the breath mark was on
-     * @log one {@code INFO} line stating how many breath marks were removed, when any were
      */
     static void run(Song song, ChangeReport.Builder report) {
         var removedCount = removeUnhostedBreathMarks(song, report);
@@ -73,12 +64,6 @@ final class BreathMarkLoadPass {
         }
     }
 
-    /**
-     * One forward walk over every line. Removing the element at {@code i} closes the line up
-     * onto that index, so the walk stays at {@code i} to judge whatever moved into the slot
-     * against the predecessor that is now settled. Each removal is recorded with an entry that
-     * names the line the breath mark was on.
-     */
     private static int removeUnhostedBreathMarks(Song song, ChangeReport.Builder report) {
         var removedCount = 0;
 

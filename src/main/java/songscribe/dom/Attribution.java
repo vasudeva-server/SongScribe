@@ -21,30 +21,17 @@
 package songscribe.dom;
 
 /**
- * Block element that represents the song's attribution block above the first staff line.
+ * Block element for the song's attribution above the first staff line.
  * <p>
- * It carries no size of its own — the block's extent belongs to the lines the layout pass typesets
- * for it, and is measured there on every pass. What lives here is the stable identity the layout
- * is keyed by, the margins the stacker places it with, and the user Y offset that nudges it.
- * <p>
- * X positioning is always right-aligned to the staff right edge; the user
- * cannot shift it horizontally. Accordingly, {@link #getUserXOffsetSs()} is
- * overridden to return {@code 0.0} so that
- * {@code VerticalStackingCalculator.applyManualOffsets} never applies an X
- * shift to this element.
+ * Always right-aligned to the staff right edge; the user cannot shift it horizontally, so
+ * {@link #getUserXOffsetSs()} returns {@code 0.0}.
  */
 public class Attribution extends LineElement {
 
-    /** Margin from the attribution block's bottom edge to the top of the staff. */
     public static final double ATTRIBUTION_MARGIN_BOTTOM_SS = 2.0;
 
-    /** Margin from the staff right edge to the attribution block's right edge. */
     public static final double ATTRIBUTION_RIGHT_MARGIN_SS = 0.5;
 
-    /**
-     * Always returns {@code 0.0}. The attribution is always right-aligned to the
-     * staff right edge; horizontal position is never user-adjustable.
-     */
     @Override
     public double getUserXOffsetSs() {
         return 0.0;

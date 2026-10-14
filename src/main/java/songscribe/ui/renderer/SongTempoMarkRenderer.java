@@ -26,31 +26,18 @@ import songscribe.dom.SongTempoMark;
 import songscribe.layout.LayoutResult;
 
 /**
- * Draws the song's tempo at the right edge of the first line's staff header.
- * <p>
- * The mark is inert: it owns no note, registers no hit region, and is edited only through
- * Song Settings. There is therefore no {@code HitTarget} to resolve a color from and it can never
- * be selected, hovered or played back, so it always paints in
- * {@link RenderingUtils#ELEMENT_COLOR}.
- * <p>
- * It draws through the same {@link MetronomeRenderer#drawContent} core as every per-note tempo
- * change, inside the staff-space transform, so the song's tempo cannot look different from its
- * own siblings.
+ * Draws the song's tempo at the right edge of the first line's staff header. The mark is inert:
+ * it has no {@code HitTarget} and can never be selected, hovered or played back, so it always
+ * paints in {@link RenderingUtils#ELEMENT_COLOR}. It draws through the same
+ * {@link MetronomeRenderer#drawContent} core as every per-note tempo change.
  */
 public final class SongTempoMarkRenderer implements ElementRenderer<SongTempoMark> {
 
-    /** Singleton instance. */
     private static final SongTempoMarkRenderer INSTANCE = new SongTempoMarkRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private SongTempoMarkRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static SongTempoMarkRenderer getInstance() {
         return INSTANCE;
     }

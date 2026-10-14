@@ -23,45 +23,31 @@ package songscribe.ui.platform.mac;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Measures the macOS window controls — the close, minimize and zoom buttons that
- * macOS draws in the top-left corner of every standard window.
- * <p>
- * An app that draws its own content into the title bar has to place that content
- * itself, and the only correct anchor is where the controls actually end. Their
- * geometry is a system metric that changes between macOS releases, so this class
- * asks the running system rather than assuming a size.
+ * Measures the macOS window controls — the close, minimize and zoom buttons in the top-left
+ * corner of every standard window — by asking the running system, because their geometry
+ * changes between macOS releases.
  * <p>
  * <b>FlatLaf cannot supply this number.</b>
- * {@code FlatClientProperties.FULL_WINDOW_CONTENT_BUTTONS_BOUNDS} reports the
- * strip the controls sit in, not the controls themselves: it pads the width by a
- * trailing inset mirroring the close control's leading inset, and reports
- * {@code x} as 0, so the inset cannot be subtracted back out. On macOS 26.5.2 it
- * reports a width of 78 where the zoom control's right edge is 69. Do not replace
- * this class with that property.
+ * {@code FlatClientProperties.FULL_WINDOW_CONTENT_BUTTONS_BOUNDS} reports the strip the
+ * controls sit in, padded by a trailing inset, with {@code x} as 0 so the inset cannot be
+ * subtracted back out. Do not replace this class with that property.
  * <p>
- * <b>macOS only.</b> This class messages AppKit through {@link ObjC}, so callers
- * must guard with {@link com.formdev.flatlaf.util.SystemInfo#isMacOS}.
+ * <b>macOS only.</b> Callers must guard with
+ * {@link com.formdev.flatlaf.util.SystemInfo#isMacOS}.
  */
 public final class MacWindowControls {
 
-    /** {@code NSWindowZoomButton}, the green control, which sits last of the three. */
     private static final long NS_WINDOW_ZOOM_BUTTON = 2;
 
-    /** {@code NSWindowStyleMaskTitled}. */
     private static final long NS_WINDOW_STYLE_MASK_TITLED = 1;
 
     /**
-     * {@code NSWindowStyleMaskUtilityWindow}. macOS draws a utility window's
-     * controls smaller than a document window's, so such a window must not be
-     * measured.
+     * macOS draws a utility window's controls smaller than a document window's, so such a
+     * window must not be measured.
      */
     private static final long NS_WINDOW_STYLE_MASK_UTILITY = 1L << 4;
 
-    /**
-     * Right edge of the zoom control on macOS 26, reported until a window exists
-     * to measure. The first window is created during {@code pack()}, so this
-     * applies only to layout that runs before the app has any window at all.
-     */
+    /** Reported until a window exists to measure. */
     private static final double UNMEASURED_ZOOM_CONTROL_RIGHT_EDGE = 69;
 
     /** The measured edge, or {@code null} until a measurement succeeds. */
@@ -71,23 +57,14 @@ public final class MacWindowControls {
     }
 
     /**
-     * Returns the x coordinate of the right edge of the zoom control, in the
-     * window's coordinate space, which for x matches Swing's root pane space.
-     * <p>
-     * This is a system metric, not a property of any one window. Every standard
-     * window carries the same control geometry, so the first measurable window
-     * answers for all of them, and the answer holds for as long as the app runs.
-     * The first successful measurement is kept and returned thereafter.
-     * <p>
-     * This method reports where the controls are, never whether a given window
-     * shows them. A window in full screen hides its controls, and that is the
-     * caller's question about its own window, not this class's.
+     * A system metric, not a property of any one window: the first successful measurement is
+     * kept for as long as the app runs. Reports where the controls are, never whether a given
+     * window shows them (full screen hides them).
+     *
+     * <p>Call on the event dispatch thread.
      *
      * @return the right edge in points; before any window exists to measure,
      *         {@link #UNMEASURED_ZOOM_CONTROL_RIGHT_EDGE}
-     * @invariant the result is always positive
-     * @effects sends Obj-C messages to AppKit inside a fresh autorelease pool;
-     *          call on the event dispatch thread
      */
     public static double zoomControlRightEdge() {
         var edge = measuredZoomControlRightEdge;
@@ -101,11 +78,7 @@ public final class MacWindowControls {
     }
 
     /**
-     * Measures the first window that carries standard-size controls.
-     *
-     * <p>{@code -[NSApplication windows]} lists every window the app owns, on
-     * screen or not, whether or not the app is active. That makes it usable
-     * before the app comes to the front, which {@code -mainWindow} is not.
+     * Usable before the app comes to the front, which {@code -mainWindow} is not.
      *
      * @return the right edge in points, or {@code null} when the app owns no
      *         window that carries the controls

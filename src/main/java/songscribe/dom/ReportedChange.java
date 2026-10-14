@@ -23,21 +23,12 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * One entry of a finished {@link ChangeReport}: a change the song made on its own, as the user
- * is told about it — a span an edit broke and the model removed, a tuplet a load repaired, an
- * accidental a load converted.
+ * is told about it.
  *
- * <p>The code that made the change builds the text, because it holds the domain knowledge of
- * what happened and why. The view that shows a {@link ChangeReport} shows each entry's heading
- * ({@link #headingKey}), place ({@link #where}) and {@link #description} as that code wrote
- * them; it never interprets a change.
+ * <p>It holds no model object, so it can outlive any change to the song.
  *
- * <p>A finished entry holds line indices only, resolved from its {@link RecordedChange} when the
- * report was built, and holds no model object, so it can outlive any change to the song.
- *
- * @param headingKey  a {@code Strings} key whose value is plain text naming the kind of change
- *                    for this one entry, such as "A tie was removed"
- * @param description finished user-facing text saying why this change was made
- * @param where       the lines the change was made on, as the song stood when the report was
- *                    built, or {@code null} for a change with no place in the song
+ * @param headingKey a {@code Strings} key whose value is plain text
+ * @param where      as the song stood when the report was built, or {@code null} for a change
+ *                   with no place in the song
  */
 public record ReportedChange(String headingKey, String description, @Nullable LineRange where) { }

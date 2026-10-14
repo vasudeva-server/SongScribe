@@ -28,18 +28,10 @@ import songscribe.prefs.PrefsValue;
 /**
  * The volume playback runs at, as one of the five steps the user can choose.
  *
- * <p>A closed set rather than a percentage, because five is all there are: the slider
- * offers exactly these, {@link MidiController#setPlaybackVolume} clamps anything else
- * into this range anyway, and a stored value naming none of them is decoded as the
- * default by the same rule every other enum preference follows. Nothing has to snap an
- * arbitrary number onto the nearest step, because no arbitrary number can arrive.
- *
  * <p><b>The steps are not evenly spaced</b>, which is why a slider over them is built on
- * their {@linkplain #ordinal positions} rather than on their percentages — evenly spaced
- * ticks against unevenly spaced values would put the ticks in the wrong places.
+ * their {@linkplain #ordinal positions} rather than on their percentages.
  *
- * <p>Two steps have no label. They are the unmarked notches between the marked ones, and
- * the product names only the three that are marked.
+ * <p>Two steps have no label: the unmarked notches between the marked ones.
  */
 public enum PlaybackVolume implements PrefsValue {
 
@@ -57,19 +49,12 @@ public enum PlaybackVolume implements PrefsValue {
         this.labelKey = labelKey;
     }
 
-    /**
-     * @return this step's volume as a percentage, in the range
-     *     {@code PERCENT_50.percent()}–{@code PERCENT_100.percent()}, which is the range
-     *     {@link MidiController#setPlaybackVolume} accepts
-     */
+    /** Within the range {@link MidiController#setPlaybackVolume} accepts. */
     public int percent() {
         return percent;
     }
 
-    /**
-     * @return the text marking this step on a slider, or {@code null} for a step the
-     *     product leaves unmarked
-     */
+    /** @return {@code null} for a step the product leaves unmarked */
     public @Nullable String label() {
         return labelKey == null ? null : Strings.get(labelKey);
     }
@@ -79,21 +64,11 @@ public enum PlaybackVolume implements PrefsValue {
         return Integer.toString(percent);
     }
 
-    /**
-     * The step at {@code position}, counting from the quietest.
-     *
-     * @param position a position in declaration order
-     * @return the step at that position
-     * @throws ArrayIndexOutOfBoundsException if {@code position} is not a position of a
-     *     step; a caller converting a slider index has one by construction
-     */
+    /** @param position the {@linkplain #ordinal position} of a step */
     public static PlaybackVolume atPosition(int position) {
         return values()[position];
     }
 
-    /**
-     * @return the position of each step on a slider, counting from the quietest
-     */
     public static int[] positions() {
         var positions = new int[values().length];
 
@@ -104,10 +79,7 @@ public enum PlaybackVolume implements PrefsValue {
         return positions;
     }
 
-    /**
-     * @return the text marking each step, in declaration order, with {@code null} for a
-     *     step the product leaves unmarked
-     */
+    /** @return in declaration order, with {@code null} for an unmarked step */
     public static @Nullable String[] labels() {
         var values = values();
         @Nullable String[] labels = new String[values.length];

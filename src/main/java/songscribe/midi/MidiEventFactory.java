@@ -45,11 +45,6 @@ public final class MidiEventFactory {
     private MidiEventFactory() {
     }
 
-    /**
-     * Adds a SET_TEMPO meta message to the given track. The MIDI tempo value is
-     * derived from {@code tempo}'s real BPM scaled by {@code tempoChangePercent}
-     * (where 100 means no change).
-     */
     public static void addTempoEvent(
         Track track,
         int ticks,
@@ -59,9 +54,6 @@ public final class MidiEventFactory {
         addTempoEvent(track, ticks, (tempo.realTempo() * tempoChangePercent) / PERCENT);
     }
 
-    /**
-     * Adds a SET_TEMPO meta message to the given track for a plain quarter-note BPM.
-     */
     public static void addTempoEvent(Track track, int ticks, int quarterNoteBpm)
         throws InvalidMidiDataException {
         var midiTempo = MICROSECONDS_PER_MINUTE / quarterNoteBpm;
@@ -78,11 +70,6 @@ public final class MidiEventFactory {
         track.add(new MidiEvent(tempoMessage, ticks));
     }
 
-    /**
-     * Adds a KEY_SIGNATURE meta message ({@code FF 59}) to the given track.
-     *
-     * @param key the key taking effect at {@code ticks}; never null
-     */
     public static void addKeySignatureEvent(Track track, int ticks, Key key)
         throws InvalidMidiDataException {
         var keySignatureMessage = new MetaMessage();

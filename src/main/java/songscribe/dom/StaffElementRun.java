@@ -31,110 +31,38 @@ import org.jspecify.annotations.Nullable;
  * A run of {@link StaffElement}s in order, and the rules that decide which of them mean nothing
  * apart.
  *
- * <h2>Pairing</h2>
- *
  * <p>Some elements cannot stand without a neighbor, so a range naming one of them really covers
- * both. There are three pairs, and they are not symmetric:
+ * both: a <b>paired grace note</b> goes with its host, a <b>key change</b> with the barline or
+ * repeat in front of it ({@link KeyChangeElement}'s position invariant), and a <b>breath mark</b>
+ * with the element before it. The pairs are not symmetric. {@link #effectiveRange} is the one
+ * definition of the pairing; a caller must not reimplement it.
  *
- * <ul>
- *   <li>a <b>paired grace note</b> cannot outlive the note it decorates, so a range beginning at
- *       a host reaches back over it;</li>
- *   <li>a <b>key change</b> cannot stand without the barline or repeat in front of it — see
- *       {@link KeyChangeElement}'s position invariant — so a range reaches back over that barline,
- *       and forward over a key change whose barline the range already ends at;</li>
- *   <li>a <b>breath mark</b> is positionally attached to the element before it, so a range reaches
- *       forward over one.</li>
- * </ul>
- *
- * <p>Every query that asks what a deletion or a copy really covers asks {@link #effectiveRange},
- * so the pairing has exactly one definition. A caller that reimplements it — dropping "the index
- * before" on the assumption it holds a barline, say — is a second definition that will not be
- * updated when a fourth pair is added.
- *
- * <h2>Why this is an interface rather than part of {@link Line}</h2>
- *
- * <p>A clipboard {@link songscribe.ui.clipboard.Fragment} is a run of elements too, holding the
- * same pairs as a {@link Line} and needing the same answer about them — a fragment that dropped a
- * key change and kept its barline, or dropped a barline that was never one, would be reasoning
- * about pairs by a rule of its own. It simply has no line, and no undo history to record into.
- *
- * <p>{@link LyricRun} extends this because a run carrying lyric chains is a run of elements
- * first, so {@link Line} and {@link DetachedLyricRun} answer for both without implementing
- * anything twice.
- *
- * <h2>Keys along a run</h2>
- *
- * <p>A run also answers where its key changes stand and what they leave in effect, because both
- * questions are asked of a fragment that has not landed on a line as well as of a committed line.
- * The two differ only in what each index takes with it when it goes, which is the pairing above.
+ * <p>A clipboard {@link songscribe.ui.clipboard.Fragment} is a run too, so it gets the same
+ * answers as a {@link Line}.
  */
 public interface StaffElementRun {
 
-    /**
-     * The lowest element index a {@link KeyChangeElement} can occupy. Index 0 is forbidden by that
-     * class's position invariant — a key change always follows a barline or repeat — so every scan
-     * for one stops here rather than at 0.
-     */
     int FIRST_LEGAL_KEY_CHANGE_INDEX = 1;
 
     // -------------------------------------------------------------------------
     // What a run must answer for itself
     // -------------------------------------------------------------------------
 
-    /**
-     * The element at {@code index}.
-     *
-     * @param index an index for which {@link #hasIndex} is true
-     * @return the element standing at {@code index}
-     * @throws IndexOutOfBoundsException if {@code index} is outside {@code 0..elementCount() - 1}
-     */
     StaffElement getElement(int index);
 
-    /**
-     * The number of elements in this run.
-     *
-     * @return the count of every element, a trailing element the run maintains for itself
-     *     included
-     */
     int elementCount();
 
-    /**
-     * The number of elements the run's own content occupies.
-     *
-     * @return {@link #elementCount()} less any trailing element the run maintains for itself
-     *     rather than holding as content (a {@link Line}'s auto-maintained terminal barline)
-     */
     int effectiveElementCount();
 
-    /**
-     * Whether {@code index} addresses an element of this run.
-     *
-     * @return {@code true} exactly when {@code index} may be passed to {@link #getElement}
-     */
     default boolean hasIndex(int index) {
         return index >= 0 && index < elementCount();
     }
 
     /**
-     * Whether {@code index} is the song-start slot: an element inserted there becomes the first
-     * element of a song. {@link SongStart} states the rule this answers for, and no bar line may
-     * be written there.
-     *
-     * @param index an insertion index of this run
-     * @return {@code true} when an element inserted at {@code index} would stand first in the
-     *     song this run belongs to; always {@code false} for a run that belongs to no song
+     * @return always {@code false} for a run that belongs to no song
      */
     boolean isSongStartAt(int index);
 
-    /**
-     * Returns the note at {@code index}, for a caller whose index is known to name one: a beam
-     * member, the owner of a slide, the anchor of a pitch shift. The question a caller asks when
-     * it already knows the answer's kind and wants the element narrowed rather than tested.
-     *
-     * @param index an index of this run
-     * @return the element at {@code index}, as a note
-     * @throws IllegalStateException if the element at {@code index} is not a note
-     */
     default NoteElement noteAt(int index) {
         var element = getElement(index);
 
@@ -150,39 +78,17 @@ public interface StaffElementRun {
     // -------------------------------------------------------------------------
 
     /**
-     * Whether the element at {@code index} is a grace note connected to the note that
-     * follows it, {@code false} when {@code index} is outside the run.
-     *
-     * <p>Says nothing about whether the following note is present: a pair whose host lies
-     * past the end of the run still reads as paired, which is what lets
-     * {@link songscribe.ui.clipboard.Fragment#capture} recognize the orphan it has to trim.
-     *
-     * @return {@code true} when a grace note carrying a connecting glissando stands at
-     *     {@code index}
+     * Answers without checking that the following note is present, so that
+     * {@link songscribe.ui.clipboard.Fragment#capture} can recognize the orphan it has to trim.
      */
     default boolean isPairedGraceNote(int index) {
         return hasIndex(index) && getElement(index) instanceof NoteElement note && note.isPairedGraceNote();
     }
 
-    /**
-     * Whether the element at {@code index} is the host of a paired grace note.
-     *
-     * @return {@code true} when {@link #isPairedGraceNote} is true of {@code index - 1}
-     */
     default boolean isPairedGraceNoteTarget(int index) {
         return isPairedGraceNote(index - 1);
     }
 
-    /**
-     * Whether the element at {@code index} is a key change sitting behind the barline or
-     * repeat immediately before it — the one bidirectional pair in a run, since a key change
-     * belongs at the head of a measure (see {@link KeyChangeElement}'s position invariant).
-     * <p>
-     * The barline is tested rather than assumed. The invariant makes the test hold for every
-     * key change a document of this program's own making can contain, and re-testing it
-     * here is what keeps the widening from reaching past a key change that arrived any
-     * other way.
-     */
     private boolean isKeyChangeBehindBarline(int index) {
         return isKeyChangeAt(index) && isBarAt(index - 1);
     }
@@ -208,27 +114,12 @@ public interface StaffElementRun {
     }
 
     /**
-     * The first element a range beginning at {@code begin} really covers — see the pairing rule
-     * in this interface's Javadoc. Two elements before {@code begin} belong to it: a paired grace
-     * note, which cannot outlive its host, and the barline a key change at {@code begin}
-     * sits behind. Pure query — mutates nothing.
-     * <p>
-     * <b>The barline case is a decision, not a symmetry.</b> A key change cannot outlive its
-     * barline, but a barline can outlive its key: deleting the key alone would leave a valid
-     * run. The pair goes whole so that a barline the insertion flow added only to host a key
-     * does not linger once the key is gone. The cost is the other case — a barline the user
-     * placed themselves goes with the key that happened to follow it, merging two measures.
-     * The notator is not prompted about that: {@code Selection.Range.contains} widens over the
-     * same pairs, so selecting either half draws both as selected and the deletion takes what
-     * was already shown going. Neither half of that reasoning is redundant; the backward
-     * extension is not derivable from the forward one.
+     * The barline case is a decision, not a symmetry: a barline can outlive its key, but the pair
+     * goes whole so a barline added only to host a key does not linger. A barline the user placed
+     * goes with the key that follows it; the notator is not prompted, because
+     * {@code Selection.Range.contains} widens over the same pairs and already shows both selected.
      *
-     * @param begin the first element the caller named
-     * @return {@code begin} extended back over the element paired with it, or {@code begin}
-     *     unchanged when nothing before it is paired with it; never greater than {@code begin}
-     * @invariant no deletion of the range this begins leaves a key change at index 0: reaching
-     *     index 0 takes deleting the barline in front of the key change, which carries the key
-     *     change along
+     * @invariant no deletion of the range this begins leaves a key change at index 0
      */
     default int effectiveBegin(int begin) {
         if (isPairedGraceNoteTarget(begin)) {
@@ -238,16 +129,6 @@ public interface StaffElementRun {
         return beginIncludingKeyChangeBarline(begin);
     }
 
-    /**
-     * The last element a range ending at {@code end} really covers — see the pairing rule in
-     * this interface's Javadoc. Two elements after {@code end} belong to it: a breath mark, which
-     * is positionally attached to the element before it, and a key change whose barline is
-     * the element at {@code end}. Pure query — mutates nothing.
-     *
-     * @param end the last element the caller named
-     * @return {@code end} extended past the element paired with it, or {@code end} unchanged
-     *     when nothing after it is paired with it; never less than {@code end}
-     */
     default int effectiveEnd(int end) {
         if (isBreathMarkAt(end + 1)) {
             return end + 1;
@@ -275,13 +156,6 @@ public interface StaffElementRun {
             new ElementRange(effectiveBegin(range.begin()), effectiveEnd(range.end())));
     }
 
-    /**
-     * The index of the grace note immediately before {@code index}.
-     *
-     * @param index the element whose predecessor is asked about
-     * @return {@code index - 1} when a grace note stands there, or {@code null} when the element
-     *     before {@code index} is not a grace note or {@code index} has no element before it
-     */
     default @Nullable Integer precedingGraceNoteIndex(int index) {
         var candidateIndex = index - 1;
 
@@ -293,74 +167,33 @@ public interface StaffElementRun {
     }
 
     /**
-     * Whether the element at {@code index} is a mid-line key change.
-     *
-     * <p>The barline in front of it is not tested. This reports what stands at {@code index}, so a
-     * key change that reached the line by any route answers {@code true} — testing for the
-     * barline would make a refusal depend on the pair rule in {@code docs/key-changes.md}
-     * rather than help keep it.
-     *
-     * @param index element index; out of range yields false
-     * @return {@code true} when a {@link KeyChangeElement} stands at {@code index}
+     * Does not test the barline in front, so a key change that reached the line by any route
+     * answers {@code true}.
      */
     default boolean isKeyChangeAt(int index) {
         return hasIndex(index) && getElement(index).getType().isKeyChange();
     }
 
-    /**
-     * Whether a breath mark stands at {@code index}.
-     *
-     * @return {@code true} when a breath mark stands at {@code index}; {@code false} for an
-     *     index out of range
-     */
     default boolean isBreathMarkAt(int index) {
         return hasIndex(index) && getElement(index).getType().isBreathMark();
     }
 
-    /** Whether a barline or repeat stands at {@code index}; out of range yields {@code false}. */
     private boolean isBarAt(int index) {
         return hasIndex(index) && getElement(index).getType().isBar();
     }
 
-    /**
-     * Whether a duration element — a pitched note or a rest — stands at {@code index}.
-     *
-     * @return {@code true} when an element whose {@link ElementType#isDuration()} is true
-     *     stands at {@code index}; {@code false} for an index out of range
-     */
     default boolean isDurationAt(int index) {
         return hasIndex(index) && getElement(index).getType().isDuration();
     }
 
-    /**
-     * Whether a glissando reaches the element at {@code index} from the note in front of it.
-     *
-     * <p>A connecting glissando lives on the note it starts from and joins that note to the
-     * element immediately after it. An edit that removes or displaces the element at
-     * {@code index} therefore leaves the note at {@code index - 1} pointing at nothing, and asks
-     * this to learn whether there is a glissando to strip — {@link LyricRun#removeGlissandoInto}
-     * is the strip.
-     *
-     * @param index the index of the element a glissando would arrive at; {@code index - 1} out of
-     *     range — including {@code index == 0} and {@code index == elementCount()}, the slot past
-     *     the last element — yields {@code false}
-     * @return {@code true} when a {@link NoteElement} stands at {@code index - 1} and its
-     *     {@link NoteElement#hasGlissando()} is true
-     */
     default boolean hasGlissandoInto(int index) {
         return hasIndex(index - 1) && getElement(index - 1) instanceof NoteElement note
             && note.hasGlissando();
     }
 
     /**
-     * Whether writing a key change at {@code insertionIndex} needs a barline placed in front of
-     * it for {@link KeyChangeElement}'s position invariant to hold.
-     *
-     * <p>Two callers have to agree about this and would otherwise each spell out the test: the fit
-     * pre-check, which must measure the barline's column because it is part of the edit, and the
-     * commit, which must actually write it. A disagreement between them accepts an edit that then
-     * does not fit, or reserves room for a barline that never arrives — neither of which anything
-     * would report.
+     * The fit pre-check and the commit must agree on this: a disagreement accepts an edit that
+     * does not fit, or reserves room for a barline that never arrives.
      *
      * @param insertionIndex the index the key change would land at, at least
      *     {@link #FIRST_LEGAL_KEY_CHANGE_INDEX}
@@ -405,7 +238,6 @@ public interface StaffElementRun {
         return new ElementRange(first, last);
     }
 
-    /** Whether the element at {@code index} is the barline or repeat a key change sits behind. */
     private boolean isKeyChangeBarlineAt(int index) {
         return isKeyChangeBehindBarline(index + 1);
     }
@@ -535,24 +367,10 @@ public interface StaffElementRun {
         return canTrailRunAt(index, run.getLast().getType());
     }
 
-    /**
-     * Whether a breath mark may be the first element of a run inserted at {@code index} — the
-     * leading half of {@link #canInsertRunAt}.
-     *
-     * @return {@code true} when a duration element stands at {@code index - 1} and no breath
-     *     mark stands at {@code index}
-     */
     default boolean canLeadRunAt(int index) {
         return isDurationAt(index - 1) && !isBreathMarkAt(index);
     }
 
-    /**
-     * Whether a run whose last element has type {@code last} may be inserted at {@code index} —
-     * the trailing half of {@link #canInsertRunAt}.
-     *
-     * @return {@code true} when no breath mark stands at {@code index}, or when {@code last} is
-     *     a duration type
-     */
     default boolean canTrailRunAt(int index, ElementType last) {
         return !isBreathMarkAt(index) || last.isDuration();
     }
@@ -610,39 +428,17 @@ public interface StaffElementRun {
     // Element queries
     // -------------------------------------------------------------------------
 
-    /**
-     * Whether this run holds no elements.
-     *
-     * @return {@code true} when {@link #elementCount()} is 0
-     */
     default boolean isEmpty() {
         return elementCount() == 0;
     }
 
-    /**
-     * The index of the last note on this run, or {@code null} when it holds no note.
-     *
-     * <p>The scan needs no bound against {@link #effectiveElementCount()}: an auto-maintained
-     * terminal is a barline or a repeat, so a scan for a note stops before it either way.
-     */
     private @Nullable Integer lastNoteIndex() {
         return lastIndexBefore(this::getElement, elementCount(), ElementType::isNote);
     }
 
     /**
-     * Returns whether the element at {@code index} and the one following it are both notes at the
-     * same pitch — the span a connecting glissando may never cover, since there is no distance for
-     * it to traverse.
-     * <p>
-     * This is the one definition of that condition, for every caller that attaches, strips,
-     * lays out or draws a glissando. Each caller keeps its own further rules — which elements
-     * may anchor a glissando at all is a separate question from whether these two share a pitch.
-     * <p>
-     * Grace notes count on either side, since they carry a pitch like any other note.
-     *
-     * @param index index of the leading element; out of range, or last in the line, yields false
-     * @return {@code true} when notes stand at {@code index} and {@code index + 1} and have the
-     *     same pitch
+     * The one definition of the span a glissando may never cover, for every caller that attaches,
+     * strips, lays out or draws one. Grace notes count on either side.
      */
     default boolean isSamePitchAsFollower(int index) {
         if (index < 0 || index + 1 >= elementCount()) {
@@ -655,15 +451,7 @@ public interface StaffElementRun {
     }
 
     /**
-     * Whether a syllable may be written on the element at {@code index} — this line's way of
-     * asking {@link StaffElement#canBearSyllable}, which states the rule and which
-     * {@code LyricLayoutBuilder} asks of the columns it is laying out instead.
-     *
-     * <p>Does not vary by script: an element that can hold a syllable can hold one in every script.
-     *
-     * @param index element index
-     * @return {@code true} when a syllable may be written on the element at {@code index}
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
+     * Does not vary by script. {@link StaffElement#canBearSyllable} states the rule.
      */
     default boolean canBearSyllableAt(int index) {
         return getElement(index).canBearSyllable(index >= 1 ? getElement(index - 1) : null);
@@ -686,16 +474,8 @@ public interface StaffElementRun {
     }
 
     /**
-     * The position of the first element at or after {@code from} in {@code elements} whose type
-     * {@code matches} accepts. It takes a list rather than a run so that it answers for a
-     * projection of a pending change as well as for a line.
-     *
-     * @param elements the elements to scan, in order
-     * @param from     the first position examined, at or above 0
-     * @param matches  the test an element's type must pass
-     * @return the position, or {@code null} when no element from {@code from} on passes, or
-     *     {@code from} is past the last element
-     * @see #lastIndexBefore
+     * @param from at or above 0
+     * @return {@code null} when no element from {@code from} on passes
      */
     static @Nullable Integer firstIndexFrom(
         List<? extends StaffElement> elements, int from, Predicate<ElementType> matches
@@ -710,13 +490,8 @@ public interface StaffElementRun {
     }
 
     /**
-     * The position of the last element before {@code before} in {@code elements} whose type
-     * {@code matches} accepts — the mirror of {@link #firstIndexFrom}.
-     *
-     * @param elements the elements to scan, in order
-     * @param before   a position in {@code 0..elements.size()}; the element there is not examined
-     * @param matches  the test an element's type must pass
-     * @return the position, or {@code null} when no element before {@code before} passes
+     * @param before a position in {@code 0..elements.size()}; the element there is not examined
+     * @return {@code null} when no element before {@code before} passes
      */
     static @Nullable Integer lastIndexBefore(
         List<? extends StaffElement> elements, int before, Predicate<ElementType> matches
@@ -724,10 +499,6 @@ public interface StaffElementRun {
         return lastIndexBefore(elements::get, before, matches);
     }
 
-    /**
-     * The backward scan behind {@link #lastIndexBefore(List, int, Predicate)}, over any indexed
-     * source of elements, so a run scans itself without copying its elements into a list.
-     */
     private static @Nullable Integer lastIndexBefore(
         IntFunction<? extends StaffElement> elementAt, int before, Predicate<ElementType> matches
     ) {
@@ -807,23 +578,11 @@ public interface StaffElementRun {
     }
 
     /**
-     * Returns the key the last key change at or after {@code fromIndex} establishes — which is
-     * what this run leaves in effect, whenever it holds a key change of its own.
+     * Indices below {@link #FIRST_LEGAL_KEY_CHANGE_INDEX} are treated as that index rather than
+     * rejected.
      *
-     * <p>A stranded key change restates the key running into it, so it gives the same answer as
-     * whatever precedes it: this needs no knowledge of {@link #redundantKeyChangeRanges(int, Key)},
-     * and the two may be asked in either order.
-     *
-     * <p>The bounded form is what an edit inserting a key change at {@code fromIndex} needs: the
-     * key the run leaves off in afterwards is the inserted one <em>only if</em> no key change
-     * already stands after the insertion point, and this is the question that decides it.
-     *
-     * <p>Indices below {@link #FIRST_LEGAL_KEY_CHANGE_INDEX} are treated as that index rather
-     * than rejected, because no key change can stand before it.
-     *
-     * @param fromIndex the lowest index to count a key change at
-     * @return the last key change's key, or {@code null} when no key change stands at or after
-     *     {@code fromIndex}, in which case the run leaves in effect whatever it started in
+     * @return {@code null} when no key change stands at or after {@code fromIndex}, in which
+     *     case the run leaves in effect whatever it started in
      */
     default @Nullable Key lastKeyChangeKeyFrom(int fromIndex) {
         var lowestIndex = Math.max(fromIndex, FIRST_LEGAL_KEY_CHANGE_INDEX);
@@ -869,25 +628,13 @@ public interface StaffElementRun {
     }
 
     /**
-     * The inclusive element range {@code [begin, end]} on a run: the one type for a contiguous
-     * stretch of elements named by index, so no caller passes the pair as two ints it can
-     * transpose.
+     * The inclusive element range {@code [begin, end]} on a run. It says nothing about pairing:
+     * {@link #effectiveRange} turns it into the range a deletion or a copy really covers.
      *
-     * <p>It says nothing about pairing. A range read off a selection may cut a grace note from
-     * its host or a key change from its barline; {@link #effectiveRange} is what turns it into
-     * the range a deletion or a copy really covers, and a method that needs the widened range
-     * takes the {@link EffectiveRange} that method returns.
-     *
-     * @param begin the index of the first element in the range
-     * @param end   the index of the last element in the range, inclusive
-     * @invariant {@code 0 <= begin <= end}, so every range names real positions and holds at
-     *     least one element
+     * @invariant {@code 0 <= begin <= end}
      */
     record ElementRange(int begin, int end) {
 
-        /**
-         * @throws IllegalArgumentException if {@code begin < 0} or {@code begin > end}
-         */
         public ElementRange {
             if (begin < 0) {
                 throw new IllegalArgumentException("ElementRange begin " + begin + " is negative");
@@ -899,93 +646,39 @@ public interface StaffElementRun {
             }
         }
 
-        /**
-         * Returns the range holding only the element at {@code index}.
-         *
-         * @param index the index of the one element
-         * @return the range {@code [index, index]}
-         */
         public static ElementRange single(int index) {
             return new ElementRange(index, index);
         }
 
-        /**
-         * Returns how many elements the range holds.
-         *
-         * @return {@code end - begin + 1}, never less than 1
-         */
         public int size() {
             return end - begin + 1;
         }
 
-        /**
-         * Returns whether {@code index} falls inside the range.
-         *
-         * @param index the element index to test
-         * @return {@code true} when {@code begin <= index <= end}
-         */
         public boolean contains(int index) {
             return index >= begin && index <= end;
         }
 
-        /**
-         * Returns whether the element at {@code index} lies inside the range and is neither of
-         * its bounds. This is a question about an element already in the run.
-         *
-         * @param index the index of the element to test
-         * @return {@code true} when {@code begin < index < end}; always {@code false} for a range
-         *     of one or two elements
-         */
         public boolean containsExcludingBounds(int index) {
             return index > begin && index < end;
         }
 
-        /**
-         * Returns whether this range and {@code other} share at least one element.
-         *
-         * @param other the range to test against
-         * @return {@code true} when {@code begin <= other.end() && other.begin() <= end}
-         */
         public boolean overlaps(ElementRange other) {
             return begin <= other.end() && other.begin() <= end;
         }
 
-        /**
-         * Returns whether every element of {@code other} falls inside this range.
-         *
-         * @param other the range to test
-         * @return {@code true} when {@code begin <= other.begin() && other.end() <= end}
-         */
         public boolean contains(ElementRange other) {
             return begin <= other.begin() && other.end() <= end;
         }
 
-        /**
-         * Returns this range moved {@code offset} places along the run — what a range read off
-         * the run before an edit becomes once that edit has inserted or removed {@code offset}
-         * elements ahead of it.
-         *
-         * @param offset how far the elements in this range moved; negative when they moved back
-         * @return the range at their new indices
-         */
         public ElementRange shiftedBy(int offset) {
             return new ElementRange(begin + offset, end + offset);
         }
     }
 
     /**
-     * An {@link ElementRange} already widened by {@link #effectiveRange}: the range a deletion
-     * really covers, with no half of a pair cut off at either end.
-     *
-     * <p>A raw selection range can cut a grace note from its host or a key change from its
-     * barline, and deleting it deletes half a pair. The methods that delete, and the queries
-     * that describe a deletion, take this type instead of {@link ElementRange}, so an unwidened
-     * range cannot reach them: the only way to obtain one is {@link #effectiveRange}, whose
-     * result is what really goes.
-     *
-     * <p>This is a class rather than a record because a public record's canonical constructor
-     * cannot be less accessible than the record itself, and restricting construction to
-     * {@link #effectiveRange} is the whole point of the type.
+     * An {@link ElementRange} already widened by {@link #effectiveRange}, with no half of a pair
+     * cut off at either end. The methods that delete take this type, so an unwidened range
+     * cannot reach them.
      *
      * @invariant {@link #range()} is the value {@link #effectiveRange} returned for some raw
      *     range on the run that produced it, possibly moved along the run by {@link #shiftedBy}
@@ -998,23 +691,10 @@ public interface StaffElementRun {
             this.range = range;
         }
 
-        /**
-         * The widened range.
-         *
-         * @return the range the deletion or copy really covers, both ends included
-         */
         public ElementRange range() {
             return range;
         }
 
-        /**
-         * Returns this range moved {@code offset} places along the run — what it becomes once
-         * an edit has inserted or removed {@code offset} elements ahead of it. The elements it
-         * covers are the same, so it stays the pair-whole range it was.
-         *
-         * @param offset how far the elements in this range moved; negative when they moved back
-         * @return the range at their new indices
-         */
         public EffectiveRange shiftedBy(int offset) {
             return new EffectiveRange(range.shiftedBy(offset));
         }
@@ -1037,31 +717,17 @@ public interface StaffElementRun {
 
     /**
      * Where a run of elements is inserted: at a plain index, or in place of a range this
-     * insertion deletes first. The two shapes hold the insertion index and the range to delete
-     * as one value, so a caller cannot supply an index that disagrees with the range's begin.
+     * insertion deletes first.
      */
     sealed interface InsertionTarget {
 
-        /**
-         * The index the inserted run's first element lands at.
-         *
-         * @return {@link AtIndex#index()} for that shape, or {@link Replacing#range()}'s begin
-         *     for the other
-         */
         int insertIndex();
 
         /**
-         * The range this insertion deletes before it inserts.
-         *
-         * @return {@link Replacing#range()} for that shape, or {@code null} for {@link AtIndex}
+         * @return {@code null} for {@link AtIndex}
          */
         @Nullable EffectiveRange deleteRange();
 
-        /**
-         * Inserts at {@code index}, deleting nothing first.
-         *
-         * @param index the index the inserted run's first element lands at
-         */
         record AtIndex(int index) implements InsertionTarget {
 
             @Override
@@ -1076,9 +742,6 @@ public interface StaffElementRun {
         }
 
         /**
-         * Deletes {@code range} first, and inserts where it began.
-         *
-         * @param range the range this insertion deletes first
          * @invariant {@link #insertIndex()} is {@code range.range().begin()}
          */
         record Replacing(EffectiveRange range) implements InsertionTarget {

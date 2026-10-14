@@ -23,21 +23,9 @@ package songscribe.smufl;
 /**
  * A point on a glyph that something else attaches to, in staff spaces, Y-down (screen)
  * convention, relative to the pen origin the glyph draws from.
- *
- * @param xSs distance right of the pen origin
- * @param ySs distance below the pen origin
  */
 public record Anchor(double xSs, double ySs) {
 
-    /**
-     * Creates an anchor from a SMuFL metadata coordinate pair, flipping Y from the
-     * spec's Y-up convention to the screen Y-down convention the rest of the
-     * application uses.
-     *
-     * @param xSs the metadata x, identical in both conventions
-     * @param ySs the metadata y, positive upward
-     * @return the anchor in Y-down convention
-     */
     static Anchor fromSMuFL(double xSs, double ySs) {
         return new Anchor(xSs, -ySs);
     }

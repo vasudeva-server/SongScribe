@@ -76,23 +76,13 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
 /**
- * Base class for all application actions. {@link #actionPerformed(ActionEvent)} is a
- * {@code final} template: subclasses override the {@link #performAction(ActionEvent)}
- * hook instead, and the template sets the Tier-A undo op-name on {@code UndoController}
- * around the hook so that whatever outermost modification bracket opens
- * <em>synchronously</em> during dispatch captures that name.
+ * Base class for all application actions. Subclasses override
+ * {@link #performAction(ActionEvent)}, never {@link #actionPerformed(ActionEvent)}.
  *
- * <p>The template sets the pending op-name from {@link #getUndoOpName()}, calls
- * {@link #performAction(ActionEvent)}, and restores the prior pending name in a {@code finally}.
- * Any modification bracket the hook opens within that dispatch window captures the pending name as
- * it goes from depth 0 to depth 1, and posts it with the {@code SongDidChangeNotification} when the
- * bracket closes.
- *
- * <p>Capture works only for brackets opened on the synchronous dispatch stack (modal
- * dialogs block, so they qualify). A bracket opened off-stack ({@code invokeLater},
- * {@code Timer}, {@code SwingWorker}, or a non-modal dialog) opens after the
- * {@code finally} has cleared {@code pendingOpName}; such sites declare their name via
- * the labeled {@code withModification(String, Runnable)} overload (Tier B) instead.
+ * <p>The undo op-name is captured only by a modification bracket opened synchronously during
+ * dispatch (a modal dialog qualifies). A bracket opened off-stack ({@code invokeLater},
+ * {@code Timer}, {@code SwingWorker}, a non-modal dialog) declares its name with the labeled
+ * {@code withModification(String, Runnable)} overload instead.
  */
 public class UIAction extends AbstractAction implements Disposable {
 
@@ -112,12 +102,9 @@ public class UIAction extends AbstractAction implements Disposable {
         DISABLE_WHEN_SONG_EMPTY(1 << 11),
         /**
          * Keeps the action enabled while {@link GraceModeManager#isActive()}. An action lacking
-         * it is disabled for as long as grace mode is in progress: between entering the mode and
-         * pairing, the grace note sits on its line outside mutation tracking while the manager
-         * holds its index, the host slot and the notes its chain walk restamped, so any action
-         * that inserts, removes or replaces an element, replays undo, or replaces or serializes
-         * the document invalidates what the manager holds. An action declares itself safe by
-         * carrying this flag, and states beside it why it is.
+         * it is disabled during grace mode, because one that inserts, removes or replaces an
+         * element, replays undo, or replaces or serializes the document invalidates what the
+         * manager holds. An action carrying it states beside it why it is safe.
          */
         ENABLED_IN_GRACE_MODE(1 << 12),
         DISABLE_IN_SELECT_MODE(1 << 13),
@@ -127,10 +114,6 @@ public class UIAction extends AbstractAction implements Disposable {
         DISABLE_WHEN_GRACE_DURATION_SELECTED(1 << 17),
         ENABLE_WHEN_LINE_SELECTED(1 << 18),
         REQUIRES_ANNOTATABLE_ELEMENT(1 << 19),
-        /**
-         * Disables the action whenever a finding of the current song carries
-         * {@link LintRule.Flag#BLOCKS_PLAYBACK}, under the conditions that flag states.
-         */
         DISABLE_WHEN_PLAYBACK_BLOCKED(1 << 20);
 
         private final int value;
@@ -144,19 +127,13 @@ public class UIAction extends AbstractAction implements Disposable {
         }
     }
 
-    /**
-     * Marks an action that has a toggle selected state (e.g. accidentals, note durations).
-     * Actions that do not implement this interface have no selected state.
-     */
     public interface Selectable {
         boolean isSelected();
 
         void setSelected(boolean selected);
 
         /**
-         * Toggles the selected state when the action is invoked via a keyboard
-         * shortcut (source is JRootPane). Swing buttons handle toggling
-         * themselves, but keyboard shortcuts need explicit toggling.
+         * Swing buttons toggle themselves; keyboard shortcuts do not.
          */
         default void toggleOnKeyboardShortcut(ActionEvent e) {
             if (e.getSource() instanceof JRootPane) {
@@ -165,135 +142,67 @@ public class UIAction extends AbstractAction implements Disposable {
         }
     }
 
-    /**
-     * An action reflecting or editing one attribute of an element of type {@code E}. For
-     * example, an accidental action's {@code E} is {@link songscribe.dom.NoteElement}; a
-     * barline action's is {@link StaffElement} itself.
-     */
     public interface Reflectable<E extends StaffElement> extends Selectable {
         /**
-         * Narrows the given element to the type this action's attribute lives on, or returns
-         * {@code null} when this action does not act on it at all — for example, an accidental
-         * action admits no rest, and a barline action admits no note.
-         *
-         * @param element the element to test
-         * @return the same element, narrowed, or {@code null} if this action does not apply to it
+         * Returns {@code null} when this action does not act on the element at all.
          */
         @Nullable E admit(StaffElement element);
 
         /**
-         * Whether the given element has the attribute this action represents.
-         *
          * @param element an element {@link #admit} returned
-         * @return {@code true} when the element carries the attribute, so the action shows as
-         *     selected for it
          */
         boolean matchesElement(E element);
 
         /**
-         * Whether toggling this action on the element at {@code index} is allowed now:
-         * selecting it where {@link #matchesElement} is {@code false}, deselecting it where it
-         * is {@code true}. An action whose attribute can always be applied and removed inherits
-         * the default; one whose toggle depends on the element's surroundings — an accidental,
-         * which the chain at its staff position decides — overrides it.
-         *
-         * @param line  the line holding the element
          * @param index the element's index in {@code line}; the element there is one
          *              {@link #admit} returned
-         * @return {@code true} when the toggle is allowed, which is what enables the action's
-         *     control for that element; {@code true} by default
          */
         default boolean canToggle(Line line, int index) {
             return true;
         }
     }
 
-    /**
-     * Marks an action whose corresponding native macOS application menu item
-     * should be managed by {@code MacNativeMenuController}. The controller
-     * discovers all {@code AppMenuAction} instances via
-     * {@link Actions#getAppMenuActions()} and matches them against native
-     * {@code NSMenuItem} titles using the prefix returned by
-     * {@link #getNativeMenuTitle()}.
-     */
     @FunctionalInterface
     public interface AppMenuAction {
         /**
-         * Returns a title prefix used to locate this action's corresponding
-         * native NSMenuItem via {@code startsWith} matching. For example,
-         * "About" matches the native "About SongScribe" item.
+         * A title prefix, matched with {@code startsWith}: "About" matches "About SongScribe".
          */
         String getNativeMenuTitle();
     }
 
-    /** Whether an action's attribute is put on the elements it acts on or taken off them. */
     public enum Toggle {
         APPLY,
         REMOVE;
 
-        /**
-         * @param selected an action's selected state
-         * @return {@link #APPLY} for a selected action, {@link #REMOVE} for one that is not
-         */
         public static Toggle of(boolean selected) {
             return selected ? APPLY : REMOVE;
         }
     }
 
-    /**
-     * A reflectable action that can be applied across a selection. It decides what it does to
-     * each element the selection holds, and hands the decision to {@link SelectionActionApplier}
-     * as a plan to gate and run.
-     */
     public interface SelectionApplicable<E extends StaffElement> extends Reflectable<E> {
         /**
-         * Decides what this action does to {@code selection}. Mutates nothing: every change the
-         * plan holds is measured on a detached stand-in, and the line changes only when the
-         * plan's mutation runs.
+         * Mutates nothing: the line changes only when the plan's mutation runs.
          *
-         * @param selection the elements to act on
-         * @param toggle    whether to put this action's attribute on or take it off
          * @return the plan, or {@code null} when the action changes no element of
          *     {@code selection}
          */
         SelectionActionApplier.@Nullable Plan plan(ElementSelection selection, Toggle toggle);
 
-        /**
-         * Whether this action's change can make the column it touches wider, so applying it to
-         * a selection must be refused when the line no longer fits.
-         *
-         * @return {@code false}; a {@link WidensColumn} answers {@code true}
-         */
         default boolean widensColumn() {
             return false;
         }
     }
 
-    /**
-     * A reflectable action that modifies an element's attributes in place.
-     */
     public interface ElementModifiable<E extends StaffElement> extends SelectionApplicable<E> {
         /**
-         * Apply or remove this action's attribute on the given element. {@code line} and
-         * {@code index} locate the element the call acts on or stands in for.
+         * {@code line} and {@code index} locate the element the call acts on or stands in for.
          *
-         * @param element the element to modify, an element {@link #admit} returned
-         * @param toggle  whether to put the attribute on or take it off
+         * @param element an element {@link #admit} returned
          */
         void applyToElement(Line line, int index, E element, Toggle toggle);
 
-        /**
-         * The set of {@link ElementField} tags identifying which element fields
-         * this action mutates. Used to populate the {@code fields} set of the
-         * emitted {@code ElementModification} mutation so subscribers can filter
-         * to specific field changes without inspecting the before/after element.
-         */
         EnumSet<ElementField> modifiedFields();
 
-        /**
-         * Plans one {@link Line#modifyElement} for each admitted element. Each element's
-         * stand-in is a detached clone with the modification applied.
-         */
         @Override
         default SelectionActionApplier.@Nullable Plan plan(ElementSelection selection, Toggle toggle) {
             var line = selection.line();
@@ -324,10 +233,6 @@ public class UIAction extends AbstractAction implements Disposable {
                 changes, () -> modifyAll(line, changes, toggle), widensColumn(), refusal);
         }
 
-        /**
-         * Lands each planned change on the live element at its index, as one
-         * {@link Line#modifyElement} apiece.
-         */
         private void modifyAll(
             Line line, List<SelectionActionApplier.PendingChange> changes, Toggle toggle) {
 
@@ -350,18 +255,9 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * A reflectable action whose change can make the column it touches wider — an accidental
-     * glyph appearing to the left of the notehead, a dot to its right, a different notehead
-     * altogether. Applying one to a selection must be refused when the line no longer fits, so
-     * {@link SelectionActionApplier} measures the projected line before committing.
-     *
-     * <p>Actions that stack <em>vertically</em> above or below the note — a fermata, a dynamic
-     * marking, an articulation — do not implement this: they cannot widen anything, and gating
-     * them would refuse edits that always fit.
-     *
-     * <p>Declared here rather than tested for by listing concrete action classes at the call
-     * site, so a new width-changing action states that fact where it is defined instead of
-     * silently skipping the check.
+     * A reflectable action whose change can make the column it touches wider, so applying it to a
+     * selection is refused when the line no longer fits. An action that only stacks vertically
+     * above or below the note does not implement this.
      */
     public interface WidensColumn<E extends StaffElement> extends SelectionApplicable<E> {
         @Override
@@ -371,27 +267,15 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * A reflectable action that replaces an element with a new instance
-     * (e.g. changing duration requires a new StaffElement object).
-     *
-     * <p>Always widens: a replacement can be any element type, so its extent is unrelated to the
+     * Always widens: a replacement can be any element type, so its extent is unrelated to the
      * one it displaces.
      */
     public interface ElementReplaceable<E extends StaffElement> extends WidensColumn<E> {
         /**
-         * Create a replacement element with this action's attribute applied.
-         *
-         * @param element the source element to base the replacement on, an element
-         *                {@link #admit} returned
-         * @return the replacement element
+         * @param element an element {@link #admit} returned
          */
         StaffElement createReplacement(E element);
 
-        /**
-         * Plans one {@link Line#replace} of a replacement over every admitted element. The
-         * stand-in for each element is the new element of its pair. A replacement only ever
-         * puts this action's attribute on, so {@link Toggle#REMOVE} plans nothing.
-         */
         @Override
         default SelectionActionApplier.@Nullable Plan plan(ElementSelection selection, Toggle toggle) {
             if (toggle == Toggle.REMOVE) {
@@ -421,10 +305,6 @@ public class UIAction extends AbstractAction implements Disposable {
         }
     }
 
-    /**
-     * Visits each element of {@code selection} that {@code action} admits, with its index, in
-     * index order.
-     */
     private static <E extends StaffElement> void forEachAdmitted(
         Reflectable<E> action, ElementSelection selection, ObjIntConsumer<E> visit) {
 
@@ -450,9 +330,7 @@ public class UIAction extends AbstractAction implements Disposable {
     private int flags = 0;
 
     /**
-     * The {@link Strings} key naming this action's Tier-A undo op-name, or {@code null}
-     * if the action declares no static name. Assigned by the action's factory/constructor
-     * (see {@code Actions.initialize}).
+     * {@code null} if the action declares no static name.
      */
     private @Nullable String undoOpNameKey;
 
@@ -516,11 +394,8 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * Releases this action's message-bus subscription.
-     *
-     * <p>Called by the owner that retires the action while the process continues. The action
-     * constants have no such owner and are never disposed; the open-recent menu's actions are
-     * rebuilt with the menu, and the menu controller disposes the outgoing set.
+     * Called by the owner that retires the action while the process continues. The action
+     * constants have no such owner and are never disposed.
      */
     @Override
     public void dispose() {
@@ -643,29 +518,17 @@ public class UIAction extends AbstractAction implements Disposable {
         return true;
     }
 
-    /**
-     * Sets the {@link Strings} key naming this action's Tier-A undo op-name.
-     * Called by the action's factory/constructor.
-     */
     protected void setUndoOpNameKey(@Nullable String undoOpNameKey) {
         this.undoOpNameKey = undoOpNameKey;
     }
 
     /**
-     * Returns this action's Tier-A undo op-name (the resolved {@link Strings} value),
-     * or {@code null} if none is declared. Overridden by actions whose label depends on
-     * runtime state (e.g. tuplet/barline actions).
+     * Returns {@code null} if none is declared.
      */
     public @Nullable String getUndoOpName() {
         return undoOpNameKey == null ? null : Strings.get(undoOpNameKey);
     }
 
-    /**
-     * The final dispatch template. Sets the Tier-A op-name on the current {@link Song}
-     * around {@link #performAction(ActionEvent)} so the outermost bracket that opens
-     * synchronously during the hook captures it, restoring the prior value afterwards
-     * (including on exception). Subclasses override {@code performAction}, not this.
-     */
     @Override
     public void actionPerformed(ActionEvent e) {
         var scoreView = getScoreView();
@@ -681,9 +544,8 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * Performs the action. Default is a no-op. Subclasses override this instead of
-     * {@link #actionPerformed(ActionEvent)}. Selectable actions should call
-     * {@code toggleOnKeyboardShortcut(e)} for keyboard shortcut support.
+     * Selectable actions should call {@code toggleOnKeyboardShortcut(e)} for keyboard
+     * shortcut support.
      */
     protected void performAction(ActionEvent e) {
     }
@@ -739,9 +601,8 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * A whole-line selection spans no element range, so its selection size is 0 and every
-     * size requirement below rejects it. Actions carrying
-     * {@link Flag#ENABLE_WHEN_LINE_SELECTED} treat it as a selection anyway.
+     * A whole-line selection has size 0; {@link Flag#ENABLE_WHEN_LINE_SELECTED} actions treat it
+     * as a selection anyway.
      */
     protected boolean enableFromSelectionSize(ScoreView score) {
         if (hasFlag(Flag.ENABLE_WHEN_LINE_SELECTED)
@@ -812,12 +673,8 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * Whether {@link Flag#DISABLE_WHEN_PLAYBACK_BLOCKED} leaves this action enabled. The
-     * repeats setting is read from the preference rather than from the playback controller,
-     * so the answer does not depend on which handler of the preference change runs first.
-     *
-     * @return {@code false} only when this action carries the flag and
-     *     {@link LintRule.Flag#BLOCKS_PLAYBACK} blocks playback now
+     * Reads the preference, not the playback controller, so the answer does not depend on which
+     * handler of the preference change runs first.
      */
     protected boolean enableFromPlaybackBlock() {
         return !hasFlag(Flag.DISABLE_WHEN_PLAYBACK_BLOCKED)
@@ -864,13 +721,8 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * Blanket disable while the user is picking an insertion point on a line — a paste
-     * placement, a key-change placement, or any other client of
-     * {@link InsertionPointMode}. Called first in {@link #updateEnabledState()}'s predicate
-     * chain, so no per-action opt-in flag is involved: every action, the placing operation's
-     * own shortcut included, is off until the placement is made or abandoned.
-     *
-     * @return {@code false} while a placement is pending, {@code true} otherwise
+     * Every action, the placing operation's own shortcut included, is off until the placement
+     * is made or abandoned; no per-action flag opts out.
      */
     protected boolean enableFromInsertionPointMode() {
         return !InsertionPointMode.isActive();
@@ -928,9 +780,8 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * A whole-line selection reports itself as a selection of every element on the line,
-     * so element-level actions would otherwise appear applicable. Actions carrying this
-     * flag opt out of that.
+     * A whole-line selection reports every element on the line as selected; actions carrying
+     * the flag opt out of that.
      */
     protected boolean enableFromLineSelection(ScoreView scoreView) {
         return (
@@ -964,21 +815,13 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     /**
-     * Refreshes the enabled state when the song's content, its loaded document or its active
-     * script changed. Each of those can change what the song's lint report says, and the
-     * notification's construction has already linted the song.
+     * The notification's construction has already linted the song.
      */
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void linting(LintingNotification message) {
         updateEnabledState();
     }
 
-    /**
-     * If a selection is active and this action is {@link SelectionApplicable}, apply the action
-     * to all applicable elements in the selection: put its attribute on when the action is
-     * selected, take it off when it is not.
-     * @return true if the action was applied to the selection (caller should skip normal flow)
-     */
     protected boolean applyToSelectionIfActive() {
         if (!(this instanceof SelectionApplicable<?> applicable)) {
             return false;

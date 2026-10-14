@@ -169,17 +169,14 @@ Exception: illustrating an example calculation/formula, where literals are neede
 
 ## Contracts in Javadoc
 
-**Which clause goes in which tag, and how much contract a method earns, are in
-[Contracts](../guides/contracts.md).** Read it before writing one. Only the
-Javadoc mechanics are here.
+**What a Javadoc may state is in [Contracts](../guides/contracts.md).** Read it
+before writing one. Only the Javadoc mechanics are here.
 
-`invariant`, `effects` and `log` are custom tags, alongside the standard ones.
+`invariant` and `effects` are custom tags, written only in a full contract.
 Nothing in the build renders or validates Javadoc, so a malformed tag fails
-silently; the IDE knows the three through its additional-Javadoc-tags setting
-(`ADDITIONAL_TAGS` in `.idea/inspectionProfiles/Project_Default.xml`).
-
-Class and package invariants go on the class or `package-info.java` Javadoc, in
-prose, never repeated on every method that relies on them.
+silently; the IDE knows the two through its additional-Javadoc-tags setting
+(`ADDITIONAL_TAGS` in `.idea/inspectionProfiles/Project_Default.xml`), and it
+flags any other unknown tag.
 
 ## Signature Rules for Contracts
 

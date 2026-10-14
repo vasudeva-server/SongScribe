@@ -24,9 +24,6 @@ import java.awt.Font;
 
 /**
  * Component that renders the main under-lyrics section.
- * <p>
- * Displays multi-line lyrics text centered horizontally below the staff lines.
- * Uses the song's lyrics font.
  */
 public class UnderLyricsComponent extends LyricsComponent {
 

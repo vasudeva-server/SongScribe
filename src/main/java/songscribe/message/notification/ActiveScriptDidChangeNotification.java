@@ -23,15 +23,10 @@ package songscribe.message.notification;
 import songscribe.dom.Song;
 
 /**
- * Posted by {@link Song#setActiveScript} when the song's active script changes. The script a
- * song shows is what its lines lay out and what its lyric rules check, so a subscriber that
- * shows either refreshes on this notification.
+ * Posted by {@link Song#setActiveScript} when the song's active script changes.
  */
 public class ActiveScriptDidChangeNotification extends LintingNotification {
 
-    /**
-     * @param song the song whose active script changed
-     */
     public ActiveScriptDidChangeNotification(Song song) {
         super(song);
     }

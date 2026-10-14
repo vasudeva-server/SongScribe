@@ -33,24 +33,18 @@ import songscribe.util.UIUtils;
  * Names the key a change establishes: one combo over the fifteen keys, opened on the key
  * already in effect where the change is bound.
  *
- * <p><b>OK stays enabled throughout</b>, including on the key it opened on. Committing that key
- * would write a change that changes nothing, and what refuses it is
- * {@link DialogController#dataWasModified} — asked before anything is judged or written, rather
- * than a disabled button — so pressing OK on an untouched dialog closes it and writes nothing.
+ * <p><b>OK stays enabled throughout</b>, including on the key it opened on: pressing it on an
+ * untouched dialog closes it and writes nothing, because {@link DialogController#dataWasModified}
+ * refuses.
  *
- * <p><b>It cannot tell the four key-editing gestures apart, and does not need to.</b> A line's own
- * key and a key change standing in the middle of a line are one {@link Key} in and one
- * {@link Key} out either way. Which line, which position, whether the change fits and which route
- * writes it all belong to {@link KeyChangeDialogController}, the only thing that opens this window.
+ * <p>It cannot tell the four key-editing gestures apart; that belongs to
+ * {@link KeyChangeDialogController}.
  *
- * <p>There is no entry meaning "inherit the previous line's key". Whether a line holds a key of its
- * own or inherits one is storage — {@link songscribe.dom.Line#setKey} normalizes a key equal to the
- * inherited one back to inheritance on its own — and the notator sees only a key signature on the
- * score, never the distinction.
+ * <p>There is no entry meaning "inherit the previous line's key": {@link songscribe.dom.Line#setKey}
+ * normalizes a key equal to the inherited one back to inheritance on its own.
  */
 public class KeyChangeDialog extends StandardDialog<Key, Key> {
 
-    /** The notator's current choice, which is what a commit is measured against. */
     private final Property<Key> selectedKey;
 
     public KeyChangeDialog(MainFrame mainFrame, DialogOps<Key, Key> ops) {
@@ -71,12 +65,7 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The combo opens on the key already in effect, so a dialog the notator leaves alone
-     * gathers that key and the commit refuses it.
-     *
-     * @param values the key in effect where the change is bound
+     * The combo opens on the key already in effect, so an untouched dialog gathers that key.
      */
     @Override
     protected void populate(Key values) {
@@ -84,13 +73,7 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The combo is built over the whole of {@link Key#allKeys()}, so its model is never
-     * empty and a non-empty combo always carries a selection — which is what lets the property
-     * answer a {@link Key} rather than something possibly absent.
-     *
-     * @return the key the notator chose, which is the key in effect until they choose another
+     * The combo always carries a selection, so this never answers an absent {@link Key}.
      */
     @Override
     protected Key gather() {

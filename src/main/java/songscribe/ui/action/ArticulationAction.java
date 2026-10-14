@@ -62,16 +62,11 @@ public final class ArticulationAction extends NoteOnlyAction {
     }
 
     /**
-     * The accelerator is built from the character rather than from a virtual key code
-     * because {@code <} and {@code >} have no virtual key code that works — {@code VK_LESS}
-     * and {@code VK_GREATER} exist but are not reliably reported. Swing matches a
-     * character-based keystroke against the character actually typed, so this works on
-     * any keyboard layout. Do not "fix" it to a virtual key code.
+     * The accelerator is built from the character, not a virtual key code, because {@code <}
+     * and {@code >} have no virtual key code that is reliably reported. Do not "fix" it to one.
      *
-     * <p>The base constructor only registers accelerators given as a virtual key code, so
-     * this one is registered here instead, the way {@link DeleteAction} registers its extra
-     * keystrokes. Without that, the shortcut would work only for as long as these actions
-     * happen to sit in a menu, since Swing wires a menu item's accelerator on its own.
+     * <p>Registered here because the base constructor registers only virtual-key accelerators;
+     * otherwise the shortcut would work only while the action sits in a menu.
      */
     private ArticulationAction(
         MainFrame mainFrame,

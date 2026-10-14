@@ -43,35 +43,21 @@ import songscribe.ui.action.UIAction;
 import songscribe.util.UIUtils;
 
 /**
- * Status-bar cluster of zoom controls: a zoom-out button, a continuous slider
- * spanning {@link ZoomController#MIN_ZOOM_PERCENT} to
- * {@link ZoomController#MAX_ZOOM_PERCENT}, a zoom-in button, and a percent button
- * that opens a menu of the discrete {@link ZoomController} levels. The slider
- * changes the zoom continuously as it drags — analogous to wheel and pinch zoom —
- * rather than snapping to the discrete stops; the buttons and menu step between
- * the discrete stops. The two zoom buttons are driven by the shared
- * {@code ZOOM_OUT}/{@code ZOOM_IN} actions, so their icon, tooltip, and enabled
- * state track the actions automatically; this panel only keeps the slider,
- * percent label, and menu check marks in sync with the current zoom. Menu items
- * for stops that have a {@code ZoomLevelAction} also display that action's
- * accelerator.
+ * Status-bar cluster of zoom controls. The slider changes the zoom continuously as it drags,
+ * unlike the buttons and menu, which step between the discrete stops.
  */
 public final class ZoomStatusBarPanel extends JPanel {
 
-    /** Compact, borderless side length (px) for the status-bar zoom buttons (toolbar buttons are larger). */
     private static final int BUTTON_SIZE_PX = 24;
     private static final Dimension BUTTON_DIMENSION = new Dimension(BUTTON_SIZE_PX, BUTTON_SIZE_PX);
 
-    /** Horizontal gap between the three controls, in pixels. */
     private static final int CONTROL_GAP_PX = 2;
 
-    /** Downward-pointing triangle appended to the percent label as a drop-down affordance. */
     private static final String DROP_DOWN_ARROW = " ▾";
 
     private final JButton percentButton = new JButton();
     private final JPopupMenu percentMenu = new JPopupMenu();
 
-    /** The percent menu's check items, keyed by the stop each one selects. */
     private final Map<Integer, JCheckBoxMenuItem> levelItems = new LinkedHashMap<>();
 
     private final JSlider zoomSlider =
@@ -128,11 +114,6 @@ public final class ZoomStatusBarPanel extends JPanel {
         levelItems.forEach((levelPercent, item) -> item.setSelected(levelPercent == currentPercent));
     }
 
-    /**
-     * Compact borderless button that renders a {@link UIAction}'s icon-font glyph and stays
-     * in sync with the action's icon, tooltip, and enabled state — the status-bar-sized
-     * counterpart to {@link ToolbarButton}.
-     */
     private static final class ZoomButton extends JButton implements PropertyChangeListener {
 
         ZoomButton(UIAction action) {

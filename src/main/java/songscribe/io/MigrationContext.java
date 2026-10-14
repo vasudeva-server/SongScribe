@@ -32,10 +32,7 @@ import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 
 /**
- * Mutable carrier threaded through {@link MigrationPipeline}. Migrations read and write
- * the parsed lines, the song-level scalars, and the version through this object rather
- * than via {@code SongIO.DocumentReader} fields. Fields are plain and mutable, mirroring
- * the {@code DocumentReader} field style.
+ * Mutable carrier threaded through {@link MigrationPipeline}.
  *
  * <p>{@link #song} is populated only before the post-assembly phase; pre-assembly
  * migrations must not depend on it.

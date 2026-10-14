@@ -31,11 +31,8 @@ import songscribe.error.RuntimeError;
 /**
  * The font files the application ships with, under {@code /fonts/} on the classpath.
  * <p>
- * A shipped face can be used two ways, and they are separate decisions. {@link #load} hands the
- * face straight to a caller that draws with it — the notation and icon faces, which no document
- * ever names. {@link #install} registers the face with the graphics environment, which is what
- * makes it resolvable by name, so a document can store it and
- * {@link InstalledFonts#createFont} can find it again.
+ * {@link #load} hands a face straight to a caller that draws with it; {@link #install}
+ * registers it so {@link InstalledFonts#createFont} can resolve it by name.
  * <p>
  * A shipped face is expected to be present: its absence is a broken installation, not a
  * condition a caller handles.
@@ -47,17 +44,11 @@ public final class LocalFonts {
     private LocalFonts() {}
 
     /**
-     * Loads a shipped face without registering it, so nothing can resolve it by name.
+     * A missing or unreadable file is a broken installation: the failure is shown as a fatal
+     * error and the application exits, so the method does not return in that case.
      *
-     * @param filename the file's name under {@code /fonts/}, extension included
-     * @param size     the point size to derive the face at; a size of zero or less leaves the
-     *                 face at the 1pt size {@code Font.createFont} produces, for a caller that
-     *                 derives its own sizes
-     * @return the kerned face
-     * @effects when the file is missing from the classpath or cannot be read as a font — either
-     *          of which means a broken installation — the failure and its cause are logged, shown
-     *          to the user as a fatal error, and the application exits, so the method does not
-     *          return in that case
+     * @param size a size of zero or less leaves the face at the 1pt size
+     *             {@code Font.createFont} produces
      */
     public static Font load(String filename, float size) {
         try (
@@ -83,28 +74,16 @@ public final class LocalFonts {
     }
 
     /**
-     * Registers a shipped face with the graphics environment at its natural size, so that it can
-     * be resolved by family or PostScript name from then on.
-     *
-     * @param fontName the file's name under {@code /fonts/}, extension included
-     * @effects the face becomes resolvable by name for the life of the process
-     * @log warns when the graphics environment refuses the face, which normally means it is
-     *      already registered
+     * The face becomes resolvable by name for the life of the process.
      */
     public static void install(String fontName) {
         install(fontName, 0);
     }
 
     /**
-     * Registers a shipped face with the graphics environment, so that it can be resolved by
-     * family or PostScript name from then on.
+     * The face becomes resolvable by name for the life of the process.
      *
-     * @param fontName the file's name under {@code /fonts/}, extension included
-     * @param size     the point size to register the face at; zero or less registers it at its
-     *                 natural size
-     * @effects the face becomes resolvable by name for the life of the process
-     * @log warns when the graphics environment refuses the face, which normally means it is
-     *      already registered
+     * @param size zero or less registers the face at its natural size
      */
     public static void install(String fontName, float size) {
         var font = load(fontName, size);

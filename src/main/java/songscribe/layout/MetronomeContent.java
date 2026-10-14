@@ -37,32 +37,18 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * The positioned, measured content of a metronome marking — the single source of truth for
- * metronome typesetting. Layout builds it, {@link LayoutResult.DecorationLayout} carries it,
- * and the renderers draw its items without recomputing an advance, re-resolving a font or
- * deciding a position, so the measured box and the drawn ink cannot diverge.
- * <p>
- * The content is stated once for every depiction of a metronome marking: the per-note
- * {@code BeatChangeAttachment}, the per-note {@code TempoChangeAttachment} and the song-level
- * {@code SongTempoMark} at the first line's staff header.
- * <p>
- * A {@link TempoMarking.TextOnly} tempo omits the metronome glyph and the BPM, and draws its
- * description alone. It is not a hidden tempo: {@link #widthSs} is never 0, because that case
- * always carries text and the {@link TempoMarking.Metronome} case always begins with a glyph.
- * <p>
- * Every measurement here is in staff spaces and therefore zoom-invariant, the document
- * scale being a compile-time constant.
+ * The positioned, measured content of a metronome marking, the single source of truth for every
+ * depiction of one. Renderers draw its items without recomputing an advance or position, so the
+ * measured box and the drawn ink cannot diverge. {@link #widthSs} is never 0.
  *
- * @param items    the drawable items, left to right, positioned relative to the content's
- *                 top-left corner
- * @param widthSs  the total advance width of the content, in staff spaces
- * @param regions  one collision region per ink run, for vertical stacking
+ * @param items   the drawable items, left to right, positioned relative to the content's
+ *                top-left corner
+ * @param regions one collision region per ink run, for vertical stacking
  */
 public record MetronomeContent(
     List<TypesetItem> items, double widthSs, List<CollisionRegion> regions)
     implements DecorationContent {
 
-    /** " = " in tempo markings and beat changes. */
     public static final String EQUALS_STR = " = ";
 
     public MetronomeContent {
@@ -70,9 +56,6 @@ public record MetronomeContent(
         regions = List.copyOf(regions);
     }
 
-    /**
-     * Returns the SMuFL metronome glyph for the given note value.
-     */
     public static SMuFLGlyph metronomeGlyphFor(NoteValue value) {
         return switch (value) {
             case WHOLE -> SMuFLGlyph.MET_NOTE_WHOLE;
@@ -84,20 +67,13 @@ public record MetronomeContent(
         };
     }
 
-    /**
-     * Returns the advance width in staff spaces of one augmentation dot step (gap or dot itself).
-     * A dotted note spends two of these: one gap before the dot, one for the dot.
-     */
     public static double dotAdvanceWidthSs() {
         return SMuFLMetadata.advanceWidthSs(SMuFLGlyph.MET_AUGMENTATION_DOT)
             * MetronomeAttachment.NOTE_SCALE;
     }
 
     /**
-     * Builds the content for a beat change: the duration note, the "=", and the beat note.
-     *
-     * @param beatChange the beat change being depicted
-     * @param font       the resolved annotation font, unscaled, in pixel units
+     * @param font the resolved annotation font, unscaled, in pixel units
      */
     public static MetronomeContent forBeatChange(BeatChange beatChange, Font font) {
         var builder = new Builder(font);
@@ -109,13 +85,7 @@ public record MetronomeContent(
     }
 
     /**
-     * Builds the content for a tempo marking: the metronome glyph, the "=", the BPM and the
-     * description — or the description alone, according to the tempo's {@link TempoMarking}.
-     *
-     * @param tempo the tempo being depicted
-     * @param font  the resolved annotation font, unscaled, in pixel units
-     * @return the content, whose width is never zero — a metronome marking always begins with a
-     *         glyph, and a text-only marking always carries text
+     * @param font the resolved annotation font, unscaled, in pixel units
      */
     public static MetronomeContent forTempo(Tempo tempo, Font font) {
         var builder = new Builder(font);
@@ -136,9 +106,8 @@ public record MetronomeContent(
     }
 
     /**
-     * Joins the BPM to the description, omitting the separator when there is no description —
-     * a trailing space would otherwise widen the marking's hit box and its stacking
-     * reservation by a space with no ink under it.
+     * The separator is omitted when there is no description, so no trailing space widens the hit
+     * box and stacking reservation.
      */
     private static String bpmWithDescription(int visibleTempo, String description) {
         if (description.isEmpty()) {
@@ -149,8 +118,7 @@ public record MetronomeContent(
     }
 
     /**
-     * Walks the advance sequence once, accumulating positioned items and one collision region
-     * per ink run. Gap advances count toward the total width but belong to no region.
+     * Gap advances count toward the total width but belong to no region.
      */
     private static final class Builder {
 
@@ -164,12 +132,8 @@ public record MetronomeContent(
         private double cursorSs = 0;
 
         /**
-         * A gap advance owed to whatever is appended next. An undotted note leaves one dot
-         * step owed, which becomes the space before the text that follows it; a dotted note
-         * has already spent that step as the space before its own dot, so it owes nothing.
-         * Whatever is appended next pays the debt before positioning itself, and a debt still
-         * outstanding when the content is built is simply dropped — which is what keeps the
-         * total width from ever ending on empty space.
+         * A gap advance owed to whatever is appended next. A debt still outstanding when the
+         * content is built is dropped, so the total width never ends on empty space.
          */
         private double pendingGapSs = 0;
 

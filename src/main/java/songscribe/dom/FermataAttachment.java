@@ -24,10 +24,7 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Represents a fermata (pause/hold) attachment on a note.
- * <p>
- * Fermatas indicate that a note should be held longer than its written value.
- * They are typically placed above the note, centered on the note head.
+ * A fermata (pause/hold) attached to a note.
  */
 public final class FermataAttachment extends Attachment implements IntrinsicHeight {
 
@@ -50,12 +47,7 @@ public final class FermataAttachment extends Attachment implements IntrinsicHeig
     }
 
     /**
-     * Puts a fermata on {@code element}. An element already holding one is left as it is, so
-     * the element never carries two.
-     *
-     * @param element the element to hold
-     * @effects afterwards {@code element.findAttachment(FermataAttachment.class)} is non-null;
-     *     nothing changes when it already was
+     * An element already holding one is left as it is, so it never carries two.
      */
     public static void addFermata(StaffElement element) {
         if (element.findAttachment(FermataAttachment.class) == null) {
@@ -63,12 +55,6 @@ public final class FermataAttachment extends Attachment implements IntrinsicHeig
         }
     }
 
-    /**
-     * Takes the fermata off {@code element}. An element holding none is left as it is.
-     *
-     * @param element the element to release
-     * @effects afterwards {@code element.findAttachment(FermataAttachment.class)} is null
-     */
     public static void removeFermata(StaffElement element) {
         var existing = element.findAttachment(FermataAttachment.class);
 
@@ -77,9 +63,6 @@ public final class FermataAttachment extends Attachment implements IntrinsicHeig
         }
     }
 
-    /**
-     * Returns the glyph's own width in staff-space units, derived from SMuFL bounding box data.
-     */
     public double intrinsicWidthSs() {
         return FERMATA_WIDTH_SS;
     }
@@ -90,17 +73,9 @@ public final class FermataAttachment extends Attachment implements IntrinsicHeig
     }
 
     /**
-     * Returns {@code ticks} lengthened by this fermata: half again as long, which is what a
-     * fermata is worth in this application's playback.
-     *
-     * <p>Integer division truncates, so an odd tick count loses its half tick. A double-dotted
-     * thirty-second note is written at 21 ticks and is held for 31 rather than 31.5. That is the
-     * arithmetic MIDI has always been given here — unlike {@link Dots#augment}, which refuses a
-     * duration it cannot lengthen exactly, this is a playback stretch rather than a notated
-     * value, and half a tick of it is inaudible.
-     *
-     * @param ticks the written duration
-     * @return the held duration, in the same ticks
+     * Half again as long: what a fermata is worth in this application's playback. Integer
+     * division truncates rather than refusing an inexact duration as {@link Dots#augment} does,
+     * since this is a playback stretch, not a notated value.
      */
     public int heldDuration(int ticks) {
         return ticks * HELD_NUMERATOR / HELD_DENOMINATOR;

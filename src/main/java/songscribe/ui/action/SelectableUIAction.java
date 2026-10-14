@@ -27,9 +27,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.MainFrame;
 
 /**
- * Base class for actions that have a toggle selected state
- * (e.g. accidentals, note durations, rest mode).
- * Non-selectable actions extend UIAction directly.
+ * Base for actions with a toggle selected state.
  */
 @SuppressWarnings("NonStaticInitializer")
 public abstract class SelectableUIAction extends UIAction

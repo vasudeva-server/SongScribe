@@ -37,23 +37,13 @@ import songscribe.dom.TempoChangeAttachment;
 
 /**
  * Names an edit for the Edit menu, in the words the user would use for what they just
- * did. Each method takes what the edit acted on and returns the finished, localized
- * operation name — {@code "Delete Notes"}, {@code "Add Grace Note"} — which the call site
- * declares as its modification bracket's label and which the Edit menu shows after
- * {@code "Undo"} or {@code "Redo"}.
+ * did.
  *
- * <p>Every method here is a pure function of its arguments: it reads no shared state,
- * touches no model, and its result depends on nothing but what it was passed. A caller
- * may therefore compute a label before the edit, after it, or not use it at all.
+ * <p>Every method is a pure function of its arguments, so a label may be computed before the
+ * edit, after it, or not used.
  *
- * <p>The wording distinguishes deleting a thing from taking a decoration off the thing
- * that carries it: elements are {@code Delete}d, while slides, ties, beams, tuplets,
- * trills, accidentals, articulations and attachments are {@code Remove}d.
- *
- * <p>This is the only place the {@code ElementType.Kind} taxonomy behind those names is
- * decoded, so the kinds the insertion and deletion labels use cannot drift apart. These
- * are the Tier-B names of {@code docs/undo.md}; a step with no declared name
- * falls back to {@code UndoController}'s own mutation-type label instead.
+ * <p>Elements are {@code Delete}d; slides, ties, beams, tuplets, trills, accidentals,
+ * articulations and attachments are {@code Remove}d.
  */
 public final class OpNames {
 
@@ -90,16 +80,7 @@ public final class OpNames {
         return Strings.get(common, types.size());
     }
 
-    /**
-     * The delete-label key for one kind. Each value carries its own plural as a choice
-     * suffix over the element count, so the singular and the plural are one string rather
-     * than two that can drift apart, and picking between them is the format's job rather
-     * than this method's. A grace note deletes as a note: the one fold in the taxonomy,
-     * stated here and nowhere else.
-     *
-     * @param kind the kind every deleted element shares
-     * @return the key, to be read through the varargs {@code Strings.get} with the count
-     */
+    /** A grace note deletes as a note. */
     private static String deleteKey(ElementType.Kind kind) {
         return switch (kind) {
             case NOTE, GRACE_NOTE -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
@@ -137,116 +118,53 @@ public final class OpNames {
             });
     }
 
-    /**
-     * Names a slide insertion by the kind of slide being attached: {@code Add Fall} for
-     * {@link Slide#FALL}, {@code Add Glissando} for {@link Slide#GLISSANDO}.
-     *
-     * @param slide the kind of slide being attached
-     * @return the localized name for the insertion
-     */
     public static String addSlideLabel(Slide slide) {
         return Strings.get(slide == Slide.FALL
             ? Strings.ACTION_EDIT_OP_ADD_FALL
             : Strings.ACTION_EDIT_OP_ADD_GLISSANDO);
     }
 
-    /**
-     * Names a slide deletion by kind: {@code Remove Fall} for {@link Slide#FALL}, otherwise
-     * {@code Remove Glissando}. A slide is taken off the note that carries it rather than deleted
-     * as an element of its own, so it is worded as a removal even though the sibling labels here
-     * read {@code Delete}.
-     *
-     * @param slide the kind of slide being removed
-     * @return the localized name for the removal
-     */
+    /** Worded as a removal, not a {@code Delete}, because a slide is not an element of its own. */
     public static String deleteSlideLabel(Slide slide) {
         return Strings.get(slide == Slide.FALL
             ? Strings.ACTION_EDIT_OP_DELETE_FALL
             : Strings.ACTION_EDIT_OP_DELETE_GLISSANDO);
     }
 
-    /**
-     * Names a hairpin deletion by kind: {@code Delete Crescendo} for
-     * {@link Hairpin.Kind#CRESCENDO}, otherwise {@code Delete Diminuendo}.
-     *
-     * @return the localized name for the deletion
-     */
     public static String deleteHairpinLabel(Hairpin hairpin) {
         return Strings.get(hairpin.getKind() == Hairpin.Kind.CRESCENDO
             ? Strings.ACTION_EDIT_OP_DELETE_CRESCENDO
             : Strings.ACTION_EDIT_OP_DELETE_DIMINUENDO);
     }
 
-    /**
-     * Names an ending deletion.
-     *
-     * @return the localized name for the deletion
-     */
     public static String deleteEndingLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_DELETE_ENDING);
     }
 
-    /**
-     * Names a whole-line deletion.
-     *
-     * @return the localized name for the deletion
-     */
     public static String deleteLineLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_DELETE_LINE);
     }
 
-    /**
-     * Names a tie removal.
-     *
-     * @return the localized name for the removal
-     */
     public static String removeTieLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TIE);
     }
 
-    /**
-     * Names a beam removal.
-     *
-     * @return the localized name for the removal
-     */
     public static String removeBeamLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAM);
     }
 
-    /**
-     * Names a tuplet removal, which the user reaches by selecting the tuplet's number or
-     * bracket and deleting it.
-     *
-     * @return the localized name for the removal
-     */
     public static String removeTupletLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET);
     }
 
-    /**
-     * Names a trill removal.
-     *
-     * @return the localized name for the removal
-     */
     public static String removeTrillLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TRILL);
     }
 
-    /**
-     * Names an accidental removal.
-     *
-     * @return the localized name for the removal
-     */
     public static String removeAccidentalLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCIDENTAL);
     }
 
-    /**
-     * Names an articulation removal by type: {@code Remove Staccato} or
-     * {@code Remove Accent}.
-     *
-     * @return the localized name for the removal
-     */
     public static String removeArticulationLabel(ArticulationType type) {
         return Strings.get(switch (type) {
             case STACCATO -> Strings.ACTION_EDIT_OP_REMOVE_STACCATO;
@@ -254,15 +172,7 @@ public final class OpNames {
         });
     }
 
-    /**
-     * Names an attachment removal by kind. The switch is exhaustive by sealing on
-     * {@link Attachment}, so a new attachment kind fails to compile here.
-     * <p>
-     * The three kinds that also have a dialog share that dialog's Remove-button key, because
-     * the Delete key and the dialog reach the same edit.
-     *
-     * @return the localized name for the removal
-     */
+    /** The kinds that also have a dialog share its Remove-button key: both reach the same edit. */
     public static String removeAttachmentLabel(Attachment attachment) {
         return Strings.get(switch (attachment) {
             case FermataAttachment _ -> Strings.ACTION_EDIT_OP_REMOVE_FERMATA;
@@ -273,16 +183,6 @@ public final class OpNames {
         });
     }
 
-    /**
-     * Names a single-element lyric edit by what the syllable had and what it now has:
-     * empty → non-empty is {@code Add Lyric}, non-empty → empty is {@code Delete Lyric},
-     * and every other transition — including a no-op edit that leaves the text unchanged —
-     * is {@code Edit Lyric}.
-     *
-     * @param beforeText the syllable's text before the edit, {@code ""} if it had none
-     * @param afterText  the syllable's text after the edit, {@code ""} if it now has none
-     * @return the localized name for the edit
-     */
     public static String lyricLabel(String beforeText, String afterText) {
         if (beforeText.isEmpty() && !afterText.isEmpty()) {
             return Strings.get(Strings.ACTION_EDIT_OP_ADD_LYRIC);

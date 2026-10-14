@@ -24,10 +24,8 @@ import songscribe.dom.SongMetadata;
 import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
- * Component that renders the song title.
- * <p>
- * The title is centered horizontally and wraps to at most
- * {@link SongMetadata#MAX_TITLE_LINES} lines. Uses the song's title font.
+ * Component that renders the song title, wrapping to at most
+ * {@link SongMetadata#MAX_TITLE_LINES} lines.
  */
 public class TitleComponent extends BaseTitleComponent {
 

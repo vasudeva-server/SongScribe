@@ -29,9 +29,8 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * Shows the Messages panel when it is hidden, and hides it when it is shown. Keyboard focus does
- * not move. The name says what the next invocation does ("Show Messages" or "Hide Messages");
- * {@link MainFrame} calls {@link #setPanelShown} each time the panel is shown or hidden.
+ * Shows or hides the Messages panel without moving keyboard focus. {@link MainFrame} must call
+ * {@link #setPanelShown} each time the panel is shown or hidden, which keeps the name current.
  */
 public final class ToggleMessagesAction extends UIAction {
 
@@ -51,12 +50,6 @@ public final class ToggleMessagesAction extends UIAction {
         );
     }
 
-    /**
-     * Sets the name to match the panel.
-     *
-     * @param shown whether the Messages panel is shown
-     * @effects names the action "Hide Messages" when shown, "Show Messages" otherwise
-     */
     public void setPanelShown(boolean shown) {
         setName(Strings.get(shown ? Strings.ACTION_WINDOW_MESSAGES_HIDE : Strings.ACTION_WINDOW_MESSAGES_SHOW));
     }

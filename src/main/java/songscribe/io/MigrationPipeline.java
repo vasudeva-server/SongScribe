@@ -28,9 +28,7 @@ import songscribe.util.LoadStage;
 
 /**
  * Ordered, two-phase migration of a parsed song from any legacy {@code .mssw} format to
- * the current one. Pre-assembly stages operate on the parsed {@link Line}s and the
- * song-level scalars carried by {@link MigrationContext}; post-assembly stages operate on
- * the assembled {@link Song} after {@code loadFrom}.
+ * the current one.
  *
  * <p>Registration order in the two lists below <em>is</em> execution order.
  */
@@ -70,7 +68,6 @@ final class MigrationPipeline {
     private MigrationPipeline() {
     }
 
-    /** A stage that runs only for a file whose format version is before {@code major.minor}. */
     private static LoadStage<MigrationContext> versioned(int major, int minor, LoadStage<MigrationContext> step) {
         return LoadStage.when(ctx -> ctx.isBefore(major, minor), step);
     }

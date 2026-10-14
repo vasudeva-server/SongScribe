@@ -39,10 +39,6 @@ import songscribe.ui.binding.Widgets;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
-/**
- * The {@link SongSettingsDialog} Fonts tab: the fonts that have no dedicated
- * contextual tab — lyrics and annotation — each with a rendered sample.
- */
 final class SongSettingsFontTab extends BaseDialog.Tab {
 
     // The Fonts tab owns the fonts that have no dedicated contextual tab:
@@ -132,11 +128,8 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
     }
 
     /**
-     * Renders sample lines by hand with {@link GraphicUtils#setRenderingHints},
-     * the same way the score draws its text. A {@link JLabel} can't be used
-     * here: its UI re-imposes the platform text-antialiasing hint (LCD
-     * subpixel on macOS) over any hint set on the graphics, which fringes
-     * against the off-white page background and looks unlike the score.
+     * Not a {@link JLabel}: its UI re-imposes the platform text-antialiasing hint over the hints
+     * of {@link GraphicUtils#setRenderingHints}, which looks unlike the score.
      */
     private static final class ScoreTextPreview extends JComponent {
 
@@ -191,12 +184,8 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
     }
 
     /**
-     * Sets both font rows to show {@code input}'s lyrics and annotation fonts.
-     *
-     * <p>Whatever is put in comes back out: {@link #getLyricsFont()} and
+     * Whatever is put in comes back out: {@link #getLyricsFont()} and
      * {@link #getAnnotationFont()} called straight afterwards answer the same two fonts.
-     *
-     * @param input the settings this opening of the dialog is showing
      */
     void populate(SongSettingsInput input) {
         var fonts = input.fonts();

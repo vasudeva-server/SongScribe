@@ -22,9 +22,6 @@ package songscribe.layout;
 
 /**
  * An element's horizontal footprint on the staff: where it starts and how wide it is.
- *
- * @param xSs     the footprint's left edge, in staff spaces
- * @param widthSs the footprint's width, in staff spaces
  */
 public record Footprint(double xSs, double widthSs) {
 }

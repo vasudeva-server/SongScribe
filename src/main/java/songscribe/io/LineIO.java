@@ -118,58 +118,20 @@ public final class LineIO {
         @Nullable
         private Where where = null;
 
-        /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
 
-        /**
-         * Every ending this reader has recorded so far, across the whole document. Kept for the
-         * whole document rather than cleared per line, the way {@link #pendingTupletData} is, so
-         * {@link #pendingEndings()} can return every one this reader found once parsing is
-         * complete.
-         */
         private final List<PendingEnding> pendingEndingData = new ArrayList<>();
 
-        /**
-         * Every hairpin this reader has recorded so far, across the whole document, kept for the
-         * same reason as {@link #pendingEndingData}.
-         */
         private final List<PendingHairpin> pendingHairpinData = new ArrayList<>();
 
-        /**
-         * One parsed trill range.
-         *
-         * @param anchor    the index of the first trilled element
-         * @param end       the index of the last trilled element
-         * @param yOffsetSs the vertical offset, 0 when the file gives none
-         */
         private record TrillPair(int anchor, int end, int yOffsetSs) {}
 
-        /**
-         * Temporarily holds parsed trill ranges until elements are loaded. Used for both legacy
-         * trill flags (coalesced into runs) and new {@code <trills>} data.
-         */
         private final List<TrillPair> pendingTrillPairs = new ArrayList<>();
 
-        /**
-         * Temporarily holds the anchor index of each parsed tie until elements are loaded. The
-         * legacy format also stores an end index, but the end is derived, so it is not kept.
-         */
         private final List<Integer> pendingTieAnchors = new ArrayList<>();
 
-        /**
-         * One parsed hairpin.
-         *
-         * @param anchor    the index of the first element of the hairpin
-         * @param end       the index of the last element of the hairpin
-         * @param yOffsetSs the vertical offset, 0 when the file gives none
-         */
         private record HairpinEntry(int anchor, int end, double yOffsetSs) {}
 
-        /**
-         * Temporarily holds the parsed hairpins of each kind until elements are loaded. An
-         * {@link EnumMap} iterates in kind order, so a line's crescendos are recorded before its
-         * diminuendos.
-         */
         private final EnumMap<Hairpin.Kind, List<HairpinEntry>> pendingHairpinEntries =
             new EnumMap<>(Hairpin.Kind.class);
 
@@ -189,25 +151,6 @@ public final class LineIO {
             resetLegacyOffsets();
         }
 
-        /**
-         * Establishes on {@code line} the key its {@code <keys>} and {@code <keytype>} tags
-         * describe, if it carried any. A line with neither tag establishes no key of its own and
-         * inherits the one already in effect.
-         *
-         * <p>The two halves are only a key together, so {@link LegacyKeyType#keyFor} is what judges
-         * the pair, for both this reader and the song-level one — including which unrepresentable
-         * combinations mean C major and which are corrupt.
-         *
-         * <p>The established key always applies from the start of the line: {@code .mssw} has no
-         * representation for a mid-line key change, so this reader never produces one.
-         *
-         * <p>Whether the established key collapses to null because it equals the key this line
-         * would inherit is {@link Line#setKey} — not this method — deciding: this method always
-         * calls {@code setKey} with the parsed key and relies on {@code setKey} to normalize it.
-         *
-         * @param line the line being closed
-         * @throws SAXException if the parsed pair is not a valid key
-         */
         private void applyParsedKey(Line line) throws SAXException {
             var parsedType = parsedKeyType;
             var accidentalCount = parsedKeyAccidentalCount;
@@ -230,30 +173,18 @@ public final class LineIO {
             return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyTrillYPosPx);
         }
 
-        /**
-         * Returns true if any note in any line read so far named a retired accidental,
-         * which was converted to the accidental that sounds the same.
-         */
         public boolean sawLegacyAccidental() {
             return sawLegacyAccidental;
         }
 
         /**
-         * Returns each line read so far on which a note dropped a lyric whose number has no
-         * script, once each, in document order.
-         *
-         * @return the lines; empty when no lyric was dropped
+         * Each line appears once, in document order.
          */
         public List<Line> linesThatDroppedLyrics() {
             return List.copyOf(linesThatDroppedLyrics);
         }
 
         /**
-         * The two leading integers of a segment and, when the segment has a second comma,
-         * the text after it.
-         *
-         * @param a the first integer
-         * @param b the second integer
          * @param data the text after the second comma, or null when the segment has none
          */
         private record SegmentParts(int a, int b, @Nullable String data) {}
@@ -269,21 +200,10 @@ public final class LineIO {
             return new SegmentParts(a, b, data);
         }
 
-        /**
-         * One parsed beam range.
-         *
-         * @param anchor the index of the first element of the beam
-         * @param end    the index of the last element of the beam
-         */
         private record BeamPair(int anchor, int end) {}
 
-        /** Temporarily holds parsed beam ranges until elements are loaded. */
         private final List<BeamPair> pendingBeamPairs = new ArrayList<>();
 
-        /**
-         * Calls {@code consumer} with the two indices of each segment of {@code str}. Format:
-         * {@code first,second;...}
-         */
         private static void forEachIndexPair(String str, SegmentConsumer consumer) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
@@ -293,19 +213,12 @@ public final class LineIO {
             });
         }
 
-        /** Parses the {@code <beamings>} line-scope data into pending pairs. Format: {@code anchor,end;...} */
         private void parseBeamPairs(String str) {
             forEachIndexPair(str, (anchor, end) -> pendingBeamPairs.add(new BeamPair(anchor, end)));
         }
 
         /**
-         * Adds a beam over each parsed beam range, as {@link Beam#spanning} judges it. Called at
-         * end-of-line after all elements have been loaded. A range the beam rule refuses is
-         * dropped with a log line, the way this reader drops any other content the document
-         * model cannot hold; a beam is only {@code .mssw} data, so there is nothing to report to
-         * the user.
-         *
-         * @throws SAXException if a range's indices are out of range for {@code line}
+         * A range the beam rule refuses is dropped with a log line, not reported to the user.
          */
         private void createBeamsFromPending(Line line) throws SAXException {
             for (var pair : pendingBeamPairs) {
@@ -322,13 +235,6 @@ public final class LineIO {
             pendingBeamPairs.clear();
         }
 
-        /**
-         * Ties each parsed tie anchor that {@link Tie#canAnchor} accepts. The end is derived, not
-         * read from the file; a tie on any other element is dropped with a log line. Called at
-         * end-of-line after all elements have been loaded.
-         *
-         * @throws SAXException if an anchor index is out of range for {@code line}
-         */
         private void createTiesFromPendingAnchors(Line line) throws SAXException {
             for (var anchorIndex : pendingTieAnchors) {
                 DocumentValidation.requireIndexInRange(LOG, anchorIndex, anchorIndex, line.elementCount(), "tie");
@@ -347,13 +253,7 @@ public final class LineIO {
         }
 
         /**
-         * Records a {@link PendingHairpin} for each parsed hairpin, then clears them. Called at
-         * end-of-line after all elements have been loaded.
-         * <p>
-         * It builds no {@link Hairpin}: the span load pass judges each record, and merges two
-         * same-kind hairpins that overlap or merely touch into the one hairpin they musically are.
-         * The legacy format records no horizontal offset for a hairpin, so the record carries
-         * none.
+         * Builds no {@link Hairpin}: the span load pass judges each record.
          */
         private void recordPendingHairpins(Line line) throws SAXException {
             for (var entries : pendingHairpinEntries.entrySet()) {
@@ -372,31 +272,14 @@ public final class LineIO {
             pendingHairpinEntries.clear();
         }
 
-        /** Parses the {@code <ties>} line-scope data into pending anchors. Format: {@code anchor,end;...} */
         private void parseTiePairs(String str) {
             forEachIndexPair(str, (anchor, _) -> pendingTieAnchors.add(anchor));
         }
 
-        /**
-         * One parsed tuplet range.
-         *
-         * @param anchor    the index of the first element of the tuplet
-         * @param end       the index of the last element of the tuplet
-         * @param grade     the grade as the file states it, not yet checked
-         * @param yOffsetSs the vertical offset
-         */
         private record TupletSegment(int anchor, int end, int grade, double yOffsetSs) {}
 
-        /** Stores parsed tuplet segments until elements are loaded, one line at a time. */
         private final List<TupletSegment> pendingTupletSegments = new ArrayList<>();
 
-        /**
-         * Every tuplet this reader has resolved so far, across the whole document. Kept for
-         * the whole document rather than cleared per line, since the ratio a stated-less
-         * tuplet needs is only settled once the whole song has been read: the tuplet load pass
-         * derives it from the beat at the anchor, which a tempo change later in the file may
-         * still redefine while this reader is mid-parse.
-         */
         private final List<PendingTuplet> pendingTupletData = new ArrayList<>();
 
         private void parseTupletData(String str) {
@@ -432,11 +315,6 @@ public final class LineIO {
             });
         }
 
-        /**
-         * Resolves each parsed tuplet segment's anchor and end against {@code line}'s
-         * now-complete elements and appends a {@link PendingTuplet} with no stated ratio.
-         * Called at end-of-line after all elements have been loaded.
-         */
         private void createTupletsFromPending(Line line) throws SAXException {
             for (var segment : pendingTupletSegments) {
                 DocumentValidation.requireIndexInRange(
@@ -458,40 +336,28 @@ public final class LineIO {
         }
 
         /**
-         * Returns every tuplet this reader has found in the document, with no stated ratio.
-         *
-         * @return the tuplets found so far, line by line in the order the document lists them,
-         *     with offsets in the units the document stores; complete once parsing is
+         * Offsets are in the units the document stores. Complete once parsing is.
          */
         public List<PendingTuplet> pendingTuplets() {
             return List.copyOf(pendingTupletData);
         }
 
         /**
-         * Returns every ending this reader has found in the document.
-         *
-         * @return the endings found so far, line by line in the order the document lists them,
-         *     with no offsets; complete once parsing is
+         * Complete once parsing is.
          */
         public List<PendingEnding> pendingEndings() {
             return List.copyOf(pendingEndingData);
         }
 
         /**
-         * Returns every hairpin this reader has found in the document.
-         *
-         * @return the hairpins found so far, line by line with a line's crescendos before its
-         *     diminuendos, with vertical offsets in the units the document stores and no horizontal offset; complete
-         *     once parsing is
+         * Vertical offsets are in the units the document stores. Complete once parsing is.
          */
         public List<PendingHairpin> pendingHairpins() {
             return List.copyOf(pendingHairpinData);
         }
 
         /**
-         * Parses hairpin data of {@code kind} into its pending entries.
-         * Format: {@code anchorIdx,endIdx[,x1,x2,y];...}. Only {@code y} is read: SongScribe does
-         * not support a user's horizontal shift of either end of a hairpin.
+         * Only {@code y} is read: SongScribe has no horizontal shift of a hairpin end.
          */
         private void parseHairpinEntries(Hairpin.Kind kind, String str) {
             var entries = pendingHairpinEntries.computeIfAbsent(kind, _ -> new ArrayList<>());
@@ -516,7 +382,6 @@ public final class LineIO {
             });
         }
 
-        /** Parses the {@code <fsendings>} line-scope data into pending pairs. Format: {@code anchor,end;...} */
         private void parseEndingPairs(String str) {
             forEachIndexPair(str, (anchor, end) -> pendingEndingPairs.add(new int[]{anchor, end}));
         }
@@ -631,12 +496,6 @@ public final class LineIO {
             }
         }
 
-        /**
-         * Resolves each parsed fsendings index pair's anchor and end against {@code line}'s
-         * now-complete elements and records a {@link PendingEnding} with no offsets: the legacy
-         * format records none for an ending. Called at end-of-line after all elements have been
-         * loaded.
-         */
         private void createEndingsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingEndingPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "ending");
@@ -647,12 +506,6 @@ public final class LineIO {
             pendingEndingPairs.clear();
         }
 
-        /**
-         * Creates Trill spans from the pending trill index pairs.
-         * Called at end-of-line after all elements have been loaded.
-         * Handles both new {@code <trills>} data and legacy per-element trill flags (already
-         * coalesced into contiguous runs by {@link #accumulateLegacyTrillFlag}).
-         */
         private void createTrillsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTrillPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair.anchor(), pair.end(), line.elementCount(), "trill");
@@ -668,10 +521,8 @@ public final class LineIO {
         }
 
         /**
-         * Accumulates a legacy trill-flagged element index into contiguous runs.
-         * Each run (consecutive indices) becomes a single {@link TrillPair} with no offset in
-         * {@link #pendingTrillPairs}. Called before the element is added to the line, so
-         * {@code elementIndex} is the index the element will occupy.
+         * Called before the element is added to the line; {@code elementIndex} is the index it
+         * will occupy.
          */
         private void accumulateLegacyTrillFlag(int elementIndex) {
             if (!pendingTrillPairs.isEmpty()) {
@@ -689,10 +540,6 @@ public final class LineIO {
             pendingTrillPairs.add(new TrillPair(elementIndex, elementIndex, 0));
         }
 
-        /**
-         * Parses the new {@code <trills>} line-scope data into pending pairs.
-         * Format: {@code anchor,end[,yOffsetSs];...}
-         */
         private void parseTrillPairs(String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);

@@ -39,19 +39,11 @@ import songscribe.ui.action.UIAction.AppMenuAction;
  * Disables native macOS application menu items while a blocking dialog is
  * visible.
  * <p>
- * {@code Desktop.setAboutHandler} / {@code Desktop.setPreferencesHandler} bypass
- * the Swing action system, so disabling the corresponding {@code UIAction} has no
- * effect on the native menu. This controller reaches into the native NSMenu
- * through the {@link ObjC} FFM bridge and toggles the items directly.
+ * The About and Preferences handlers bypass the Swing action system, so disabling the
+ * corresponding {@code UIAction} has no effect on the native menu.
  * <p>
- * Actions that implement {@link AppMenuAction} are discovered automatically
- * via {@link Actions#getAppMenuActions()}. Adding a new app menu action requires
- * no changes to this class.
- * <p>
- * Each managed {@code NSMenuItem} is {@code -retain}ed so its pointer stays valid
- * across runloop ticks. The controller lives for the process — the bus holds it as a
- * {@link References#Strong} listener and nothing tears it down — so the retains are
- * reclaimed by the OS at process exit rather than via explicit {@code -release}.
+ * Each managed {@code NSMenuItem} is {@code -retain}ed and never released: the controller lives
+ * for the process, so the OS reclaims the retains at exit.
  */
 @Listener(references = References.Strong)
 public class MacNativeMenuController {

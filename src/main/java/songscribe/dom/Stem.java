@@ -23,27 +23,17 @@ package songscribe.dom;
 /**
  * Who decides which way a note's stem points: the notator, or the score.
  *
- * <p>A {@link Forced} stem carries the direction the notator chose, and that choice stands
- * whatever the note's pitch or beam would say. An {@link Auto} stem carries nothing: its
- * direction is read off the note's place in the score by {@link NoteElement#direction()}
- * whenever it is asked for, so there is no cached answer to go stale. One value holds both
- * facts, so a note can never claim to be automatic while carrying a direction someone wrote, or
- * claim a forced direction it does not have.
+ * <p>A {@link Forced} stem's direction stands whatever the note's pitch or beam would say. An
+ * {@link Auto} stem carries nothing: {@link NoteElement#direction()} reads it off the score each
+ * time, so no cached answer goes stale.
  */
 public sealed interface Stem {
 
-    /** The one automatic stem: the arm carries no state, so every note shares this instance. */
     Auto AUTO = new Auto();
 
-    /**
-     * A stem pointing the way the notator chose.
-     *
-     * @param direction the chosen direction
-     */
     record Forced(Direction direction) implements Stem {
     }
 
-    /** A stem whose direction the score decides; see {@link #AUTO}. */
     record Auto() implements Stem {
     }
 }

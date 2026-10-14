@@ -32,11 +32,9 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  * A SMuFL line segment glyph tiled {@code count} times along one baseline, as a trill's wavy
  * extension or the lint squiggle under a flagged annotation's text is drawn.
  * <p>
- * Every glyph is drawn at the {@link ScaledGlyph}'s own scale and advance. The run is never
- * stretched or squeezed to fit a span, so a span that is not a whole number of glyphs wide
- * leaves a gap, and a span narrower than one glyph is overflowed. The two factories choose
- * the count and the position that fit a span. All coordinates are in staff spaces, for a
- * graphics context that carries the staff-space transform.
+ * The run is never stretched or squeezed to fit a span, so a span that is not a whole number of
+ * glyphs wide leaves a gap, and a span narrower than one glyph is overflowed. All coordinates are
+ * in staff spaces.
  *
  * @param tile        the glyph tiled along the run
  * @param startXSs    where the first glyph's pen origin sits
@@ -49,19 +47,8 @@ record GlyphRun(ScaledGlyph tile, double startXSs, int count, double baselineYSs
     // error short of n advances. A count this close to the next whole number counts as whole.
     private static final double WHOLE_GLYPH_TOLERANCE = 1e-9;
 
-    /**
-     * A horizontal stretch of a line that a run is fitted to, in staff spaces.
-     *
-     * @param leftXSs  the span's left edge
-     * @param rightXSs the span's right edge
-     */
     record Span(double leftXSs, double rightXSs) {
 
-        /**
-         * Returns the span's width.
-         *
-         * @return {@link #rightXSs} minus {@link #leftXSs}, in staff spaces
-         */
         double widthSs() {
             return rightXSs - leftXSs;
         }
@@ -104,10 +91,9 @@ record GlyphRun(ScaledGlyph tile, double startXSs, int count, double baselineYSs
     }
 
     /**
-     * Draws the run in the music font and the color {@code g2} already carries.
+     * Leaves the font and transform of {@code g2} as it found them.
      *
      * @param g2 the graphics context, with the staff-space transform applied
-     * @effects leaves the font and transform of {@code g2} as it found them
      */
     void draw(Graphics2D g2) {
         var glyph = tile.glyph();

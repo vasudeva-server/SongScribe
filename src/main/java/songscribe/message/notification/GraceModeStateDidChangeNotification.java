@@ -22,11 +22,7 @@ package songscribe.message.notification;
 
 import songscribe.message.Message;
 
-/**
- * Posted when the grace mode state changes (active/inactive).
- * Triggers UIAction enabled-state recalculation for the
- * {@link songscribe.ui.action.UIAction.Flag#ENABLED_IN_GRACE_MODE} flag.
- */
+/** Posted when the grace mode state changes. */
 public class GraceModeStateDidChangeNotification extends Message {
 
     private final boolean active;

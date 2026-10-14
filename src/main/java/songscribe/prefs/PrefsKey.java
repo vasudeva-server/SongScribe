@@ -20,11 +20,9 @@
 package songscribe.prefs;
 
 /**
- * Type-safe enumeration of the global preference keys stored in {@code user-defaults.json}
- * and persisted to the user's {@code prefs.json}. Per-song document settings (font names and
- * sizes) live in the separate {@link SystemPrefsKey} enum and are never persisted.
- * {@link #ALL} is a sentinel used in notifications to indicate that multiple keys changed;
- * it does not correspond to a key in any defaults file.
+ * The global preference keys stored in {@code user-defaults.json} and persisted to the user's
+ * {@code prefs.json}. {@link #ALL} is a sentinel for notifications meaning multiple keys
+ * changed; it is in no defaults file.
  */
 public enum PrefsKey {
     ALL("all"),
@@ -57,7 +55,6 @@ public enum PrefsKey {
         this.key = key;
     }
 
-    /** Returns the JSON key string as stored in {@code user-defaults.json} and {@code prefs.json}. */
     public String key() {
         return key;
     }

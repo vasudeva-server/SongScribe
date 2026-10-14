@@ -28,17 +28,9 @@ import songscribe.dom.Line;
 /**
  * Mutation recording a change to the key a line establishes at its own start.
  *
- * <p>Both values carry the meaning {@link Line#getKey()} gives them: a null key means the line
- * establishes nothing and inherits the key in effect at the end of the previous line. Both are
- * the values {@link Line#setKey} settled on after its no-op normalization, not the raw argument
- * it was handed, so replaying either one reproduces the recorded state exactly.
- *
- * <p>A mid-line key change is a {@code KeyChangeElement} and is recorded as an ordinary
- * element mutation instead; this record covers only the line's own key.
- *
- * @param line   the line whose key changed
- * @param oldKey the key the line established before the change, or null if it inherited
- * @param newKey the key the line establishes after the change, or null if it now inherits
+ * <p>Both values carry the meaning {@link Line#getKey()} gives them, as {@link Line#setKey}
+ * settled on them after its no-op normalization, not the raw argument. A mid-line key change is
+ * recorded as an ordinary element mutation instead.
  */
 public record LineKeyChange(Line line, @Nullable Key oldKey, @Nullable Key newKey)
     implements Mutation, LineScopedMutation {

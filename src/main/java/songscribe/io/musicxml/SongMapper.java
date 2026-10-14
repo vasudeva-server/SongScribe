@@ -29,37 +29,15 @@ import songscribe.util.Utils;
 
 /**
  * Turns an unmarshalled {@link ScorePartwise} graph into a {@link ParsedSong}.
- * The read-side orchestrator: it runs the format and provenance gates, then drives
- * {@link HeaderMapper} and {@link MeasureMapper}.
  *
- * <p><b>No {@code File} parameter.</b> This class never learns where the bytes came
- * from, so compressed {@code .mxl} input can be added upstream without touching it, and
- * so it is callable from {@code MusicXmlReader.read(InputSource)} — the single parse path
- * the whole round-trip test suite goes through. A caller that needs a document name in a
- * message passes a {@code String}.
+ * <p>Takes no {@code File}: it never learns where the bytes came from. A caller that needs a
+ * document name in a message passes a {@code String}.
  */
 final class SongMapper {
 
     private SongMapper() {
     }
 
-    /**
-     * Maps {@code document} onto a freshly parsed {@link Song}, and its fonts onto
-     * {@code documentFonts}.
-     *
-     * @param document      the unmarshalled score, with the root element name and {@code version}
-     *                      attribute as the document actually wrote them
-     * @param documentFonts the fonts to apply the document's font block to
-     * @return the mapped song, with the spans it found pending and the report entries the mapping
-     *         made; the load passes have not run
-     * @throws SAXException if the document is not a supported MusicXML version
-     *                      ({@link MusicXmlReader.InvalidFormatException}), was not
-     *                      written by SongScribe
-     *                      ({@link MusicXmlReader.ForeignSoftwareException}), carries an
-     *                      unsupported SongScribe version
-     *                      ({@link MusicXmlReader.UnsupportedVersionException}), or is
-     *                      corrupt in a way a mapper rejects
-     */
     static ParsedSong map(
         MusicXmlSerializer.ParsedDocument document, DocumentFonts documentFonts
     ) throws SAXException {
@@ -107,16 +85,6 @@ final class SongMapper {
         return parsed;
     }
 
-    /**
-     * Format gate: rejects a root element other than {@code <score-partwise>}, and a
-     * {@code version} that is missing, unparseable, or older than
-     * {@link MusicXmlTags#VERSION_VALUE}. {@code SongFileLoader.load} maps the exception
-     * to {@code SongLoadResult.UnsupportedFileFormat}.
-     *
-     * <p>Both facts come off the raw stream rather than the graph — see
-     * {@link MusicXmlSerializer.ParsedDocument}, which explains why neither is
-     * recoverable from {@link ScorePartwise}.
-     */
     private static void checkFormat(
         MusicXmlSerializer.ParsedDocument document
     ) throws MusicXmlReader.InvalidFormatException {

@@ -33,31 +33,17 @@ import songscribe.message.mutation.ElementField;
 
 /**
  * A pending change to a {@link Line}'s elements: the line has not been mutated yet, and
- * {@link #projectedElements} describes what it will look like once the change lands. The four
- * shapes are the four element primitives — an insertion of one element, a replacement of one
- * or more elements each at its own position, a deletion of a contiguous run, and a
- * modification of one element's fields in place.
+ * {@link #projectedElements} describes what it will look like once the change lands.
  * <p>
- * A change has one reader, the span sweep ({@link LineSpans#sweep}). It hands the change to
- * every {@link Span} via {@link Span#outcomeFor(ElementChange)}, and the projection is the
- * single thing a span judges itself against — decisions must always be made against the
- * projection, never against the mutated line, so that companion span mutations can be
- * recorded before the primary element mutation for correct undo replay.
+ * A span judges itself against the projection ({@link Span#outcomeFor(ElementChange)}), never
+ * against the mutated line, so that companion span mutations can be recorded before the primary
+ * element mutation for correct undo replay.
  * <p>
- * <b>The projection is a view, not a copy.</b> Each shape maps projected positions onto
- * the line it holds, so building a change allocates nothing proportional to the line and
- * a line with no hairpin on it — the only span type that reads the projection at all —
- * never pays for one. The view is therefore live: it is valid only until the line's
- * elements are mutated, which is exactly the window every caller uses it in. See
+ * The projection is a live view, valid only until the line's elements are mutated. See
  * {@link ProjectedElements}.
  */
 public sealed interface ElementChange {
 
-    /**
-     * The line this change applies to.
-     *
-     * @return the line being changed, still in its pre-change state
-     */
     Line line();
 
     /**
@@ -101,8 +87,6 @@ public sealed interface ElementChange {
     }
 
     /**
-     * A single element inserted at {@code index}.
-     *
      * @param line     the line being changed, still in its pre-insertion state
      * @param index    the position {@code inserted} will occupy, {@code 0..}{@link
      *                 Line#elementCount()}
@@ -134,16 +118,9 @@ public sealed interface ElementChange {
     }
 
     /**
-     * One or more elements each replaced by another at the same position: a set of
-     * {@code (index, newElement)} pairs at distinct indices. A replacement of one element is
-     * a set of one ({@link #single}). Nothing moves, so the projection is the line with each
-     * replaced position holding its new element.
-     * <p>
-     * A replaced element is absent from {@code projectedElements}; a span endpoint on it is read
-     * through {@link ElementChange#projectedEndpointIndexOf}.
-     * <p>
-     * The replaced elements are read off the line rather than held, so a replacement is valid
-     * only until its line changes — the window every reader uses it in, like every other shape.
+     * A set of {@code (index, newElement)} pairs at distinct indices. A replaced element is absent
+     * from {@code projectedElements}; a span endpoint on it is read through
+     * {@link ElementChange#projectedEndpointIndexOf}.
      *
      * @param line        the line being changed, still in its pre-replacement state
      * @param newElements each replaced position, mapped to the element taking its place
@@ -152,14 +129,6 @@ public sealed interface ElementChange {
      */
     record Replacement(Line line, NavigableMap<Integer, StaffElement> newElements) implements ElementChange {
 
-        /**
-         * Validates the pairs and keeps an unmodifiable copy of them, so a caller's map can
-         * change afterwards without changing the replacement.
-         *
-         * @throws IllegalArgumentException if {@code newElements} is empty
-         * @throws IndexOutOfBoundsException if a key of {@code newElements} is not an index of
-         *     {@code line}
-         */
         public Replacement {
             if (newElements.isEmpty()) {
                 throw new IllegalArgumentException("a replacement replaces at least one element");
@@ -174,15 +143,6 @@ public sealed interface ElementChange {
             newElements = Collections.unmodifiableNavigableMap(new TreeMap<>(newElements));
         }
 
-        /**
-         * A replacement of the one element at {@code index}.
-         *
-         * @param line       the line being changed, still in its pre-replacement state
-         * @param index      the position of the element being replaced
-         * @param newElement the element taking its place
-         * @return the replacement holding the single pair
-         * @throws IndexOutOfBoundsException if no element stands at {@code index}
-         */
         public static Replacement single(Line line, int index, StaffElement newElement) {
             var newElements = new TreeMap<Integer, StaffElement>();
             newElements.put(index, newElement);
@@ -190,12 +150,7 @@ public sealed interface ElementChange {
         }
 
         /**
-         * The element that takes {@code element}'s place.
-         *
-         * @param element an element of {@link #line}
-         * @return the new element at {@code element}'s position, or {@code null} when this
-         *     replacement does not replace {@code element}
-         * @throws IllegalArgumentException if {@code element} is not on {@link #line}
+         * @return {@code null} when this replacement does not replace {@code element}
          */
         public @Nullable StaffElement replacementOf(StaffElement element) {
             return newElements.get(line.getElementIndex(element));
@@ -234,30 +189,15 @@ public sealed interface ElementChange {
     }
 
     /**
-     * The contiguous run of elements in {@code range} removed.
-     * <p>
-     * A range rather than a set of elements because a range is all a deletion can be: the
-     * editor has no non-contiguous selection to delete from, and both primitives that delete
-     * — {@link Line#removeElement} and {@link Line#removeRange} — are handed a position or a
-     * range. Saying so here is what makes the projection three comparisons in each direction
-     * instead of a search, and it puts the invariant in the type rather than in a comment.
-     *
      * @param line  the line being changed, still in its pre-deletion state
      * @param range the elements being removed, both ends included
      */
     record Deletion(Line line, ElementRange range) implements ElementChange {
 
-        /**
-         * The elements being removed.
-         *
-         * @return a view of the line's own list over {@link #range}, valid only until the
-         *     deletion lands, like everything else this change reads
-         */
         public List<StaffElement> deletedElements() {
             return line.getElements(range);
         }
 
-        /** How many elements leave the line. */
         private int deletedCount() {
             return range.size();
         }
@@ -286,10 +226,8 @@ public sealed interface ElementChange {
     }
 
     /**
-     * The element at {@code index} changed in place: {@code fields} are rewritten on it and
-     * nothing moves. The projection is the line as it stands, since a field change alters no
-     * element's position, and a span judges it on which fields change — a duration-affecting
-     * change unbalances a tuplet the element sits in, an accidental restamp touches nothing.
+     * A span judges a modification on which fields change: a duration-affecting change
+     * unbalances a tuplet the element sits in, an accidental restamp touches nothing.
      *
      * @param line   the line being changed, still in its pre-modification state
      * @param index  the position of the element being modified

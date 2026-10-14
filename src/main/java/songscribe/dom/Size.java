@@ -21,11 +21,7 @@
 package songscribe.dom;
 
 /**
- * A width and a height in staff spaces, carried together so that a call site cannot hand a
- * height where a width is meant.
- *
- * @param widthSs  the width in staff spaces
- * @param heightSs the height in staff spaces
+ * A width and a height in staff spaces.
  */
 public record Size(double widthSs, double heightSs) {
 }

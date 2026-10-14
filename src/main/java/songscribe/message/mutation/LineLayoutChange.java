@@ -24,12 +24,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 
-/**
- * Mutation recording a layout property change on a specific line.
- * Used for y-position offsets and element-spacing adjustments.
- * The runtime types of {@code oldValue} and {@code newValue} are validated against
- * {@link LineLayoutField#getExpectedType()} at construction time.
- */
 public record LineLayoutChange(Line line, LineLayoutField field, @Nullable Object oldValue, @Nullable Object newValue)
     implements Mutation, LineScopedMutation {
 

@@ -28,7 +28,6 @@ import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
-/** Minimizes the main window to the Dock. */
 public final class MinimizeWindowAction extends UIAction {
 
     public static MinimizeWindowAction createAction(MainFrame mainFrame) {

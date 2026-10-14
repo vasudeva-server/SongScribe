@@ -99,13 +99,14 @@ an implementation change does not.
 
 ### Deriving the case
 
-**The contract is the durable artifact.** It is what a future change is checked
-against, so a contract too vague to derive a test from is the finding — not a
-reason to keep the test around as the real specification. Amend the contract
-first, as *When the contract does not answer the question* below requires, then
-derive the case from the amended one.
+**The full contract is the durable artifact.** A method a test derives from has
+one — see *Full contracts* in [Contracts](./contracts.md). It is what a future
+change is checked against, so a full contract too vague to derive a test from is
+the finding — not a reason to keep the test around as the real specification.
+Amend the contract first, as *When the contract does not answer the question*
+below requires, then derive the case from the amended one.
 
-Then read exactly three things: the **contract** of the method under test, its
+Then read exactly three things: the **full contract** of the method under test, its
 **signature**, and the **public API of its declaring class** — other contracts on
 it, the class Javadoc, and any `docs/` document they link to.
 

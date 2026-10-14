@@ -62,9 +62,6 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     private static final double SYLLABLE_WIDTH_SS = 0.8;
 
-    /** A width no assertion here reads; these fixtures never overflow. */
-    private static final double UNREAD_LINE_WIDTH_SS = 100.0;
-
     private static final double TOLERANCE_SS = 0.0001;
 
     private static final int LYRICS_FONT_SIZE = 12;
@@ -340,7 +337,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     private static LyricLayoutBuilder.Result build(List<ElementColumn> columns, double placeholderWidthSs) {
         return LyricLayoutBuilder.build(
-            columns, Song.Script.LATIN, metrics(placeholderWidthSs), false, UNREAD_LINE_WIDTH_SS);
+            columns, Song.Script.LATIN, metrics(placeholderWidthSs), false);
     }
 
     /**

@@ -29,33 +29,17 @@ import com.uber.nullaway.annotations.Initializer;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The derivation returned by {@link Bindings#computed}, whose contract this class
- * implements and does not extend.
- *
- * <p>Reached only through that factory: nothing outside this package can name the
- * type, so the derivation can only ever be used as an {@link ObservableValue}. The
- * factory registers it with the {@link Bindings} that created it, which is what
- * cancels the observations it takes on its own dependencies — see {@link #cancel}.
- *
- * @param <T> the derived value's type, declared {@code @Nullable} when absence is a
- *     value the graph carries
+ * The derivation returned by {@link Bindings#computed}; the {@link Bindings} that created it
+ * cancels its observations via {@link #cancel}.
  */
 final class Computed<T extends @Nullable Object> implements ObservableValue<T>, Subscription {
 
     private final Supplier<T> body;
     private final Observers observers = new Observers();
 
-    /**
-     * The dependencies of the most recent run, each mapped to the observation held
-     * on it. Insertion-ordered so an unlink pass is deterministic.
-     */
     private final Map<ObservableValue<?>, Subscription> dependencies = new LinkedHashMap<>();
 
-    /**
-     * The result of the most recent run. Assigned by {@link #evaluate}, which every
-     * read made while {@link #stale} goes through, so no read sees it unassigned. A
-     * null here is the body's answer, legitimate when {@code T} is nullable.
-     */
+    /** Assigned by {@link #evaluate} before any read sees it; a null is the body's answer. */
     private T value;
     private boolean stale = true;
     private boolean evaluating = false;
@@ -81,23 +65,10 @@ final class Computed<T extends @Nullable Object> implements ObservableValue<T>, 
     }
 
     /**
-     * Drops every observation this derivation holds on its dependencies.
+     * Until this runs, a derivation over anything outliving its dialog keeps the dialog and
+     * everything the body captured reachable.
      *
-     * <p>Called by {@link Bindings#dispose} on the derivations that {@link
-     * Bindings#computed} registered. Until this runs, each dependency holds a
-     * reference to this derivation, and this derivation holds its body — so a
-     * derivation over anything outliving its dialog would keep the dialog, its
-     * controls and everything the body captured reachable for as long as that
-     * dependency lives.
-     *
-     * <p>Idempotent: the dependency set is emptied, so a second call cancels nothing.
-     * The value is marked stale rather than cleared, so a read made after this — which
-     * a disposed dialog has no way to reach — re-runs the body and re-links honestly
-     * rather than answering a cached value whose inputs are no longer observed.
-     *
-     * @effects cancels each dependency observation and empties the dependency set.
-     *     Observers registered on this derivation are left registered; they simply
-     *     stop being notified, because nothing notifies this derivation any more.
+     * <p>Idempotent. Marks the value stale, so a later read re-runs the body and re-links.
      */
     @Override
     public void cancel() {
@@ -109,15 +80,6 @@ final class Computed<T extends @Nullable Object> implements ObservableValue<T>, 
         stale = true;
     }
 
-    /**
-     * Runs the body with recording armed, re-links the dependency set to what the
-     * run actually read, and caches the result.
-     *
-     * @return the freshly derived value
-     * @throws IllegalStateException if the body reads this computed, directly or
-     *     through another computed — a cycle has no fixed point and would otherwise
-     *     recurse until the stack ends
-     */
     @Initializer
     private T evaluate() {
         if (evaluating) {
@@ -143,17 +105,6 @@ final class Computed<T extends @Nullable Object> implements ObservableValue<T>, 
         return result;
     }
 
-    /**
-     * Drops the observations on dependencies this run did not read and takes one on
-     * each dependency it read for the first time.
-     *
-     * <p>The unlink half is what makes a branching body correct: a value read only
-     * on the branch last taken must stop marking this computed stale once another
-     * branch is being taken, or the derivation recomputes on changes that cannot
-     * affect it.
-     *
-     * @param touched the values read during the run just finished
-     */
     private void relink(Set<ObservableValue<?>> touched) {
         var linked = dependencies.entrySet().iterator();
 
@@ -173,11 +124,6 @@ final class Computed<T extends @Nullable Object> implements ObservableValue<T>, 
         }
     }
 
-    /**
-     * Marks the cached value stale and passes the notification on at once, so an
-     * eager consumer — a binding — reads and thereby re-runs the body, while an
-     * unread computed defers the work until somebody wants the value.
-     */
     private void dependencyDidChange() {
         stale = true;
         observers.notifyObservers();

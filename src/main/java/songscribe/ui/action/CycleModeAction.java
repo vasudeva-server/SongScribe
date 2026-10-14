@@ -29,11 +29,6 @@ import songscribe.message.Message;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
-/**
- * An action that toggles between Edit Mode and Select Mode on each invocation.
- * Owns the 'M' accelerator key, so pressing 'M' is equivalent to clicking
- * the mode cycle button in the toolbar.
- */
 public final class CycleModeAction extends UIAction {
 
     private ModeAction currentAction;
@@ -68,9 +63,7 @@ public final class CycleModeAction extends UIAction {
     }
 
     /**
-     * Returns the mode action this one toggles to. Reads {@link Actions} live rather than
-     * caching the pair, so the two mode actions can be recreated without stranding a
-     * stale reference here.
+     * Reads {@link Actions} live so the mode actions can be recreated without a stale reference.
      */
     private ModeAction otherAction() {
         return currentAction == Actions.EDIT_MODE_ACTION

@@ -22,13 +22,8 @@ package songscribe.smufl;
 
 /**
  * The closed set of noteheads the application draws.
- *
- * <p>Only {@link StemmedNotehead} carries stem attachment points, which is what lets
- * {@link SMuFLMetadata#stemAnchors} be total over that narrower type instead of answering
- * "none" for {@link WholeNotehead}.
  */
 public sealed interface Notehead permits StemmedNotehead, WholeNotehead {
 
-    /** @return The glyph this notehead is drawn with. */
     SMuFLGlyph glyph();
 }

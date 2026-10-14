@@ -57,7 +57,6 @@ public final class MidiController {
     public static volatile @Nullable Synthesizer synthesizer = null;
     private static boolean closed = false;
 
-    /** Java Sound's {@link Receiver#send} defines this as "no timestamp". */
     static final long NO_TIMESTAMP = -1;
 
     private MidiController() {}
@@ -103,11 +102,7 @@ public final class MidiController {
         return sequencer != null;
     }
 
-    /**
-     * Starts MIDI initialization on a background daemon thread.
-     *
-     * @return a latch that reaches zero when initialization is complete (success or failure)
-     */
+    /** @return a latch that reaches zero when initialization is complete, in success or failure */
     public static CountDownLatch openMidiAsync() {
         var ready = new CountDownLatch(1);
         var thread = new Thread(() -> {
@@ -122,10 +117,6 @@ public final class MidiController {
         return ready;
     }
 
-    /**
-     * Opens the first synthesizer that can load the given soundbank.
-     * Tries the default synthesizer first, then probes all available ones.
-     */
     private static Synthesizer openSynthesizerWithSoundbank(
             Soundbank soundbank
     ) throws MidiUnavailableException {
@@ -188,10 +179,7 @@ public final class MidiController {
         return result;
     }
 
-    /**
-     * Extracts the bundled SF2 resource to a temp file and loads it.
-     * Loading from a File is more reliable than from an InputStream.
-     */
+    /** Loading from a File is more reliable than from an InputStream. */
     private static @Nullable Soundbank loadBundledSoundbank() {
         try {
             var sf2File = extractSoundfontToTempFile(SOUNDFONT_RESOURCE);
@@ -228,9 +216,6 @@ public final class MidiController {
         }
     }
 
-    /**
-     * Sends a GM System On reset and sets sensible CC defaults on all channels.
-     */
     private static void initChannels(Receiver receiver) {
         try {
             // GM System On reset
@@ -272,7 +257,6 @@ public final class MidiController {
     }
 
     /**
-     * Re-sends GM reset + CC defaults on all channels.
      * Call before each playback to counteract the sequencer's
      * automatic CC 121 (Reset All Controllers) sent when it stops.
      */
@@ -282,12 +266,6 @@ public final class MidiController {
         }
     }
 
-    /**
-     * Sets the playback volume on all MIDI channels.
-     *
-     * @param percent volume percentage in the range 50–100,
-     *                linearly scaled to MIDI CC7 values ~64–127
-     */
     public static void setPlaybackVolume(int percent) {
         if (midiReceiver == null) {
             return;
@@ -305,10 +283,8 @@ public final class MidiController {
     }
 
     /**
-     * Sends a Program Change on channel 0 so the correct instrument sounds
-     * even when the sequencer resumes past the Program Change event at tick 0.
-     *
-     * @param program MIDI program number (0–127)
+     * Sent so the correct instrument sounds even when the sequencer resumes past the Program
+     * Change event at tick 0.
      */
     public static void setPlaybackInstrument(int program) {
         if (midiReceiver == null) {

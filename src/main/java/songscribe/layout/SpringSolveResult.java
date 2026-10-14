@@ -23,12 +23,9 @@ package songscribe.layout;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The outcome of a {@link SpringSpacer#solve} call: either the solved per-gap lengths, or an
- * INFEASIBLE flag meaning every gap is frozen at its strut and the line still overflows.
- * <p>
- * A solved result carries one length (delta-X Ss between adjacent column origins) per spring,
- * in spring order. An infeasible result carries no lengths — {@link #gapLengthsSs()} is
- * {@code null}, so callers must branch on {@link #isInfeasible()} first.
+ * The outcome of a {@link SpringSpacer#solve} call: the solved per-gap lengths, or infeasible,
+ * meaning every gap is frozen at its strut and the line still overflows. Callers must branch on
+ * {@link #isInfeasible()} before reading {@link #gapLengthsSs()}.
  */
 public final class SpringSolveResult {
     private final double @Nullable [] gapLengthsSs;
@@ -37,17 +34,10 @@ public final class SpringSolveResult {
         this.gapLengthsSs = gapLengthsSs;
     }
 
-    /**
-     * Creates a solved result carrying one gap length (Ss) per spring, in spring order.
-     */
     public static SpringSolveResult solved(double[] gapLengthsSs) {
         return new SpringSolveResult(gapLengthsSs);
     }
 
-    /**
-     * Creates an infeasible result: the springs cannot fit the available span even with every
-     * gap compressed all the way down to its strut.
-     */
     public static SpringSolveResult infeasible() {
         return new SpringSolveResult(null);
     }
@@ -56,9 +46,7 @@ public final class SpringSolveResult {
         return gapLengthsSs == null;
     }
 
-    /**
-     * The solved per-gap lengths (Ss), or {@code null} when {@link #isInfeasible()}.
-     */
+    /** Null when {@link #isInfeasible()}. */
     public double @Nullable [] gapLengthsSs() {
         return gapLengthsSs;
     }

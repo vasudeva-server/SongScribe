@@ -25,21 +25,15 @@ import java.util.List;
 import songscribe.Strings;
 
 /**
- * What a file reader hands over: the song it read, the spans it found but did not build, and the
- * report entries it made. Both readers return one, and {@link #settle()} turns it into a loaded
- * song.
+ * What a file reader hands over, which {@link #settle()} turns into a loaded song.
  *
- * @param song            the song as the reader read it, not yet installed
- * @param pendingTuplets  the tuplets the reader found in {@code song}, in staff-space units. Each
- *                        one's anchor and end sit in the same line of {@code song}, the end at or
- *                        after the anchor, and no two overlap
- * @param pendingEndings  the endings the reader found in {@code song}, in staff-space units. Each
- *                        one's anchor sits in a line of {@code song}, and its end sits in the same
- *                        line at or after the anchor
- * @param pendingHairpins the hairpins the reader found in {@code song}, in staff-space units, under
- *                        the same condition as {@code pendingEndings}
- * @param readerEntries   the report entries the reader made, in the order it made them, each
- *                        naming lines of {@code song} or no place
+ * @param pendingTuplets  in staff-space units. Each one's anchor and end sit in the same line of
+ *                        {@code song}, the end at or after the anchor, and no two overlap
+ * @param pendingEndings  in staff-space units. Each one's anchor sits in a line of {@code song},
+ *                        and its end sits in the same line at or after the anchor
+ * @param pendingHairpins in staff-space units, under the same condition as {@code pendingEndings}
+ * @param readerEntries   in the order the reader made them, each naming lines of {@code song} or
+ *                        no place
  */
 public record ParsedSong(
     Song song,
@@ -57,12 +51,8 @@ public record ParsedSong(
     }
 
     /**
-     * Returns the entry a reader makes when it converted a retired accidental to the accidental
-     * that sounds the same. One entry stands for every conversion in the file. A reader adds it
-     * after every entry for a damaged mark it dropped, and before its
-     * {@linkplain #lyricDroppedEntry lyric-dropped entries}.
-     *
-     * @return the entry under {@link Strings#REPORT_ACCIDENTALS_CONVERTED}, with no place
+     * One entry stands for every conversion in the file. A reader adds it after every entry for a
+     * damaged mark it dropped, and before its {@linkplain #lyricDroppedEntry lyric-dropped entries}.
      */
     public static RecordedChange accidentalsConvertedEntry() {
         return new RecordedChange(
@@ -72,14 +62,8 @@ public record ParsedSong(
     }
 
     /**
-     * Returns the entry a reader makes for a line that lost a lyric. A song holds lyrics only in
-     * the scripts {@link Song.Script} names, so a reader drops every lyric whose number names no
-     * script, rather than refusing the file. Each line that lost one gets one entry, however many
-     * lyrics it lost. A reader adds these last, in the order of the lines, after
-     * {@link #accidentalsConvertedEntry()}.
-     *
-     * @param line the line that lost a lyric
-     * @return the entry under {@link Strings#REPORT_LYRICS_REMOVED}, placed on {@code line}
+     * Each line that lost a lyric gets one entry, however many it lost. A reader adds these last,
+     * in the order of the lines, after {@link #accidentalsConvertedEntry()}.
      */
     public static RecordedChange lyricDroppedEntry(Line line) {
         return new RecordedChange(

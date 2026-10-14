@@ -22,11 +22,8 @@ package songscribe.dom;
 /**
  * The augmentation dots a {@link Dottable} element is written with: none, one or two.
  *
- * <p>This is an enum rather than a bounded {@code int} because the domain is exactly three
- * values. A count would have to be range-checked at every write, and a check is only as good
- * as the discipline of the callers that remember it; the enum makes a third dot unwriteable
- * anywhere past the file boundary, where {@link #of(int)} is the one conversion from a raw
- * count and the only place the range is checked.
+ * <p>{@link #of(int)} is the one conversion from a raw count and the only place the range is
+ * checked.
  */
 public enum Dots {
     NONE(0),
@@ -39,14 +36,6 @@ public enum Dots {
         this.count = count;
     }
 
-    /**
-     * Returns the constant for a raw dot count read from a file. This is the one conversion
-     * inward from a count; every value past the boundary is already a {@code Dots}.
-     *
-     * @param count the dot count as the file states it
-     * @return {@link #NONE}, {@link #ONE} or {@link #TWO} for 0, 1 or 2
-     * @throws IllegalArgumentException if {@code count} is outside 0..2
-     */
     public static Dots of(int count) {
         return switch (count) {
             case 0 -> NONE;
@@ -56,11 +45,6 @@ public enum Dots {
         };
     }
 
-    /**
-     * Returns how many dots this is: 0, 1 or 2.
-     *
-     * @return the dot count
-     */
     public int count() {
         return count;
     }

@@ -43,23 +43,9 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
 /**
- * Abstract base class for score rendering components.
- * <p>
- * Provides common functionality for components that render parts of a music score:
- * <ul>
- *   <li>Antialiasing setup in {@link #paintComponent(Graphics)}</li>
- *   <li>Template method pattern via {@link #render(Graphics2D)}</li>
- *   <li>Margin system integration via layout constants</li>
- *   <li>Mouse dispatch via the {@link #clicked}, {@link #pressed}, {@link #released},
- *       {@link #entered} and {@link #exited} hooks</li>
- * </ul>
- * <p>
- * Subclasses must implement {@link #render(Graphics2D)} to perform their specific rendering.
- * <p>
- * A component registers its mouse listener once, in its constructor, so AWT always
- * delivers a click straight to the component under the pointer and nothing has to search
- * the containment tree by bounds. A detached component (dialog previews, exporters) still
- * receives events, but each hook reads a null {@code scoreView} and does nothing.
+ * Abstract base class for score rendering components. A detached component (dialog previews,
+ * exporters) still receives events, but each hook reads a null {@code scoreView} and does
+ * nothing.
  */
 public abstract class ScoreComponent extends JComponent {
 
@@ -121,83 +107,52 @@ public abstract class ScoreComponent extends JComponent {
         }
     };
 
-    /** Reference to the song model. */
     @Nullable
     protected Song song;
 
     /**
-     * The owning {@link ScoreView}, or {@code null} when this component is detached
-     * (dialog previews, exporters). Read on demand through {@link #getViewScale()} so
-     * a rebuilt tree never renders at a stale zoom.
+     * {@code null} when this component is detached. Read on demand through
+     * {@link #getViewScale()} so a rebuilt tree never renders at a stale zoom.
      */
     @Nullable
     protected ScoreView scoreView;
 
-    /** Margin values (top, right, bottom, left) in pixels. */
     protected int marginTop = 0;
     protected int marginRight = 0;
     protected int marginBottom = 0;
     protected int marginLeft = 0;
 
-    /**
-     * Shared X position for content (union width centering across the text components), or
-     * null when this component centers on its own width.
-     */
+    /** Null when this component centers on its own width. */
     private @Nullable Float contentXPx = null;
 
-    /**
-     * Creates a new ScoreComponent.
-     */
     protected ScoreComponent() {
         setOpaque(false);
         addMouseListener(mouseAdapter);
     }
 
-    /**
-     * Sets the song model for this component.
-     *
-     * @param song The song to render
-     */
     public void setSong(Song song) {
         this.song = song;
         revalidate();
         repaint();
     }
 
-    /**
-     * Sets the owning {@link ScoreView}, attaching this component to it. On-score
-     * components are given one; detached previews are not, so they fall back to
-     * {@link ViewScale#IDENTITY}.
-     *
-     * @param scoreView the owning score view
-     */
     public void setScoreView(ScoreView scoreView) {
         this.scoreView = scoreView;
     }
 
-    /**
-     * Returns the owning {@link ScoreView}, or {@code null} when detached.
-     */
+    /** {@code null} when detached. */
     public @Nullable ScoreView getScoreView() {
         return scoreView;
     }
 
-    /**
-     * Returns this component's {@link ViewScale}: the owning view's when attached,
-     * otherwise the shared read-only {@link ViewScale#IDENTITY} (natural size).
-     */
     protected ViewScale getViewScale() {
         return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
-    /** Converts a staff-space distance to view pixels through this component's zoom. */
     protected ViewPx toViewPx(Ss ss) {
         return getViewScale().toViewPx(ss);
     }
 
-    /**
-     * Returns the song model.
-     */
     public Song getSong() {
         if (song == null) {
             throw RuntimeError.exit("song not initialized");
@@ -206,11 +161,6 @@ public abstract class ScoreComponent extends JComponent {
         return song;
     }
 
-    /**
-     * Sets uniform margin on all sides.
-     *
-     * @param margin Margin in pixels
-     */
     public void setMargin(int margin) {
         marginTop = margin;
         marginRight = margin;
@@ -218,14 +168,6 @@ public abstract class ScoreComponent extends JComponent {
         marginLeft = margin;
     }
 
-    /**
-     * Sets CSS-style margins.
-     *
-     * @param top    Top margin in pixels
-     * @param right  Right margin in pixels
-     * @param bottom Bottom margin in pixels
-     * @param left   Left margin in pixels
-     */
     public void setMargin(int top, int right, int bottom, int left) {
         marginTop = top;
         marginRight = right;
@@ -266,35 +208,19 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     /**
-     * Sets the X position for content rendering.
-     * <p>
-     * Used by TextPanel to achieve union width centering across
-     * all text components.
-     *
-     * @param contentX X position, or null to center based on own width
+     * @param contentX null to center based on own width
      */
     public void setContentX(@Nullable Float contentX) {
         contentXPx = contentX;
     }
 
-    /**
-     * Returns the X position for content rendering, or null when this component centers
-     * on its own width.
-     */
+    /** Null when this component centers on its own width. */
     public @Nullable Float getContentX() {
         return contentXPx;
     }
 
     /**
-     * Resolves the X position for content rendering.
-     * <p>
-     * Returns the value set by {@link #setContentX} if one is set,
-     * otherwise computes a centered X based on the given text width.
-     *
-     * @param text text to measure for centering
-     * @param g2   graphics context with font already set
-     * @return the pen origin in view pixels, to be handed straight to
-     *         {@link Graphics2D#drawString(String, float, float)}
+     * @param g2 graphics context with font already set
      */
     protected float resolveContentX(String text, Graphics2D g2) {
         if (contentXPx != null) {
@@ -311,23 +237,12 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     /**
-     * The width of a multi-line text block as its widest line's <em>advance</em>: how far the
-     * pen travels drawing that line, not where its ink lands.
-     * <p>
-     * The advance is what centering needs, because {@code drawString}'s x is the pen origin
-     * too. Centering an ink width against a pen origin displaces the text by the first
-     * glyph's left side bearing, and the result no longer agrees with how the same string
-     * centers in an ordinary Swing label.
-     * <p>
-     * Lives here rather than in {@link TextMeasurement} because it is a paint-time,
-     * view-space measurement: the font it measures in is the zoom-scaled font the caller has
-     * already set on {@code g2}, and the render context is that graphics' own, whereas
-     * {@link TextMeasurement} answers in zoom-free document scale.
+     * The widest line's <em>advance</em>, not its ink width: centering an ink width against a
+     * pen origin displaces the text by the first glyph's left side bearing. Lives here, not in
+     * {@link TextMeasurement}, because it measures in the zoom-scaled font already set on
+     * {@code g2}, whereas {@link TextMeasurement} answers in zoom-free document scale.
      *
-     * @param text the block, whose lines are separated by {@code \n}; empty lines contribute
-     *             nothing and empty text measures 0
-     * @param g2   the paint-time graphics, with the font to measure in already set
-     * @return the widest line's advance in view pixels
+     * @param g2 the paint-time graphics, with the font to measure in already set
      */
     protected static double textBlockWidth(String text, Graphics2D g2) {
         var context = g2.getFontRenderContext();
@@ -343,14 +258,6 @@ public abstract class ScoreComponent extends JComponent {
         return maxWidth;
     }
 
-    /**
-     * Paints this component with antialiasing enabled.
-     * <p>
-     * Sets up Graphics2D with antialiasing hints, then delegates to
-     * {@link #render(Graphics2D)} for actual rendering.
-     *
-     * @param g The graphics context
-     */
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -359,88 +266,42 @@ public abstract class ScoreComponent extends JComponent {
         render(g2);
     }
 
-    /**
-     * Initializes a Graphics2D context with common settings.
-     * <p>
-     * Sets up antialiasing and other rendering hints for high-quality output.
-     *
-     * @param g The graphics context to initialize
-     * @return The initialized Graphics2D
-     */
     protected Graphics2D initGraphics(Graphics g) {
         var g2 = (Graphics2D) g;
         GraphicUtils.setRenderingHints(g2);
         return g2;
     }
 
-    /**
-     * Template method for subclass rendering.
-     * <p>
-     * Subclasses implement this method to perform their specific rendering.
-     * The graphics context is already set up with antialiasing.
-     *
-     * @param g2 The Graphics2D context with antialiasing enabled
-     */
     protected abstract void render(Graphics2D g2);
 
     /**
-     * Returns {@code base} scaled to the current zoom. Score text is drawn in absolute
-     * pixel coordinates with no zoom transform on the {@code Graphics2D}, so the zoom
-     * must be baked into the font; this is the shared entry point score text components
-     * use for both painting and measuring.
+     * Score text is drawn with no zoom transform on the {@code Graphics2D}, so the zoom must be
+     * baked into the font.
      */
     protected Font zoomedFont(Font base) {
         return getViewScale().zoomedFont(base);
     }
 
-    /**
-     * Returns the maximum size for this component.
-     * <p>
-     * Returns the preferred size to prevent BoxLayout from expanding
-     * components beyond their natural size.
-     */
+    /** Prevents BoxLayout from expanding components beyond their natural size. */
     @Override
     public Dimension getMaximumSize() {
         return getPreferredSize();
     }
 
     /**
-     * Opens the editor for what this component displays, answering whether one opened.
-     * <p>
-     * Called by {@link #clicked} on a left double-click outside playback. The default
-     * answers false, so a component that displays nothing editable needs no override and
-     * the click falls through to the score view's normal handling.
-     * <p>
-     * Takes no click point: a component's bounds are its hit area. A component that needs
-     * to distinguish where on itself it was clicked overrides {@link #clicked} instead,
-     * which receives the event in this component's own coordinate space.
-     *
-     * @return {@code true} if an editor opened, {@code false} if this component has
-     *         nothing to edit
-     * @effects opens an editor, which for most components is a modal dialog
+     * The default answers false, so the click falls through to the score view's normal handling.
+     * Takes no click point: a component's bounds are its hit area; one that needs the point
+     * overrides {@link #clicked} instead.
      */
     protected boolean openEditor() {
         return false;
     }
 
     /**
-     * Reacts to a left-button click on this component.
+     * {@code view} is the owning view, so attachment is a precondition carried by the signature.
      * <p>
-     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
-     * so that attachment is a precondition carried by the signature: no override can be
-     * reached while this component is detached, and none has to test for it.
-     * <p>
-     * The default opens this component's editor on a left double-click outside playback,
-     * and otherwise cancels pending input and clears the selection. A double-click
-     * arrives as two clicks, and the first of them takes the cancel-and-deselect path in
-     * full, so a double-click always clears the selection before an editor opens.
-     * <p>
-     * A component overrides this rather than {@link #openEditor()} when it needs the
-     * click point, or when it wants a different order of gestures.
-     *
-     * @param e    the click, in this component's coordinate space
-     * @param view the score view this component is attached to
-     * @effects by default, opens an editor or clears the selection
+     * A double-click arrives as two clicks and the first takes the cancel-and-deselect path, so
+     * the selection is cleared before an editor opens.
      */
     protected void clicked(MouseEvent e, ScoreView view) {
         // Playback state is read from the playback controller rather than from the
@@ -454,60 +315,29 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     /**
-     * Reacts to a left-button press on this component, after the score view has already
-     * been given focus.
-     * <p>
-     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
-     * so that attachment is a precondition carried by the signature. Does nothing by
-     * default.
-     *
-     * @param e    the press, in this component's coordinate space
-     * @param view the score view this component is attached to
+     * {@code view} is the owning view, so attachment is a precondition carried by the signature.
      */
     protected void pressed(MouseEvent e, ScoreView view) {
         // Nothing by default.
     }
 
     /**
-     * Reacts to a mouse release on this component.
-     * <p>
-     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
-     * so that attachment is a precondition carried by the signature. Unlike
-     * {@link #clicked} and {@link #pressed}, this is not filtered by button: a release of
-     * any button reaches it. Does nothing by default.
-     *
-     * @param e    the release, in this component's coordinate space
-     * @param view the score view this component is attached to
+     * {@code view} as in {@link #pressed}. Unlike {@link #clicked} and {@link #pressed}, not
+     * filtered by button: a release of any button reaches it.
      */
     protected void released(MouseEvent e, ScoreView view) {
         // Nothing by default.
     }
 
     /**
-     * Reacts to the pointer entering this component.
-     * <p>
-     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
-     * so that attachment is a precondition carried by the signature. Unlike
-     * {@link #clicked} and {@link #pressed}, this is not filtered by button: an enter
-     * carries no button at all. Does nothing by default.
-     *
-     * @param e    the enter, in this component's coordinate space
-     * @param view the score view this component is attached to
+     * {@code view} as in {@link #pressed}. Not filtered by button.
      */
     protected void entered(MouseEvent e, ScoreView view) {
         // Nothing by default.
     }
 
     /**
-     * Reacts to the pointer leaving this component.
-     * <p>
-     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
-     * so that attachment is a precondition carried by the signature. Unlike
-     * {@link #clicked} and {@link #pressed}, this is not filtered by button: an exit
-     * carries no button at all. Does nothing by default.
-     *
-     * @param e    the exit, in this component's coordinate space
-     * @param view the score view this component is attached to
+     * {@code view} as in {@link #pressed}. Not filtered by button.
      */
     protected void exited(MouseEvent e, ScoreView view) {
         // Nothing by default.

@@ -33,9 +33,7 @@ import songscribe.ui.component.StaffAnnotationPopupButton;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 
 /**
- * This class creates the main toolbar panel for the application.
- * The editing tools are grouped together in the left side of the toolbar,
- * and the playback controls are grouped together on the right side.
+ * The main toolbar panel for the application.
  */
 public final class MainToolbarPanel extends JPanel {
 

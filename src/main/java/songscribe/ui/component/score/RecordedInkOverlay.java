@@ -34,40 +34,22 @@ import songscribe.util.GraphicsState;
  * Shared base for the preview overlays that obtain their ink by <b>recording the real renderers</b>
  * rather than composing it by hand: the hover preview element and the two slide previews.
  * <p>
- * Each runs its renderers against a {@link RecordingGraphics2D} and keeps the result as a
- * {@link DisplayList}, so bounds are the union of that list and painting is a replay of it — the
- * two can never disagree. What differs between subclasses is only <em>what</em> gets recorded and
- * whether a translate is applied on top; the record/replay bookkeeping is identical, so it lives
- * here.
+ * Bounds are the union of the recorded {@link DisplayList} and painting is a replay of it, so
+ * the two can never disagree.
  *
  * <h2>Staleness</h2>
- * Recording is expensive relative to how often bounds are queried — dragging the mouse along a
- * line re-queries on every insertion-slot crossing while the glyphs the renderers would emit stay
- * put. Subclasses therefore record only while {@link #inkIsStale()}, and mark the ink stale via
+ * Subclasses record only while {@link #inkIsStale()}, and mark the ink stale via
  * {@link #markInkStale()} when something the renderers read has changed.
  */
 public abstract class RecordedInkOverlay extends LineOverlayComponent {
 
-    /**
-     * Reused across rebuilds: recording allocates neither the scratch image nor its delegate, and
-     * the glyph-vector cache inside survives {@link RecordingGraphics2D#reset()}.
-     */
     protected final RecordingGraphics2D recorder = new RecordingGraphics2D();
 
-    /** The ink the renderers last produced. */
     private DisplayList displayList = DisplayList.EMPTY;
 
-    /**
-     * The union of {@link #displayList}'s ink, cached alongside it.
-     * <p>
-     * A pure function of a list that is queried far more often than it is rebuilt, and computing
-     * it walks every drawable — so it is derived once when the list is installed rather than on
-     * each bounds query.
-     */
     @Nullable
     private Rectangle2D displayListInkSs;
 
-    /** True when {@link #displayList} no longer describes the current preview state. */
     private boolean displayListIsStale = true;
 
     protected RecordedInkOverlay(OverlayHost host) {
@@ -75,8 +57,8 @@ public abstract class RecordedInkOverlay extends LineOverlayComponent {
     }
 
     /**
-     * Rebuilds this overlay's ink from the current state and re-anchors it to {@code line}, or
-     * hides it when {@code line} is null. Call whenever anything the renderers read has changed.
+     * Hides the overlay when {@code line} is null. Call whenever anything the renderers read has
+     * changed.
      */
     void previewDidChange(@Nullable LineComponent line) {
         markInkStale();
@@ -97,41 +79,29 @@ public abstract class RecordedInkOverlay extends LineOverlayComponent {
         inkDidChange();
     }
 
-    /** Marks the recorded ink as no longer describing the current state. */
     protected final void markInkStale() {
         displayListIsStale = true;
     }
 
-    /** Whether the recorded ink must be rebuilt before its bounds can be trusted. */
     protected final boolean inkIsStale() {
         return displayListIsStale;
     }
 
-    /** Installs freshly recorded ink, caching its union bounds and clearing the stale flag. */
     protected final void setDisplayList(DisplayList newDisplayList) {
         displayList = newDisplayList;
         displayListInkSs = newDisplayList.inkBoundsSs();
         displayListIsStale = false;
     }
 
-    /**
-     * The union of the recorded ink, in the coordinate space it was recorded in, or null when
-     * nothing was recorded — which for an overlay means there is nothing to show.
-     */
+    /** Null when nothing was recorded — which for an overlay means there is nothing to show. */
     protected final @Nullable Rectangle2D getDisplayListInkSs() {
         return displayListInkSs;
     }
 
-    /** Replays the recorded ink in {@code g2}'s current color. */
     protected final void replayInk(Graphics2D g2) {
         displayList.replay(g2);
     }
 
-    /**
-     * Replays the recorded ink in the preview color. The default for every subclass whose ink is
-     * already in the target line's own coordinate space; {@link PreviewElementOverlay}, whose ink
-     * is relative to the preview element's origin, overrides to add the translate.
-     */
     @Override
     protected void renderOverlay(Graphics2D g2) {
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {

@@ -45,15 +45,12 @@ import songscribe.dom.Song;
  *       continues a note already sung.</li>
  * </ul>
  *
- * <p>Only the active script is checked, because the score shows and edits that script only: a
- * finding in another script would have no "?" to point at and no way to be fixed. What the other
- * script holds changes nothing. A song with elements and no lyric in the active script gives a
- * violation for every slot.
+ * <p>Only the active script is checked, because the score shows and edits that script only. A
+ * song with elements and no lyric in the active script gives a violation for every slot.
  *
  * <p>Each slot sung on no syllable gives one violation, with the heading
  * {@link Strings#LINT_LYRICS_MISSING}, the text {@link Strings#LINT_REASON_LYRIC_MISSING} and the
- * mark {@link LintMark.MissingLyric} naming the slot and the script. The heading and the text are
- * resolved once per run and shared by every violation.
+ * mark {@link LintMark.MissingLyric} naming the slot and the script.
  */
 final class MissingLyricCheck implements LintCheck {
 
@@ -75,10 +72,6 @@ final class MissingLyricCheck implements LintCheck {
         return found.inSongOrder();
     }
 
-    /**
-     * One forward pass over {@code song} for {@code script}. A span is walked once, where it opens,
-     * and the pass resumes after its last covered element, so each element is visited once.
-     */
     private static void checkScript(Song song, Song.Script script, SongOrderedViolations found) {
         var heading = Strings.get(Strings.LINT_LYRICS_MISSING);
         var description = Strings.get(Strings.LINT_REASON_LYRIC_MISSING);
@@ -117,10 +110,6 @@ final class MissingLyricCheck implements LintCheck {
         }
     }
 
-    /**
-     * Whether the element at {@code index} is a slot that no tie reaches, so it needs a syllable
-     * of its own.
-     */
     private static boolean isUnsungSlot(Line line, int index) {
         return line.canBearSyllableAt(index)
             && !(line.getElement(index) instanceof NoteElement note && note.incomingTie() != null);

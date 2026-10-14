@@ -67,12 +67,6 @@ import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
-
-/**
- * The {@link SongSettingsDialog} Attribution tab: the words/music credits, their
- * dates and place, the attribution fonts, and a live preview of the attribution
- * block the score renders.
- */
 final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
     private static final int LYRICIST_ROWS = 2;
@@ -373,11 +367,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         return subAttributionFont.get();
     }
 
-    /**
-     * Forces every label to the widest label's preferred width so the fields
-     * that follow them line up in a column. Each label keeps its own height;
-     * only the width is unified.
-     */
     private static void alignLabelWidths(JLabel... labels) {
         // Measure the text width with the shared screen render context, whose
         // antialiasing and fractional metrics match how FlatLaf actually
@@ -403,22 +392,18 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         }
     }
 
-    /** Applies typographic substitution to the place, leaving an empty place empty. */
     private static String normalizePlace(String text) {
         return StringUtils.processText(text, false);
     }
 
-    /** Applies typographic substitution to the composer, coercing an empty one to Sri Chinmoy. */
+    /** An empty composer is coerced to Sri Chinmoy. */
     private static String normalizeComposer(String text) {
         return Song.coercePerson(StringUtils.processText(text, false));
     }
 
     /**
-     * An empty lyricist inherits the composer credit — Sri Chinmoy when the composer is
-     * itself empty; otherwise the typed name with typographic substitution applied.
-     *
-     * <p>The composer is read here rather than observed: this runs on focus loss, at
-     * which point the committed composer is what the inheritance is supposed to name.
+     * An empty lyricist inherits the composer credit — Sri Chinmoy when the composer is itself
+     * empty; otherwise the typed name with typographic substitution applied.
      */
     private String normalizeLyricist(String text) {
         return text.trim().isEmpty()
@@ -426,31 +411,21 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             : Song.coercePerson(StringUtils.processText(text, false));
     }
 
-    /** Mirrors a committed composer into a lyricist field the user has left blank. */
     private void inheritComposerIntoEmptyLyricist() {
         if (lyricist.get().trim().isEmpty()) {
             lyricist.set(composer.get());
         }
     }
 
-    /**
-     * Resolves the lyricist credit from the widgets: the trimmed lyricist
-     * field, or the composer credit when the lyricist field is blank
-     * (matching the legacy field-by-field default).
-     */
     private String resolveLyricistText(String composerText) {
         var lyricistText = lyricist.get().trim();
         return lyricistText.isEmpty() ? composerText : lyricistText;
     }
 
     /**
-     * Builds what the preview draws from the tab's own values rather than from the
-     * committed song, so it shows the edits in progress — including the fonts chosen in
-     * this tab's font rows, which the document does not carry until the dialog commits.
-     *
-     * <p>Every value is read through a property, which is what makes this a derivation
-     * the framework can track: a direct control read would be invisible to it and the
-     * preview would answer stale.
+     * Built from the tab's own values, not the committed song, so the preview shows edits in
+     * progress. Every value is read through a property; a direct control read would be invisible
+     * to the framework and the preview would answer stale.
      */
     private AttributionPreviewWidget.PreviewState buildPreviewState() {
         // The SongAttribution constructor normalizes each field, so the raw property text
@@ -480,7 +455,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         return place.get();
     }
 
-    /** @return the composition date as the row holds it */
     PartialDate getDate() {
         return musicDate.getDate();
     }
@@ -506,14 +480,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     /**
-     * The date the words were written.
-     *
-     * <p>An unchecked "different date" box contributes no date at all, whatever its fields
-     * still hold — the box is what says the words have a date of their own, and its three
-     * fields keep their last values while it is hidden. Both the commit and the preview ask
-     * here, so neither can disagree with what the box says.
-     *
-     * @return the date as typed, or {@link PartialDate.EmptyDate} when the box is unchecked
+     * An unchecked "different date" box contributes no date at all, whatever its fields still
+     * hold. Both the commit and the preview ask here.
      */
     PartialDate getWordsDate() {
         if (!differentDate.get()) {
@@ -524,19 +492,12 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     /**
-     * Sets every value on this tab to show {@code input}.
-     *
-     * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
-     * with nothing else touched, answer the same values — with the one documented exception
-     * that a words date equal to the music date arrives already collapsed to
-     * {@link PartialDate.EmptyDate}, because {@code SongMetadata} stores it that way.
+     * Whatever is put in comes back out, except that a words date equal to the music date
+     * arrives already collapsed to {@link PartialDate.EmptyDate}, because {@code SongMetadata}
+     * stores it that way.
      *
      * <p>The composer is written before the lyricist, so the inheritance effect the composer
-     * fires writes a lyricist the stored one then replaces. Every other order carries
-     * nothing: the preview, the two font labels and the two collapsible rows are all derived
-     * from these values, so each write re-derives whatever depends on it.
-     *
-     * @param input the settings this opening of the dialog is showing
+     * fires writes a lyricist the stored one then replaces.
      */
     void populate(SongSettingsInput input) {
         var metadata = input.metadata();
@@ -559,12 +520,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     /**
-     * Thin Swing wrapper showing the attribution block as the score will draw it.
-     * <p>
-     * It typesets the uncommitted preview lines into an {@link AttributionContent} — the same
-     * content the layout pass builds for the score — and draws it through the same
-     * {@link AttributionRenderer}, so the preview cannot depict something the score would set
-     * differently.
+     * Typesets through the same {@link AttributionContent} and {@link AttributionRenderer} as the
+     * score, so the preview cannot depict something the score would set differently.
      */
     private static final class AttributionPreviewWidget extends JComponent {
 
@@ -574,22 +531,13 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         private AttributionContent content = null;
 
         /**
-         * Everything one preview refresh writes, as one value.
-         * <p>
-         * One record rather than three arguments so the binding into this widget can
-         * compare against what it last wrote, and so the tab's re-pack effect fires on a
-         * change to what is drawn rather than on every notification a dependency makes.
-         *
-         * @param attributionFont    the font the main credit lines render in
-         * @param subAttributionFont the font the date and place lines render in
-         * @param lines              the lines to draw, in order
+         * One value, so the binding can compare against what it last wrote and the tab's re-pack
+         * effect fires only on a change to what is drawn.
          */
         record PreviewState(Font attributionFont, Font subAttributionFont, List<AttributionLine> lines) {}
 
         /**
-         * Shows {@code state}, then invalidates size and paint once. Batched so a single
-         * preview refresh triggers one {@code revalidate}/{@code repaint} rather than
-         * three.
+         * Batched so a refresh triggers one {@code revalidate}/{@code repaint}.
          */
         void setPreviewState(PreviewState state) {
             content = AttributionContent.forLines(

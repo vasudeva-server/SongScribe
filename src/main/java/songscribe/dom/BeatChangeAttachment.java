@@ -21,48 +21,27 @@
 package songscribe.dom;
 
 /**
- * Represents a beat change (metric modulation) attachment on a note.
- * <p>
- * Beat changes indicate tempo relationships between different note values
- * (e.g., ♩ = ♩. meaning "quarter note equals dotted quarter").
- * They are typically placed above the staff.
+ * A beat change (metric modulation) attached to a note.
  */
 public final class BeatChangeAttachment extends MetronomeAttachment {
 
-    /** The beat change data. */
     private BeatChange beatChange;
 
-    /**
-     * Creates a beat change attachment with the specified change.
-     *
-     * @param beatChange The beat change data
-     */
     public BeatChangeAttachment(BeatChange beatChange) {
         this.beatChange = beatChange;
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>The clipboard is the only caller that copies a beat change into a different context,
-     * and paste re-validates the tuplets it carries in {@code PasteSpanReconciliation}.
-     */
     @Override
     protected Attachment createCopy() {
         return new BeatChangeAttachment(beatChange);
     }
 
-    /**
-     * Returns the beat change data.
-     */
     public BeatChange getBeatChange() {
         return beatChange;
     }
 
     /**
-     * Replaces the beat change data.
-     *
-     * <p>Stays public because the beat-change dialog lives in the UI package.
+     * Stays public because the beat-change dialog lives in the UI package.
      */
     public void setBeatChange(BeatChange beatChange) {
         this.beatChange = beatChange;

@@ -42,14 +42,8 @@ import songscribe.ui.playback.PlayThread;
 
 /**
  * Handles press/drag/release for pitch-dragging a note head in SELECT mode, driving
- * {@link PitchShifter}'s single definition of moving a selection's pitch live across many mouse
- * steps. A dragged note has no pitch of its own at the staff position it lands on: it adopts
- * whatever the song's chain walk decides is in force there once the drag is committed on
- * release. There is no prompt and no fit gate, and the dragged anchor is played only after that
- * walk has run.
- * <p>
- * One instance per {@link LineComponent}. The owning component delegates its
- * mouse events here before passing them on to other handlers.
+ * {@link PitchShifter}. A dragged note adopts whatever the song's chain walk decides is in force
+ * at the staff position it lands on, once the drag is committed on release.
  */
 class NoteDragHandler {
 
@@ -60,14 +54,11 @@ class NoteDragHandler {
     @Nullable
     private Integer dragElementIndex = null;
 
-    /** Original staff position of the directly dragged note — used to compute deltaSp. */
     private int originalDragStaffPositionSp;
 
     /**
-     * Screen-absolute mouse Y (pixels) at drag start. The drag tracks mouse movement as a
-     * delta from this anchor in screen coordinates, so an in-drag layout reflow — which can
-     * shift both the staff within the line component and the line component within its
-     * parent — cannot perturb the mouse→staff-position mapping.
+     * Screen-absolute, so an in-drag layout reflow cannot perturb the mouse to staff-position
+     * mapping.
      */
     private int dragPressScreenYPx;
 
@@ -75,17 +66,10 @@ class NoteDragHandler {
     @Nullable
     private Line dragLine;
 
-    /** All notes (plus tie-chain expansions) that move together during drag. */
     private final List<PitchShifter.PitchShiftEntry> dragGroup = new ArrayList<>();
 
     /**
-     * The components of the lines other than this one that the drag group reaches, resolved
-     * once at press. Non-empty only for a group formed across a cross-line tie.
-     * <p>
-     * Resolved at press rather than per drag event because the group is fixed for the whole
-     * gesture, while {@code handleDrag} runs on every mouse movement that changes the pitch.
-     * Each entry appears once however many of the group's notes sit on it, so one line is not
-     * invalidated repeatedly.
+     * Non-empty only for a group formed across a cross-line tie.
      */
     private final List<LineComponent> foreignLineComponents = new ArrayList<>();
 
@@ -102,7 +86,7 @@ class NoteDragHandler {
     }
 
     /**
-     * @return the index of the element being dragged, or {@code null} when no drag is active.
+     * @return {@code null} when no drag is active.
      */
     @Nullable
     Integer getDragElementIndex() {
@@ -114,14 +98,8 @@ class NoteDragHandler {
     // ======================================================================
 
     /**
-     * Handles a mouse press. Returns {@code true} if a pitch-drag was initiated
-     * and the event should not be processed further.
-     * <p>
-     * Takes the hit target the caller already resolved for this press rather than
-     * hit-testing the point again. Reading the resolved target is also what keeps a lyric out
-     * of this path: a lyric outranks an element, so a press on lyric text arrives here as a
-     * lyric target and is declined, and text drawn over an element's rectangle cannot start a
-     * pitch drag.
+     * Takes the already-resolved hit target. A lyric outranks an element, so a press on lyric
+     * text is declined and text drawn over an element's rectangle cannot start a pitch drag.
      */
     boolean handlePress(MouseEvent e, @Nullable HitTarget hitTarget) {
         var scoreView = lc.getScoreView();
@@ -198,9 +176,6 @@ class NoteDragHandler {
         return true;
     }
 
-    /**
-     * Handles mouse drag while a pitch-drag is active.
-     */
     void handleDrag(MouseEvent e) {
         // Track mouse movement in screen-absolute pixels. Using a screen-Y delta instead of
         // a component-local coordinate decouples the drag from any layout reflow — neither
@@ -246,13 +221,8 @@ class NoteDragHandler {
     }
 
     /**
-     * Marks every line this drag moved a note on as needing a fresh layout.
-     * <p>
-     * A group formed across a cross-line tie moves the partner note in the adjacent line too,
-     * and that line's tie geometry lives in its own cached {@code LayoutResult}. Repainting it
-     * is not enough: the note head is redrawn at its new staff position while the tie is drawn
-     * from the stale cached curve, leaving the tie pointing at the note's previous position. Only
-     * the layout being recomputed puts the two back together.
+     * The partner line's tie geometry lives in its cached {@code LayoutResult}; repainting alone
+     * would draw the tie from the stale curve, so its layout must be recomputed.
      */
     private void invalidateDraggedLines() {
         lc.invalidateLayout();
@@ -262,10 +232,6 @@ class NoteDragHandler {
         }
     }
 
-    /**
-     * Resolves {@link #foreignLineComponents} for the group this press just built. Called once
-     * per press; see that field for why it is not done per drag event.
-     */
     private void resolveForeignLineComponents() {
         foreignLineComponents.clear();
 
@@ -285,9 +251,6 @@ class NoteDragHandler {
         }
     }
 
-    /**
-     * Handles mouse release, committing the pitch change the drag already applied live.
-     */
     void handleRelease() {
         if (dragLine == null || dragElementIndex == null) {
             return;

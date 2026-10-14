@@ -241,15 +241,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     }
 
     /**
-     * The song-terminal type this entry stands for, or {@code null} if it stands for none. An
-     * entry stands only for itself, so the two that can act on the terminal are exactly the two
-     * whose own type may occupy the terminal slot: the right repeat in
-     * {@code RepeatsMenu}/the toolbar, and {@link FinalDoubleBarlineAction} at the foot of
-     * {@code BarlineMenu}.
-     * <p>
-     * Every other barline and repeat entry — the plain double barline included — maps to
-     * {@code null} and is therefore inapplicable to the terminal, which is what leaves them
-     * disabled and unchecked while it is selected.
+     * The song-terminal type this entry stands for, or {@code null} if it stands for none, which
+     * leaves the entry disabled and unchecked while the terminal is selected.
      */
     private @Nullable ElementType terminalType() {
         return type.isValidSongTerminal() ? type : null;
@@ -293,24 +286,10 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         return StaffElement.convertedFrom(targetType, element);
     }
 
-    /**
-     * Whether this action replaces a barline or repeat element. Only these dynamic
-     * replace actions compute a from-category label; durations, slides and breath marks
-     * keep their static Tier-A key.
-     */
     private boolean isBarLineOrRepeatReplace() {
         return role == Role.NON_DURATION && type.isBar();
     }
 
-    /**
-     * Resolves the Tier-A undo op-name. For barline/repeat replace actions the label
-     * names the <em>selected</em> element's category ({@code Change Barline} /
-     * {@code Change Repeat}), reusing {@link ElementType#isBarLine()}/{@link
-     * ElementType#isRepeat()} — the same taxonomy the delete logic uses. Because this
-     * runs on every dispatch (including no-selection ones that only set pen state), it
-     * null-guards the selection and returns the static base key (super) when there is no
-     * initialized score or nothing selected — never dereferencing a null element.
-     */
     @Override
     public @Nullable String getUndoOpName() {
         if (!isBarLineOrRepeatReplace()) {
@@ -343,13 +322,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     }
 
     /**
-     * Retypes the song's auto-maintained terminal to what this entry stands for when the
-     * terminal is what is selected, returning whether it did.
-     * <p>
-     * This has to intercept ahead of {@link #applyToSelectionIfActive()}: that path replaces the
-     * selected element with {@link #createReplacement}, which would hand {@code Line.setElement}
-     * an ordinary barline for the terminal slot and be refused. Retyping goes through
-     * {@link Song#replaceTerminal} instead, which keeps the auto-maintenance invariant intact.
+     * Must intercept ahead of {@link #applyToSelectionIfActive()}, whose replacement
+     * {@code Line.setElement} refuses for the terminal slot.
      */
     private boolean replaceTerminalIfSelected() {
         var terminalType = terminalType();

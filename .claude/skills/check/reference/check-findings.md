@@ -44,9 +44,9 @@ reader cannot understand is a failed finding.
 
 **For a finding about a contract**, say what a caller cannot currently find out,
 and what they would do wrong as a result. "The method doesn't document its
-`@throws`" is not a finding; "a caller has no way to know this throws when the
-note is a grace note, so the obvious call in a loop over every element crashes on
-the first grace note" is.
+parameter" is not a finding; "a caller has no way to know the token must be
+trimmed first, because nothing checks it, so a token read with its trailing
+newline maps to no type and the note is dropped" is.
 
 ## Rules for the writing itself
 

@@ -27,10 +27,8 @@ import songscribe.dom.Song;
 import songscribe.dom.SongStart;
 
 /**
- * The check of {@link LintRule#LEADING_BAR}: no bar line stands first in the song. The rule, and
- * what counts as the first element and as a bar line, is {@link SongStart}'s; this check reports
- * the bar line {@link SongStart#leadingBar} finds. An edit cannot put one there, but a deletion
- * of the elements in front of a bar line can leave it first.
+ * The check of {@link LintRule#LEADING_BAR}: no bar line stands first in the song, as
+ * {@link SongStart#leadingBar} defines it.
  */
 final class LeadingBarCheck implements LintCheck {
 

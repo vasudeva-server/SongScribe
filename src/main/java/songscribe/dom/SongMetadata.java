@@ -27,33 +27,9 @@ import songscribe.util.StringUtils;
 /**
  * Immutable record holding the song's editable descriptive metadata.
  * <p>
- * The compact constructor normalizes every field so that all construction paths
- * — dialog commit, dialog preview, {@code loadFrom}, and {@code Converter} —
- * yield identical canonical values. Normalization is <em>idempotent</em>:
- * re-constructing a record from an already-normalized record is a no-op.
- *
- * <h3>Normalization pipeline</h3>
- * The compact constructor turns raw widget text (or {@code SongData}) into a cleaned, canonical
- * record, per field:
- * <pre>
- *     title    : {@link #normalizeTitle}     (up to {@value #MAX_TITLE_LINES} lines)
- *     subtitle : {@link #normalizeSubtitle}  (always {@value #MAX_SUBTITLE_LINES} line)
- *     place    : processText(…, false)  (trim + toTypographic; no ă->a)
- *     number   : trim
- *     composer : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
- *     lyricist : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
- *     date / lyricsSource / arrangement / unofficialTranslation : as-is
- *
- *  Same factory feeds: dialog commit, dialog PREVIEW, loadFrom, Converter
- *  => preview == render (normalization parity guaranteed).
- * </pre>
- *
- * <h3>Words-date invariant</h3>
- * The words (lyrics) date can never explicitly equal the composition date: a
- * {@code wordsDate} equal to {@code date} is reset to {@link PartialDate.EmptyDate}.
- * An empty words-date is the sole canonical representation of "lyrics date same as
- * music date," which every consumer (formatters, IO writers, equality checks) already
- * assumes.
+ * The compact constructor normalizes every field, idempotently, so all construction paths yield
+ * identical canonical values. A {@code wordsDate} equal to {@code date} is reset to
+ * {@link PartialDate.EmptyDate}, the sole representation of "lyrics date same as music date".
  */
 public record SongMetadata(
     String title,
@@ -69,22 +45,10 @@ public record SongMetadata(
     PartialDate wordsDate
 ) {
 
-    /**
-     * How many lines a title may occupy. Every consumer that lays a title out, filters
-     * input into a title field, or clamps a title on the page reads this rather than
-     * stating a number of its own.
-     */
     public static final int MAX_TITLE_LINES = 2;
 
-    /**
-     * How many lines a subtitle may occupy. Every consumer that lays a subtitle out or
-     * draws one on the page reads this rather than stating a number of its own.
-     */
     public static final int MAX_SUBTITLE_LINES = 1;
 
-    /**
-     * Compact constructor — normalizes all fields on construction.
-     */
     public SongMetadata {
         title = normalizeTitle(title);
         number = number.trim();
@@ -104,15 +68,6 @@ public record SongMetadata(
         wordsDate = credits.wordsDate();
     }
 
-    /**
-     * Returns just the fields a credit block is built from.
-     *
-     * <p>{@link AttributionFormatter} takes this rather than the whole record, so the
-     * title, number and subtitle it never reads are not part of what a caller has to
-     * supply. Every field is already normalized, so building this re-normalizes nothing.
-     *
-     * @return this song's credits, place and dates
-     */
     public SongAttribution attribution() {
         return new SongAttribution(
             place, date, composer, lyricist, lyricsSource, arrangement, wordsDate
@@ -191,32 +146,10 @@ public record SongMetadata(
     private static final int LYRICS_TITLE_BUFFER_CAPACITY = 50;
 
     /**
-     * Builds a title out of the opening words of {@code lyrics}, the way a song with no title
-     * of its own is conventionally named after its first line.
+     * The result is not normalized; {@link #normalizeTitle} is still the step between this and a
+     * committed title.
      *
-     * <p>Each word's first letter is capitalized, and the words are separated by single
-     * spaces however {@code lyrics} separated them: a space and a newline both end a word.
-     *
-     * <p>The lyrics arrive in the notation the score stores them in, not as prose, so two
-     * marks are read rather than copied:
-     * <ul>
-     *   <li>an underscore is a melisma marker — a syllable held across notes — and
-     *       contributes no character, so {@code "Hel_lo"} yields {@code "Hello"};</li>
-     *   <li>a single hyphen joins the syllables of one word and disappears with it, while a
-     *       double hyphen is a real hyphen and both survives and ends a word.</li>
-     * </ul>
-     *
-     * <p>Fewer words than asked for is not an error: lyrics shorter than {@code maxWords}
-     * yield all of them. Lyrics that yield no characters at all — every one of them a melisma
-     * marker — yield an empty title rather than failing.
-     *
-     * <p>The result is not normalized; {@link #normalizeTitle} is still the step between this
-     * and a committed title.
-     *
-     * @param lyrics   the song's lyrics, run together as {@code Song.getLyricsText} builds
-     *                 them; may be empty
-     * @param maxWords how many words to take, at least 1
-     * @return the derived title, or an empty string when {@code lyrics} yields no characters
+     * @param maxWords at least 1
      */
     public static String titleFromLyrics(String lyrics, int maxWords) {
         var words = new StringBuilder(LYRICS_TITLE_BUFFER_CAPACITY);

@@ -34,30 +34,9 @@ import songscribe.util.StringUtils;
 /**
  * Pure, UI-free formatter that turns a {@link SongMetadata} record (plus the
  * translation flag) into attribution display lines and plain text strings.
- * <p>
- * Used by rendering, IO, and (later) MusicXML. Contains no Swing
- * or AWT imports.
- *
- * <h3>Display pipeline</h3>
- * A {@code SongMetadata} passes through four stages:
- * <ol>
- *   <li>{@code buildCredits(data, showTranslation)} assigns a connector per person or lyrics
- *       source and emits the roles in canonical order: Words, Music, then Arrangement and
- *       Translation where present.
- *   <li>{@code groupCreditsToLines(credits, sharedAuthor)} groups stably by (person, connector)
- *       via a {@code LinkedHashMap} and Oxford-joins the roles within each group. When the
- *       lyricist and composer are the same person, that name is rendered on its own line.
- *   <li>{@code buildSubAttributionLines(data)} produces the date line — {@code [Month [Day, ]]
- *       year} — and the place line.
- *   <li>The result is a {@code List<AttributionLine>} with the {@code ATTRIBUTION} lines first,
- *       then the {@code SUB_ATTRIBUTION} lines.
- * </ol>
- *
- * <p>All methods are static; no instances are needed.
  */
 public final class AttributionFormatter {
 
-    /** Month names in calendar order (1-indexed; index 0 is unused). */
     private static final String[] MONTH_KEYS = {
         "",
         Strings.MONTH_JANUARY,
@@ -74,10 +53,6 @@ public final class AttributionFormatter {
         Strings.MONTH_DECEMBER
     };
 
-    /**
-     * Number of trailing items the Oxford join handles specially: the last item
-     * is preceded by {@code " and "} and the penultimate by a comma.
-     */
     private static final int OXFORD_TAIL_COUNT = 2;
 
     private AttributionFormatter() {}
@@ -86,18 +61,6 @@ public final class AttributionFormatter {
     // Public API
     // -------------------------------------------------------------------------
 
-    /**
-     * Builds the ordered list of attribution lines for the given metadata.
-     * <p>
-     * This is the canonical display path used by rendering, IO, and export.
-     * The {@code showTranslation} flag should be derived from
-     * {@link Song#showTranslation()} when operating on a committed song, or
-     * computed inline when operating on uncommitted dialog state.
-     *
-     * @param data            the song's credits, place and dates
-     * @param showTranslation {@code true} when the song has a non-empty official translation
-     * @return ordered list of attribution lines (attribution first, sub-attribution last)
-     */
     public static List<AttributionLine> lines(SongAttribution data, boolean showTranslation) {
         var credits = buildCredits(data, showTranslation);
         var lines = groupCreditsToLines(credits, sharedAuthor(data));
@@ -106,10 +69,7 @@ public final class AttributionFormatter {
     }
 
     /**
-     * Returns the person credited for both words and music when the lyricist and
-     * composer are the same non-empty person, otherwise {@code null}. Such a
-     * shared author is rendered on its own line, below the merged
-     * "Words and Music by" credit.
+     * Null unless the lyricist and composer are the same non-empty person.
      */
     @Nullable
     private static String sharedAuthor(SongAttribution data) {
@@ -124,10 +84,7 @@ public final class AttributionFormatter {
     }
 
     /**
-     * Expands any line whose text carries embedded newlines into one display
-     * line per physical line, keeping the original font. A multi-line credit
-     * (e.g. a lyricist entered as several lines) must render as several centered
-     * lines; otherwise the newline is swallowed by a single {@code drawString}.
+     * A newline inside a line would be swallowed by a single {@code drawString}.
      */
     private static List<AttributionLine> splitEmbeddedNewlines(List<AttributionLine> lines) {
         var hasEmbeddedNewline = false;
@@ -169,10 +126,6 @@ public final class AttributionFormatter {
     // Private display algorithm
     // -------------------------------------------------------------------------
 
-    /**
-     * Builds the raw credit list in canonical role order:
-     * Words, Music, [Arrangement], [Translation].
-     */
     private static List<Credit> buildCredits(SongAttribution data, boolean showTranslation) {
         var credits = new ArrayList<Credit>();
         var lyricist = data.lyricist();
@@ -195,11 +148,7 @@ public final class AttributionFormatter {
     }
 
     /**
-     * Stably groups credits by {@code (person, connector)} pair and emits one
-     * {@link AttributionLine} per group, with roles Oxford-joined.
-     * <p>
-     * {@link LinkedHashMap} preserves first-appearance order so lines appear in
-     * canonical role order.
+     * {@link LinkedHashMap} keeps the lines in canonical role order.
      */
     private static List<AttributionLine> groupCreditsToLines(List<Credit> credits, @Nullable String sharedAuthor) {
         var groups = new LinkedHashMap<String, CreditGroup>();
@@ -233,9 +182,6 @@ public final class AttributionFormatter {
         return lines;
     }
 
-    /**
-     * Builds the date and place sub-attribution lines.
-     */
     private static List<AttributionLine> buildSubAttributionLines(SongAttribution data) {
         var lines = new ArrayList<AttributionLine>();
         var musicDate = formatDate(data.date());
@@ -264,10 +210,6 @@ public final class AttributionFormatter {
         return lines;
     }
 
-    /**
-     * Formats a date for the credit block: {@code [Month [Day, ]]year}, and {@code ""}
-     * for {@link PartialDate.EmptyDate}.
-     */
     private static String formatDate(PartialDate date) {
         return switch (date) {
             case PartialDate.EmptyDate _ -> "";
@@ -279,14 +221,6 @@ public final class AttributionFormatter {
         };
     }
 
-    /**
-     * Joins role names with Oxford-comma style:
-     * <ul>
-     *   <li>1 item → {@code "A"}</li>
-     *   <li>2 items → {@code "A and B"}</li>
-     *   <li>n items → {@code "A, B, … and Z"}</li>
-     * </ul>
-     */
     public static String oxfordJoin(List<String> items) {
         var size = items.size();
 
@@ -319,10 +253,8 @@ public final class AttributionFormatter {
     // Private helper types
     // -------------------------------------------------------------------------
 
-    /** A single credit entry before grouping. */
     private record Credit(String role, String person, String connector) {}
 
-    /** Accumulates roles for a single (person, connector) group. */
     private static final class CreditGroup {
         private final String person;
         private final String connector;

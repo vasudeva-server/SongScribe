@@ -20,12 +20,7 @@
 package songscribe.dom;
 
 /**
- * A non-sounding element: a rest, a barline, a repeat, a breath mark or a key change. Has no
- * pitch, and so none of the state a pitch brings with it: no staff position, no accidental, no
- * stem, no slide. Each leaf holds the appearance arm it is drawn from — {@link RestElement} for a
- * rest, which sits at its own seat and takes dots; {@link BreathMarkElement} for a breath mark,
- * which sits at its own seat and takes nothing; {@link BarElement}; {@link KeyChangeElement} —
- * and answers from that arm what its own kind can answer.
+ * A non-sounding element: a rest, a barline, a repeat, a breath mark or a key change.
  */
 public abstract sealed class StructuralElement extends StaffElement
     permits RestElement, BreathMarkElement, BarElement, KeyChangeElement {

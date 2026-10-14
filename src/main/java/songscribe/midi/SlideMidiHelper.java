@@ -29,94 +29,56 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Calculation and MIDI message generation methods for slide playback.
- * <p>
- * Pure calculations are static with no MIDI dependencies. Methods that generate MIDI events
- * act on a {@link Track}.
  */
 public final class SlideMidiHelper {
 
-    /** Fraction of note duration spent sustaining at the original pitch. */
     public static final double SUSTAIN_RATIO = 0.5;
 
-    /** Fraction of note duration spent sliding to the target pitch. */
     public static final double SLIDE_RATIO = 0.5;
 
-    /** Tick interval between successive pitch bend messages during a slide. */
-    public static final int BEND_STEP_TICKS = 2;
+    private static final int BEND_STEP_TICKS = 2;
 
-    /** MIDI pitch bend center value (no bend). */
     public static final int PITCH_BEND_CENTER = 8192;
 
-    /** MIDI pitch bend maximum value. */
     public static final int PITCH_BEND_MAX = 16383;
 
-    /** Exponent for the grace note slide-in pitch bend curve (1.0 = linear). */
     public static final double GRACE_NOTE_CURVE_EXPONENT = 1.0;
 
-    /** Exponent for the connected glissando pitch bend curve (1.0 = linear). */
     public static final double CONNECTED_CURVE_EXPONENT = 1.0;
 
-    /** Exponent for the fall pitch bend curve (2.0 = quadratic ease-in). */
     public static final double FALL_CURVE_EXPONENT = 2.0;
 
-    /** Fixed slide duration for grace note slides (16th note at 96 PPQ). */
-    public static final int GRACE_SLIDE_TICKS = 16;
+    private static final int SIXTEENTH_TRIPLETS_PER_QUARTER = 6;
 
-    /** Starting expression/velocity ratio for grace note slide-ins. */
+    public static final int GRACE_SLIDE_TICKS = MidiSequenceBuilder.PPQ / SIXTEENTH_TRIPLETS_PER_QUARTER;
+
     public static final double GRACE_SLIDE_IN_START_RATIO = 0.25;
 
-    /** MIDI CC number for Expression (per-note volume shaping). */
     static final int EXPRESSION_CC = 11;
 
-    /** Maximum Expression CC value. */
     static final int EXPRESSION_MAX = 127;
 
-    /** Number of semitones to bend down for falls. */
     public static final int FALL_SEMITONES = 4;
 
-    /** Current pitch bend sensitivity in semitones, null means unset. */
+    /** Null means unset. */
     private @Nullable Integer currentSensitivity = null;
 
-    /** Pending grace note pitch for a slide-in, null means none. */
+    /** Null means none. */
     private @Nullable Integer pendingGracePitch = null;
 
-    /** Whether pitch bend and/or expression need resetting before the next note. */
     private boolean needsPitchBendReset;
     private boolean needsExpressionReset;
 
-    /**
-     * Returns the target MIDI pitch a fall bends down toward.
-     *
-     * @param sourcePitch the MIDI pitch of the note with the fall
-     * @return the target pitch to slide toward
-     */
     public static int resolveTargetPitch(int sourcePitch) {
         return sourcePitch - FALL_SEMITONES;
     }
 
-    /**
-     * Returns the pitch bend sensitivity (in semitones) needed to cover the interval
-     * between the source and target pitches.
-     *
-     * @param sourcePitch the starting MIDI pitch
-     * @param targetPitch the ending MIDI pitch
-     * @return the semitone range needed for RPN 0 (always >= 1)
-     */
     public static int calculateSensitivity(int sourcePitch, int targetPitch) {
         return Math.max(1, Math.abs(targetPitch - sourcePitch));
     }
 
     /**
-     * Calculates the MIDI pitch bend value for a given position along the slide.
-     * When {@code linear} is false, uses a quadratic ease-in curve (t^2) so the slide
-     * starts slow and accelerates. When {@code linear} is true, the bend is proportional to t.
-     *
-     * @param t           normalized position along the slide (0.0 = start, 1.0 = end)
-     * @param sourcePitch the starting MIDI pitch
-     * @param targetPitch the ending MIDI pitch
-     * @param sensitivity the pitch bend sensitivity in semitones (from RPN 0)
-     * @param linear      if true, use linear interpolation; if false, use quadratic ease-in
-     * @return the MIDI pitch bend value (0-16383), clamped to valid range
+     * @param t normalized position along the slide (0.0 = start, 1.0 = end)
      */
     public static int calculateBendValue(double t, int sourcePitch, int targetPitch, int sensitivity,
             boolean linear) {
@@ -127,37 +89,18 @@ public final class SlideMidiHelper {
         return Math.clamp(bendValue, 0, PITCH_BEND_MAX);
     }
 
-    /**
-     * Returns the tick count for the slide portion of a note.
-     *
-     * @param noteDuration the total note duration in ticks
-     * @return the number of ticks allocated to the slide
-     */
     public static int calculateSlideTicks(int noteDuration) {
         return (int) Math.round(noteDuration * SLIDE_RATIO);
     }
 
-    /**
-     * Returns the tick count for the sustain portion of a note.
-     *
-     * @param noteDuration the total note duration in ticks
-     * @return the number of ticks allocated to sustaining at the original pitch
-     */
     public static int calculateSustainTicks(int noteDuration) {
         return noteDuration - calculateSlideTicks(noteDuration);
     }
 
-    /**
-     * Resets the tracked pitch bend sensitivity so that the next call to
-     * {@link #createRpnMessagesIfNeeded} will always emit RPN messages.
-     */
     public void resetSensitivity() {
         currentSensitivity = null;
     }
 
-    /**
-     * Marks that pitch bend and/or expression need resetting before the next note-on.
-     */
     public void setNeedsPitchBendReset() {
         needsPitchBendReset = true;
     }
@@ -167,14 +110,8 @@ public final class SlideMidiHelper {
     }
 
     /**
-     * Emits any pending pitch bend and expression resets, then clears the flags.
-     * Call this before each note-on so the previous slide's state doesn't
-     * bleed into the next note.
-     *
-     * @param track   the MIDI track to add events to
-     * @param tick    the tick position for the reset events
-     * @param channel the MIDI channel
-     * @throws InvalidMidiDataException if MIDI message creation fails
+     * Call this before each note-on so the previous slide's state doesn't bleed into the next
+     * note.
      */
     public void createPendingResets(Track track, int tick, int channel)
             throws InvalidMidiDataException {
@@ -189,27 +126,16 @@ public final class SlideMidiHelper {
         }
     }
 
-    /**
-     * Stores the pitch of a grace note that has a connected glissando.
-     * The next regular note will use this to produce a slide-in effect.
-     *
-     * @param pitch the MIDI pitch of the grace note
-     */
     public void setPendingGracePitch(int pitch) {
         pendingGracePitch = pitch;
     }
 
-    /**
-     * Returns whether a grace note pitch is pending for a slide-in.
-     */
     public boolean hasPendingGracePitch() {
         return pendingGracePitch != null;
     }
 
     /**
-     * Returns and clears the pending grace note pitch.
-     *
-     * @return the pending grace pitch, or null if none
+     * @return {@code null} if none
      */
     public @Nullable Integer consumePendingGracePitch() {
         var pitch = pendingGracePitch;
@@ -218,15 +144,7 @@ public final class SlideMidiHelper {
     }
 
     /**
-     * Calculates the MIDI pitch bend value for a grace note slide-in.
-     * The curve starts at the grace pitch (full offset) and eases toward the note's
-     * actual pitch (center). Uses the same quadratic curve as connecting glissandos.
-     *
-     * @param t           normalized position along the slide (0.0 = start, 1.0 = end)
-     * @param gracePitch  the starting MIDI pitch (from the grace note)
-     * @param notePitch   the target MIDI pitch (the note's actual pitch)
-     * @param sensitivity the pitch bend sensitivity in semitones (from RPN 0)
-     * @return the MIDI pitch bend value (0-16383), clamped to valid range
+     * @param t normalized position along the slide (0.0 = start, 1.0 = end)
      */
     public static int calculateSlideInBendValue(double t, int gracePitch, int notePitch, int sensitivity) {
         var curvedT = Math.pow(t, GRACE_NOTE_CURVE_EXPONENT);
@@ -236,20 +154,6 @@ public final class SlideMidiHelper {
         return Math.clamp(bendValue, 0, PITCH_BEND_MAX);
     }
 
-    /**
-     * Generates pitch bend events for a grace note slide-in (grace note to regular note).
-     * The bend starts at the grace pitch offset and eases to center (no bend) over the
-     * slide duration.
-     *
-     * @param track              the MIDI track to add events to
-     * @param slideStartTick     the tick at which the slide begins
-     * @param slideDurationTicks the total number of ticks for the slide
-     * @param channel            the MIDI channel
-     * @param gracePitch         the starting MIDI pitch (from the grace note)
-     * @param notePitch          the target MIDI pitch (the note's actual pitch)
-     * @param sensitivity        the pitch bend sensitivity in semitones (from RPN 0)
-     * @throws InvalidMidiDataException if MIDI message creation fails
-     */
     public static void createSlideInPitchBendMessages(Track track, int slideStartTick, int slideDurationTicks,
             int channel, int gracePitch, int notePitch, int sensitivity) throws InvalidMidiDataException {
         if (slideDurationTicks <= 0) {
@@ -263,16 +167,6 @@ public final class SlideMidiHelper {
         }
     }
 
-    /**
-     * Emits RPN 0 (pitch bend sensitivity) messages on the track only if the
-     * requested sensitivity differs from the currently tracked value.
-     *
-     * @param track      the MIDI track to add events to
-     * @param tick       the tick position for the events
-     * @param channel    the MIDI channel
-     * @param semitones  the desired pitch bend sensitivity in semitones
-     * @throws InvalidMidiDataException if MIDI message creation fails
-     */
     public void createRpnMessagesIfNeeded(Track track, int tick, int channel, int semitones)
             throws InvalidMidiDataException {
         if (currentSensitivity != null && semitones == currentSensitivity) {
@@ -283,16 +177,6 @@ public final class SlideMidiHelper {
         createRpnMessages(track, tick, channel, semitones);
     }
 
-    /**
-     * Emits RPN 0 (pitch bend sensitivity) messages on the track:
-     * CC 101=0, CC 100=0, CC 6=semitones, CC 38=0.
-     *
-     * @param track      the MIDI track to add events to
-     * @param tick       the tick position for the events
-     * @param channel    the MIDI channel
-     * @param semitones  the desired pitch bend sensitivity in semitones
-     * @throws InvalidMidiDataException if MIDI message creation fails
-     */
     public static void createRpnMessages(Track track, int tick, int channel, int semitones)
             throws InvalidMidiDataException {
         addControlChange(track, tick, channel, 101, 0);
@@ -301,19 +185,6 @@ public final class SlideMidiHelper {
         addControlChange(track, tick, channel, 38, 0);
     }
 
-    /**
-     * Generates pitch bend events along the slide curve, one every {@link #BEND_STEP_TICKS} ticks.
-     *
-     * @param track              the MIDI track to add events to
-     * @param slideStartTick     the tick at which the slide begins
-     * @param slideDurationTicks the total number of ticks for the slide
-     * @param channel            the MIDI channel
-     * @param sourcePitch        the starting MIDI pitch
-     * @param targetPitch        the ending MIDI pitch
-     * @param sensitivity        the pitch bend sensitivity in semitones (from RPN 0)
-     * @param linear             if true, use linear interpolation; if false, use quadratic ease-in
-     * @throws InvalidMidiDataException if MIDI message creation fails
-     */
     public static void createPitchBendMessages(Track track, int slideStartTick, int slideDurationTicks,
             int channel, int sourcePitch, int targetPitch, int sensitivity, boolean linear)
             throws InvalidMidiDataException {
@@ -328,29 +199,13 @@ public final class SlideMidiHelper {
         }
     }
 
-    /**
-     * Emits a pitch bend reset (center value) message on the track.
-     *
-     * @param track   the MIDI track to add the event to
-     * @param tick    the tick position for the event
-     * @param channel the MIDI channel
-     * @throws InvalidMidiDataException if MIDI message creation fails
-     */
     public static void createPitchBendReset(Track track, int tick, int channel)
             throws InvalidMidiDataException {
         addPitchBend(track, tick, channel, PITCH_BEND_CENTER);
     }
 
     /**
-     * Generates Expression CC messages that ramp from {@link #GRACE_SLIDE_IN_START_RATIO}
-     * to max along the same quadratic ease-in curve as the pitch bend. Used for grace
-     * note slide-ins so the volume swells with the pitch.
-     *
-     * @param track              the MIDI track to add events to
-     * @param slideStartTick     the tick at which the slide begins
-     * @param slideDurationTicks the total number of ticks for the slide
-     * @param channel            the MIDI channel
-     * @throws InvalidMidiDataException if MIDI message creation fails
+     * Follows the pitch bend's curve, so the volume swells with the pitch.
      */
     public static void createSlideInExpressionMessages(Track track, int slideStartTick,
             int slideDurationTicks, int channel) throws InvalidMidiDataException {
@@ -371,15 +226,7 @@ public final class SlideMidiHelper {
     }
 
     /**
-     * Generates Expression CC messages that fade from max to 0 along
-     * the same quadratic ease-in curve as the pitch bend. Used for
-     * falls so the volume fades with the pitch.
-     *
-     * @param track              the MIDI track to add events to
-     * @param slideStartTick     the tick at which the slide begins
-     * @param slideDurationTicks the total number of ticks for the slide
-     * @param channel            the MIDI channel
-     * @throws InvalidMidiDataException if MIDI message creation fails
+     * Follows the pitch bend's curve, so the volume fades with the pitch.
      */
     public static void createFallExpressionMessages(Track track, int slideStartTick,
             int slideDurationTicks, int channel) throws InvalidMidiDataException {
@@ -397,12 +244,7 @@ public final class SlideMidiHelper {
     }
 
     /**
-     * Resets Expression CC to maximum so subsequent notes are unaffected.
-     *
-     * @param track   the MIDI track to add the event to
-     * @param tick    the tick position for the event
-     * @param channel the MIDI channel
-     * @throws InvalidMidiDataException if MIDI message creation fails
+     * The reset keeps subsequent notes unaffected.
      */
     public static void createExpressionReset(Track track, int tick, int channel)
             throws InvalidMidiDataException {

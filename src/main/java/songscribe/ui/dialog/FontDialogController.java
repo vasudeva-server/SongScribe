@@ -24,11 +24,10 @@ import java.awt.Font;
 import songscribe.ui.component.MainFrame;
 
 /**
- * The controller behind {@link FontDialog}. Commits to itself rather than to any document: the
- * chosen font becomes what {@link #getSelectedFont()} answers, for {@link FontDialog#showDialog}
- * to read once the dialog closes. Cancel leaves the font this controller was constructed with.
+ * The controller behind {@link FontDialog}. Commits to itself rather than to any document;
+ * {@link FontDialog#showDialog} reads {@link #getSelectedFont()} once the dialog closes.
  *
- * <p>Constructed per gesture, by {@link FontDialog#showDialog}, and discarded with the dialog.
+ * <p>Constructed per gesture and discarded with the dialog.
  */
 final class FontDialogController extends DialogController<FontChoice, Font> {
 
@@ -49,8 +48,7 @@ final class FontDialogController extends DialogController<FontChoice, Font> {
     }
 
     /**
-     * @return the font OK was pressed on, or the font this controller was constructed with when
-     *         it was cancelled or the dialog is still open
+     * @return the font this controller was constructed with, unless OK was pressed
      */
     Font getSelectedFont() {
         return selectedFont;

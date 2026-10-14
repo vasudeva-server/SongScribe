@@ -64,8 +64,7 @@ public final class DotAction<E extends StaffElement & Dottable> extends PreviewE
     }
 
     /**
-     * @param dots the dots this action toggles on and off; never {@link Dots#NONE}, since an
-     *     action for "no dots" is what deselecting either factory's action already means
+     * @param dots never {@link Dots#NONE}: deselecting already means "no dots"
      */
     private DotAction(
         MainFrame mainFrame,
@@ -106,8 +105,7 @@ public final class DotAction<E extends StaffElement & Dottable> extends PreviewE
     }
 
     /**
-     * A type that occupies time is a pitched note or a rest, and both take dots, so a
-     * duration-typed element is always {@link Dottable}.
+     * A duration-typed element is always {@link Dottable}.
      */
     @Override
     @SuppressWarnings("unchecked") // safe: every element of a duration type is Dottable

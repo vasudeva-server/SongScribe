@@ -27,8 +27,7 @@ import songscribe.dom.NoteElement;
  * Mutation recording that a note was tied to the next note. The tie's end is derived, not
  * recorded — see {@link NoteElement#tie()}.
  *
- * @param line   the line the tie was recorded on, which is {@code anchor}'s line
- * @param anchor the note that became tied
+ * @param line the line the tie was recorded on, which is {@code anchor}'s line
  */
 public record TieAddition(Line line, NoteElement anchor)
     implements Mutation, LineScopedMutation {

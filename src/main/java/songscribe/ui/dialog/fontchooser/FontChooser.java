@@ -50,12 +50,8 @@ import songscribe.ui.dialog.fontchooser.panes.StyleEntry;
 import songscribe.ui.dialog.fontchooser.panes.StylePane;
 
 /**
- * Provides a pane of controls designed to allow a user to
- * select a {@code Font}.
- *
  * @author Christos Bohoris
  * @author Aparaajita Fishman
- * @see Font
  */
 public class FontChooser extends JPanel implements FontContainer {
 
@@ -81,9 +77,6 @@ public class FontChooser extends JPanel implements FontContainer {
     private final ListSelectionListener sizePaneListener =
         new SizeListSelectionListener(this);
 
-    /**
-     * Creates a FontChooser pane with an initial default Font (Sans Serif, Plain, 12).
-     */
     public FontChooser() {
         this(
             new Font(
@@ -94,21 +87,10 @@ public class FontChooser extends JPanel implements FontContainer {
         );
     }
 
-    /**
-     * Creates a FontChooser pane with the specified initial Font.
-     *
-     * @param initialFont the initial Font set in the chooser
-     */
     public FontChooser(Font initialFont) {
         this(new DefaultFontSelectionModel(initialFont));
     }
 
-    /**
-     * Creates a FontChooser pane with the specified
-     * {@code FontSelectionModel}.
-     *
-     * @param model the {@code FontSelectionModel} to be used
-     */
     public FontChooser(FontSelectionModel model) {
         setSelectionModel(model);
         setLayout(new BorderLayout());
@@ -117,24 +99,11 @@ public class FontChooser extends JPanel implements FontContainer {
         previewPane.setPreviewFont(selectionModel.getSelectedFont());
     }
 
-    /**
-     * Gets the current Font value from the FontChooser.
-     * By default, this delegates to the model.
-     *
-     * @return the current Font value of the FontChooser
-     */
     @Override
     public Font getSelectedFont() {
         return selectionModel.getSelectedFont();
     }
 
-    /**
-     * Sets the current font of the FontChooser to the specified font.
-     * The {@code FontSelectionModel} will fire a {@code ChangeEvent}
-     *
-     * @param font the font to be set in the font chooser
-     * @see JComponent#addPropertyChangeListener
-     */
     @Override
     public void setSelectedFont(Font font) {
         familyPane.removeListSelectionListener(familyPaneListener);
@@ -146,20 +115,10 @@ public class FontChooser extends JPanel implements FontContainer {
         initPanes();
     }
 
-    /**
-     * Returns the data model that handles Font selections.
-     *
-     * @return a {@code FontSelectionModel} object
-     */
     public FontSelectionModel getSelectionModel() {
         return selectionModel;
     }
 
-    /**
-     * Sets the model containing the selected Font.
-     *
-     * @param newModel the new {@code FontSelectionModel} object
-     */
     @Initializer
     public void setSelectionModel(FontSelectionModel newModel) {
         var oldModel = selectionModel;
@@ -168,20 +127,10 @@ public class FontChooser extends JPanel implements FontContainer {
         firePropertyChange(SELECTION_MODEL_PROPERTY, oldModel, newModel);
     }
 
-    /**
-     * Adds a {@code ChangeListener} to the model.
-     *
-     * @param listener the {@code ChangeListener} to be added
-     */
     public void addChangeListener(ChangeListener listener) {
         selectionModel.addChangeListener(listener);
     }
 
-    /**
-     * Removes a {@code ChangeListener} from the model.
-     *
-     * @param listener the {@code ChangeListener} to be removed
-     */
     public void removeChangeListener(ChangeListener listener) {
         selectionModel.removeChangeListener(listener);
     }

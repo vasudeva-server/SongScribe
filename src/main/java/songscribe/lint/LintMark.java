@@ -26,52 +26,26 @@ import songscribe.dom.StaffElement;
 /**
  * Where a lint finding sits in the score, and what the score view draws there.
  *
- * <p>A mark says only which element and which kind of mark; where it stands in the score is
- * worked out from the line's layout. Exactly two consumers switch over this type: drawing, in
- * {@code LineInvariants}, which decides what the score draws for each mark on an element, and
- * geometry, in {@code LineSelectionHandler}, which finds the box of the item a mark is drawn
- * on. Neither switch has a {@code default} branch, so a new kind of mark fails to compile in
- * both until it is drawn and placed. Every other reader treats a mark as a value: it compares
- * marks, or it calls {@link #element()}.
+ * <p>Two consumers switch over this type, drawing ({@code LineInvariants}) and geometry
+ * ({@code LineSelectionHandler}), neither with a {@code default} branch, so a new kind fails to
+ * compile in both until it is drawn and placed.
  *
  * <p>Only a {@link Flagged} mark competes for its element's color, where playing, selection and
- * hover each win over the lint color ({@code ColorPriority}). A squiggle and a question mark are
- * always drawn in the lint color.
+ * hover each win over the lint color ({@code ColorPriority}).
  */
 public sealed interface LintMark {
 
-    /**
-     * The element the finding names. Held as the object, not as an index, so the mark stays
-     * on its element when an edit moves it.
-     *
-     * @return the offending element
-     */
+    /** Held as the object, not an index, so the mark stays on its element when an edit moves it. */
     StaffElement element();
 
-    /**
-     * The element itself is drawn in the lint color.
-     *
-     * @param element the offending element
-     */
     record Flagged(StaffElement element) implements LintMark {
     }
 
-    /**
-     * A sawtooth squiggle is drawn under the element's annotation text; the text and the
-     * element keep their own colors.
-     *
-     * @param element the element whose annotation is at fault
-     */
+    /** The text and the element keep their own colors. */
     record FlaggedAnnotation(StaffElement element) implements LintMark {
     }
 
-    /**
-     * A question mark is drawn in the lint color in the lyric row of {@code script}, where the
-     * element's syllable would stand.
-     *
-     * @param element the slot that lacks a lyric
-     * @param script  the script that lacks it
-     */
+    /** Drawn in the lyric row of {@code script}, where the element's syllable would stand. */
     record MissingLyric(StaffElement element, Song.Script script) implements LintMark {
     }
 }

@@ -52,31 +52,14 @@ import songscribe.io.SafeXmlParser;
  * Converts between a {@link ScorePartwise} object graph and MusicXML
  * text. Everything above it works on objects; everything below it is XML.
  *
- * <p><b>Why not {@code org.audiveris.proxymusic.util.Marshalling}.</b> ProxyMusic's
- * own helper hand-writes a {@code <!DOCTYPE score-partwise PUBLIC ...>} line and
- * injects a comment before every part and every measure. SongScribe's files carry
- * neither, and the reader's provenance gate and the corpus fixtures both assume
- * today's shape: an XML declaration, then {@code <score-partwise version="4.0">}
- * with no namespace declaration, two-space indentation, no DOCTYPE, no comments.
- *
- * <p><b>Why the output goes through a stream-writer delegate.</b> JAXB hoists an
- * {@code xmlns:ns2="http://www.w3.org/1999/xlink"} declaration onto the root
- * element even for a document that contains no {@code xlink:} attribute, and the
- * JDK's {@code XMLStreamWriter} emits no whitespace of its own. {@link IndentingWriter}
- * does both jobs: it drops namespace declarations and owns every line break and
- * indent in the file.
- *
- * <p><b>Why marshalling is buffered.</b> {@link #marshal} builds the whole document
- * in memory and touches the caller's {@link PrintWriter} only once it is complete.
- * A failure part-way through a direct marshal would leave a truncated
- * {@code .musicxml} on disk while the save reported success. Documents are tens of
- * kilobytes, so the buffer costs nothing.
+ * <p>ProxyMusic's own {@code Marshalling} helper is not used: it writes a {@code DOCTYPE} and
+ * comments, and the reader's provenance gate and the corpus fixtures assume files without them.
  */
 public final class MusicXmlSerializer {
 
     private static final Logger LOG = LoggerFactory.getLogger(MusicXmlSerializer.class);
 
-    /** One indent level, matching the two-space indentation of every existing file. */
+    /** Matches the two-space indentation of every existing file. */
     private static final String INDENT = "  ";
 
     private static final String LINE_SEPARATOR = "\n";
@@ -85,20 +68,13 @@ public final class MusicXmlSerializer {
 
     private static final String ENCODING = "UTF-8";
 
-    /** The JDK's name for the entity-expansion cap; StAX defines no standard one. */
     private static final String ENTITY_EXPANSION_LIMIT_PROPERTY = "jdk.xml.entityExpansionLimit";
 
-    /**
-     * Matches the JDK's own default. Far above anything a real song reaches, and far below
-     * what it takes to exhaust memory.
-     */
     private static final String ENTITY_EXPANSION_LIMIT = "64000";
 
     /**
-     * Built once and shared. Context creation walks ProxyMusic's 355 generated
-     * classes and is by far the most expensive part of the first save;
-     * {@code JAXBContext} is thread-safe, while {@code Marshaller} and
-     * {@code Unmarshaller} are not, so those are created per call.
+     * Shared because creation is expensive. {@code Marshaller} and {@code Unmarshaller} are not
+     * thread-safe, so they are created per call.
      */
     private static final JAXBContext CONTEXT;
 
@@ -111,10 +87,8 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * Reads nothing outside the document it is given, mirroring
-     * {@link SafeXmlParser#newHardenedFactory()} for the StAX path — a
-     * {@code DOCTYPE} is tolerated so a foreign file still reaches the checks that
-     * diagnose it, but nothing the declaration names is ever fetched.
+     * Reads nothing outside the document it is given, as {@link SafeXmlParser#newHardenedFactory()}
+     * does for SAX.
      */
     private static final XMLInputFactory INPUT_FACTORY = newHardenedInputFactory();
 
@@ -127,29 +101,16 @@ public final class MusicXmlSerializer {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the JAXB context and exercises the marshalling path, so the cost is
-     * paid on whatever thread calls this rather than on the first save.
-     *
-     * <p>{@code MainFrame.saveCurrentFile} calls the writer synchronously from a
-     * Swing action, so without a warm-up the binding model would be built on the
-     * event dispatch thread the first time the user saves.
-     *
-     * @throws IllegalStateException if the context or the marshalling path is broken
+     * Called ahead of time because saving runs on the event dispatch thread, where the first
+     * save would otherwise build the binding model.
      */
     public static void warmUp() {
         marshal(new ScorePartwise(), new PrintWriter(Writer.nullWriter()));
     }
 
     /**
-     * Writes {@code score} to {@code pw} as MusicXML text.
-     *
-     * <p>The document is marshalled into memory first; {@code pw} is written only
-     * once the whole document exists, so a marshalling failure leaves it untouched
-     * rather than holding a truncated document.
-     *
-     * @param score the score to write
-     * @param pw    the writer to write through; neither flushed nor closed here
-     * @throws IllegalStateException if the score cannot be marshalled
+     * {@code pw} is written only once the whole document exists, so a marshalling failure leaves
+     * it untouched. It is neither flushed nor closed here.
      */
     public static void marshal(ScorePartwise score, PrintWriter pw) {
         String document;
@@ -168,39 +129,16 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * A parsed document, together with the two facts about it that the object graph
-     * cannot report.
+     * A parsed document, together with the root element name and {@code version} attribute that
+     * the object graph cannot report.
      *
-     * <p>Both are read off the raw stream because {@link ScorePartwise} cannot express
-     * either. A foreign root element unmarshals into an empty {@code ScorePartwise}
-     * without complaint, so the graph cannot say what the document was actually rooted
-     * at; and the schema declares {@code version} with a default of {@code "1.0"}, so
-     * {@code getVersion()} substitutes that default and cannot separate an omitted
-     * attribute from an explicit {@code version="1.0"} — which are rejected with
-     * different diagnostics.
-     *
-     * <p>Reporting them rather than acting on them keeps the format policy in
-     * {@code SongMapper}, where the rest of it lives.
-     *
-     * @param score       the parsed graph
-     * @param rootElement the document's root element name, as written
-     * @param version     the root {@code version} attribute as written, or {@code null}
-     *                    if the document omits it
+     * @param version {@code null} if the document omits the root {@code version} attribute
      */
     public record ParsedDocument(ScorePartwise score, String rootElement, @Nullable String version) {}
 
     /**
-     * Parses {@code source} into a {@link ScorePartwise} graph.
-     *
-     * <p>Takes an {@link InputSource} rather than a {@link java.io.File} so that
-     * {@code MusicXmlReader}'s two {@code read} overloads keep sharing one parse
-     * path.
-     *
-     * @param source the MusicXML input to parse
-     * @return the parsed score and the root facts the graph cannot carry
-     * @throws IOException  if the input cannot be read
-     * @throws SAXException if the document is malformed; the cause carries the
-     *                      underlying parser's message with its line and column
+     * Takes an {@link InputSource} so that {@code MusicXmlReader}'s two {@code read} overloads
+     * share one parse path.
      */
     public static ParsedDocument unmarshal(InputSource source) throws IOException, SAXException {
         try {
@@ -276,9 +214,8 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * Closes the stream reader, reporting rather than propagating a failure: this runs in
-     * a {@code finally}, where a throw would replace the parse diagnostic the caller is
-     * about to receive with a far less useful one.
+     * Never throws: it runs in a {@code finally}, where a throw would replace the parse
+     * diagnostic.
      */
     private static void closeQuietly(XMLStreamReader streamReader) {
         try {
@@ -288,14 +225,6 @@ public final class MusicXmlSerializer {
         }
     }
 
-    /**
-     * The message a load failure reports.
-     *
-     * <p>The underlying parser's own words are folded in rather than left on the cause.
-     * They carry the line, the column and the limit or expected-element set that decided
-     * the failure, and a caller that logs only {@code getMessage()} — which is most of
-     * them — would otherwise report every malformed document identically.
-     */
     private static String parseFailureMessage(@Nullable String location, @Nullable Throwable cause) {
         var message = new StringBuilder("Failed to parse the MusicXML document");
 
@@ -313,13 +242,7 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * Where the reader is standing, named so a rejected value can be traced back to the
-     * element it came from.
-     *
-     * <p>Attribute names are listed because an attribute's conversion failure never
-     * reaches the event handler — the reader is still on the owning start tag, and the
-     * exception carries only the offending text. This is diagnostic only: it changes what
-     * a failure says, never what is accepted.
+     * Diagnostic only: it changes what a failure says, never what is accepted.
      */
     private static String describeLocation(XMLStreamReader reader) {
         try {
@@ -383,48 +306,23 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * Suppresses namespace declarations and supplies all of the document's
-     * whitespace.
-     *
-     * <p><b>Namespaces.</b> The MusicXML 4.0 schema has no target namespace, so
-     * every element is unqualified — yet JAXB still writes an
-     * {@code xmlns:ns2="http://www.w3.org/1999/xlink"} declaration onto the root
-     * element of a document with no {@code xlink:} attribute in it. The declaration
-     * is valid but appears in no file this project has ever written, so the
-     * namespace calls are dropped.
-     *
-     * <p><b>Whitespace.</b> The JDK's stream writer emits none at all, so every line
-     * break and every indent in a saved file originates here.
-     *
-     * <p><b>Empty elements.</b> A start tag is held back until its first child or
-     * text arrives. An element that ends with neither is written as {@code <foo/>}
-     * instead of {@code <foo></foo>}.
-     *
-     * <p>Formatting is all this does. The one place the generated model cannot express a
-     * schema-valid document is {@code <metronome>}, and restoring that order is a separate
-     * filter above this one — see {@link MetronomeReorderingWriter}.
+     * Suppresses namespace declarations and supplies all of the document's whitespace. JAXB
+     * hoists an unused {@code xlink} declaration onto the root, which no file this project
+     * writes carries.
      */
     private static final class IndentingWriter extends StreamWriterDelegate {
 
         private record PendingAttribute(String localName, String value) {}
 
-        /** A start tag seen but not yet written, held until its content decides its shape. */
         @Nullable
         private String pendingElement = null;
 
         private final List<PendingAttribute> pendingAttributes = new ArrayList<>();
 
-        /** Depth of elements whose start tag has been written and whose end tag has not. */
         private int depth = 0;
 
-        /**
-         * One entry per open element: whether it has had a child element written into
-         * it. An element with child elements gets its end tag on its own indented
-         * line; one holding only text keeps its end tag on the same line.
-         */
         private final List<Boolean> hasChildElements = new ArrayList<>();
 
-        /** False once anything has been written, so the root gets no leading blank line. */
         private boolean atStart = true;
 
         IndentingWriter(XMLStreamWriter parent) {
@@ -551,15 +449,8 @@ public final class MusicXmlSerializer {
         }
 
         /**
-         * The name an attribute must be written under once namespace declarations are
-         * being dropped.
-         *
-         * <p>Dropping the declaration is right for the xlink namespace JAXB hoists, whose
-         * prefix this document never uses. It is wrong for {@code xml:}, which is bound to
-         * its namespace by the XML specification itself, needs no declaration, and is the
-         * only legal spelling of the attribute: {@code <lyric-language>} carries
-         * {@code xml:lang}, and writing it as a bare {@code lang} makes every document we
-         * produce fail schema validation.
+         * {@code xml:} needs no declaration and is the only legal spelling of
+         * {@code xml:lang}; a bare {@code lang} fails schema validation.
          */
         private static String qualify(String prefix, String namespaceURI, String localName) {
             if (XMLConstants.XML_NS_URI.equals(namespaceURI)) {
@@ -590,10 +481,6 @@ public final class MusicXmlSerializer {
 
         // --- helpers ------------------------------------------------------------
 
-        /**
-         * Writes the held-back start tag, now that content has arrived for it, and
-         * makes it the current element.
-         */
         private void openPendingElement() throws XMLStreamException {
             var pending = pendingElement;
 
@@ -618,11 +505,6 @@ public final class MusicXmlSerializer {
             pendingAttributes.clear();
         }
 
-        /**
-         * Notes that the element now being written is a child element of the one
-         * enclosing it, which decides whether that enclosing element's end tag goes
-         * on its own line.
-         */
         private void recordChildOfCurrentElement() {
             if (depth > 0) {
                 hasChildElements.set(depth - 1, true);
@@ -641,48 +523,27 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * Writes a {@code <metronome>}'s children in the order the schema requires.
-     *
-     * <p>The schema's content model is
-     * {@code metronome-note+, (metronome-relation, metronome-note+)?} — the relation sits
-     * <em>between</em> the two note groups. XJC collapsed both groups into a single
-     * {@code List<MetronomeNote>} and made the relation a separate property, and the
-     * generated {@code propOrder} puts {@code metronomeRelation} last. So however
-     * {@code DirectionBuilder.buildMetricModulationDirection} builds the graph, JAXB
-     * marshals {@code <metronome-note/><metronome-note/><metronome-relation/>}, which
-     * Xerces rejects with <em>"Element 'metronome': Missing child element(s). Expected is (
-     * metronome-note )"</em>. The graph cannot say where the boundary was, so the order is
-     * restored here, on the way out.
-     *
-     * <p>The relation is moved to sit immediately before the <em>last</em>
-     * {@code <metronome-note>}, which is the boundary for every metric modulation this
-     * program writes: {@code DirectionBuilder} emits exactly one note on each side of the
-     * relation. A document with several notes per side has no boundary the flattened list
-     * still records, and none is invented here.
-     *
-     * <p>This is a filter above the formatter, not part of it. Between a
-     * {@code <metronome>} and its end tag it records each call instead of passing it on,
-     * then replays the recorded calls into the writer beneath in the order it wants;
-     * everything else goes straight through. Neither class has to know what the other does.
+     * Restores the schema order of {@code <metronome>}: the generated model marshals
+     * {@code metronome-relation} after every {@code metronome-note}, which the schema rejects.
+     * The relation is moved before the <em>last</em> note, the boundary for every modulation
+     * this program writes ({@code DirectionBuilder} emits one note on each side); with several
+     * notes per side no boundary is recorded and none is invented.
      */
     private static final class MetronomeReorderingWriter extends StreamWriterDelegate {
 
-        /** A recorded write, replayed once the child order is known. */
         @FunctionalInterface
         private interface BufferedCall {
             void replay(XMLStreamWriter writer) throws XMLStreamException;
         }
 
-        /** One child element of the {@code <metronome>}, as the calls that produce it. */
         private record Child(String name, List<BufferedCall> calls) {}
 
         private final XMLStreamWriter formatter;
 
-        /** The children recorded so far, or null when no {@code <metronome>} is open. */
+        /** {@code null} when no {@code <metronome>} is open. */
         @Nullable
         private List<Child> children = null;
 
-        /** Nesting depth below the {@code <metronome>}; 0 between its own children. */
         private int depth = 0;
 
         MetronomeReorderingWriter(XMLStreamWriter formatter) {
@@ -824,11 +685,6 @@ public final class MusicXmlSerializer {
 
         // --- helpers ------------------------------------------------------------
 
-        /**
-         * Records {@code call} when it belongs to a child of an open {@code <metronome>},
-         * and reports whether it did. A call arriving at the metronome's own level — its
-         * attributes — belongs to no child and goes straight through.
-         */
         private boolean record(BufferedCall call) {
             var recorded = children;
 
@@ -840,7 +696,6 @@ public final class MusicXmlSerializer {
             return true;
         }
 
-        /** Every recorded call, with the children in the order the schema requires. */
         private static List<BufferedCall> orderedCalls(List<Child> children) {
             var relationIndex = indexOfChild(children, MusicXmlTags.METRONOME_RELATION);
             var lastNoteIndex = lastIndexOfChild(children, MusicXmlTags.METRONOME_NOTE);
@@ -879,17 +734,9 @@ public final class MusicXmlSerializer {
     // -------------------------------------------------------------------------
 
     /**
-     * The StAX equivalent of {@link SafeXmlParser#newHardenedFactory()}: a
-     * {@code DOCTYPE} is read but nothing it names is fetched, so a crafted song
-     * file cannot reach the network or the filesystem.
-     *
-     * <p>Rejecting the declaration outright is not an option for the same reason it
-     * is not on the SAX path — every other notation program writes one, and aborting
-     * the parse before the root element would report a perfectly good foreign export
-     * as damaged instead of as foreign.
-     *
-     * @throws IllegalStateException if the parser refuses any of the hardening,
-     *         which would leave the application parsing user files unprotected
+     * The StAX equivalent of {@link SafeXmlParser#newHardenedFactory()}: a {@code DOCTYPE} is
+     * read but nothing it names is fetched. Rejecting it would report a foreign export as
+     * damaged.
      */
     private static XMLInputFactory newHardenedInputFactory() {
         var factory = XMLInputFactory.newInstance();
@@ -945,12 +792,7 @@ public final class MusicXmlSerializer {
     }
 
     /**
-     * Converts a SAX {@link InputSource} to the {@link StreamSource} StAX consumes,
-     * preserving whichever of the three forms the caller supplied.
-     *
-     * <p>A stream the caller supplied belongs to the caller: this class reads it and
-     * never closes it. {@code MusicXmlReader.read(File)} is the one place that opens a
-     * file for parsing, and it closes what it opened.
+     * A stream the caller supplied belongs to the caller: this class never closes it.
      */
     private static StreamSource streamSourceFor(InputSource source) throws IOException {
         var characterStream = source.getCharacterStream();
@@ -976,11 +818,6 @@ public final class MusicXmlSerializer {
         return streamSource;
     }
 
-    /**
-     * The exception worth reporting from a {@link JAXBException}: its linked
-     * exception when there is one, since that is what carries the parser's message
-     * with its line and column.
-     */
     private static Exception causeOf(JAXBException e) {
         var linked = e.getLinkedException();
 

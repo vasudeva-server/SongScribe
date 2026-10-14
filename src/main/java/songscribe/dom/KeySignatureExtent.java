@@ -25,16 +25,10 @@ import java.util.List;
 /**
  * What a key signature draws, and how much room it takes.
  *
- * <p>A key signature's extent is never a property of the key alone: changing to G major draws one
- * sharp coming out of C major and a cancelling natural plus that sharp coming out of D major. The
- * pair of keys is therefore the smallest thing that can answer either question, and this type is
- * that pair — so the accidentals drawn and the column reserved for them are read off one value and
- * cannot disagree.
- *
- * <p>Every key signature in the program is one of these. A mid-line key signature
- * ({@link KeyChangeElement#extent()}) reads its previous key off the line it sits on; the
- * cautionary at the end of a line ({@code CautionaryKeySignature}) reads it off the key the line
- * leaves in. See {@code docs/key-changes.md} for the cancellation policy the accidentals follow.
+ * <p>A key signature's extent is never a property of the key alone, so the pair of keys is the
+ * smallest thing that can answer either question; the accidentals drawn and the column reserved
+ * for them are read off one value and cannot disagree. See {@code docs/key-changes.md} for the
+ * cancellation policy.
  *
  * @param previousKey the key in effect immediately before the change — the one whose accidentals
  *                    the cancellation policy may call for naturals against

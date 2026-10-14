@@ -59,12 +59,7 @@ import songscribe.util.UIUtils;
 
 /**
  * Handles mouse and keyboard input that lands on the {@link ScoreView} itself rather
- * than on any score component. Tracks the pointer leaving the score surface as a
- * whole, which takes any preview element down, and owns the view's key bindings and
- * the platform zoom-by-wheel gesture.
- * <p>
- * Selection handling (click-to-select, drag-to-select, Alt-switch) is
- * handled by {@link LineComponent}.
+ * than on any score component.
  */
 public final class ScoreInputHandler extends KeyAdapter
     implements MouseListener, MouseMotionListener, MouseWheelListener {
@@ -193,10 +188,6 @@ public final class ScoreInputHandler extends KeyAdapter
         KeyEvent.VK_ENTER,
     };
 
-    /**
-     * Registers key bindings on {@code component} and returns the keystroke→action-key
-     * map so the caller can temporarily disable them (e.g. during text editing).
-     */
     Map<KeyStroke, Object> installKeyBindings(JComponent component) {
         var bindings = new LinkedHashMap<KeyStroke, Object>();
         var inputMap = component.getInputMap(JComponent.WHEN_FOCUSED);
@@ -226,22 +217,14 @@ public final class ScoreInputHandler extends KeyAdapter
     }
 
     /**
-     * Binds {@code targetAction}'s accelerator to posting the command {@code commandFactory}
-     * produces, acting on the last insertion — e.g. plain {@code b} to beam it with the one
-     * before it, Shift+G to toggle its glissando, plain {@code f} to toggle its fall.
+     * The binding lives on the focused score, not on the target action: that action stays
+     * disabled in edit mode, and a disabled action in the window's input map is skipped, so it
+     * could never report failure.
      * <p>
-     * The binding lives here, on the focused score, rather than on the target action: that
-     * action stays disabled in edit mode, and a disabled action bound to the window's input
-     * map is skipped outright, so it could never report failure. This binding resolves first
-     * regardless of any action's enabled state.
-     * <p>
-     * That precedence is exactly why the mode guard is an {@code isEnabled} override rather
-     * than an early return from {@code actionPerformed}. Swing invokes an enabled binding and
-     * stops searching, so a guard that ran and did nothing would still swallow the key —
-     * leaving select mode, where the score view holds focus, with no working shortcut at all.
-     * Reporting the binding as disabled instead lets the search continue to the root pane,
-     * where {@code targetAction}'s own accelerator lives — which is why the keystroke is read
-     * off that action rather than written down again here.
+     * The mode guard is an {@code isEnabled} override, not an early return from
+     * {@code actionPerformed}: Swing stops at an enabled binding, so a guard that did nothing
+     * would swallow the key and leave select mode with no working shortcut. Reporting it as
+     * disabled lets the search reach {@code targetAction}'s own accelerator in the root pane.
      */
     private void registerLastInsertionBinding(
         Map<? super KeyStroke, Object> bindings,
@@ -276,10 +259,6 @@ public final class ScoreInputHandler extends KeyAdapter
         registerKeyStroke(bindings, inputMap, actionMap, keyStroke, new KeyAction(callback, keyCode, shift));
     }
 
-    /**
-     * Wires {@code action} to {@code keyStroke} on the component's maps, recording the
-     * keystroke in {@code bindings} so the caller can disable it again later.
-     */
     private static void registerKeyStroke(
         Map<? super KeyStroke, Object> bindings,
         InputMap inputMap,
@@ -293,9 +272,6 @@ public final class ScoreInputHandler extends KeyAdapter
         actionMap.put(actionKey, action);
     }
 
-    /**
-     * Action for handling arrow-key input on the score.
-     */
     private static class KeyAction extends AbstractAction {
 
         /** Signed staff-position delta that raises a pitch by one position (up on the staff). */
@@ -304,10 +280,8 @@ public final class ScoreInputHandler extends KeyAdapter
         /** Signed staff-position delta that lowers a pitch by one position (down on the staff). */
         private static final int LOWER_PITCH_DELTA_SP = 1;
 
-        /** Signed element-index delta for a leftward (previous-element) selection move. */
         private static final int MOVE_LEFT = -1;
 
-        /** Signed element-index delta for a rightward (next-element) selection move. */
         private static final int MOVE_RIGHT = 1;
 
         private final InputHandlerCallback callback;
@@ -357,11 +331,7 @@ public final class ScoreInputHandler extends KeyAdapter
         }
 
         /**
-         * Shift+Left/Right: move the non-anchor end of the selection one element in the
-         * arrow's direction, extending or shrinking the range. Computes the target index
-         * and delegates the actual selection change to the shared
-         * {@link InputHandlerCallback#extendSelectionTo(int)}. Stops at the line
-         * boundary — a selection never spans lines.
+         * Stops at the line boundary — a selection never spans lines.
          */
         private void extendSelection(SelectionCoordinator coordinator) {
             var range = coordinator.getRange();
@@ -392,12 +362,6 @@ public final class ScoreInputHandler extends KeyAdapter
             callback.extendSelectionTo(target);
         }
 
-        /**
-         * Arrow-key behavior while a selection is active: Up/Down shift the
-         * selection's pitch by one staff position (through the same mutation path
-         * as a mouse drag); Left/Right move the selection to the neighboring
-         * element, crossing to the adjacent line at a boundary.
-         */
         private void handleSelectionArrow(SelectionCoordinator coordinator, ElementSelection selection) {
             var line = selection.line();
             var bounds = selection.range();
@@ -414,17 +378,6 @@ public final class ScoreInputHandler extends KeyAdapter
             // Left/Right repaint inside selectSingle.
         }
 
-        /**
-         * Left/Right arrow on a selection, unified by {@code direction} (−1 left, +1
-         * right):
-         * <ul>
-         *   <li>a multi-element selection collapses to a single element one step inward
-         *       from its trailing edge (Left → {@code end − 1}, Right → {@code begin + 1});
-         *   <li>a single selection moves one element in {@code direction};
-         *   <li>at the line boundary it crosses to the adjacent line's nearest element,
-         *       if any.
-         * </ul>
-         */
         private void moveSelection(SelectionCoordinator coordinator, ElementSelection selection, int direction) {
             var line = selection.line();
             var bounds = selection.range();
@@ -455,12 +408,6 @@ public final class ScoreInputHandler extends KeyAdapter
             crossToAdjacentLine(coordinator, line, lineIndex, direction);
         }
 
-        /**
-         * Crosses a single selection at the line boundary to the adjacent line in
-         * {@code direction}: the previous line's last element going left, the next
-         * line's first element going right. No-op if there is no adjacent line or it
-         * has no elements.
-         */
         private void crossToAdjacentLine(SelectionCoordinator coordinator, Line line, int lineIndex, int direction) {
             var adjacentIndex = lineIndex + direction;
             var song = line.getSong();
@@ -481,12 +428,6 @@ public final class ScoreInputHandler extends KeyAdapter
             selectSingle(coordinator, adjacentIndex, landingIndex);
         }
 
-        /**
-         * Collapses the selection to a single element at {@code elementIndex} on the
-         * line at {@code lineIndex} via the shared
-         * {@link SelectionCoordinator#selectSingleElement(int, int)} primitive (the
-         * same one the mouse click-to-select path uses), then notifies and repaints.
-         */
         private void selectSingle(SelectionCoordinator coordinator, int lineIndex, int elementIndex) {
             if (!coordinator.selectSingleElement(lineIndex, elementIndex)) {
                 return;

@@ -23,10 +23,6 @@ package songscribe.dom;
 import songscribe.font.FontKey;
 
 /**
- * One rendered line of attribution text: the display text and the font role
- * it should be rendered in.
- * <p>
- * {@link FontKey#ATTRIBUTION} lines carry the main credit (Words/Music/…);
- * {@link FontKey#SUB_ATTRIBUTION} lines carry the date and place.
+ * One rendered line of attribution text and the font role it is rendered in.
  */
 public record AttributionLine(String text, FontKey font) {}

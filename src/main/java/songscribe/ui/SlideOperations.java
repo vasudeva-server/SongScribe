@@ -35,44 +35,17 @@ import songscribe.ui.selection.RangeQueries;
 import songscribe.undo.OpNames;
 
 /**
- * Toggles glissandos and falls on notes. The single implementation behind both ways a slide can
- * be placed: the select-mode toggle actions, which act on the current selection, and the
- * edit-mode keys, which act on the last insertion.
+ * Toggles glissandos and falls on notes, for both the select-mode toggle actions and the
+ * edit-mode keys. Both modes use the same {@link RangeQueries} eligibility predicate, so they
+ * never disagree about what is eligible.
  *
- * <p>The select-mode entry points take an {@link ElementSelection} directly. The edit-mode entry
- * points wrap the last-inserted element in {@link ElementSelection#single} and hand that to the
- * same {@link RangeQueries} eligibility predicate, so the two modes can never disagree about
- * what is eligible.
- *
- * <p>{@link Slide} is the kind parameter: comparing an element's {@code getSlide()} against it is
- * the "already carries this slide" test and {@code setSlide()} is the mutation, so one kernel
- * serves both slide kinds.
- *
- * <p>The toggle decision, over the affected indices — one glissando source, or every pitched index
- * in a range:
- *
- * <ol>
- *   <li>No indices at all: {@code REFUSED}.
- *   <li>If every index already carries {@code slide}, remove it from all of them, labeling the
- *       step with {@code deleteSlideLabel(getSlide())}.
- *   <li>Otherwise add to every index that does not carry it yet, labeled with
- *       {@code addSlideLabel}. A mixed selection therefore always adds; it never clears.
- *   <li>If {@code hasRoomForSlides} refuses the added indices, nothing is modified: the line-full
- *       error dialog is shown and the result is {@code REPORTED}.
- *   <li>Otherwise one {@code line.getSong().withModification(label, …)} bracket applies the change, giving
- *       exactly one undo step and a {@code MODIFIED} result.
- * </ol>
+ * <p>A mixed selection always adds; it never clears.
  */
 public final class SlideOperations {
 
     private SlideOperations() {
     }
 
-    /**
-     * Toggles the glissando the range resolves to.
-     *
-     * @see RangeQueries#glissandoSourceIndex
-     */
     public static EditResult toggleGlissando(
         ElementSelection range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
@@ -86,16 +59,9 @@ public final class SlideOperations {
     }
 
     /**
-     * Toggles a glissando between the element at {@code elementIndex} and its predecessor.
-     *
-     * <p>Static and taking the line explicitly because the operation does not go through the
-     * selection coordinator — the caller looks up the state, exactly as
-     * {@link MusicEditOperations#toggleBeamWithPredecessor} does.
-     *
-     * <p>{@code elementIndex} is the note just inserted, not the glissando's source — which for
-     * a single-element range is the note before it. The slide lands on the source; the caller
-     * keeps pointing the key at the inserted note, which is what lets a second press toggle the
-     * same pair back off.
+     * {@code elementIndex} is the note just inserted, not the glissando's source (the note
+     * before it). The caller keeps pointing the key at the inserted note, so a second press
+     * toggles the same pair back off.
      */
     public static EditResult toggleGlissandoWithPredecessor(
         Line line, int elementIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
@@ -113,19 +79,10 @@ public final class SlideOperations {
         return applySlides(line, new int[] { sourceIndex }, Slide.GLISSANDO, lyricRenderMetrics);
     }
 
-    /**
-     * Toggles falls on every note in the range.
-     *
-     * @see RangeQueries#fallIndices
-     */
     public static EditResult toggleFall(ElementSelection range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
         return applySlides(range.line(), RangeQueries.fallIndices(range), Slide.FALL, lyricRenderMetrics);
     }
 
-    /**
-     * Toggles a fall on the element at {@code elementIndex}, the edit-mode counterpart of
-     * {@link #toggleFall}.
-     */
     public static EditResult toggleFallOnLastInsertion(
         Line line, int elementIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
@@ -139,18 +96,9 @@ public final class SlideOperations {
     }
 
     /**
-     * Adds or removes {@code zone}'s slide across {@code indices} in one modification bracket.
-     * Removes only when every index already carries the slide; a mixed set adds to the ones that
-     * do not, so a toggle never clears a selection it has not filled first.
-     *
-     * <p>The one bracket is what makes the whole batch a single undo step.
-     *
-     * <p>The add branch first asks whether the line can hold the slides it would add, and refuses
-     * the whole batch rather than applying part of it. Both slide kinds claim horizontal space — a
-     * fall widens its own column, a glissando puts a floor under the gap to the note it reaches —
-     * so both are asked. The check is one batched call rather than one per index, because those
-     * claims accumulate: asking about each candidate alone against the unchanged line would accept
-     * a batch that jointly overruns the line.
+     * The one bracket makes the whole batch a single undo step. The fit check is one batched
+     * call, because the claims accumulate: asking about each candidate alone would accept a batch
+     * that jointly overruns the line.
      */
     private static EditResult applySlides(
         Line line, int[] indices, Slide slide, @Nullable LyricRenderMetrics lyricRenderMetrics) {
@@ -207,7 +155,6 @@ public final class SlideOperations {
         return EditResult.MODIFIED;
     }
 
-    /** Names the "no room on this line" message for the kind of slide that would not fit. */
     private static String lineFullMessage(Slide slide) {
         return switch (slide) {
             case FALL -> Strings.ERROR_LINE_FULL_FALL;

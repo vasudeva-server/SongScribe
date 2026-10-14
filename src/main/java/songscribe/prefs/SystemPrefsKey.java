@@ -20,14 +20,9 @@
 package songscribe.prefs;
 
 /**
- * Type-safe enumeration of the per-song document settings stored in
- * {@code system-defaults.json} (font names and sizes). These provide the
- * canonical defaults for new songs and are <b>never</b> written to the user's
- * {@code prefs.json}.
- * <p>
- * Kept distinct from {@link PrefsKey} so that the persisting API ({@code Prefs.put},
- * {@code Prefs.getString}, etc.) cannot accept a system key: system keys are
- * read-only and resolved exclusively through {@code Prefs.getDefaultString} /
+ * The per-song document settings in {@code system-defaults.json}, never written to
+ * {@code prefs.json}. Distinct from {@link PrefsKey} so the persisting API cannot accept a
+ * system key; these are resolved only through {@code Prefs.getDefaultString} /
  * {@code Prefs.getDefaultInt}.
  */
 public enum SystemPrefsKey {
@@ -54,7 +49,6 @@ public enum SystemPrefsKey {
         this.key = key;
     }
 
-    /** Returns the JSON key string as stored in {@code system-defaults.json}. */
     public String key() {
         return key;
     }

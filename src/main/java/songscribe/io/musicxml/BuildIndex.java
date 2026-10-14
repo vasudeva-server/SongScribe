@@ -30,23 +30,9 @@ import songscribe.dom.StaffElement;
  * Handles into the {@link org.audiveris.proxymusic.ScorePartwise} graph, recorded by the
  * builders as they emit nodes.
  *
- * <p>{@code Measure.getNoteOrBackupOrForward()} and {@code Notations.getTiedOrSlurOrTuplet()}
- * are heterogeneous {@code List<Object>}s. Walking them with {@code instanceof} is possible —
- * Audiveris itself does it — but it should be the exception: a pass that can reach its target
- * through a handle recorded here must do so instead.
- *
- * <p>What {@code BuildIndex} is <em>not</em>: it collects output handles, it does not carry
- * input state forward. Nothing
- * reads a value from it that an earlier element wrote in order to decide what to emit next —
- * every read here is a later pass revisiting a node an earlier pass already finished.
- *
- * @param notes a {@link StaffElement} to the {@link Note} built for it. Must be an
- *     {@link IdentityHashMap}, which the constructor enforces. A plain {@code HashMap} gives
- *     identity semantics today only because {@code StaffElement} defines no
- *     {@code equals}/{@code hashCode} — deliberately absent so identity-based hash collections
- *     and layout caches keep working. If value equality is ever added there, a {@code HashMap}
- *     would collide two equivalent rests and silently attach a span to the wrong note, which
- *     would compile, pass every test, and corrupt the saved file.
+ * @param notes must be an {@link IdentityHashMap}: {@code StaffElement} defines no
+ *     {@code equals}/{@code hashCode}, and value equality would collide equivalent rests and
+ *     attach a span to the wrong note.
  */
 record BuildIndex(Map<StaffElement, Note> notes) {
 

@@ -57,10 +57,6 @@ public class TupletPopupButton extends PopupMenuButton {
         );
     }
 
-    /**
-     * The popup only offers the grades the selection could actually become, so its items
-     * are rebuilt from the current selection every time it opens.
-     */
     @Override
     public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
         TupletMenuItems.rebuild(requirePopup());
@@ -73,10 +69,9 @@ public class TupletPopupButton extends PopupMenuButton {
     }
 
     /**
-     * Which grades are valid depends on the notes and the beat, not only on where the
-     * selection sits, so an edit that changes neither the selection nor the caret can still
-     * change the answer. Without this the button would keep pointing at a grade the span can
-     * no longer become, and clicking it would fail the validator's own precondition.
+     * Which grades are valid depends on the notes and the beat, so an edit that changes neither
+     * the selection nor the caret can still change the answer; otherwise clicking a stale grade
+     * would fail the validator's own precondition.
      */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
@@ -89,13 +84,7 @@ public class TupletPopupButton extends PopupMenuButton {
     }
 
     /**
-     * Points the button's direct click at the lowest grade the span could actually become.
-     * Press-and-hold still opens the popup.
-     * <p>
-     * When no grade applies the previous default is kept, because the whole button is
-     * disabled in that case and swapping its action would only be noise. Removing a tuplet
-     * is not offered here at all — the user selects the tuplet's number or bracket and
-     * deletes it directly.
+     * When no grade applies the previous default is kept: the whole button is disabled.
      */
     private void updateDefaultAction(@Nullable ScoreViewController ctrl) {
         if (ctrl == null) {

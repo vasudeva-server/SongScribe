@@ -32,28 +32,14 @@ import songscribe.Strings;
 /**
  * Turns the tuplets a reader found into the song's tuplets, or drops them.
  *
- * <p>A reader records each tuplet as a {@link PendingTuplet}. A file that stated a complete
- * ratio — MusicXML carrying {@code <normal-type>} — yields a pending tuplet whose M and V come
- * from the file. Every other file yields one carrying only the printed number, because the
- * ratio it stands for cannot be known mid-parse: the beat at the tuplet's anchor may still be
- * redefined by a tempo change in a later line.
+ * <p>The one place a read {@link PendingTuplet} becomes a {@link Tuplet}. A stated ratio is
+ * trusted and checked only for self-consistency; an absent one is derived from the beat in
+ * effect. Anything that fails is dropped, and nothing is repaired into something the file did
+ * not say.
  *
- * <p>This pass runs once the song is complete and is the one place a read tuplet becomes a
- * {@link Tuplet}. A stated ratio is trusted and checked only for self-consistency; an absent
- * one is derived from the beat in effect. Anything that fails is dropped — the bracket and the
- * number go, the notes stay — and nothing is ever repaired into something the file did not say.
- *
- * <h2>Why most existing files take the derived path</h2>
- *
- * <p>A MusicXML file written before SongScribe recorded {@code <normal-notes>} carries no M,
- * and the legacy {@code .mssw} format has no place to record a ratio at all. Every tuplet in
- * such a file has its ratio derived on load.
- *
- * <h2>Why it is a separate pass rather than reader work</h2>
- *
- * <p>Neither reader can judge a tuplet while it parses, since both meet their tuplets while
- * the song is still being assembled, before it holds the tempo changes that determine the
- * beat.
+ * <p>It is a pass rather than reader work because the beat at a tuplet's anchor may still be
+ * redefined by a tempo change later in the file, so neither reader can judge a tuplet while it
+ * parses.
  */
 final class TupletLoadPass {
 
@@ -62,12 +48,6 @@ final class TupletLoadPass {
     private TupletLoadPass() {
     }
 
-    /**
-     * How many pending tuplets the pass dropped, and how many it added with a ratio it derived.
-     *
-     * @param dropped the pending tuplets dropped
-     * @param updated the pending tuplets added with a derived ratio
-     */
     private record Counts(int dropped, int updated) {
 
         boolean isEmpty() {
@@ -96,7 +76,6 @@ final class TupletLoadPass {
      *     records to {@code report}, in document order, every pending tuplet the pass dropped
      *     and every one it updated, that is, added with a derived ratio; a pending tuplet added
      *     with its stated ratio is not recorded
-     * @log INFO the dropped and updated counts, when either is not zero
      */
     static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport.Builder report) {
         var counts = placeTuplets(song, pendingTuplets, report);
@@ -106,11 +85,6 @@ final class TupletLoadPass {
         }
     }
 
-    /**
-     * One forward walk over the whole song, judging each pending tuplet at the beat the walk
-     * carries. Adding a tuplet leaves the elements — and so every other pending tuplet's
-     * indices — untouched, which is why the sites stay valid as the tuplets are added.
-     */
     private static Counts placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport.Builder report) {
         var startLineIndex = song.firstNonEmptyLineIndex();
 
@@ -141,23 +115,12 @@ final class TupletLoadPass {
         return new Counts(dropped, updated);
     }
 
-    /** What {@link #place} did with one pending tuplet. */
     private enum Placement {
-
-        /** Refused, and recorded. */
         DROPPED,
-
-        /** Added with a derived ratio, and recorded. */
         UPDATED,
-
-        /** Added with the ratio the file stated, and not recorded. */
         STATED
     }
 
-    /**
-     * Adds one pending tuplet to its line, or drops it. Records a dropped tuplet, and a tuplet
-     * added with a derived ratio.
-     */
     private static Placement place(TupletValidator.Sited<PendingTuplet> sited, ChangeReport.Builder report) {
         var pending = sited.tuplet();
         var site = sited.site();
@@ -191,7 +154,6 @@ final class TupletLoadPass {
         };
     }
 
-    /** The pending tuplet anchored at the element at {@code index} in {@code line}, if any. */
     private static TupletValidator.@Nullable Anchored<PendingTuplet> pendingAnchoredAt(
         Map<StaffElement, PendingTuplet> byAnchor, Line line, int index
     ) {

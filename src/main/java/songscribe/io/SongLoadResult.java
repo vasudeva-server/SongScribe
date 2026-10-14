@@ -34,15 +34,7 @@ import songscribe.font.DocumentFonts;
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
 
     /**
-     * A successfully loaded song, plus everything the loader wants to tell the
-     * caller about how it got there.
-     *
-     * @param song     the loaded song
-     * @param fonts    the document's fonts
-     * @param warnings every non-fatal problem detected during the load, in the
-     *                 order it was detected; empty when the file was clean
-     * @param report   what the load changed in the document, as {@link ParsedSong#settle()}
-     *                 reports it; empty when it changed nothing
+     * A successfully loaded song, with what the loader reports about the load.
      */
     record Success(
         Song song, DocumentFonts fonts, List<LoadWarning> warnings, ChangeReport report
@@ -55,17 +47,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
         }
 
         /**
-         * Settles what a reader read and returns the loaded song. Both readers end here, so the
-         * load passes run on every route a file is opened by — the UI's and the headless MIDI
-         * export's alike — and a song cannot play tuplets one route dropped.
-         *
-         * @param parsed   what the reader handed over, not yet settled
-         * @param fonts    the document's fonts
-         * @param warnings every non-fatal problem the reader detected, in the order it was
-         *                 detected
-         * @return the loaded {@code parsed.song()}, with the report {@link ParsedSong#settle()}
-         *     returns
-         * @effects runs {@link ParsedSong#settle()} on {@code parsed}, with the effects it states
+         * Both readers end here, so the load passes run on every route a file is opened by.
          */
         public static Success settled(ParsedSong parsed, DocumentFonts fonts, List<LoadWarning> warnings) {
             var report = parsed.settle();
@@ -104,7 +86,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
     }
 
     /**
-     * The result for a file whose extension SongScribe does not open at all.
+     * The result for a file whose extension SongScribe does not open.
      */
     record UnsupportedFileFormat(File file, String extension) implements Failure {
 
@@ -115,10 +97,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
 
     /**
      * The result for a {@code .musicxml}/{@code .xml} document that cannot be read as this
-     * program's format: either it breaks the MusicXML schema SongScribe implements, or it
-     * states, in valid MusicXML, something SongScribe cannot represent.
-     *
-     * @param detail the specific reason, as the reader's throw site stated it
+     * program's format.
      */
     record InvalidFileFormat(File file, String detail) implements Failure {
 
@@ -129,10 +108,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
 
     /**
      * The file names SongScribe as its writer but carries a version
-     * {@link songscribe.io.musicxml.SoftwareProvenance#check} refuses, either because
-     * it is not semver or because it is below the minimum supported version.
-     *
-     * @param version the offending version string, so the log can name it
+     * {@link songscribe.io.musicxml.SoftwareProvenance#check} refuses.
      */
     record UnsupportedVersion(File file, String version) implements Failure {}
 

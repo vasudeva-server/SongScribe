@@ -21,37 +21,18 @@
 package songscribe.lint;
 
 /**
- * One thing wrong with the song as it is now: a {@link Violation} tied to the rule it breaks.
- * A finding has no severity of its own; what it blocks comes from its rule's flags.
- *
- * @param rule      the rule the song breaks
- * @param violation where and how the song breaks it
+ * A {@link Violation} tied to the rule it breaks. What it blocks comes from its rule's flags.
  */
 public record LintFinding(LintRule rule, Violation violation) {
 
-    /**
-     * The heading the Messages panel shows above this finding.
-     *
-     * @return the violation's resolved heading text
-     */
     public String heading() {
         return violation.heading();
     }
 
-    /**
-     * What is wrong, as the user reads it.
-     *
-     * @return the violation's resolved text
-     */
     public String description() {
         return violation.description();
     }
 
-    /**
-     * Where the finding sits in the score.
-     *
-     * @return the violation's mark
-     */
     public LintMark mark() {
         return violation.mark();
     }

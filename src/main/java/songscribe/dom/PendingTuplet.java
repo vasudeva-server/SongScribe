@@ -24,22 +24,14 @@ import org.jspecify.annotations.Nullable;
 /**
  * A tuplet as a reader found it in a file, before the load pass has judged it.
  * <p>
- * A reader cannot build a {@link Tuplet}: a tuplet's ratio must be known, and a file that
- * states none leaves it to be derived from the beat at the anchor, which a tempo change later
- * in the file may still redefine while the reader is mid-parse. So a reader records what the
- * file said here, and {@link TupletLoadPass#run} — once the song is complete — turns each
- * pending tuplet into a {@code Tuplet} on its anchor's line or drops it.
- * <p>
- * A pending tuplet is not a span. It sits in no registry, is never drawn or recorded for undo,
- * and nothing outside the load path sees one.
+ * A reader cannot build a {@link Tuplet}: a file that states no ratio leaves it to be derived
+ * from the beat at the anchor, which a later tempo change may still redefine. A pending tuplet is
+ * not a span: nothing outside the load path sees one.
  *
- * @param anchor      the tuplet's first element, in a line of the song being read
- * @param end         the tuplet's last element, in the anchor's line at or after the anchor
- * @param grade       the printed tuplet number, as the file states it
- * @param statedRatio the ratio the file states, or {@code null} when it states none and the
- *                    load pass is to derive one
- * @param yOffsetSs   the user's vertical offset of the bracket in staff spaces, positive
- *                    downward; it becomes the tuplet's {@link LineElement#getUserYOffsetSs()}
+ * @param anchor      in a line of the song being read
+ * @param end         in the anchor's line at or after the anchor
+ * @param statedRatio {@code null} when the file states none and the load pass is to derive one
+ * @param yOffsetSs   in staff spaces, positive downward
  */
 public record PendingTuplet(
     StaffElement anchor,

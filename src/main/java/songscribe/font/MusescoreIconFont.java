@@ -25,36 +25,25 @@ import java.awt.Font;
 /**
  * The MuseScore icon font, whose glyphs stand in for icons on buttons and in labels throughout
  * the interface.
- * <p>
- * It is a text font rather than an image set, so an icon in a label is laid out, sized and
- * baseline-aligned with the words beside it.
  */
 public final class MusescoreIconFont {
 
-    /** The font resource, loaded from {@code /fonts/}. */
     private static final String FONT_FILE = "MusescoreIcon.otf";
 
-    /** The size the icons are drawn at unless a caller derives another. */
     private static final float SIZE_PT = 20.0f;
 
     private MusescoreIconFont() {}
 
     /**
-     * The icon font at {@value #SIZE_PT} points. Callers needing another size should
-     * {@code deriveFont()} from it.
-     *
-     * @return the icon font
+     * Callers needing another size should {@code deriveFont()} from it.
      */
     public static Font font() {
         return Holder.INSTANCE;
     }
 
     /**
-     * Initialization-on-demand holder: the JVM's class-initialization lock makes this lazy and
-     * thread-safe without synchronizing every call. Callers reach the font from their own static
-     * initializers, on whatever thread touches them first, and a failure to load it is fatal —
-     * {@link LocalFonts#load} logs it, shows a dialog and exits — so two threads must not enter
-     * the load at once.
+     * Initialization-on-demand holder: callers reach the font from static initializers on any
+     * thread, and a load failure is fatal, so two threads must not enter the load at once.
      */
     private static final class Holder {
         static final Font INSTANCE = LocalFonts.load(FONT_FILE, SIZE_PT);

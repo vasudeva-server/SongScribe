@@ -36,11 +36,6 @@ public class PlayThread implements Runnable {
         this(pitch, true);
     }
 
-    /**
-     * @param pitch     the MIDI pitch to play
-     * @param playNoteOn if true, sends NOTE_ON before the delay; if false, only
-     *                   schedules the NOTE_OFF (useful when a NOTE_ON is already sounding)
-     */
     public PlayThread(int pitch, boolean playNoteOn) {
         this.pitch = pitch;
         this.playNoteOn = playNoteOn;
@@ -76,7 +71,6 @@ public class PlayThread implements Runnable {
         sendNoteOff(pitch);
     }
 
-    /** Sends bank-select and program-change messages to configure the instrument. */
     private static void setupInstrument() throws InvalidMidiDataException {
         var receiver = MidiController.midiReceiver;
 
@@ -98,10 +92,6 @@ public class PlayThread implements Runnable {
         receiver.send(programChange, MidiController.NO_TIMESTAMP);
     }
 
-    /**
-     * Sends a NOTE_ON message for the given pitch (after instrument setup).
-     * No-op if {@code midiReceiver} is null.
-     */
     public static void sendNoteOn(int pitch) {
         if (MidiController.midiReceiver == null) {
             return;
@@ -117,10 +107,6 @@ public class PlayThread implements Runnable {
         }
     }
 
-    /**
-     * Sends a NOTE_OFF message for the given pitch.
-     * No-op if {@code midiReceiver} is null.
-     */
     public static void sendNoteOff(int pitch) {
         if (MidiController.midiReceiver == null) {
             return;

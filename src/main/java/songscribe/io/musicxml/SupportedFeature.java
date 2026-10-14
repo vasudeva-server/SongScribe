@@ -32,10 +32,6 @@ import org.jspecify.annotations.Nullable;
  * The features a document declares, one {@code <supports type="yes">} entry each. The
  * writer emits every constant; the reader honors a feature only when the document
  * declares it, which is how an older document is read as its own writer meant it.
- *
- * <p>Written and recognized form are one definition here, so the writer cannot emit an
- * entry the reader does not recognize, nor the reader gate on one the writer never
- * emits. Adding a feature is adding a constant.
  */
 enum SupportedFeature {
 
@@ -55,10 +51,9 @@ enum SupportedFeature {
      */
     NOTE_RELATIVE_X(MusicXmlTags.NOTE, MusicXmlTags.ATTR_RELATIVE_X);
 
-    /** The {@code element} token of the entry. */
     final String element;
 
-    /** The {@code attribute} token of the entry, or {@code null} when the feature is a whole element. */
+    /** {@code null} when the feature is a whole element. */
     final @Nullable String attribute;
 
     SupportedFeature(String element, @Nullable String attribute) {

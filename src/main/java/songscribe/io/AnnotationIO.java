@@ -37,10 +37,7 @@ public final class AnnotationIO {
     private static final String XML_YPOS = "ypos";
 
     /**
-     * The number a legacy document's {@code <alignment>} tag holds, for each alignment.
-     *
-     * <p>These numbers belong to the file format. The documents that carry them are already on
-     * disk, so nothing here may change what those files mean.
+     * File-format numbers: changing one changes what existing documents mean.
      */
     private static final float LEGACY_LEFT = 0.0f;
     private static final float LEGACY_CENTER = 0.5f;
@@ -55,10 +52,8 @@ public final class AnnotationIO {
     private AnnotationIO() {}
 
     /**
-     * @param text the text of a legacy document's {@code <alignment>} tag
-     * @return the alignment that text names, or {@code null} when the text is not a number, or
-     *         is a number no alignment uses. A null answer is what leaves
-     *         {@link Annotation}'s own default in place.
+     * @return {@code null} when the text is not a number or names no alignment, which leaves
+     *         {@link Annotation}'s default in place
      */
     private static @Nullable LeftCenterRight alignmentFor(String text) {
         float number;
@@ -86,12 +81,6 @@ public final class AnnotationIO {
 
     /**
      * Reads one {@code <annotation>} element of a legacy document.
-     *
-     * <p>The parts arrive one tag at a time and are accumulated here rather than written into an
-     * {@link Annotation} as they come, because an annotation may not exist with blank text and the
-     * text is not known until its own tag closes. Building at the end is also what lets a
-     * text-less annotation be <em>dropped</em>: {@link #endElement11} answers null for it, and the
-     * caller adds an attachment only for a non-null answer.
      */
     public static class AnnotationReader {
 
@@ -189,10 +178,7 @@ public final class AnnotationIO {
         }
 
         /**
-         * @return the annotation the accumulated parts describe together with where the document
-         *         placed it, or {@code null} when it has no text — an annotation with no text has
-         *         nothing to draw, so it is not attached rather than imported
-         * @log warn if the accumulated text is blank
+         * @return {@code null} when it has no text; such an annotation is not attached
          */
         @Nullable
         private ReadAnnotation build() {

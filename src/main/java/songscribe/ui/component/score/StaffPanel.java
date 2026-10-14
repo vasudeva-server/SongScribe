@@ -36,69 +36,45 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * Panel containing all staff lines of a song.
- * <p>
- * Uses {@link StaffLinesLayout} to stack {@link LinePanel} components, which sizes each
- * line to its own content and owns all spacing between them.
- * <p>
- * Note: Named StaffPanel to avoid conflict with ScoreView.ScorePanel inner class.
  */
 public class StaffPanel extends JPanel {
 
-    /** The song model. */
     @Nullable
     private Song song;
 
-    /** List of line panels, one per staff line. */
     private final List<LinePanel> linePanels = new ArrayList<>();
 
-    /** The owning score view, or null when detached (tests). Supplies the view zoom. */
+    /** Null when detached (tests). */
     @Nullable
     private ScoreView scoreView;
 
-    /**
-     * Creates a new StaffPanel.
-     */
     public StaffPanel() {
         setLayout(new StaffLinesLayout(this));
         setOpaque(false);
     }
 
-    /** Sets the owning {@link ScoreView} so the inter-line spacing tracks the view zoom. */
     public void setScoreView(ScoreView scoreView) {
         this.scoreView = scoreView;
     }
 
-    /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
     ViewScale viewScale() {
         return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
     /**
-     * Reports that this panel's children may overlap, so Swing repaints the full damaged
-     * region rather than assuming one child's dirty rectangle cannot expose another's ink.
-     * <p>
-     * {@link StaffLinesLayout} floors each line's bounds at the minimum staff surround while
-     * deriving the inter-line spacing from measured content alone, so two sparse neighbours
-     * can have overlapping bounds. Their ink never overlaps — only the reserved headroom does.
+     * {@link StaffLinesLayout} floors each line's bounds at the minimum staff surround, so two
+     * sparse neighbours can have overlapping bounds, though their ink never overlaps.
      */
     @Override
     public boolean isOptimizedDrawingEnabled() {
         return false;
     }
 
-    /**
-     * Sets the song and rebuilds the layout.
-     *
-     * @param song The song
-     */
     public void setSong(Song song) {
         this.song = song;
         rebuildLayout();
     }
 
-    /**
-     * Returns the song.
-     */
     public Song getSong() {
         if (song == null) {
             throw RuntimeError.exit("song not initialized");
@@ -107,12 +83,6 @@ public class StaffPanel extends JPanel {
         return song;
     }
 
-    /**
-     * Rebuilds the panel layout based on the current song.
-     * <p>
-     * Creates a new {@link LinePanel} for each line in the song,
-     * with vertical spacing between them.
-     */
     public void rebuildLayout() {
         removeAll();
         linePanels.clear();
@@ -138,18 +108,12 @@ public class StaffPanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Returns the line panels.
-     */
     public List<LinePanel> getLinePanels() {
         return linePanels;
     }
 
     /**
-     * Returns the line panel at the given index.
-     *
-     * @param index Line index
-     * @return The line panel, or null if index is out of bounds
+     * @return null if index is out of bounds
      */
     @Nullable
     public LinePanel getLinePanel(int index) {
@@ -161,10 +125,7 @@ public class StaffPanel extends JPanel {
     }
 
     /**
-     * Returns the line panel containing the given point.
-     *
-     * @param point Point in panel coordinates
-     * @return The line panel, or null if point is not in any line
+     * @return null if point is not in any line
      */
     @Nullable
     public LinePanel getLinePanelAt(Point point) {
@@ -177,9 +138,6 @@ public class StaffPanel extends JPanel {
         return null;
     }
 
-    /**
-     * Forces every line's layout so that {@link StaffLinesLayout} can measure the results.
-     */
     void ensureAllLineLayouts() {
         var firstLineView = linePanels.getFirst().getLineComponent().getScoreView();
 
@@ -192,21 +150,13 @@ public class StaffPanel extends JPanel {
     }
 
     /**
-     * The lyric geometry every line is laid out against. Resolved through the first line
-     * component rather than this panel's own {@link ScoreView} back-reference, because the
-     * line components are given theirs first.
+     * Resolved through the first line component, not this panel's own {@link ScoreView}
+     * back-reference, because the line components are given theirs first.
      */
     LyricRenderMetrics lyricRenderMetrics() {
         return linePanels.getFirst().getLineComponent().getScoreView().getLyricRenderMetrics();
     }
 
-    /**
-     * Lays out every line in order, threading lyric-extender continuation across line boundaries so
-     * that a melisma running off the end of one line reappears as a leading stub on the next.
-     *
-     * @return The layout of each line that produced one, in line order. Lines that have not been
-     *         laid out yet are skipped, so the list can be shorter than the line count
-     */
     @SuppressWarnings("UnusedReturnValue")
     private ArrayList<LayoutResult> layOutLines() {
         var layouts = new ArrayList<LayoutResult>();

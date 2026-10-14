@@ -34,31 +34,18 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
- * Renders the key signature runs of a staff line: the one in the header
- * ({@link StaffHeaderRenderer} places it), a key change part-way through the line, and the
- * cautionary key change at the end of one.
- * <p>
- * A run shows the sharps or flats in the order they appear (FCGDAEB for sharps, BEADGCF for
- * flats).
- * <p>
- * <b>What</b> is drawn — which accidentals, in which order, at which staff positions, and
- * how wide the run is — belongs to {@link Key}, in {@code songscribe.dom}, because layout and
- * MusicXML need the same answers. This class only paints what it is given.
+ * Renders the key signature runs of a staff line: the header's, a mid-line key change, and the
+ * cautionary key change at the end of a line. What is drawn belongs to {@link Key}, because
+ * layout and MusicXML need the same answers.
  */
 public final class KeySignatureRenderer {
 
     // Singleton instance
     private static final KeySignatureRenderer INSTANCE = new KeySignatureRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private KeySignatureRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static KeySignatureRenderer getInstance() {
         return INSTANCE;
     }
@@ -68,23 +55,9 @@ public final class KeySignatureRenderer {
     // ==========================================================================
 
     /**
-     * Renders the key change {@code element} makes part-way through a line, at the position the
-     * line's spacing gave its column.
-     *
-     * <p>What is drawn is {@link KeyChangeElement#drawnAccidentals()}'s answer, which
-     * {@code ElementColumnBuilder} also sized the column from, so the glyphs fill exactly the
-     * room layout kept for them and the double-click target {@code LayoutHitTester} finds sits on
-     * the ink.
-     *
-     * <p>The run is painted in the color the caller set, as every element renderer does: a
-     * mid-line key change is an ordinary element of the line, so selection, hover and playback
-     * color it like its neighbors. The header and the cautionary have no such caller and set
-     * their own.
-     *
-     * @param invariants Line invariants, for the solved layout of this line
-     * @param frame      The element's frame, carrying any insertion-preview position
-     * @param element    The key change to draw
-     * @param g2         Graphics context
+     * What is drawn is {@link KeyChangeElement#drawnAccidentals()}'s answer, which
+     * {@code ElementColumnBuilder} also sized the column from, so the glyphs fill the room layout
+     * kept and the hit target sits on the ink. Painted in the color the caller set.
      */
     public void renderMidLine(
         LineInvariants invariants,
@@ -100,17 +73,8 @@ public final class KeySignatureRenderer {
     // ==========================================================================
 
     /**
-     * Renders {@code cautionary} at the end of a staff line — the warning to the performer that the
-     * next line starts in a different key.
-     * <p>
-     * What is drawn, and where each part of it lands, are
-     * {@link CautionaryKeySignature}'s answers rather than this method's, so that the space layout
-     * reserved and the hit target for editing the change cannot disagree with the glyphs. This
-     * method only paints them.
-     *
-     * @param g2         Graphics context
-     * @param cautionary The cautionary to draw, from {@link CautionaryKeySignature#of(Line)}
-     * @param invariants Line invariants, for the solved layout of this line
+     * What is drawn, and where, are {@link CautionaryKeySignature}'s answers, so that the space
+     * layout reserved and the hit target cannot disagree with the glyphs.
      */
     public void renderCautionary(
         Graphics2D g2,
@@ -136,15 +100,7 @@ public final class KeySignatureRenderer {
     }
 
     /**
-     * Paints an already laid-out run of accidentals starting at {@code xPosSs}, in the color the
-     * caller set. Every caller either is an element of the line, which is colored by the paint
-     * loop for selection and playback, or has set the element color itself — as the header's
-     * renderer does, the header being no element of the line.
-     *
-     * @param g2          Graphics context
-     * @param accidentals The run to draw, in drawing order
-     * @param xPosSs      X of the run's left edge in staff spaces
-     * @param invariants  Line invariants, for the staff's middle line
+     * Paints in the color the caller set.
      */
     static void drawRun(
         Graphics2D g2,

@@ -26,10 +26,8 @@ import songscribe.smufl.SMuFLGlyph;
  * A breath mark: a non-sounding element drawn as one glyph at a seat of its own, with nothing
  * an editor can add to it.
  *
- * <p>Answers its glyph and its seat from its type's {@link PlainGlyphAppearance}, so a question
- * only a breath mark can answer is total here and always answered from what the type declares.
- * {@link ElementType#newInstance()} builds one for every type whose appearance is a plain glyph
- * and for no other, which is what makes the narrowing to that arm sound.
+ * <p>{@link ElementType#newInstance()} builds one for every type whose appearance is a plain
+ * glyph and for no other, which is what makes its narrowing of the appearance sound.
  */
 public final class BreathMarkElement extends StructuralElement {
 
@@ -41,18 +39,10 @@ public final class BreathMarkElement extends StructuralElement {
         return (PlainGlyphAppearance) getType().appearance();
     }
 
-    /**
-     * @return the glyph this element is drawn with
-     */
     public SMuFLGlyph glyph() {
         return appearance().glyph();
     }
 
-    /**
-     * Returns where this breath mark's glyph sits on the staff, which its type declares.
-     *
-     * @return the seat
-     */
     public StaffPosition seatSp() {
         return new StaffPosition(appearance().seatSp());
     }

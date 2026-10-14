@@ -21,22 +21,12 @@
 package songscribe.layout;
 
 /**
- * Represents margins for layout elements.
- * <p>
- * Uses left/bottom/right margins only (no top margin, no margin collapsing).
- * All values are in staff spaces.
+ * Left, bottom and right margins only: no top margin, no margin collapsing.
  */
 public record Margin(double leftSs, double bottomSs, double rightSs) {
 
-    /** Zero margin constant */
     public static final Margin NONE = new Margin(0, 0, 0);
 
-    /**
-     * Creates a uniform margin with the same value on all sides.
-     *
-     * @param m The margin value in staff spaces
-     * @return A new Margin with uniform values
-     */
     public static Margin uniform(double m) {
         return new Margin(m, m, m);
     }

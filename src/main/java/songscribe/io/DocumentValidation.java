@@ -31,18 +31,7 @@ public final class DocumentValidation {
     private DocumentValidation() {}
 
     /**
-     * Logs a corrupt-document diagnostic and returns the exception to throw for it, so a caller
-     * reports the failure with {@code throw corrupt(…)} and the message is logged exactly once, at
-     * the site that found the problem.
-     *
-     * <p>Public because {@code songscribe.io.musicxml} reports the same class of failure and
-     * supplies its own logger, the way {@code MusicXmlUnits} already does for
-     * {@link #parseIntOrThrow}.
-     *
-     * @param log    the logger of the class that found the corruption
-     * @param format an SLF4J {@code {}}-style message format
-     * @param args   the values to substitute into {@code format}
-     * @return the exception to throw; never null, and never thrown by this method
+     * Public because {@code songscribe.io.musicxml} reports the same failures with its own logger.
      */
     public static SAXException corrupt(Logger log, String format, Object... args) {
         var message = MessageFormatter.arrayFormat(format, args).getMessage();
@@ -51,17 +40,8 @@ public final class DocumentValidation {
     }
 
     /**
-     * Puts {@code attachment} on {@code element} for a reader, rejecting the document when the
-     * element already carries an attachment of that class. An element holds at most one of any
-     * class — {@link StaffElement#addAttachment}'s precondition — and a document that says
-     * otherwise is corrupt rather than something to merge.
-     *
-     * @param log        the logger of the reader
-     * @param element    the element the document attaches to
-     * @param attachment the attachment the document describes, on no element
-     * @throws SAXException if {@code element} already carries an attachment of
-     *     {@code attachment}'s class
-     * @effects on success, as {@link StaffElement#addAttachment}
+     * A document that gives an element two attachments of one class is corrupt, not merged
+     * ({@link StaffElement#addAttachment}'s precondition).
      */
     public static void attachUnique(Logger log, StaffElement element, Attachment attachment)
             throws SAXException {

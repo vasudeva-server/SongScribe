@@ -23,11 +23,8 @@ package songscribe.layout;
 import songscribe.smufl.SMuFLGlyph;
 
 /**
- * A single SMuFL glyph in a decoration's typeset content.
- * <p>
- * The glyph is named rather than resolved to a string here, and no font travels with it: a glyph
- * item is drawn in the music font its renderer already holds, at the size that renderer draws its
- * whole decoration kind at.
+ * A single SMuFL glyph in a decoration's typeset content, drawn in the music font its renderer
+ * already holds.
  */
 public record GlyphItem(SMuFLGlyph glyph, double xSs, double baselineOffsetSs)
     implements TypesetItem {}

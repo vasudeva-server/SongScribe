@@ -25,56 +25,24 @@ import songscribe.util.DateUtils;
 /**
  * A date known to some precision: nothing, a year, a year and month, or a full day.
  *
- * <p>A song's composition date and words date are entered by hand and are often
- * incomplete — a year alone is the common case. The four members are the four legal
- * precisions, and a day without a month is unrepresentable: there is no member for it.
- *
- * <p>This is a sealed interface rather than a record of three nullable parts because the
- * members <em>are</em> the legal states. A switch over them is exhaustive, so a renderer
- * that handles each member has handled every date, and no consumer has to re-derive from
- * an empty year and a zero month which of the four cases it is looking at.
- *
- * <p>Every member but {@link EmptyDate} carries a non-blank year. {@code month} is
- * {@code 1} to {@value DateUtils#MAX_MONTH} and {@code day} is {@code 1} to
- * {@value DateUtils#MAX_DAY}; the record constructors reject anything else. The year is
- * stored as typed and is not validated beyond being non-blank, because the file formats
- * and the dialog carry it as text.
- *
- * <p>Raw parts — a year that may be blank, a month and a day that may be 0 — enter through
- * {@link #of}, which is the one place the raw encoding is read.
+ * <p>The year is stored as typed and is not validated beyond being non-blank. Raw parts enter
+ * through {@link #of}, the one place the raw encoding is read.
  */
 public sealed interface PartialDate {
 
     /**
-     * The year, or {@code ""} for {@link EmptyDate}.
-     *
-     * @return the year as typed
+     * {@code ""} for {@link EmptyDate}.
      */
     String year();
 
     /**
-     * This date in reduced-precision ISO 8601 form: {@code YYYY}, {@code YYYY-MM} or
-     * {@code YYYY-MM-DD}, and {@code ""} for {@link EmptyDate}.
-     *
-     * <p>{@link DateUtils#parseIsoDate} is the inverse: parsing this method's result
-     * yields a date equal to this one.
-     *
-     * @return the ISO form
+     * {@link DateUtils#parseIsoDate} is the inverse.
      */
     String isoDate();
 
     /**
-     * Builds the date the raw parts describe.
-     *
-     * <p>A blank year is no date at all, whatever the month and day say. A day given
-     * without a month collapses to the year alone, since a day is meaningless without
-     * the month it falls in.
-     *
-     * @param year the year, blank for none; surrounding whitespace is dropped
-     * @param month the month, {@code 1} to {@value DateUtils#MAX_MONTH}, or {@code 0} for none
-     * @param day the day, {@code 1} to {@value DateUtils#MAX_DAY}, or {@code 0} for none
-     * @return the member matching the precision the parts describe
-     * @throws IllegalArgumentException if {@code month} or {@code day} is neither 0 nor in range
+     * A blank year is no date at all, whatever the month and day say. A day without a month
+     * collapses to the year alone.
      */
     static PartialDate of(String year, int month, int day) {
         var trimmedYear = year.trim();
@@ -112,7 +80,6 @@ public sealed interface PartialDate {
         }
     }
 
-    /** No date. */
     enum EmptyDate implements PartialDate {
         INSTANCE;
 
@@ -127,11 +94,6 @@ public sealed interface PartialDate {
         }
     }
 
-    /**
-     * A year alone.
-     *
-     * @param year the year, non-blank
-     */
     record YearOnly(String year) implements PartialDate {
 
         public YearOnly {
@@ -144,12 +106,6 @@ public sealed interface PartialDate {
         }
     }
 
-    /**
-     * A year and a month.
-     *
-     * @param year the year, non-blank
-     * @param month the month, {@code 1} to {@value DateUtils#MAX_MONTH}
-     */
     record YearMonth(String year, int month) implements PartialDate {
 
         public YearMonth {
@@ -163,13 +119,6 @@ public sealed interface PartialDate {
         }
     }
 
-    /**
-     * A full date.
-     *
-     * @param year the year, non-blank
-     * @param month the month, {@code 1} to {@value DateUtils#MAX_MONTH}
-     * @param day the day, {@code 1} to {@value DateUtils#MAX_DAY}
-     */
     record YearMonthDay(String year, int month, int day) implements PartialDate {
 
         public YearMonthDay {

@@ -46,105 +46,47 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.LogUtils;
 
 /**
- * Calculates horizontal X positions for note columns following Gould/Ross engraving principles.
- * <p>
- * Key principles:
- * <ul>
- *   <li>Non-proportional spacing - rhythmic value does not determine horizontal distance</li>
- *   <li>Lyric-driven spacing - syllable widths determine column gaps</li>
- *   <li>Minimum gap measured to a column's leftmost glyph - a note shifts for an accidental only when needed</li>
- *   <li>Beam group coordination - tight internal spacing unless lyrics force expansion</li>
- * </ul>
- * <p>
- * This class owns the first two stages of a spring-and-strut pipeline. A line is modelled as a
- * chain of {@link Spring}s — one per adjacent column pair — which a solver then lengthens or
- * compresses as a whole, rather than accumulating final positions greedily from left to right:
- * <ol>
- *   <li><b>Build</b> — {@link #buildSprings} emits a spring per gap. Each gap's ideal
- *       {@code rest}, its hard collision {@code strut}, and the {@code compliance} between them
- *       are resolved once, in {@link #buildSpring}; grace, beam-internal, glissando and syllable
- *       floors are all folded in there, so no downstream stage needs to know about them.</li>
- *   <li><b>Lyric lift</b> — {@link LyricLift#applyLyricLift} widens the rests so
- *       syllables clear each other, preferring an even line-wide lift over a local spike.</li>
- *   <li><b>Solve</b> — {@link SpringSpacer#solve} fits the chain to the staff width, compressing
- *       each gap in proportion to its compliance and freezing it once it reaches its strut. The
- *       caller ({@link LayoutEngine}) anchors the first column at
- *       {@link #calculateAnchorXSs} and lays the solved gaps out from there.</li>
- * </ol>
- * <p>
- * Usage:
- * <pre>{@code
- * var springs = HorizontalSpacingCalculator.buildSprings(columns, line);
- * springs = LyricLift.applyLyricLift(springs, columns);
- * var result = SpringSpacer.solve(springs, availableSpanSs);
- * }</pre>
+ * Calculates horizontal X positions for note columns following Gould/Ross engraving principles:
+ * spacing is non-proportional (rhythmic value does not determine distance), syllable widths
+ * determine column gaps, and a beam group packs tightly unless lyrics force expansion.
  */
 public final class HorizontalSpacingCalculator {
 
     private static final Logger LOG = LoggerFactory.getLogger(HorizontalSpacingCalculator.class);
 
     /**
-     * Minimum horizontal gap between adjacent note columns — the single minimum gap
-     * applied wherever a gap can be squeezed (normal spacing and justification alike).
-     * A column's left extent includes its accidental, so the minimum spacing is measured
-     * to the leftmost glyph (the accidental when one is present); this is what makes a
-     * note shift right only when the accidental would otherwise come closer than this gap
-     * to the previous element. Lyric spacing may require more.
+     * The single minimum gap between adjacent note columns, applied wherever a gap can be squeezed.
+     * Measured to the leftmost glyph, so a note shifts right only when its accidental would come
+     * closer than this to the previous element. Lyric spacing may require more.
      */
     public static final double MIN_COLUMN_GAP_SS = 1.0;  // 8px
-    /**
-     * Default horizontal gap between adjacent note columns when no lyrics are present.
-     * Provides comfortable spacing for music without lyrics.
-     */
     public static final double DEFAULT_COLUMN_GAP_SS = 2.5;  // 20px
     /**
-     * Ideal gap between a grace note and its host note. The grace note packs against its host at this
-     * distance independent of the song's line rest and of the line's syllables — the one gap the
-     * lyric lift never widens. {@link OpticalSpacing} nudges it for the host's stem geometry, and a
-     * compressed line may tighten it by up to {@link #GRACE_HOST_COMPRESSION_ALLOWANCE_SS}, so the
-     * distance is optical rather than mechanical. Shared by the spring path ({@link #buildSpring})
-     * and the grace-insertion lock preview.
+     * Ideal gap between a grace note and its host note: independent of the song's line rest and of
+     * the line's syllables, and the one gap the lyric lift never widens. Shared by the spring path
+     * ({@link #buildSpring}) and the grace-insertion lock preview.
      */
     public static final double GRACE_HOST_REST_SS = 2.0;  // 16px
-    /**
-     * How far a compressed line may tighten a grace→host gap below {@link #GRACE_HOST_REST_SS}. Wide
-     * enough that the grace tightens visibly along with its neighbours rather than standing proud of
-     * them, narrow enough that the grace never reads as belonging to the note on its other side.
-     */
+    /** How far a compressed line may tighten a grace→host gap below {@link #GRACE_HOST_REST_SS}. */
     public static final double GRACE_HOST_COMPRESSION_ALLOWANCE_SS = 0.5;  // 4px
     /**
      * Reducing factor applied to the line rest for a gap internal to a beam group whose two notes
-     * are both shorter than an eighth note (sixteenths and faster). A pair touching an eighth note
-     * (or longer) instead packs at the full line rest, the same gap as unbeamed notes; the longer
-     * note of the pair governs. At the {@code 2.5} default line rest this yields
-     * {@code 0.8 × 2.5 = 2.0}. Beam groups still widen if lyrics require it.
+     * are both shorter than an eighth note. A pair touching an eighth note (or longer) packs at
+     * the full line rest. Beam groups still widen if lyrics require it.
      */
     public static final double BEAM_GROUP_INTERNAL_REST_FACTOR = 0.8;
 
     private HorizontalSpacingCalculator() {
     }
 
-    /**
-     * Calculates the X position of the first note in a line, in staff-space units.
-     *
-     * @param line The line, for its key signature
-     * @return X position in staff-space units where the first note should be placed
-     */
     public static double calculateFirstElementXSs(Line line) {
         return calculateFirstElementXSs(line.getRunningKey());
     }
 
     /**
-     * Calculates the X position of the first note in a line, in staff-space units.
-     * <p>
-     * LilyPond measures this from a different edge depending on what the note follows.
-     * A key signature pushes the note {@link StaffHeaderMetrics#KEY_SIGNATURE_FIRST_NOTE_GAP_SS}
-     * past its right edge; a bare clef instead sets a floor of
-     * {@link StaffHeaderMetrics#CLEF_FIRST_NOTE_SPAN_SS} on the span from the clef's <em>left</em>
-     * edge, which the clef alone does not fill.
-     *
-     * @param key the key the header draws; {@link Key#NO_ACCIDENTALS} draws no key signature
-     * @return X position in staff-space units where the first note should be placed
+     * LilyPond measures this from a different edge depending on what the note follows: a key
+     * signature's right edge, or, for a bare clef, a floor on the span from the clef's <em>left</em>
+     * edge.
      */
     public static double calculateFirstElementXSs(Key key) {
         if (key.signatureWidthSs() == 0) {
@@ -156,11 +98,7 @@ public final class HorizontalSpacingCalculator {
             + StaffHeaderMetrics.KEY_SIGNATURE_FIRST_NOTE_GAP_SS;
     }
 
-    /**
-     * Returns the X position of the key signature's left edge, in staff-space units —
-     * one clef width past the clef, plus {@link StaffHeaderMetrics#CLEF_GAP_SS}. This is the
-     * only place that gap is applied; {@link StaffHeader} does not carry it.
-     */
+    /** The only place {@link StaffHeaderMetrics#CLEF_GAP_SS} is applied; {@link StaffHeader} does not carry it. */
     public static double calculateKeySignatureXSs() {
         return LayoutEngine.CLEF_X_POSITION_SS
             + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.G_CLEF)
@@ -168,11 +106,7 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the X position of the right edge of the staff header
-     * (clef + optional key signature), in staff-space units.
-     *
-     * @param line The line, for its key signature; a null line has no key signature
-     * @return X position in staff-space units of the header's right edge
+     * @param line a null line has no key signature
      */
     public static double calculateHeaderRightEdgeSs(@Nullable Line line) {
         if (line == null) {
@@ -182,14 +116,6 @@ public final class HorizontalSpacingCalculator {
         return calculateHeaderRightEdgeSs(line.getRunningKey());
     }
 
-    /**
-     * Returns the X position of the right edge of the staff header
-     * (clef + optional key signature), in staff-space units.
-     *
-     * @param key the key the header draws; {@link Key#NO_ACCIDENTALS} draws no key signature, so
-     *            the header ends at the clef's right edge
-     * @return X position in staff-space units of the header's right edge
-     */
     public static double calculateHeaderRightEdgeSs(Key key) {
         var keySignatureWidthSs = key.signatureWidthSs();
 
@@ -201,13 +127,10 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns whether the given X, in staff-space units, falls within the staff header
-     * (clef + optional key signature). A point exactly on the header's right edge counts
-     * as inside, so this agrees with the staff-line hit region.
+     * A point exactly on the header's right edge counts as inside, so this agrees with the
+     * staff-line hit region.
      *
-     * @param xSs  X position in staff-space units
-     * @param line The line, for its key signature; a null line has no key signature
-     * @return whether the X is within the header
+     * @param line a null line has no key signature
      */
     public static boolean isWithinHeaderXSs(double xSs, @Nullable Line line) {
         return xSs <= calculateHeaderRightEdgeSs(line);
@@ -218,26 +141,13 @@ public final class HorizontalSpacingCalculator {
     // ==========================================================================
 
     /**
-     * Calculates minimum spacing between columns based on geometric extents.
+     * The result is an origin-to-origin delta that guarantees a constant amount of clear space
+     * between the two columns' facing ink, whatever either holds — see {@link #minimumInkGapSs}.
      *
-     * <p>The result is an origin-to-origin delta, and what it guarantees is a constant amount of
-     * clear space between the two columns' facing ink, whatever either column holds — see
-     * {@link #minimumInkGapSs} for which constant. That is the promise a caller relies on at the
-     * floor, not the number itself, which is whatever the pair's extents make it.
-     *
-     * <p>A mid-line {@link KeyChangeElement}'s position invariant fixes what its two sides are: a
-     * barline or repeat before it, and (except at the end of a line) a note after it. Ahead of it
-     * the floor is the key-signature padding, which is also that gap's rest — the accidentals sit
-     * against their barline at an exact distance rather than merely clearing it. Behind it the
-     * ordinary floor applies, so the last accidental clears the following note's leftmost ink — its
-     * accidental when it has one — by {@link #MIN_COLUMN_GAP_SS}. The key signature's contribution
-     * is its <em>drawn</em> width, the accidentals {@code Key#accidentalsFrom} lays out for the
-     * change it makes, so a wider change pushes the note further rather than letting it overlap the
-     * naturals.
-     *
-     * @param prevColumn Previous column
-     * @param currColumn Current column
-     * @return Minimum spacing in ss
+     * <p>Ahead of a mid-line {@link KeyChangeElement} the floor is the key-signature padding,
+     * which is also that gap's rest. Behind it the ordinary floor applies, so the last accidental
+     * clears the following note's leftmost ink by {@link #MIN_COLUMN_GAP_SS}. The key signature's
+     * contribution is its <em>drawn</em> width, so a wider change pushes the note further.
      */
     private static double calculateMinimumColumnSpacingSs(
         ElementColumn prevColumn,
@@ -251,58 +161,32 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * What kind of gap sits between two adjacent columns, and everything that kind decides.
-     *
-     * <p>Four questions have to be answered about every gap — how far apart the pair rests, how
-     * close their ink may ever come, whether the gap takes a share of the lyric lift, and how it
-     * behaves under compression. Each is a function of the same fact, <em>what kind of pair is
-     * this</em>, so the classification is made once here and the four answers hang off it. Asking
-     * the question separately at each of the four points is how a kind gets added to three of them
-     * and missed in the fourth, which produces a spring that disagrees with itself and shows up
-     * only as spacing that is subtly wrong under compression.
-     *
-     * <p>Adding a kind is one constant plus its four answers; the switches below are exhaustive,
-     * so the compiler names every answer still owed.
+     * What kind of gap sits between two adjacent columns, and everything that kind decides: how far
+     * the pair rests, how close their ink may come, whether the gap takes lyric lift, and how it
+     * compresses. Classified once, so a new kind cannot be added to three of the answers and missed
+     * in the fourth; the switches are exhaustive.
      */
     private enum GapKind {
 
-        /**
-         * A grace note and the note it decorates. A fixed absolute gap that never varies with the
-         * song's line rest — the grace always packs against its host at the same distance
-         * — and it takes no lyric lift, since that fixed ideal must not grow with the
-         * line's syllables. It still compresses, bounded by {@link #graceCompressionFloorSs}.
-         */
+        /** A fixed absolute gap taking no lyric lift; it still compresses, bounded by {@link #graceCompressionFloorSs}. */
         GRACE_TO_HOST,
 
         /**
-         * A barline and the mid-line key signature standing behind it. The two are one typeset
-         * unit, so the accidentals stand a fixed padding behind their barline rather than a
-         * musical rest away from it — the same padding a cautionary puts between its barline and
-         * its own accidentals, so a key change reads the same wherever it falls. That padding is
-         * this gap's floor as well as its rest, which freezes the gap: the accidentals stand at
-         * that exact distance on a crowded line and an empty one alike.
+         * A barline and the mid-line key signature behind it, one typeset unit: the accidentals
+         * stand a fixed padding behind their barline, which is this gap's floor as well as its
+         * rest, so the gap is frozen.
          */
         BARLINE_TO_KEY_SIGNATURE,
 
-        /**
-         * A gap internal to one beam group, flanked by two notes both shorter than an eighth. It
-         * packs proportionally tighter than a normal gap, and keeps that reduction as its solver
-         * weight, so it stays proportionally tighter under compression and not only at rest.
-         */
+        /** Internal to one beam group, both notes shorter than an eighth; keeps its reduction as its solver weight. */
         TIGHT_BEAM,
 
         /** Every other pair: a full line rest, freely compressible, taking its share of the lift. */
         NORMAL;
 
         /**
-         * Classifies the gap between two adjacent columns.
-         *
-         * <p>A key change's position invariant guarantees a barline or repeat in front of it,
+         * A key change's position invariant guarantees a barline or repeat in front of it,
          * so the pair is named by {@code curr} alone.
-         *
-         * @param prev the column on the left of the gap
-         * @param curr the column on the right of the gap
-         * @return the kind of gap between them
          */
         static GapKind of(ElementColumn prev, ElementColumn curr) {
             if (prev.isGraceNote()) {
@@ -320,13 +204,7 @@ public final class HorizontalSpacingCalculator {
             return NORMAL;
         }
 
-        /**
-         * Returns the whitespace this kind of gap rests at, excluding the left column's ink.
-         *
-         * @param lineRestSs the song's line rest
-         * @return the resting whitespace in staff spaces; a fixed amount for the two pairs that
-         *     are one typeset unit, and a share of {@code lineRestSs} for the rest
-         */
+        /** Excludes the left column's ink. */
         double restSs(double lineRestSs) {
             return switch (this) {
                 case GRACE_TO_HOST -> GRACE_HOST_REST_SS;
@@ -336,11 +214,6 @@ public final class HorizontalSpacingCalculator {
             };
         }
 
-        /**
-         * Returns the closest this kind of gap ever lets the two columns' facing ink come.
-         *
-         * @return the clear space owed between the facing ink, in staff spaces
-         */
         double minimumInkGapSs() {
             return switch (this) {
                 case BARLINE_TO_KEY_SIGNATURE -> EngravingConstants.KEY_SIGNATURE_PADDING_SS;
@@ -348,13 +221,6 @@ public final class HorizontalSpacingCalculator {
             };
         }
 
-        /**
-         * Returns whether this kind of gap is held out of the lyric lift — the widening a line's
-         * syllables ask of the gaps between them.
-         *
-         * @return {@code true} for a gap whose ideal is fixed, so that widening it would move the
-         *     pair apart from a distance the engraving rule pinned
-         */
         boolean isLiftExempt() {
             return switch (this) {
                 case GRACE_TO_HOST, BARLINE_TO_KEY_SIGNATURE -> true;
@@ -362,13 +228,7 @@ public final class HorizontalSpacingCalculator {
             };
         }
 
-        /**
-         * Returns the solver weight this kind of gap carries, which is also the factor the lyric
-         * lift scales its share by, so a tight gap stays proportionally tight rather than being
-         * levelled up.
-         *
-         * @return the weight; {@link Spring#NORMAL_WEIGHT} for every kind but a tight beam gap
-         */
+        /** Also the factor the lyric lift scales its share by. */
         double weight() {
             return switch (this) {
                 case TIGHT_BEAM -> BEAM_GROUP_INTERNAL_REST_FACTOR;
@@ -378,25 +238,15 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns how far {@code prev}'s ink reaches right of its origin as {@code curr} meets it — the
-     * single source of truth for the left-hand ink of every gap, so the ideal rest, the collision
-     * strut, the glissando reservation and the grace–host lyric union can never disagree about how
-     * wide the column before the gap is.
+     * How far {@code prev}'s ink reaches right of its origin as {@code curr} meets it — the single
+     * source of truth for the left-hand ink of every gap, so the ideal rest, the collision strut,
+     * the glissando reservation and the grace–host lyric union never disagree.
      *
-     * <p>For a grace note this is {@link ElementColumn#getRightExtentFacingSs} against {@code curr}'s
-     * <em>left-facing</em> band ({@link ElementColumn#getLeftFacingTopYSs}) — not its whole span,
-     * which would include an up-stem standing a column-width clear on the far side of the notehead
-     * and so would report an overlap with the grace's flag that no reader can see. A grace's flag is
-     * over a third of its right extent, and it packs against its host at a fixed
-     * {@link #GRACE_HOST_REST_SS} where that inflation is the difference between a grace that reads
-     * as attached and one that floats. Charging the flag when it hangs well above the host is what
-     * made a high grace sit visibly further from its host than a low one.
-     *
-     * <p>Every other column is charged its full {@link ElementColumn#getRightExtentSs()}. An ordinary
-     * flagged note has the same two-level ink profile, but its gap is a full line rest that dwarfs the
-     * flag, so the same discount would buy invisible tightening in exchange for loosening the
-     * collision floor of every unbeamed eighth on the page. Generalising it is a separate decision,
-     * and wants LilyPond's skyline machinery rather than a one-glyph special case.
+     * <p>For a grace note this is {@link ElementColumn#getRightExtentFacingSs} against
+     * {@code curr}'s <em>left-facing</em> band, so a flag hanging well above the host is not
+     * charged. Every other column is charged its full {@link ElementColumn#getRightExtentSs()};
+     * generalising the discount wants LilyPond's skyline machinery rather than a one-glyph special
+     * case.
      */
     private static double rightExtentFacingSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.isGraceNote()) {
@@ -411,63 +261,20 @@ public final class HorizontalSpacingCalculator {
     // ==========================================================================
 
     /**
-     * Builds the {@link Spring} for one adjacent column pair — the single source of truth for
-     * per-pair horizontal spacing, shared by full layout and insertion. Everything is delta-X
-     * (Ss) between the two columns' origins, i.e. the value that would be added to
-     * {@code prev.getXSs()}.
-     * <p>
-     * Grace, key signature and glissando are folded in here, so a {@code Spring} needs no
-     * post-processing.
-     *
-     * <p>The base rest is {@code prevRight} plus whatever {@link GapKind} gives the pair, which is
-     * a reducing factor of the song's line rest for an ordinary or tight-beam gap and a fixed
-     * distance that never scales with it for the two pairs that are one typeset unit. At the
-     * {@code 2.5} default line rest the factors reproduce the legacy absolute gaps ({@code 2.5}
-     * normal, {@code 1.5} tight beam). The strut is the largest of four floors: the note-collision
-     * floor, the syllable-collision floor where either column bears a syllable, the glissando
-     * reservation where {@code prev} has one, and the grace compression floor where {@code prev}
-     * is a grace note.
-     * Compliance is {@code max(0, rest − strut)}, so a gap whose rest does not clear its strut
-     * starts frozen — which is how a key signature keeps an exact distance from its barline, its
-     * note-collision floor being that same padding.
-     *
-     * <p>{@code prevRight} is {@code rightExtentFacingSs(prev, curr)} — {@code prev}'s full right
-     * extent, except that a grace note's flag is not charged when it hangs clear of {@code curr}'s
-     * left-facing band.
+     * The single source of truth for per-pair horizontal spacing, shared by full layout and
+     * insertion: a delta-X (Ss) between the two columns' origins. Grace, key signature and
+     * glissando are folded in here, so a {@code Spring} needs no post-processing.
      *
      * <p>See {@code docs/layout-geometry.md} for the full recipe with each floor's formula.
-     *
-     * @param prev       Previous column
-     * @param curr       Current column
-     * @param lineRestSs The song's line rest ({@code Song.getDefaultRestLengthSs}); each base rest
-     *                   is a reducing factor of it
-     * @return The spring governing the gap between {@code prev} and {@code curr}
      */
     public static Spring buildSpring(ElementColumn prev, ElementColumn curr, double lineRestSs) {
         return buildSpring(prev, curr, lineRestSs, null, null, null);
     }
 
     /**
-     * Builds the {@link Spring} for one adjacent column pair, threading the pair's outer neighbours
-     * so the syllable-collision floor can honour a grace–host lyric union: {@code beforePrev} is the
-     * column two before {@code curr} (used to detect that {@code prev} hosts a grace), and
-     * {@code afterCurr} is the column just after {@code curr} (used as a grace's host when
-     * {@code curr} is itself a grace). The note-collision strut and the glissando reservation ignore
-     * both outer neighbours — they are measured from the pair's own extents alone. See
-     * {@link #buildSpring(ElementColumn, ElementColumn, double)} for the base rest / strut /
-     * compliance model.
-     *
-     * @param prev       Previous column
-     * @param curr       Current column
-     * @param lineRestSs The song's line rest; each base rest is a reducing factor of it
-     * @param line       The line the pair is being spaced on, or {@code null} when the pair is not
-     *                   a pair of that line's own adjacent elements — a paste-position lookup, an
-     *                   insertion preview, or the flush-right terminal. Only the hairpin
-     *                   minimum-length reservation consults it, and only a real line can answer
-     *                   whether a hairpin runs from {@code prev} to {@code curr}.
-     * @param beforePrev The column before {@code prev}, or {@code null} at the line start
-     * @param afterCurr  The column after {@code curr}, or {@code null} at the line end
-     * @return The spring governing the gap between {@code prev} and {@code curr}
+     * @param line {@code null} when the pair is not a pair of that line's own adjacent elements — a
+     *             paste-position lookup, an insertion preview, or the flush-right terminal. Only
+     *             the hairpin minimum-length reservation consults it.
      */
     public static Spring buildSpring(
         ElementColumn prev,
@@ -499,16 +306,9 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns how far a grace→host gap may compress below its ideal, expressed as a strut floor, or
-     * 0 for any other gap. The grace sits at a fixed distance from its host, but a fixed distance
-     * that could never give would make an optical widening able to turn an otherwise-fittable line
-     * infeasible, and would leave the grace standing proud of the whitespace level on a compressed
-     * line. Allowing {@link #GRACE_HOST_COMPRESSION_ALLOWANCE_SS} of give lets the gap tighten along
-     * with its neighbours while staying recognisably the grace gap.
-     *
-     * <p>The allowance is measured from the <em>uncorrected</em> ideal {@code baseRestSs}, since
-     * {@link OpticalSpacing} shifts rests without touching struts; a corrected gap therefore ends up
-     * with slightly more or less give than the allowance, which is immaterial at these magnitudes.
+     * Allows {@link #GRACE_HOST_COMPRESSION_ALLOWANCE_SS} of give, so a fixed grace gap cannot turn
+     * an otherwise-fittable line infeasible. Measured from the <em>uncorrected</em> ideal
+     * {@code baseRestSs}, since {@link OpticalSpacing} shifts rests without touching struts.
      */
     private static double graceCompressionFloorSs(ElementColumn prev, double baseRestSs) {
         if (!prev.isGraceNote()) {
@@ -519,24 +319,12 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Builds one spring per adjacent column pair, so the returned list has
-     * {@code columns.size() - 1} entries (empty for a line of 0 or 1 columns).
-     * <p>
-     * Beam handling ends here: {@link #buildSpring} resolves the beam-internal base rest from the
-     * columns' own beam-group membership, so every downstream stage (lyric stretch, solver) can
-     * stay beam-unaware. There is no separate even-distribution pass — the retired engine's
-     * even distribution across a beam group existed solely to spread <em>lyric</em> expansion,
-     * and lyric expansion is now a line-wide additive lift applied over these springs.
-     * With lyrics factored out, that pass reduces to the per-pair tight rests below, which keeps
-     * non-lyric beam spacing identical to the old engine.
+     * Beam handling ends here: every downstream stage can stay beam-unaware.
      *
-     * @param columns List of columns in note order. These need not be the line's own elements in
-     *                the line's own order — an insertion preview splices a not-yet-added column in
-     *                — so any line-scoped floor must key off the pair's elements rather than off
-     *                their position in this list.
-     * @param line    The line containing these columns; supplies the line rest and the line-scoped
-     *                spacing context
-     * @return Springs for gaps {@code (i, i+1)}, in column order
+     * @param columns These need not be the line's own elements in the line's own order — an
+     *                insertion preview splices a not-yet-added column in — so any line-scoped
+     *                floor must key off the pair's elements rather than off their position in
+     *                this list.
      */
     public static List<Spring> buildSprings(List<ElementColumn> columns, Line line) {
         var lineRestSs = line.getSong().getDefaultRestLengthSs();
@@ -558,15 +346,9 @@ public final class HorizontalSpacingCalculator {
     // ==========================================================================
 
     /**
-     * The horizontal solve for one line: the anchor X the chain grows from, the lyric-lifted spring
-     * chain, and the solver's verdict. Both {@link LayoutEngine} and the insertion pre-check
+     * The horizontal solve for one line. Both {@link LayoutEngine} and the insertion pre-check
      * ({@link InsertionSpacingCalculator}) run the identical solve through {@link #solveLine} /
-     * {@link #solveChain}, so a line the pre-check accepts is one the layout can always place — the
-     * two can never disagree.
-     *
-     * @param firstXSs the anchor the solved gaps are laid out from
-     * @param springs  the lyric-lifted spring chain that was solved
-     * @param result   the solver's verdict (solved gap lengths, or infeasible)
+     * {@link #solveChain}, so they can never disagree.
      */
     public record LineSolution(double firstXSs, List<Spring> springs, SpringSolveResult result) {
         public LineSolution {
@@ -579,32 +361,15 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the X the solved spring chain grows from: the notehead's left edge pinned at
-     * {@link #calculateFirstElementXSs(Line)}.
-     * <p>
-     * An accidental does not move the notehead. LilyPond measures this distance to the note
-     * column's reference point, which is the notehead's left edge, and lets the accidental hang
-     * left of it into the gap; the accidental reaches the spacing only through
-     * {@code Paper_column::minimum_distance}, a collision floor that cannot bind at the gaps
-     * {@link StaffHeaderMetrics} leaves here.
-     * <p>
-     * A wide first syllable does still push the origin right, so the lyric does not crowd the
-     * clef or key signature. Lyrics center on the notehead center, so the syllable's left edge
-     * sits at {@code origin + rightExtentExclAug/2 − syllableWidth/2}.
+     * An accidental does not move the notehead; LilyPond measures to the notehead's left edge. A
+     * wide first syllable does still push the origin right, so the lyric does not crowd the clef
+     * or key signature.
      */
     public static double calculateAnchorXSs(ElementColumn firstColumn, Line line) {
         return calculateAnchorXSs(firstColumn, line.getRunningKey());
     }
 
-    /**
-     * The same anchor against a stated header key rather than the one {@code line} currently
-     * carries, so an edit that re-headers a line can be measured before it is committed
-     * ({@link KeyEditFitCalculator}). A wider key signature moves the whole chain right.
-     *
-     * @param firstColumn the chain's first column
-     * @param headerKey   the key the header draws
-     * @return the anchor X the solved gaps are laid out from
-     */
+    /** The same anchor against a stated header key, so a re-header can be measured before commit ({@link KeyEditFitCalculator}). */
     public static double calculateAnchorXSs(ElementColumn firstColumn, Key headerKey) {
         var firstElementXSs = calculateFirstElementXSs(headerKey);
         var firstXSs = firstElementXSs;
@@ -620,17 +385,8 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Solves a lyric-lifted spring chain against the staff width. The span the gaps may consume is
-     * the margin minus the anchor and minus the trailing reservation, so the last glyph lands its
-     * right edge — not its origin — at or before the margin. Shared by full layout and the insertion
-     * pre-check so both ask the solver the identical fit question.
-     *
-     * @param springs               the lyric-lifted spring chain
-     * @param firstXSs              the anchor the chain grows from ({@link #calculateAnchorXSs})
-     * @param trailingReservationSs the span to keep clear past the last column's origin
-     *                              ({@link #trailingReservationSs})
-     * @param staffRightMarginSs    the maximum allowed line width in staff spaces
-     * @return the solver's verdict
+     * The span the gaps may consume leaves the last glyph's right edge, not its origin, at or
+     * before the margin. Shared by full layout and the insertion pre-check.
      */
     public static SpringSolveResult solveChain(
         List<Spring> springs,
@@ -642,40 +398,18 @@ public final class HorizontalSpacingCalculator {
         return SpringSpacer.solve(springs, availableSpanSs);
     }
 
-    /**
-     * Returns the span to reserve for {@code lastColumn} at the end of the solved chain, for the
-     * key change {@code line} actually leads into ({@link LineKeys#of(Line)}).
-     *
-     * @param lastColumn the chain's last column
-     * @param line       the line being solved (for the song's line rest and the next line's key)
-     * @return the span to pass as {@code trailingReservationSs} to {@link #solveChain}
-     */
     public static double trailingReservationSs(ElementColumn lastColumn, Line line) {
         return trailingReservationSs(lastColumn, line, LineKeys.of(line));
     }
 
     /**
-     * Returns the span to reserve for {@code lastColumn} at the end of the solved chain: its own
-     * right extent, plus a trailing gap. The gap is zero when {@code lastColumn} carries the
-     * auto-maintained terminal barline — a terminal is pinned flush-right by
-     * {@code LayoutEngine.positionTerminalFlushRight}, so its own extent already ends the line —
-     * and otherwise a full line rest, so any other last element stops one line rest short of the
-     * margin instead of sitting flush against it.
+     * The column's own right extent plus a trailing gap: zero when {@code lastColumn} carries the
+     * auto-maintained terminal barline, which is pinned flush-right, and a full line rest otherwise.
      *
      * <p>A line that leads into a {@link CautionaryKeySignature} takes that cautionary's
-     * {@link CautionaryKeySignature#reservationSs() run} as its whole trailing gap, in place of the
-     * two clauses above — the cautionary is drawn <em>into</em> the trailing space rather than after
-     * it, and its own lead-in already carries whatever separation the last element is owed. Taking
-     * the larger of the two instead would leave a narrow cautionary further from its barline than
-     * {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS}. Only the song's last line carries the
-     * auto-maintained terminal, and only a line with a line after it leads into a cautionary, so
-     * the terminal clause and this one never compete.
-     *
-     * @param lastColumn the chain's last column
-     * @param line       the line being solved (for the song's line rest)
-     * @param keys       the keys to solve the line against — its own when the line is being laid
-     *                   out, an edit's projection when one is being measured
-     * @return the span to pass as {@code trailingReservationSs} to {@link #solveChain}
+     * {@link CautionaryKeySignature#reservationSs() run} as its whole trailing gap instead; taking
+     * the larger of the two would leave it further from its barline than
+     * {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}.
      */
     private static double trailingReservationSs(ElementColumn lastColumn, Line line, LineKeys keys) {
         var song = line.getSong();
@@ -696,16 +430,10 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Builds the springs for {@code columns}, lifts their rests for lyrics, anchors the chain, and
-     * solves it against the staff width — the whole horizontal solve for a line in one call. The
-     * caller supplies the final ordered column list (full layout builds every column including the
-     * terminal; the insertion pre-check splices the new column in), and both get the same anchor,
-     * span and solve, so their verdicts agree.
+     * The caller supplies the final ordered column list, so full layout and the insertion
+     * pre-check get the same anchor, span and solve, and their verdicts agree.
      *
-     * @param columns            the line's columns in element order (never empty)
-     * @param line               the line being solved (for the song's line rest and key signature)
-     * @param staffRightMarginSs the maximum allowed line width in staff spaces
-     * @return the anchor, the lifted spring chain, and the solver's verdict
+     * @param columns never empty
      */
     public static LineSolution solveLine(List<ElementColumn> columns, Line line, double staffRightMarginSs) {
         return solveLine(columns, line, staffRightMarginSs, LineKeys.of(line));
@@ -714,16 +442,10 @@ public final class HorizontalSpacingCalculator {
     /**
      * The same solve against <em>projected</em> keys rather than the ones the song currently holds,
      * so an edit that re-keys a line can be measured before it is committed
-     * ({@link KeyEditFitCalculator}). Everything else — springs, lyric lift, optical corrections,
-     * anchor, reservation, solver — is the identical path {@link #solveLine(List, Line, double)}
-     * takes, which is what makes a pre-check verdict and the committed layout agree.
+     * ({@link KeyEditFitCalculator}).
      *
-     * @param columns            the line's columns in element order (never empty)
-     * @param line               the line being solved (for the song's line rest and beam lookup)
-     * @param staffRightMarginSs the maximum allowed line width in staff spaces
-     * @param keys               the keys to solve against; {@link LineKeys#of(Line)} is what the
-     *                           committed layout uses
-     * @return the anchor, the lifted spring chain, and the solver's verdict
+     * @param columns never empty
+     * @param keys    {@link LineKeys#of(Line)} is what the committed layout uses
      */
     public static LineSolution solveLine(
         List<ElementColumn> columns, Line line, double staffRightMarginSs, LineKeys keys) {
@@ -741,15 +463,6 @@ public final class HorizontalSpacingCalculator {
         return new LineSolution(firstXSs, springs, result);
     }
 
-    /**
-     * Debug dump of one line solve: a header with the available span, the chain's natural span and
-     * the solver's verdict, then one row per gap with the pre-correction rest, the optical
-     * correction delta, the strut floor, the resulting natural length, the solved (possibly
-     * compressed) length, and the ink-to-ink white that length leaves — so ideal-vs-compressed
-     * spacing, and length-vs-perceived-white, can both be compared per gap from the log alone. A gap
-     * whose correction was non-zero gets a second line breaking it into its three terms. Only ever
-     * called under {@link LogUtils#isTracingSpacing}, i.e. with {@code DEBUG_SPACING} set.
-     */
     private static void logLineSolve(
         List<ElementColumn> columns,
         Line line,
@@ -805,23 +518,10 @@ public final class HorizontalSpacingCalculator {
         LOG.debug("{}", sb);
     }
 
-    /**
-     * The ink-to-ink gap a solved spring actually leaves on screen: the origin-to-origin
-     * {@code placedSs} less {@code prev}'s right extent and less {@code curr}'s left extent (which is
-     * negative when it has an accidental). This — not the spring length — is the white the eye
-     * judges, and it is what makes two gaps with equal solved lengths look unequal when the columns
-     * flanking them carry different amounts of ink.
-     */
     private static double whitespaceSs(double placedSs, ElementColumn prev, ElementColumn curr) {
         return placedSs - rightExtentFacingSs(prev, curr) + curr.getLeftExtentSs();
     }
 
-    /**
-     * Appends the per-term breakdown of a gap's optical correction, plus the two geometric inputs
-     * that drive the note-to-note terms, so a correction that fired can be told apart from one that
-     * was skipped and from one that cancelled against another. Emits nothing when no term fired.
-     * Only ever called under {@link LogUtils#isTracingSpacing}.
-     */
     private static void appendCorrectionBreakdown(StringBuilder sb, ElementColumn prev, ElementColumn curr) {
         var oppositeSs = OpticalSpacing.oppositeStemCorrectionSs(prev, curr);
         var sameSs = OpticalSpacing.sameDirectionCorrectionSs(prev, curr);
@@ -842,12 +542,6 @@ public final class HorizontalSpacingCalculator {
         }
     }
 
-    /**
-     * Compact per-column label for {@link #logLineSolve}: element type, and when stemmed the stem
-     * direction, the notehead-center Ss, and the column's whole vertical span. The span is what the
-     * overlap ramp reads, and it is where a grace note differs from a full note of the same value —
-     * shorter stem, smaller head — so it has to be visible next to the correction it produced.
-     */
     private static String describeForLog(ElementColumn column) {
         var type = column.getElement().getType();
         var direction = column.stemDirection();
@@ -866,40 +560,23 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the offset from a grace note's column origin (its notehead left edge) to the left edge
-     * of its syllable box — negative when the syllable starts left of the notehead. Single source of
-     * truth for where a grace lyric sits: {@link LyricLayoutBuilder} adds it to the grace's X to
-     * place the box, and the extent methods below derive the neighbour reservations from the same
-     * formula.
+     * Negative when the syllable starts left of the notehead. Single source of truth for where a
+     * grace lyric sits: {@link LyricLayoutBuilder} adds it to the grace's X to place the box, and
+     * the extent methods below derive the neighbour reservations from the same formula. The
+     * reservation passes the ideal {@link #idealGraceHostUnionWidthSs}; the placement runs after
+     * the solve and passes the union actually produced.
      * <p>
-     * The one input the two callers cannot share is the union width. The reservation runs while
-     * the line is still being solved, so it has to pass the ideal {@link #idealGraceHostUnionWidthSs};
-     * the placement runs afterwards and passes the union the solver actually produced, which differs
-     * from the ideal by the optical correction and by any strut that clamped the gap. Centering on
-     * the ideal width while a different width is drawn is what left a grace syllable and its melisma
-     * sitting off their own two notes.
-     * <p>
-     * The grace and its host are one unioned column for lyric layout, the union width wide. The
-     * syllable is not the whole of what is drawn: a pair that carries its own melisma
-     * ({@link PairMelisma#CARRIED}) draws an extender at least
-     * {@link LyricLayoutBuilder#MIN_MELISMA_LENGTH_SS} long past the syllable, and that extender is
-     * part of the content being placed.
+     * The grace and its host are one unioned column for lyric layout, the union width wide. A pair
+     * that carries its own melisma ({@link PairMelisma#CARRIED}) draws an extender at least
+     * {@link LyricLayoutBuilder#MIN_MELISMA_LENGTH_SS} long past the syllable.
      * <ul>
      *   <li>syllable narrower than the grace notehead → center the whole syllable on the notehead;
      *   <li>syllable alone spanning the union → the melisma is not drawn at all
-     *       ({@link #graceSyllableSpansUnion}), so center the syllable on the union and let it
-     *       overhang each side equally;
+     *       ({@link #graceSyllableSpansUnion}), so center the syllable on the union;
      *   <li>syllable plus melisma within the union → center the syllable's <em>first grapheme</em> on
-     *       the notehead, so the syllable reads as beginning at the grace note and flows rightward
-     *       toward the host;
-     *   <li>syllable plus melisma wider than the union → center the two together on the union, so
-     *       the pair keeps its syllable and its extender balanced over its own two notes.
+     *       the notehead;
+     *   <li>syllable plus melisma wider than the union → center the two together on the union.
      * </ul>
-     *
-     * @param syllable the grace's syllable, the union it is laid out on, and the pair's melisma
-     * @param grace    the grace's column, whose notehead the syllable is placed against
-     * @return the offset from {@code grace}'s origin to the syllable box's left edge, in staff
-     *     spaces
      */
     public static double graceLyricLeftOffsetSs(GraceSyllable syllable, ElementColumn grace) {
         var syllableWidthSs = syllable.syllableWidthSs();
@@ -926,23 +603,16 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the <em>ideal</em> width of the grace–host lyric union: the grace's right extent as the
-     * host faces it (the physical grace→host gap includes the grace flag only where the flag is
-     * beside the host, matching {@link #rightExtentFacingSs}), the fixed {@link #GRACE_HOST_REST_SS}
-     * grace→host gap, and the host's notehead width (neither the host's flag nor its dots widen the
-     * union). Measured from the grace's origin, so the union's right edge is the host's notehead
-     * right edge.
+     * Measured from the grace's origin, so the union's right edge is the host's notehead right
+     * edge; neither the host's flag nor its dots widen it.
      *
-     * <p>This is the union as it stands <em>before the line is solved</em>, which is what the
-     * reservation path needs: it is position-independent, so it can be asked for while the springs
-     * are still being built. It is not the union that ends up on the page. {@link OpticalSpacing}
-     * corrects the grace→host rest for the two notes' stem geometry, a strut can clamp the gap above
-     * or below that rest, and a tight line can compress it — none of which this formula sees. Code
-     * that places lyric ink runs after the solve and must measure the union off the final X
-     * positions instead; see {@code LyricLayoutBuilder.spacedGraceHostUnionWidthSs}.
+     * <p>This is the union <em>before the line is solved</em>, which the reservation path needs. It
+     * is not the union that ends up on the page ({@link OpticalSpacing}, struts and compression all
+     * change it): code that places lyric ink after the solve measures from the final X positions;
+     * see {@code LyricLayoutBuilder.spacedGraceHostUnionWidthSs}.
      *
-     * <p>An unpaired grace (the line's last column, before its host is entered) has no host span to
-     * face, so its union is its own full extent plus the gap the host will sit past.
+     * <p>An unpaired grace (the line's last column) has no host span to face, so its union is its
+     * own full extent plus the gap the host will sit past.
      */
     public static double idealGraceHostUnionWidthSs(ElementColumn grace, @Nullable ElementColumn host) {
         if (host == null) {
@@ -953,32 +623,22 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns whether a grace syllable of {@code syllableWidthSs} is at least as wide as the whole
-     * grace–host union. Centered on the union ({@link #graceLyricLeftOffsetSs}), such a syllable
-     * already ends at or past the host's notehead right edge — where the pair's melisma would end —
-     * so the melisma is not drawn. The melisma is still there in the model: it says the syllable is
-     * sung across both notes, and an extender that starts where it would have ended shows nothing of
-     * that.
+     * A syllable at least as wide as the whole grace–host union already ends at or past the host's
+     * notehead right edge, so the pair's melisma is not drawn. The melisma stays in the model.
      *
-     * <p>{@code unionWidthSs} is the caller's, for the reason given on {@link #graceLyricLeftOffsetSs}
-     * — whether the syllable covers the pair has to be judged against the union that gets drawn, not
-     * the ideal one.
+     * <p>{@code unionWidthSs} is the caller's, judged against the union that gets drawn, not the
+     * ideal one (see {@link #graceLyricLeftOffsetSs}).
      */
     public static boolean graceSyllableSpansUnion(double syllableWidthSs, double unionWidthSs) {
         return syllableWidthSs >= unionWidthSs;
     }
 
     /**
-     * Returns whether a grace–host pair carries the melisma of its own that
-     * {@code LyricRun.syncGraceHostMelisma} maintains: the grace starts one and the host stops it. A
-     * hyphenated grace syllable draws a hyphen to the next syllable instead, and a host that carries
-     * the melisma onward ({@link Lyric.Extend#CONTINUE}) ends it somewhere past the pair, so neither
-     * is the pair's own.
+     * Whether a grace–host pair carries the melisma of its own that
+     * {@code LyricRun.syncGraceHostMelisma} maintains: the grace starts one and the host stops it.
      *
-     * @param graceLyric the grace's lyric for the script being laid out, or null if it has none
-     * @param hostLyric  the host's lyric for the same script, or null if it has none
-     * @return {@link PairMelisma#CARRIED} when the pair carries that melisma, otherwise
-     *     {@link PairMelisma#NONE}
+     * @param graceLyric null if the grace has none for the script being laid out
+     * @param hostLyric  null if the host has none for the same script
      */
     public static PairMelisma pairCarriesGraceHostMelisma(
         @Nullable Lyric graceLyric, @Nullable Lyric hostLyric) {
@@ -992,28 +652,16 @@ public final class HorizontalSpacingCalculator {
         return carried ? PairMelisma.CARRIED : PairMelisma.NONE;
     }
 
-    /**
-     * Whether a grace–host pair carries the melisma of its own that
-     * {@link #pairCarriesGraceHostMelisma} describes. Only a syllable on a grace note reads it.
-     */
     public enum PairMelisma {
-        /** The pair carries its own melisma, which is placed together with the syllable. */
         CARRIED,
-        /** The pair carries no melisma of its own; only the syllable is placed. */
         NONE
     }
 
     /**
-     * A grace note's syllable as {@link #graceLyricLeftOffsetSs} places it: the syllable, the
-     * grace–host union it is laid out on, and whether the pair draws a melisma of its own past
-     * it. The widths are given rather than read off the grace so a caller can supply a per-script
-     * box width.
+     * The widths are given rather than read off the grace so a caller can supply a per-script box
+     * width.
      *
-     * @param syllableWidthSs      the syllable's width
-     * @param firstGraphemeWidthSs the width of the syllable's first grapheme, measured in the font
-     *                             the syllable is drawn in
-     * @param unionWidthSs         the width of the grace–host union the syllable is laid out on
-     * @param pairMelisma          whether the grace–host pair carries its own melisma
+     * @param firstGraphemeWidthSs measured in the font the syllable is drawn in
      */
     public record GraceSyllable(
         double syllableWidthSs,
@@ -1023,15 +671,10 @@ public final class HorizontalSpacingCalculator {
     ) {}
 
     /**
-     * Returns the glyph-ink component a gap starting at {@code prev} carries: the span from
-     * {@code prev}'s origin to its right ink edge. This is the non-whitespace part of the gap's base
-     * rest, and the part {@link SpringSpacer} excludes from whitespace levelling. A grace
-     * gap is measured to the host note head, so the host's accidental does not widen it; for any
-     * other gap, augmentation is excluded so dots and falls never push the next column beyond the
-     * comfortable gap — in both cases the note-collision strut, which does use the full extents,
-     * keeps the glyphs apart. A grace's extent is the one {@code curr} faces
-     * ({@link #rightExtentFacingSs}), so the ideal gap and the strut discount the grace's flag on the
-     * same terms.
+     * The non-whitespace part of the gap's base rest, which {@link SpringSpacer} excludes from
+     * whitespace levelling. Augmentation is excluded so dots and falls never push the next column
+     * beyond the comfortable gap; the collision strut, which uses the full extents, keeps the
+     * glyphs apart.
      */
     private static double leftInkSs(ElementColumn prev, ElementColumn curr) {
         return prev.isGraceNote()
@@ -1040,46 +683,27 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the reducing factor applied to the line rest for this pair's base rest, which is
-     * {@link GapKind#weight()} — the same value the solver uses, so the reduction is applied
-     * identically at rest and under compression.
-     *
-     * <p>This is also the factor the lyric lift scales each gap's share of the lift by, so tight
-     * gaps stay proportionally tight. Grace and key-signature gaps are held out of the lift
-     * ({@link GapKind#isLiftExempt()}), so they never reach this method through that path.
-     *
-     * @param prev the column on the left of the gap
-     * @param curr the column on the right of the gap
-     * @return the factor; {@code 1} for a gap that takes the full line rest
+     * This is {@link GapKind#weight()} — the same value the solver uses, so the reduction is
+     * applied identically at rest and under compression. It is also the factor the lyric lift
+     * scales each gap's share by.
      */
     public static double restFactorFor(ElementColumn prev, ElementColumn curr) {
         return GapKind.of(prev, curr).weight();
     }
 
-    /**
-     * Returns whether the gap between two columns is internal to a single beam group. Adjacent
-     * beam groups have distinct ids, so the gap between them is a normal gap.
-     */
     private static boolean isBeamInternalGap(ElementColumn prev, ElementColumn curr) {
         return prev.sharesBeamGroupWith(curr);
     }
 
-    /**
-     * Returns whether the gap takes the tight beam-internal reduction: internal to one beam group
-     * and flanked by two notes both shorter than an eighth (sixteenths or faster). This is the
-     * condition behind {@link GapKind#TIGHT_BEAM}.
-     */
     private static boolean isTightBeamGap(ElementColumn prev, ElementColumn curr) {
         return isBeamInternalGap(prev, curr) && bothShorterThanEighth(prev, curr);
     }
 
     /**
-     * Returns the delta-X below which the columns' syllables would collide, or 0 when neither column
-     * bears a syllable. Each column contributes the half of its own syllable that overhangs toward
-     * the gap, separated by a lyric-appropriate floor gap so the syllables never come closer than a
-     * single space (non-hyphenated, including melisma) or the bare hyphen glyph width (hyphenated) —
-     * the floor {@code prev} carries as its {@link ElementColumn#getMinCollisionGapToNextSyllableSs()}.
-     * A lone syllable still reserves its footprint against an unlyriced neighbour.
+     * Each column contributes the half of its own syllable that overhangs toward the gap,
+     * separated by the floor {@code prev} carries as its
+     * {@link ElementColumn#getMinCollisionGapToNextSyllableSs()}. A lone syllable still reserves
+     * its footprint against an unlyriced neighbour.
      */
     private static double syllableCollisionFloorSs(
         ElementColumn prev,
@@ -1092,17 +716,12 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the delta-X this gap needs for the flanking syllables to clear each other by
-     * {@code gapAccessor}'s floor, or 0 when neither column's lyric reaches into the gap.
+     * Each side contributes the part of its syllable that overhangs toward the gap, measured from
+     * the notehead. {@code gapAccessor} selects the inter-syllable floor: the collision floor for
+     * a strut, or the comfortable gap for a lifted rest.
      *
-     * <p>Each side contributes the part of its syllable that overhangs toward the gap, measured from
-     * the notehead (accidentals and augmentation dots excluded), so a lone syllable still reserves
-     * its footprint against an unlyriced neighbour. {@code gapAccessor} selects which inter-syllable
-     * floor applies: the collision floor for a strut, or the comfortable gap for a lifted rest.
-     *
-     * <p>When {@code prev} hosts a grace, the grace column carries the syllable and its hyphen or
-     * space, so the floor comes from the grace rather than the empty host — the grace and its host
-     * behave as one unioned column for lyric layout.
+     * <p>When {@code prev} hosts a grace, the floor comes from the grace column, since the grace
+     * and its host behave as one unioned column for lyric layout.
      */
     static double lyricGapRequirementSs(
         ElementColumn prev,
@@ -1123,12 +742,6 @@ public final class HorizontalSpacingCalculator {
         return right + gapAccessor.applyAsDouble(gapSource) + left;
     }
 
-    /**
-     * Returns how far {@code column}'s syllable reaches left of the column origin (its notehead's
-     * left edge), used when the column is the right side of a gap. A grace column reaches however far
-     * {@link #graceLyricLeftOffsetSs} places its box left of the origin; a normal syllable-bearing
-     * column reaches half its width minus the notehead-center offset; anything else reaches nothing.
-     */
     static double lyricLeftExtentSs(ElementColumn column, @Nullable ElementColumn afterColumn) {
         if (column.isGraceNote() && afterColumn != null) {
             return Math.max(0, -graceLyricLeftOffsetSs(column, afterColumn));
@@ -1142,12 +755,9 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns how far {@code column}'s syllable reaches right of the column origin (its notehead's
-     * left edge), used when the column is the left side of a gap. A grace column reaches nothing
-     * (its lyric is deferred to the host). A host of a grace ({@code beforeColumn} is a grace)
-     * reaches however far the grace lyric's ink — syllable and melisma alike — lands past the host's
-     * own origin. A normal syllable-bearing column reaches half its width plus the notehead-center
-     * offset; anything else reaches nothing.
+     * A grace column reaches nothing (its lyric is deferred to the host). A host of a grace
+     * ({@code beforeColumn} is a grace) reaches however far the grace lyric's ink — syllable and
+     * melisma alike — lands past the host's own origin.
      */
     static double lyricRightExtentSs(ElementColumn column, @Nullable ElementColumn beforeColumn) {
         if (column.isGraceNote()) {
@@ -1166,18 +776,10 @@ public final class HorizontalSpacingCalculator {
         return 0;
     }
 
-    /**
-     * Returns the offset from {@code grace}'s origin to its syllable box, for the script the columns
-     * were built for — the one {@link ElementColumn#getSyllableWidthSs()} was measured for.
-     */
     private static double graceLyricLeftOffsetSs(ElementColumn grace, ElementColumn host) {
         return graceLyricLeftOffsetSs(idealGraceSyllable(grace, host), grace);
     }
 
-    /**
-     * Returns the grace's syllable as the reservation places it: measured for the script the
-     * columns were built for, on the ideal union ({@link #idealGraceHostUnionWidthSs}).
-     */
     private static GraceSyllable idealGraceSyllable(ElementColumn grace, ElementColumn host) {
         return new GraceSyllable(
             grace.getSyllableWidthSs(),
@@ -1187,14 +789,8 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns how far the grace's lyric ink reaches right of the grace's own origin: the syllable's
-     * right edge, plus the minimum-length melisma when the pair draws one.
-     *
-     * <p>The reservation is the melisma's <em>minimum</em> length, not the host notehead it prefers
-     * to end at: {@link LyricLayoutBuilder} clamps an extender back off a following syllable by one
-     * lyric space, which is narrower than the inter-syllable floor this extent is measured against,
-     * so an extender anchored at its host still gives way to a crowding syllable — but never below
-     * the minimum length that makes it read as a line at all.
+     * The reservation is the melisma's <em>minimum</em> length, not the host notehead it prefers
+     * to end at, since {@link LyricLayoutBuilder} clamps an extender back off a following syllable.
      */
     private static double graceLyricRightInkSs(ElementColumn grace, ElementColumn host) {
         var syllable = idealGraceSyllable(grace, host);
@@ -1209,22 +805,11 @@ public final class HorizontalSpacingCalculator {
         return syllableEndSs + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
     }
 
-    /**
-     * {@link #pairCarriesGraceHostMelisma} for the script the columns were built for. Read off the
-     * columns rather than their elements so the melisma this reserves space for belongs to the same
-     * script the syllable widths were measured for.
-     */
+    /** Read off the columns, so the melisma belongs to the script the syllable widths were measured for. */
     private static PairMelisma graceHostPairMelisma(ElementColumn grace, ElementColumn host) {
         return pairCarriesGraceHostMelisma(grace.getLyric(), host.getLyric());
     }
 
-    /**
-     * Returns the delta-X a connecting glissando needs to clear the next column's left-side glyphs
-     * (accidental included) and still keep its minimum visible length, or 0 when the previous
-     * column has no glissando. Inverts the retired greedy path's
-     * {@code gap = spacingSs + currLeft - prevRight} so the reservation is a hard floor on the
-     * spring's strut rather than a post-applied widening.
-     */
     private static double glissandoReservationFloorSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.hasGlissando()) {
             return 0;
@@ -1236,35 +821,16 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the delta-X a hairpin needs to reach {@link HairpinMetrics#MINIMUM_LENGTH_SS}, or 0
-     * when no hairpin on {@code line} runs from {@code prev}'s element to {@code curr}'s.
+     * Reserving for a text dynamic on a bound, which moves that bound's tip inward, is what stops an
+     * {@code f<} from being squashed on a compressed line (see {@link HairpinMetrics#MINIMUM_LENGTH_SS}).
      * <p>
-     * The wedge is drawn from {@code prev}'s origin plus a left-tip offset to {@code curr}'s origin
-     * plus a right-tip offset, so reaching {@code MINIMUM_LENGTH_SS} needs an origin-to-origin
-     * delta of at least {@code MINIMUM_LENGTH_SS + leftOffset - rightOffset}. With no dynamic on
-     * either bound those offsets are 0 and {@code curr}'s notehead width, reproducing the plain
-     * {@code MINIMUM_LENGTH_SS - noteheadWidth}. A text dynamic on a bound moves that bound's tip
-     * inward by roughly two staff spaces ({@code HairpinEndpoints.dynamicLeftTipOffsetSs} /
-     * {@code dynamicRightTipOffsetSs}), and reserving for it is what stops an {@code f<} from
-     * being squashed to nothing on a compressed line — LilyPond likewise pushes the notes apart
-     * rather than shortening the wedge (see {@link HairpinMetrics#MINIMUM_LENGTH_SS}).
+     * The question is asked about the two <em>elements</em> being spaced, not their position in
+     * the column list, since an insertion preview splices a not-yet-added column between a
+     * hairpin's anchor and end. A pair with an element the line does not contain reserves nothing.
      * <p>
-     * The question is asked about the two <em>elements</em> being spaced, not about their position
-     * in the column list. That distinction is the whole point: an insertion preview splices a
-     * not-yet-added column between a hairpin's anchor and its end, and a column caching "a hairpin
-     * ends at whatever follows me" would then reserve the wedge's length against the newly typed
-     * note instead. A pair with an element the line does not contain reserves nothing.
-     * <p>
-     * This only constrains a hairpin whose anchor and end are adjacent columns. LilyPond's spacing
-     * rod spans the whole interval; SongScribe's {@link Spring} model has only per-pair struts. This
-     * is not a meaningful gap — 69% of corpus hairpins span exactly two adjacent notes, and every
-     * longer one is already wider than {@code MINIMUM_LENGTH_SS}.
-     * <p>
-     * Two of {@code HairpinEndpoints}' tip rules are not reserved for. A dynamic on the element
-     * <em>outside</em> the span pulls a tip by an amount that depends on a neighbouring pair's
-     * spring, which a per-pair strut cannot see. The back-to-back rule, which stops both tips
-     * short of the shared notehead's center, moves a tip inward too, and this method does not
-     * reserve for it.
+     * This only constrains a hairpin whose anchor and end are adjacent columns. A dynamic on the
+     * element <em>outside</em> the span, and the back-to-back rule, also move a tip inward and are
+     * not reserved for.
      */
     private static double hairpinReservationFloorSs(
         @Nullable Line line, ElementColumn prev, ElementColumn curr) {
@@ -1292,10 +858,6 @@ public final class HorizontalSpacingCalculator {
             - hairpinRightTipOffsetSs(endElement, curr.getNoteheadWidthSs());
     }
 
-    /**
-     * How far right of the anchor's own origin a wedge's left tip starts: clear of the padded
-     * advance box of a text dynamic sitting on the anchor, or 0 when it carries none.
-     */
     private static double hairpinLeftTipOffsetSs(StaffElement anchorElement) {
         var dynamic = anchorElement.findAttachment(DynamicAttachment.class);
 
@@ -1306,10 +868,6 @@ public final class HorizontalSpacingCalculator {
         return HairpinEndpoints.dynamicLeftTipOffsetSs(anchorElement, dynamic);
     }
 
-    /**
-     * How far right of the end's own origin a wedge's right tip stops: short of the padded advance
-     * box of a text dynamic sitting on the end, or past the notehead when it carries none.
-     */
     private static double hairpinRightTipOffsetSs(
         StaffElement endElement, double noteheadWidthSs) {
 
@@ -1326,12 +884,6 @@ public final class HorizontalSpacingCalculator {
     // Beam Group Spacing
     // ==========================================================================
 
-    /**
-     * Returns whether both beamed columns are shorter than an eighth note (sixteenths or faster),
-     * the condition for the tight beam-internal gap. {@link ElementType#beamCount} returns 1 for
-     * an eighth note (quaver), a larger value for shorter notes, and 0 for a type that is not
-     * beamable.
-     */
     private static boolean bothShorterThanEighth(ElementColumn prev, ElementColumn curr) {
         return prev.getElement().getType().beamCount() > 1
             && curr.getElement().getType().beamCount() > 1;

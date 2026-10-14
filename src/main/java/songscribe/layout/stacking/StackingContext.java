@@ -32,9 +32,6 @@ import songscribe.layout.LayoutResultBuilder;
 
 /**
  * Shared context passed to all stacking delegates.
- * <p>
- * Holds the column list, element-to-column map, line, and layout builder
- * that every stacker needs.
  */
 public class StackingContext {
 
@@ -78,9 +75,6 @@ public class StackingContext {
         return lowestNoteBotSs;
     }
 
-    /**
-     * Updates the lowest note bottom if the given value is further below staff center.
-     */
     public void updateLowestNoteBotSs(double botSs) {
         if (botSs > lowestNoteBotSs) {
             lowestNoteBotSs = botSs;
@@ -91,19 +85,12 @@ public class StackingContext {
         return botContentExtentSs;
     }
 
-    /**
-     * Updates the below-staff content extent if the given value is further below the staff.
-     * Tracks the lowest visible Y across notes, stems, and downward-arcing ties.
-     */
     public void updateBotContentExtentSs(double botSs) {
         if (botSs > botContentExtentSs) {
             botContentExtentSs = botSs;
         }
     }
 
-    /**
-     * Builds a map from StaffElement to its ElementColumn for span lookups.
-     */
     private static Map<StaffElement, ElementColumn> buildColumnMap(List<ElementColumn> columns) {
         var map = new HashMap<StaffElement, ElementColumn>(columns.size());
 

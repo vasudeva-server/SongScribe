@@ -31,23 +31,10 @@ import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.Tempo;
 
 /**
- * Immutable snapshot of all song-level fields, built by
- * {@link SongIO.DocumentReader} during file parsing.
- * <p>
- * Passed to {@link Song#loadFrom(SongData)} so that
- * Song can apply all fields atomically. After installation,
- * {@code ScoreView.setSong} posts
- * a {@link songscribe.message.notification.DocumentDidLoadNotification}.
- * <p>
- * The {@code tempo} field is {@code @Nullable}; a null value means the song
- * file contained no {@code <tempo>} element and the song has no explicit tempo.
- * Fonts are not stored on {@code SongData}; they are built directly into a
- * {@link songscribe.font.DocumentFonts} by the reader and installed on
- * the score view separately.
- * <p>
- * No key is carried here either. A song has no key of its own — its key is line 0's — so a
- * reader establishes the key its file named on the {@link Line} it belongs to, and the lines
- * arrive already carrying it.
+ * Immutable snapshot of all song-level fields, so that Song can apply them atomically.
+ *
+ * <p>A null {@code tempo} means the file held no tempo and the song has none. No key is
+ * carried: a song's key is line 0's.
  */
 public record SongData(
     @Nullable Tempo tempo,

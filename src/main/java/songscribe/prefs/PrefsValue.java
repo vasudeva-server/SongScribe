@@ -23,27 +23,12 @@ package songscribe.prefs;
 /**
  * An enum whose constants are what a preference holds.
  *
- * <p>A stored preference is a string, and every enum stored in one needs the same two
- * things: the string a constant is written as, and the constant a stored string reads
- * back to. This interface supplies the first, and {@link Prefs#getChoice} derives the
- * second from it, so no enum writes its own decoder and no caller writes a conversion at
- * a bind site.
- *
- * <p><b>This is the stored format, not a display string.</b> It is written into
- * {@code prefs.json} and read back from files written by earlier versions, so changing
- * one is a file migration rather than a rename — which is why the stored values are not
- * uniform in style across implementations and should not be made so. Nothing here is
- * shown to the user; a constant's label comes from {@code Strings}.
- *
- * <p>Named for the value rather than the key, because {@link PrefsKey#key} is already
- * the other half of the same JSON entry: a key names the preference, this names what the
- * preference holds.
+ * <p>The stored value is the persisted format, not a display string: it is read back from files
+ * written by earlier versions, so changing one is a file migration. Labels come from
+ * {@code Strings}.
  */
 public interface PrefsValue {
 
-    /**
-     * @return the string this constant is stored as, matched case-insensitively when
-     *     read back, and unique among the constants of its enum
-     */
+    /** @return the string this constant is stored as: unique among its enum's constants, matched case-insensitively on read */
     String storedValue();
 }

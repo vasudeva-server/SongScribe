@@ -38,39 +38,14 @@ import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Builds {@link ElementColumn} instances from a Line's elements.
- * <p>
- * This builder constructs the fundamental spacing units for the engraving system.
- * Each element (note, rest, barline, etc.) becomes an ElementColumn with:
- * <ul>
- *   <li>Horizontal extents (left for accidentals, right for dots)</li>
- *   <li>Stem positions (for beam coordination)</li>
- *   <li>Syllable text and measured width (for lyric-driven spacing)</li>
- *   <li>Beam group reference (for internal spacing coordination)</li>
- * </ul>
- * <p>
- * Usage:
- * <pre>{@code
- * var builder = new ElementColumnBuilder(lyricRenderMetrics);
- * List<ElementColumn> columns = builder.buildColumns(line);
- * }</pre>
  */
 public class ElementColumnBuilder {
 
     /**
-     * Grace notehead width (ss) — the regular black notehead at {@link ElementType#GRACE_NOTE_SCALE},
-     * which is exactly what {@code StaffElementRenderer.renderNoteHead} paints for a grace note (the
-     * {@code NOTEHEAD_BLACK} glyph in the grace-scaled font).
-     *
-     * <p>Deliberately <em>not</em> SMuFL's {@code noteheadBlackSmall}: Bravura's {@code *Small}
-     * optional glyphs are cue-<em>staff</em> glyphs, sized for a reduced staff rather than reduced
-     * against a full-size one, so that bbox is 1.408 ss — wider than the full-size notehead it is
-     * supposed to shrink, and 0.52 ss wider than the head actually drawn. Reserving it made every
-     * grace column charge phantom ink into its gaps.
-     *
-     * <p>The layout itself no longer reads this: it consults
-     * {@code ElementType.GRACE_QUAVER.getElementWidthSs()}, which derives the same number by a
-     * different route. The constant is kept as the independent cross-check the tests assert against,
-     * so a regression back to {@code noteheadBlackSmall} fails a test instead of passing unnoticed.
+     * Grace notehead width: the regular black notehead at {@link ElementType#GRACE_NOTE_SCALE}.
+     * Deliberately <em>not</em> SMuFL's {@code noteheadBlackSmall}, a cue-staff glyph wider than
+     * the head actually drawn. The layout does not read this; it is the independent cross-check
+     * the tests assert against.
      */
     public static final double GRACE_NOTE_HEAD_WIDTH_SS =
         SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs() * ElementType.GRACE_NOTE_SCALE;
@@ -81,21 +56,10 @@ public class ElementColumnBuilder {
 
     private final LyricRenderMetrics lyricRenderMetrics;
 
-    /**
-     * Creates a new ElementColumnBuilder.
-     *
-     * @param lyricRenderMetrics Song-wide lyric render metrics (font + glyph widths)
-     */
     public ElementColumnBuilder(LyricRenderMetrics lyricRenderMetrics) {
         this.lyricRenderMetrics = lyricRenderMetrics;
     }
 
-    /**
-     * Builds ElementColumns for all elements in a line.
-     *
-     * @param line The line to process
-     * @return List of ElementColumns in element order
-     */
     public List<ElementColumn> buildColumns(Line line) {
         var elementCount = line.elementCount();
 
@@ -112,14 +76,6 @@ public class ElementColumnBuilder {
         return columns;
     }
 
-    /**
-     * Builds a single ElementColumn for an element whose index on the line is already known.
-     *
-     * @param element      The element to process
-     * @param line         The line containing the element (for beaming lookup)
-     * @param elementIndex {@code element}'s index on {@code line}
-     * @return The constructed ElementColumn
-     */
     public ElementColumn buildColumn(StaffElement element, Line line, int elementIndex) {
         // Determine beam membership first — needed for right extent calculation. A grace
         // note sitting inside a beam span is not a member: the beam passes over it and it
@@ -129,31 +85,14 @@ public class ElementColumnBuilder {
     }
 
     /**
-     * Builds a column for an element not attached to any line — a fragment clone about to be
-     * pasted. Carries the element's real syllable data (so a paste preview is spaced by the same
-     * lyric rules as the committed layout) but no beam membership, since beam grouping is
-     * determined by position on a line the element does not yet occupy.
-     * <p>
-     * The script is passed in for the same reason: an element off a line cannot be asked which song
-     * it belongs to, so it cannot find the active script on its own.
-     *
-     * @param element     The element to process (not necessarily on any line)
-     * @param activeScript The script being laid out, from {@link songscribe.dom.Song#getActiveScript()}
-     * @return The constructed ElementColumn, unbeamed
+     * Carries the element's real syllable data but no beam membership, since beam grouping is
+     * determined by position on a line the element does not yet occupy. The script is passed in
+     * because an element off a line cannot find the active script.
      */
     public ElementColumn buildDetachedColumn(StaffElement element, Song.Script activeScript) {
         return buildColumnForBeam(element, null, activeScript);
     }
 
-    /**
-     * Builds an ElementColumn for {@code element}, beamed iff {@code beam} is non-null.
-     * A detached element (a fragment clone not yet on a line) has no beam membership.
-     *
-     * @param element     The element to process
-     * @param beam        The beam {@code element} belongs to, or null if it is unbeamed
-     * @param activeScript The script being laid out — the only one this column knows about
-     * @return The constructed ElementColumn
-     */
     private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam, Song.Script activeScript) {
         var beaming = Beaming.of(beam);
         var extents = new ElementColumn.Extents(
@@ -202,12 +141,6 @@ public class ElementColumnBuilder {
     }
 
     /**
-     * Builds a column that carries only {@code element}'s horizontal extents, for spacing a pair
-     * of columns without laying out a line: unbeamed, with no lyric, and with zero stem extents.
-     * Right for an element being inserted or previewed, which carries no lyric and belongs to no
-     * beam until it is on a line.
-     *
-     * @param element the element to build a column for, on a line or not
      * @return the column; its X is unset
      */
     static ElementColumn buildLightweightColumn(StaffElement element) {
@@ -225,14 +158,6 @@ public class ElementColumnBuilder {
     // Horizontal Extent Calculations
     // ==========================================================================
 
-    /**
-     * Calculates the left extent of an element column.
-     * This includes any accidental to the left of the element head.
-     *
-     * @param element The element
-     * @return Left extent in ss relative to element head left edge (glyph origin);
-     *         0.0 with no accidental, negative when an accidental is present
-     */
     public static double calculateLeftExtentSs(StaffElement element) {
         // Element head left edge is at xSs (the glyph origin), so the extent starts at 0
         var extentSs = 0.0;
@@ -246,62 +171,26 @@ public class ElementColumnBuilder {
         return extentSs;
     }
 
-    /**
-     * Calculates the right extent of an element column.
-     * This includes the element head right edge, any dots, any fall reservation, and the flag
-     * extent for unbeamed flagged elements (8th, 16th, 32nd, grace quaver).
-     * <p>
-     * Used for minimum spacing calculations, which must account for dots and fall to prevent overlap.
-     *
-     * @param element   The element
-     * @param beaming   whether the element is part of a beam group (a beamed element's flag is
-     *                  suppressed)
-     * @return Right extent in ss relative to element head left edge (glyph origin)
-     */
+    /** Includes dots and fall, for minimum spacing. */
     public static double calculateRightExtentSs(StaffElement element, Beaming beaming) {
         return calculateRightExtentInternal(element, beaming, Augmentation.INCLUDED);
     }
 
-    /**
-     * Calculates the right extent of an element column, excluding augmentation dots and fall.
-     * <p>
-     * Used for comfortable (default) spacing so dots and a fall do not push the next element
-     * unless the minimum gap would otherwise be violated — mirroring how accidentals
-     * on the left do not widen the gap beyond the comfortable default.
-     *
-     * @param element   The element
-     * @param beaming   whether the element is part of a beam group (a beamed element's flag is
-     *                  suppressed)
-     * @return Right extent in ss relative to element head left edge (glyph origin), dots and fall excluded
-     */
+    /** Excludes dots and fall, for comfortable (default) spacing. */
     public static double calculateRightExtentExcludingAugmentationSs(
         StaffElement element, Beaming beaming) {
 
         return calculateRightExtentInternal(element, beaming, Augmentation.EXCLUDED);
     }
 
-    /**
-     * Whether a right extent reaches past the notehead and flag to the note's augmentation — its
-     * dots and any fall.
-     */
     private enum Augmentation {
-
-        /** The extent reaches the dots and fall: minimum spacing. */
         INCLUDED,
-
-        /** The extent stops at the notehead and flag: comfortable spacing. */
         EXCLUDED
     }
 
     /**
      * The direction that decides a note's right extent is the drawn one
-     * ({@link NoteGeometry#effectiveDirection}): the flag hangs off the stem the renderer
-     * draws, and the dots sit beside it.
-     *
-     * @param element      the element
-     * @param beaming      whether the element is part of a beam group
-     * @param augmentation whether the extent reaches the dots and fall
-     * @return the right extent in ss relative to the element head's left edge (glyph origin)
+     * ({@link NoteGeometry#effectiveDirection}).
      */
     private static double calculateRightExtentInternal(
         StaffElement element,
@@ -359,23 +248,9 @@ public class ElementColumnBuilder {
     // ==========================================================================
 
     /**
-     * Calculates the Y position of the stem top.
-     * For stem-up elements, this is the stem tip above the element head.
-     * For stem-down or stemless elements, this is the top edge of the element's own glyph bounding
-     * box ({@link ElementType#getNoteheadTopOffsetSs()}) — a rest reaches far higher than a
-     * notehead, and a barline spans half the staff height — rather than a fixed notehead
-     * half-height. See {@code docs/layout-geometry.md} for the annotated diagram.
-     *
-     * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
-     * tip floats correspondingly lower — this keeps {@code getAbsoluteTopYSs()} on the real tip.
-     *
-     * <p>The direction and the length are the <em>drawn</em> ones
-     * ({@link NoteGeometry#effectiveDirection}, {@link NoteGeometry#stemLengthSs}), so a grace note
-     * — which always stems up on a shortened stem regardless of the direction it stores — reports
-     * the tip it actually renders rather than a full-length stem in a direction it never draws.
-     *
-     * @param element The element
-     * @return Stem top Y position in ss (relative to staff, negative = above)
+     * The direction and the length are the <em>drawn</em> ones
+     * ({@link NoteGeometry#effectiveDirection}, {@link NoteGeometry#stemLengthSs}), so
+     * {@code getAbsoluteTopYSs()} stays on the real tip. See {@code docs/layout-geometry.md}.
      */
     double calculateStemTopSs(StaffElement element) {
         var elementType = element.getType();
@@ -397,19 +272,7 @@ public class ElementColumnBuilder {
     }
 
     /**
-     * Calculates the Y position of the stem bottom.
-     * For stem-down elements, this is the stem tip below the element head.
-     * For stem-up or stemless elements, this is the bottom edge of the element's own glyph bounding
-     * box ({@link ElementType#getNoteheadBottomOffsetSs()}) — a rest reaches far lower than a
-     * notehead, and a barline spans half the staff height — rather than a fixed notehead
-     * half-height.
-     *
-     * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
-     * tip floats correspondingly higher. Direction and length are the drawn ones — see
-     * {@link #calculateStemTopSs}.
-     *
-     * @param element The element
-     * @return Stem bottom Y position in ss (relative to staff, positive = below)
+     * Direction and length are the drawn ones — see {@link #calculateStemTopSs}.
      */
     double calculateStemBottomSs(StaffElement element) {
         var elementType = element.getType();
@@ -434,12 +297,6 @@ public class ElementColumnBuilder {
     // Syllable Handling
     // ==========================================================================
 
-    /**
-     * Measures a syllable's advance width.
-     *
-     * @param syllable The syllable text
-     * @return Syllable width in staff spaces, or 0 if the text is empty
-     */
     private double measureSyllableWidthSs(String syllable) {
         if (syllable.isEmpty()) {
             return 0;

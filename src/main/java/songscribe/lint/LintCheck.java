@@ -28,34 +28,19 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
 /**
- * The algorithm of one {@link LintRule}: finds every place the song breaks the rule.
+ * The algorithm of one {@link LintRule}.
  */
 @FunctionalInterface
 interface LintCheck {
 
-    /**
-     * Finds every violation of this check's rule in {@code song}.
-     *
-     * @param song the song to examine; read only, never changed
-     * @return the violations, in song order; empty when the song keeps the rule
-     */
     List<Violation> check(Song song);
 
-    /** Receives one element of a {@link #walk} with its position in song order. */
     @FunctionalInterface
     interface ElementVisitor {
 
         void visit(StaffElement element, int position);
     }
 
-    /**
-     * Visits every element of {@code song} once, in song order: line by line, each line's
-     * elements in order, the terminal included.
-     *
-     * @param song    the song to walk; read only, never changed
-     * @param visitor receives each element with its position, which counts from 0 across the
-     *                whole song and so orders elements of different lines
-     */
     static void walk(Song song, ElementVisitor visitor) {
         var position = 0;
 
@@ -67,10 +52,7 @@ interface LintCheck {
         }
     }
 
-    /**
-     * Collects violations found out of song order, as a check does when it can tell only later
-     * in its pass that an earlier element is at fault, and hands them back in song order.
-     */
+    /** Hands violations found out of song order back in song order. */
     final class SongOrderedViolations {
 
         private record Positioned(int position, Violation violation) {
@@ -78,22 +60,10 @@ interface LintCheck {
 
         private final List<Positioned> found = new ArrayList<>();
 
-        /**
-         * Adds a violation found on the element at {@code position}.
-         *
-         * @param position  the element's position from {@link #walk}
-         * @param violation the violation found on that element
-         */
         void add(int position, Violation violation) {
             found.add(new Positioned(position, violation));
         }
 
-        /**
-         * The violations added so far.
-         *
-         * @return the violations ordered by the position of their element; violations on one
-         *         element keep the order they were added in
-         */
         List<Violation> inSongOrder() {
             return found.stream()
                         .sorted(Comparator.comparingInt(Positioned::position))

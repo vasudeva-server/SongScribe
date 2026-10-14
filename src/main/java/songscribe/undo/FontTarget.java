@@ -24,20 +24,11 @@ import songscribe.font.DocumentFonts;
 import songscribe.message.mutation.FontChange;
 
 /**
- * Where a replay applies a {@link FontChange}. The document fonts are the one piece of edited
- * state that does not live on the {@link songscribe.dom.Song}, so {@link MutationReplayer}
- * takes this alongside the song.
+ * Where a replay applies a {@link FontChange}; the document fonts do not live on the song.
  */
 @FunctionalInterface
 public interface FontTarget {
 
-    /**
-     * Replaces the document fonts with {@code fonts}, recording a {@link FontChange} into the
-     * open modification bracket when they differ from the fonts in force.
-     *
-     * @param fonts the fonts the replayed record restores or re-applies
-     * @effects records one {@link FontChange} and applies {@code fonts} when they differ from
-     *     the fonts in force; does nothing otherwise
-     */
+    /** Records a {@link FontChange} only when {@code fonts} differ from the fonts in force. */
     void setFonts(DocumentFonts fonts);
 }

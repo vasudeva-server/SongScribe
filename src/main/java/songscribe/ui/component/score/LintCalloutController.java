@@ -42,20 +42,14 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * Decides when the score's lint tooltips show and hide: the callout of the mark selected in the
- * Messages panel, and the tooltip the tooltip manager shows on a hover over a mark.
- * <p>
- * At most one lint tooltip shows. The callout hides the hover tooltip when it shows, and a hover
- * onto a mark dismisses the callout. Both point at an item in the score, so both hide when the
- * item moves or the report they show is replaced: when the score scrolls or its viewport changes
- * size, when it zooms, and when the song is linted. The callout also hides when the window loses
- * focus.
+ * Messages panel, and the tooltip the tooltip manager shows on a hover over a mark. At most one
+ * shows: the callout hides the hover tooltip, and a hover onto a mark dismisses the callout.
  * <p>
  * A callout hidden for any reason but a change of the selection is dismissed: this posts a
  * {@link LintCalloutWasDismissedNotification}, so the panel clears the selection that showed it.
  *
  * <h2>Lifecycle</h2>
- * Process-lifetime, as the {@link ScoreView} that owns it is. It subscribes to the message bus and
- * listens to the score's viewport for the process, so it does not implement
+ * Process-lifetime, as the {@link ScoreView} that owns it is, so it does not implement
  * {@code songscribe.lifecycle.Disposable}.
  */
 public final class LintCalloutController {
@@ -70,13 +64,9 @@ public final class LintCalloutController {
         }
     };
 
-    /** The window whose loss of focus dismisses the callout, or {@code null} while none shows. */
+    /** {@code null} while no callout shows. */
     private @Nullable Window calloutWindow = null;
 
-    /**
-     * @param scoreView the score whose lint tooltips this controls; its scroll pane exists
-     * @effects registers with the message bus and with the score's viewport for the process
-     */
     public LintCalloutController(ScoreView scoreView) {
         this.scoreView = scoreView;
         callout = new LintCallout(scoreView);
@@ -85,13 +75,6 @@ public final class LintCalloutController {
         MessageSubscription.addProcessListener(this);
     }
 
-    /**
-     * Shows the callout of the selected mark, or hides the callout when no mark is selected.
-     *
-     * @throws RuntimeError.ExitInProgressError, after raising the fatal-error dialog, when a mark
-     *         is selected and the score is not in a window. That cannot happen: the panel whose
-     *         row is selected is in the same window as the score.
-     */
     @Handler
     public void lintMarkSelectionDidChange(LintMarkSelectionDidChangeNotification message) {
         var mark = message.getMark();
@@ -110,15 +93,13 @@ public final class LintCalloutController {
     }
 
     /**
-     * Hides both tooltips, which show findings of the replaced report. The tooltip manager asks
-     * for a new hover tooltip only when the pointer moves.
+     * The tooltip manager asks for a new hover tooltip only when the pointer moves.
      */
     @Handler
     public void linting(LintingNotification message) {
         hideAll();
     }
 
-    /** Dismisses the callout, because the hover tooltip of the mark under the pointer replaces it. */
     void hoverDidEnterMark() {
         dismissCallout();
     }
@@ -140,7 +121,7 @@ public final class LintCalloutController {
         calloutWindow = window;
     }
 
-    /** Hides the callout, without a notification: whoever changed the selection knows. */
+    /** Posts no notification: whoever changed the selection knows. */
     private void hideCallout() {
         callout.hide();
 
@@ -152,11 +133,6 @@ public final class LintCalloutController {
         }
     }
 
-    /**
-     * Hides the callout, and tells the panel that it is gone.
-     *
-     * @effects nothing when no callout shows
-     */
     private void dismissCallout() {
         if (!callout.isShowing()) {
             return;
@@ -171,12 +147,6 @@ public final class LintCalloutController {
         hideHoverToolTip();
     }
 
-    /**
-     * Hides the tooltip the shared tooltip manager shows on hover, if one shows.
-     * <p>
-     * The manager has no public call that hides its tooltip; disabling it hides the tooltip, and
-     * enabling it again restores hover tooltips for the next pointer movement.
-     */
     private static void hideHoverToolTip() {
         var toolTipManager = ToolTipManager.sharedInstance();
 

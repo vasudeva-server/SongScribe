@@ -41,17 +41,13 @@ import songscribe.ui.component.MainFrame;
  * Two note-value combos reading {@code duration = beat}, for editing the beat change on an
  * element.
  *
- * <p><strong>Both combos always carry a selection.</strong> Each is built over the whole
- * {@link BeatUnit} enum, so its model is never empty, and a non-empty combo selects its first
- * entry on construction. That is the precondition {@link Controls#item} states, and it is what
- * lets {@link #gather()} produce a {@link BeatChange} unconditionally instead of quietly
- * declining to commit.
+ * <p><strong>Both combos always carry a selection</strong>, which is what lets {@link #gather()}
+ * produce a {@link BeatChange} unconditionally.
  */
 public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
     /**
-     * What the controls start at when the element carries no beat change: a dotted crotchet
-     * taking the beat of a crotchet, the compound-time case the dialog is opened for most often.
+     * What the controls start at when the element carries no beat change.
      */
     static final BeatChange DEFAULT_BEAT_CHANGE =
         new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.CROTCHET);
@@ -80,11 +76,8 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The controls start at {@link #DEFAULT_BEAT_CHANGE} when there is nothing to show. Whatever
-     * is put in comes back out: {@link #gather()} called straight afterwards, with nothing
-     * else touched, answers the same {@link BeatChange}.
+     * Whatever is put in comes back out: {@link #gather()} called straight afterwards, with
+     * nothing else touched, answers the same {@link BeatChange}.
      */
     @Override
     protected void populateControls(@Nullable BeatChange existingChange) {

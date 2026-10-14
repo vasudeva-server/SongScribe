@@ -73,15 +73,7 @@ public class MenuController {
     // handle every notification until the collector reaches it.
     private List<OpenRecentAction> openRecentActions = List.of();
 
-    /**
-     * Builds the menu bar for {@code mainFrame} and subscribes the controller that keeps it
-     * current. The controller is a {@link References#Strong} listener, so the bus keeps it
-     * reachable and nothing else holds it.
-     *
-     * @effects installs the menu bar on {@code mainFrame} and, on macOS, the native app-menu
-     *          controller; both begin receiving messages and stay subscribed for the life of
-     *          the process
-     */
+    /** The controller, and on macOS the native app-menu controller, stay subscribed for the life of the process. */
     public static void init(MainFrame mainFrame) {
         new MenuController(mainFrame);
     }

@@ -34,7 +34,6 @@ public enum WholeNotehead implements Notehead {
         this.glyph = glyph;
     }
 
-    /** @return The glyph this notehead is drawn with. */
     @Override
     public SMuFLGlyph glyph() {
         return glyph;

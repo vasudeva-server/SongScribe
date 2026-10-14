@@ -29,23 +29,17 @@ import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.error.RuntimeError;
 
 /**
- * Represents a first or second ending bracket above a repeated section.
- * <p>
- * Endings are the "1." and "2." brackets drawn above the staff to indicate
- * which measures to play on each repetition. Each bracket is at most one measure, so the whole
- * ending is at most two.
+ * A first or second ending bracket above a repeated section. Each bracket is at most one
+ * measure, so the whole ending is at most two.
  *
  * <p>
- * An ending over {@code [anchor, end]} of a line is well formed when every invariant below
- * holds but the last two ({@link #illFormedReason} judges them over one line's elements). The
- * section rule reads the song across lines, and the last invariant holds between every two
- * endings on a line. Every attached ending meets all of them. {@link #spanning} is the one way
- * to make an ending for a line; the paths that put an ending on a line, and what keeps every
- * invariant once it is there, are in {@code docs/span-invalidation.md}.
+ * {@link #illFormedReason} judges every invariant below but the last two over one line's
+ * elements: the section rule reads the song across lines, and the last invariant holds between
+ * every two endings on a line. Every attached ending meets all of them. {@link #spanning} is the
+ * one way to make an ending for a line; see {@code docs/span-invalidation.md}.
  * <p>
- * Two endings may sit back to back on a line. When no repeat opens between them, the earlier
- * split closes the section, so no section is open at the later split and the section rule
- * refuses the later ending.
+ * Two endings may sit back to back on a line; when no repeat opens between them, the section
+ * rule refuses the later one.
  *
  * @invariant the anchor is a note or a rest ({@link ElementType#isDuration()}) or a
  *            {@link ElementType#SINGLE_BARLINE}; any other bar refuses the ending
@@ -73,16 +67,8 @@ import songscribe.error.RuntimeError;
  */
 public final class Ending extends Span<StaffElement> {
 
-    /** The heading a removed or refused ending is reported under. */
     private static final String REPORT_HEADING_KEY = Strings.REPORT_ENDINGS_REMOVED;
 
-    /**
-     * Creates an ending bracket over two elements the caller has already checked span a
-     * well-formed ending.
-     *
-     * @param anchorElement The first element of the ending
-     * @param endElement    The last element of the ending
-     */
     private Ending(StaffElement anchorElement, StaffElement endElement) {
         super(StaffElement.class, anchorElement, endElement);
     }
@@ -139,44 +125,26 @@ public final class Ending extends Span<StaffElement> {
         return new Spanning.Spanned<>(new Ending(elements.get(range.begin()), elements.get(range.end())), List.of());
     }
 
-    /** A refusal of an ending, under the ending's report heading. */
     private static Spanning<Ending> refused(String reasonKey, Spanning.Cause cause) {
         return new Spanning.Refused<>(reasonKey, cause, REPORT_HEADING_KEY);
     }
 
     /**
-     * Whether the split at {@code splitIndex} of {@code line} closes an open repeat section, as
-     * the class invariant requires: {@link RepeatSections#sectionStart} at the split is not
-     * {@code null}. This is the one statement of the section rule; {@link #spanning} and
-     * {@link EndingSectionRule} both apply it.
+     * The one statement of the section rule; {@link #spanning} and {@link EndingSectionRule}
+     * both apply it.
      *
-     * <p>In {@code |: |: :| :|} a split at the last {@code :|} closes the outer section, which
-     * the first {@code |:} opened, so an ending there is legal and the rule keeps it. The
-     * nested {@code |:} is an error of the song's repeats, not of the ending.
-     *
-     * @param sections   the repeat sections of {@code line}'s song as it is now
-     * @param line       a line of its song
-     * @param splitIndex the index of an ending's split in {@code line}
-     * @return {@code true} when a repeat section is open just before the split, however many
-     *     lines back it opened
-     * @throws IllegalStateException if {@code line} is not one of its song's lines
+     * <p>In {@code |: |: :| :|} a split at the last {@code :|} closes the outer section, so an
+     * ending there is legal. The nested {@code |:} is an error of the song's repeats, not of the
+     * ending.
      */
     static boolean closesOpenSection(RepeatSections sections, Line line, int splitIndex) {
         return sections.sectionStart(new ElementLocation(line.index(), splitIndex)) != null;
     }
 
     /**
-     * Which rule of the class invariant an ending over {@code span} of {@code elements} breaks,
-     * judged over those elements alone: every invariant but the section rule and the overlap
-     * rule, which read beyond one ending on one line.
+     * Judged over {@code elements} alone, so not the section rule or the overlap rule.
      *
-     * @param elements a line's elements, as they are or as a pending change projects them
-     * @param span     the range the ending covers in {@code elements}
-     * @return {@code null} when the ending is well formed;
-     *     {@link Strings#REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT} when its split is
-     *     not a {@link ElementType#REPEAT_RIGHT}; {@link Strings#REPORT_REASON_ENDING_BAR_AFTER_END}
-     *     when a bar follows its end bar; otherwise, for every other broken rule,
-     *     {@link Strings#REPORT_REASON_ENDING_NOT_VALID}
+     * @return {@code null} when the ending is well formed
      */
     private static @Nullable String illFormedReason(List<StaffElement> elements, ElementRange span) {
         var anchorIndex = span.begin();
@@ -218,12 +186,7 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * Whether a bar follows the end bar of an ending ending at {@code endIndex} of
-     * {@code elements}: the first element after the end bar that is not
-     * {@link ElementType#isNonContentElement() non-content} is a bar. The walk stops at the end
-     * of {@code elements}, so it never reads the next line.
-     *
-     * @return {@code false} when the ending has no end bar, or nothing but non-content follows it
+     * The walk stops at the end of {@code elements}, so it never reads the next line.
      */
     private static boolean barFollowsEndBar(List<StaffElement> elements, int endIndex) {
         var endBarIndex = endBarIndexOf(elements, endIndex);
@@ -237,23 +200,10 @@ public final class Ending extends Span<StaffElement> {
         return following != null && elements.get(following).getType().isBar();
     }
 
-    /**
-     * Whether an element of {@code type} may anchor an ending: a note, a rest, or a bar a
-     * bracket opens on ({@link #opensOnItsOwn}).
-     */
     private static boolean isAnchorType(ElementType type) {
         return type.isDuration() || opensOnItsOwn(type);
     }
 
-    /**
-     * Whether the anchor at {@code anchorIndex} of {@code elements} has in front of it what the
-     * class invariant requires: a bar anchor always does, and a note or rest anchor does when
-     * the first content element in front of it is a {@link ElementType#SINGLE_BARLINE}, a note
-     * or a rest, or when it has none.
-     *
-     * @param elements    a line's elements, as they are or as a pending change projects them
-     * @param anchorIndex the anchor's index in {@code elements}
-     */
     private static boolean hasOpeningPredecessor(List<StaffElement> elements, int anchorIndex) {
         if (!elements.get(anchorIndex).getType().isDuration()) {
             return true;
@@ -270,39 +220,18 @@ public final class Ending extends Span<StaffElement> {
         return type.isDuration() || opensOnItsOwn(type);
     }
 
-    /**
-     * The index of the first element in front of {@code index} that is not
-     * {@link ElementType#isNonContentElement() non-content}, or {@code null} when there is none.
-     */
     private static @Nullable Integer precedingContentIndex(List<StaffElement> elements, int index) {
         return StaffElementRun.lastIndexBefore(elements, index, type -> !type.isNonContentElement());
     }
 
-    /**
-     * The index of the first element after {@code index} that is not
-     * {@link ElementType#isNonContentElement() non-content}, or {@code null} when there is none.
-     */
     private static @Nullable Integer followingContentIndex(List<StaffElement> elements, int index) {
         return StaffElementRun.firstIndexFrom(elements, index + 1, type -> !type.isNonContentElement());
     }
 
-    /**
-     * Returns the elements of this ending's first bracket: from the anchor when it is a note or
-     * a rest, or from the element after it when it is a bar, through the element before the
-     * split.
-     *
-     * @return the first bracket's range in this ending's line, which the class invariant makes
-     *     hold at least one note or rest and no bar
-     */
     public ElementRange firstBracket() {
         return requireBracket(firstBracketOf(line().getElements(), range(), getSplitIndex()));
     }
 
-    /**
-     * The first bracket of an ending over {@code span} of {@code elements}, split at
-     * {@code splitIndex}: a note or rest anchor is the bracket's first element, and a bar anchor
-     * is not.
-     */
     private static @Nullable ElementRange firstBracketOf(
         List<StaffElement> elements, ElementRange span, int splitIndex
     ) {
@@ -313,9 +242,7 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * The second bracket of an ending over {@code span} of {@code elements}, split at
-     * {@code splitIndex}: a note or rest end is the bracket's last element, and a bar end is
-     * not. Layout draws the bracket over an end note, so the bracket holds it.
+     * Layout draws the bracket over an end note, so the bracket holds it.
      */
     private static @Nullable ElementRange secondBracketOf(
         List<StaffElement> elements, ElementRange span, int splitIndex
@@ -327,8 +254,7 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * The indices strictly between {@code before} and {@code after}, or {@code null} when there
-     * are none. The bounds stay two ints because a bracket bound of {@code -1}, a note anchor at
+     * The bounds stay two ints because a bracket bound of {@code -1}, a note anchor at
      * index 0, is not an {@link ElementRange}.
      */
     private static @Nullable ElementRange elementsBetween(int before, int after) {
@@ -346,7 +272,6 @@ public final class Ending extends Span<StaffElement> {
         return bracket;
     }
 
-    /** Whether {@code bracket} of {@code elements} holds no bar and some content. */
     private static boolean isWellFormedBracket(List<StaffElement> elements, ElementRange bracket) {
         var bracketElements = elementsIn(elements, bracket);
 
@@ -354,12 +279,10 @@ public final class Ending extends Span<StaffElement> {
             && holdsContent(bracketElements);
     }
 
-    /** Whether {@code elements} hold content: at least one note or rest. */
     private static boolean holdsContent(List<StaffElement> elements) {
         return elements.stream().anyMatch(element -> element.getType().isDuration());
     }
 
-    /** The elements of {@code elements} that {@code range} covers, as a view. */
     private static List<StaffElement> elementsIn(List<StaffElement> elements, ElementRange range) {
         return elements.subList(range.begin(), range.end() + 1);
     }
@@ -369,34 +292,17 @@ public final class Ending extends Span<StaffElement> {
         return new Ending(newAnchor, newEnd);
     }
 
-    /**
-     * Returns the element index of the bar that separates the first and second sub-spans of
-     * this ending — the one {@link #getSplitElement} answers.
-     *
-     * @return the split bar's index in this ending's line
-     */
     public int getSplitIndex() {
         return requireSplitIndex(line().getElements(), range());
     }
 
-    /**
-     * Returns the bar that separates the first and second sub-spans of this ending — the
-     * element {@link #getSplitIndex} indexes — computed live from the line.
-     *
-     * @return the first bar between the anchor and the end whose type
-     *     {@link ElementType#closesRepeat()}, which the class invariant guarantees exists
-     */
     public BarElement getSplitElement() {
         // Only a bar's type closes a repeat, and a bar's type makes its element a BarElement.
         return (BarElement) line().getElement(getSplitIndex());
     }
 
     /**
-     * The index of the first element strictly inside {@code span} of {@code elements} whose
-     * type {@link ElementType#closesRepeat() closes a repeat}: the split of an ending over
-     * {@code span}.
-     *
-     * @return the split's index, or {@code null} when no such element stands inside {@code span}
+     * @return {@code null} when no such element stands inside {@code span}
      */
     private static @Nullable Integer splitIndexOf(List<StaffElement> elements, ElementRange span) {
         // The view ends just before span.end() and starts at 0, so its indices are elements' own.
@@ -404,11 +310,6 @@ public final class Ending extends Span<StaffElement> {
             elements.subList(0, span.end()), span.begin() + 1, ElementType::closesRepeat);
     }
 
-    /**
-     * The split of an ending the class invariant makes well formed, which therefore has one.
-     *
-     * @return the split's index, as {@link #splitIndexOf} answers it
-     */
     private static int requireSplitIndex(List<StaffElement> elements, ElementRange span) {
         var splitIndex = splitIndexOf(elements, span);
 
@@ -420,48 +321,22 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * Returns the index of the element this ending's first bracket opens on: the
-     * {@link ElementType#SINGLE_BARLINE} immediately in front of a note or rest anchor, or the
-     * anchor itself. The editor anchors a new ending on this element, and layout starts the
-     * bracket's left edge at it, so both apply the one rule.
-     * <p>
-     * Grace notes, breath marks and key changes are transparent here, as they are everywhere else
-     * an ending reasons about its neighbours. The walk back starts only from a note or a rest,
-     * and it stops at the first element that is not transparent: when that element is not a
-     * {@code SINGLE_BARLINE}, the anchor opens the bracket itself. An anchor that is a bar is
-     * already the opening element, so asking twice gives the same answer as asking once —
-     * which is what lets the editor move a selection's anchor onto the bar at creation and
-     * layout ask again at paint time without walking back a second bar.
-     *
-     * @return the opening element's index
+     * The editor anchors a new ending on this element, and layout starts the bracket's left edge
+     * at it, so both apply the one rule. Asking twice gives the same answer as asking once, so
+     * the editor can move a selection's anchor onto the bar at creation and layout ask again at
+     * paint time without walking back a second bar.
      */
     public int getOpeningElementIndex() {
         return openingElementIndex(line(), requireAnchorElementIndex());
     }
 
     /**
-     * Returns the index of the element a bracket anchored at {@code anchorIndex} opens on.
-     * <p>
-     * The static form exists for the editor, which asks the question while deciding where an
-     * ending's anchor belongs — before there is an ending to ask. See
-     * {@link #getOpeningElementIndex} for the rule.
-     *
-     * @param line        the line to search
-     * @param anchorIndex the index a bracket is anchored at
-     * @return the opening element's index
+     * The static form is for the editor, which asks before there is an ending.
      */
     public static int openingElementIndex(Line line, int anchorIndex) {
         return openingElementIndex(line.getElements(), anchorIndex);
     }
 
-    /**
-     * Returns the index of the element a bracket anchored at {@code anchorIndex} of
-     * {@code elements} opens on, by the rule {@link #getOpeningElementIndex} states.
-     *
-     * @param elements    a line's elements, as they are or as a pending change projects them
-     * @param anchorIndex the index a bracket is anchored at
-     * @return the opening element's index
-     */
     private static int openingElementIndex(List<StaffElement> elements, int anchorIndex) {
         if (!elements.get(anchorIndex).getType().isDuration()) {
             return anchorIndex;
@@ -475,21 +350,15 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * Whether {@code type} is a bar a bracket opens on: a plain barline only. Every other bar
-     * begins a repeated section, closes one, or ends the piece at a Fine or the final bar, and
-     * no ending opens on one of those.
+     * Every other bar begins or closes a repeated section or ends the piece, and no ending opens
+     * on one of those.
      */
     private static boolean opensOnItsOwn(ElementType type) {
         return type == ElementType.SINGLE_BARLINE;
     }
 
     /**
-     * Returns the bar this ending's second bracket runs to: the end element when it is a bar,
-     * else the element right after the end when that is a bar. With no such bar the bracket
-     * stops after the end note. Whether the bracket closes on the bar is
-     * {@link #isSecondBracketClosed()}.
-     *
-     * @return the end bar, or {@code null} when the second bracket stops after a note
+     * @return {@code null} when the second bracket stops after a note
      */
     public @Nullable BarElement getEndBar() {
         var line = line();
@@ -499,15 +368,6 @@ public final class Ending extends Span<StaffElement> {
         return endBarIndex == null ? null : (BarElement) line.getElement(endBarIndex);
     }
 
-    /**
-     * The index of the end bar of an ending ending at {@code endIndex} of {@code elements}, by
-     * the rule {@link #getEndBar} states: the end when it is a bar, else the element right after
-     * the end when that is a bar.
-     *
-     * @param elements a line's elements, as they are or as a pending change projects them
-     * @param endIndex the ending's end in {@code elements}
-     * @return the end bar's index, or {@code null} when there is none
-     */
     private static @Nullable Integer endBarIndexOf(List<StaffElement> elements, int endIndex) {
         if (elements.get(endIndex).getType().isBar()) {
             return endIndex;
@@ -518,13 +378,6 @@ public final class Ending extends Span<StaffElement> {
         return next < elements.size() && elements.get(next).getType().isBar() ? next : null;
     }
 
-    /**
-     * Whether this ending's second bracket closes with a stroke down to its
-     * {@link #getEndBar() end bar}. A single barline leaves the bracket open; every other bar
-     * closes it. A bracket with no end bar is open.
-     *
-     * @return {@code true} when the end bar exists and is not a single barline
-     */
     public boolean isSecondBracketClosed() {
         var endBar = getEndBar();
         return endBar != null && endBar.getType() != ElementType.SINGLE_BARLINE;
@@ -539,7 +392,6 @@ public final class Ending extends Span<StaffElement> {
         return endType.isDuration() || endType.isEndingTerminal();
     }
 
-    /** {@link Displacement#COEXIST}: adding an ending leaves every other ending in place. */
     @Override
     protected Displacement displacement() {
         return Displacement.COEXIST;
@@ -576,12 +428,7 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * Which rule this ending breaks in {@code change}'s projection, judged by
-     * {@link #illFormedReason} over the range between its endpoints' projected positions.
-     *
-     * @return {@code null} when the ending is well formed in the projection;
-     *     {@link Strings#REPORT_REASON_ENDPOINT_DELETED} when an endpoint is not present
-     *     after the change; otherwise the reason {@link #illFormedReason} answers
+     * @return {@code null} when the ending is well formed in the projection
      */
     private @Nullable String illFormedReasonAfter(ElementChange change) {
         var anchorIndex = change.projectedEndpointIndexOf(getAnchorElement());

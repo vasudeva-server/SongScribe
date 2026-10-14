@@ -41,35 +41,19 @@ import songscribe.util.UIUtils;
 
 /**
  * Everything {@link KeyChangeDialog} is not allowed to know: which line the notator pointed at,
- * what key is in effect there, whether the change will still fit, and which of the three commit
- * routes writes it.
+ * what key is in effect there, whether the change will still fit, and which commit route writes it.
  *
- * <p><strong>Three gestures in, one dialog out.</strong> A key change reaches the notator four
- * ways — the line header, the cautionary at the end of the line before it, an existing mid-line
- * key change, and the insertion-point action — and the dialog is the same window every time,
- * showing one {@link Key} and answering with another. What differs is entirely on this side, so
- * each gesture gets its own entry point and hands over exactly what it already holds: a line, a
- * key change it hit-tested, or an index the insertion predicate accepted. The header and the
- * cautionary share {@link #editLineKey} because they are the same edit — the cautionary depicts
- * the next line's key, so its caller passes that line.
- *
- * <p><strong>What varies between the gestures is a {@link KeyChangeSite}.</strong> Each entry point
- * names the place the change is bound to, and the site answers what key is in effect there and
- * which key change, if any, already stands on it — so the three-way distinction is stated once,
- * in the document model, rather than as a shape this controller keeps for itself. It is also why
- * this controller's own comparison needs no cases: it asks the site.
+ * <p>Each of the key-editing gestures has its own entry point, and a {@link KeyChangeSite} names
+ * the place the change is bound to.
  *
  * <p><strong>One commit route per binding.</strong> A line's own key and an existing mid-line key
- * change are both changed <em>in place</em>; a key change at a position that has none is
- * <em>inserted</em>. The two mid-line routes are separate because a swap and an insertion are
- * different edits all the way down — different fit measurement, different stranding, and
- * different mutations — and only the insertion can owe a barline.
+ * change are changed <em>in place</em>; a key change at a position that has none is
+ * <em>inserted</em>. The two mid-line routes differ in fit measurement, stranding and mutations,
+ * and only the insertion can owe a barline.
  *
  * <p><strong>An edit that cannot be drawn is refused before it is written.</strong> A key change
- * claims horizontal space on every line it re-keys, not only the one it is made on, and
- * {@link #validate} measures all of them. The refusal reaches the notator as a
- * {@link ValidationFailure}, so the dialog stays open on the choice that was refused and a
- * narrower signature can be picked without starting over — before anything is written.
+ * claims horizontal space on every line it re-keys, and {@link #validate} measures all of them.
+ * The dialog stays open on the refused choice.
  */
 public final class KeyChangeDialogController extends DocumentDialogController<Key, Key> {
 
@@ -87,27 +71,15 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * Opens the dialog on {@code line}'s own key — the key its header establishes.
-     *
-     * <p>Serves both gestures that edit a line's own key: a double-click on the header, and one on
-     * the cautionary at the end of the line <em>before</em> it, which depicts this line's key.
-     * That the two look different on screen is a rendering matter; the edit is the same one, so
-     * the caller resolves which line it is about and this makes no distinction.
-     *
-     * @param mainFrame the window the dialog parents itself to
-     * @param line the line whose own key is being established or changed
+     * Serves both a double-click on the header and one on the cautionary at the end of the line
+     * <em>before</em> it, which depicts this line's key: the caller resolves which line it is
+     * about.
      */
     public static void editLineKey(MainFrame mainFrame, Line line) {
         open(mainFrame, new KeyChangeDialogController(mainFrame, KeyChangeSite.lineKey(line)));
     }
 
     /**
-     * Opens the dialog on the key {@code keyChange} establishes.
-     *
-     * <p>OK changes that key change's key in place — see {@link #changeMidLineKey}.
-     *
-     * @param mainFrame the window the dialog parents itself to
-     * @param line the line {@code keyChange} stands on
      * @param keyChange the key change the notator double-clicked, which must be an element of
      *                  {@code line}
      */
@@ -119,16 +91,9 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * Opens the dialog on the key running at {@code insertionIndex}, ready to write a new key
-     * change there.
+     * The position has already been accepted by {@link Line#canInsertKeyChangeAt}, so this is for
+     * a position with no key change on it; {@link #editKeyChange} is for one that has.
      *
-     * <p>The position has already been accepted by {@link Line#canInsertKeyChangeAt}, which is
-     * where every rule about where a key change may go lives — including that it never
-     * lands on or beside one that is already there. This entry point is therefore for a position
-     * with no key change on it; {@link #editKeyChange} is for one that has.
-     *
-     * @param mainFrame the window the dialog parents itself to
-     * @param line the line the key change will be written into
      * @param insertionIndex the index it will land at, an index the insertion predicate accepted
      */
     public static void addKeyChange(MainFrame mainFrame, Line line, int insertionIndex) {
@@ -141,14 +106,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The key already in effect where this change is bound, which the {@link KeyChangeSite}
-     * answers for whichever of the three places it names. It is what the combo opens on and the
-     * one choice a commit refuses, so the dialog writes a change or nothing.
-     *
-     * @return the key in effect at the bound position; never null, because every position in every
-     *         line is in some key
+     * The key already in effect where this change is bound: what the combo opens on.
      */
     @Override
     protected Key read() {
@@ -156,12 +114,9 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Whether the chosen key writes anything is a question about the place the change is bound
-     * to, so the {@link KeyChangeSite} answers it — including the case where the key chosen is
-     * already in effect and the commit still changes the document, which is a line taking a key of
-     * its own for the first time.
+     * The {@link KeyChangeSite} answers it, including the case where the chosen key is already in
+     * effect and the commit still changes the document: a line taking a key of its own for the
+     * first time.
      */
     @Override
     protected boolean dataWasModified(Key values) {
@@ -169,27 +124,10 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Refuses a key change that will not fit, and takes no other view of the notator's choice.
-     *
-     * <p>Which measurement runs follows the binding, one per commit route. A line's own key is
-     * measured with {@link KeyEditFitCalculator#lineKeyChangeFits}, which walks the whole
-     * inheritance chain the change re-keys and the cautionary it creates on the line before it. A
-     * <em>new</em> mid-line key change is measured with
-     * {@link KeyEditFitCalculator#midLineKeyChangeInsertionFits}, which additionally holds the column the
-     * key change occupies and the barline {@link #insertKeyChange} inserts alongside it. An
-     * <em>existing</em> one is measured with {@link KeyEditFitCalculator#midLineKeyChangeSwapFits},
-     * which replaces that column rather than adding one — measuring a swap as an insertion would
-     * refuse it for want of room the line already has. None is a partial query and no half of one
-     * is available on its own.
-     *
-     * <p>Reading the two refusals apart matters: they name different lines. See
+     * Refuses a key change that will not fit, and takes no other view of the notator's choice.
+     * The measurement follows the binding: measuring a swap as an insertion would refuse it for
+     * want of room the line already has. The two refusals name different lines — see
      * {@link #lineKeyRefusal()}.
-     *
-     * @param values the key the notator chose
-     * @return {@link ValidationResult#valid()} when the change fits every line it touches,
-     *         otherwise the one refusal saying which measurement failed
      */
     @Override
     protected ValidationResult validate(Key values) {
@@ -211,11 +149,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Every route sweeps, inside its own modification bracket, the key changes the move
-     * strands — a key change moves pitches, and the accidentals that follow from that are the
-     * song's to settle on its own chain walk, not this controller's to ask about.
+     * Every route sweeps, inside its own modification bracket, the key changes the move strands.
      *
      * @param values the key the notator chose, already known to fit
      */
@@ -229,25 +163,13 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * Establishes {@code key} at the start of the bound line, sweeping the key changes the move
-     * strands.
+     * A mid-line key change anywhere in the reach — this line from its start, then every line
+     * inheriting from it, up to the first with a key of its own — that would restate the key in
+     * effect before it is removed with its barline, in the same bracket, so one undo takes back
+     * the key and the removals together. See {@code docs/key-changes.md}.
      *
-     * <p>A key change moves pitches; what that does to the accidentals is the song's own chain
-     * walk to settle, run after this method's modification lands. What this method owes on its
-     * own is the key invariant: a mid-line key change anywhere in the reach — this line from its
-     * start, then every line inheriting from it, up to the first with a key of its own — that
-     * would restate the key in effect before it is removed with its barline, in the same bracket,
-     * so one undo takes back the key and the removals together. See {@code docs/key-changes.md}.
-     *
-     * <p>The undo step is named for what the line was doing before: <em>Add</em> where it inherited
-     * its key until now, <em>Change</em> where it already had one of its own. {@link Line#setKey}
-     * may still normalize the chosen key back to inheritance, which is a fact about storage rather
-     * than about what the notator did.
-     *
-     * <p><b>The fit check runs first</b>, in {@link #validate}. A change that will be refused for
-     * not fitting must not first be written and then taken back.
-     *
-     * @param key the key to establish at the start of the bound line
+     * <p>The undo step is named <em>Add</em> where the line inherited its key until now and
+     * <em>Change</em> where it already had one of its own.
      */
     private void changeLineKey(Key key) {
         var stranding = KeyChangeStranding.ofLineKeyChange(line, key);
@@ -259,31 +181,14 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * Changes the key the key change at the bound index establishes, sweeping the key changes
-     * the move strands.
-     *
-     * <p><b>It edits in place</b>, except when the chosen key is the one already in effect where
-     * the key change stands. The element keeps its identity and its index, so nothing on the line
-     * moves and no barline is involved — the one the position invariant puts in front of it is
-     * already there. The signature's column is re-solved against the new key on the next layout
-     * pass, exactly as a line-key change's header is, so a key that draws more or fewer accidentals
-     * needs no position bookkeeping here.
+     * <b>It edits in place</b>, except when the chosen key is the one already in effect where
+     * the key change stands. The element keeps its identity and its index.
      *
      * <p><b>A key change told to restate the key in front of it is removed instead</b>, together
-     * with the barline it sits behind, as one of the ranges this method sweeps. It would draw
-     * nothing and be invisible on screen while still sitting in the document, which the invariant
-     * in {@code docs/key-changes.md} forbids. The same goes for any key change further along the
-     * line that the new key strands.
-     *
-     * <p>The stranding reaches the same lines every key-moving edit reaches: this line from the
-     * key change's index forward, then every line inheriting from it, up to the first with a key
-     * of its own. The sweep runs first, so the key change's own index is still the one this route
-     * was given by the time the in-place edit lands. See {@code docs/key-changes.md}.
-     *
-     * <p><b>The fit check runs first</b>, in {@link #validate}, so a change that will be refused for
-     * want of room is never written and then taken back.
-     *
-     * @param key the key the bound key change is to establish instead
+     * with the barline it sits behind: it would be invisible while still in the document, which
+     * the invariant in {@code docs/key-changes.md} forbids. The same goes for any key change
+     * further along the line that the new key strands. The sweep runs first, so the key change's
+     * own index is still the one this route was given when the in-place edit lands.
      */
     private void changeMidLineKey(Key key) {
         var keyChange = site.boundKeyChange();
@@ -325,45 +230,18 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * Writes a key change into the middle of the bound line at the bound index, adding ahead of it
-     * the {@link ElementType#SINGLE_BARLINE} the chosen position needs when it does not already
-     * follow a barline or repeat.
-     *
-     * <p><b>It inserts. It does not edit.</b> Only {@link KeyChangeSite.Binding#NEW_POSITION}
-     * arrives here. A key change already standing at the bound index is changed in place by
-     * {@link #changeMidLineKey}, which is a different edit rather than a variant of this one: it
-     * moves no element, owes no barline, and is measured as a swap.
+     * <b>It inserts. It does not edit.</b> Only {@link KeyChangeSite.Binding#NEW_POSITION}
+     * arrives here.
      *
      * <p><b>The barline is what keeps {@link KeyChangeElement}'s position invariant true
      * without restricting where the user may click.</b> A position that already follows a barline
-     * or a repeat takes the key change alone; every other position takes two elements, barline
-     * first. Either way they enter inside <b>one</b> modification bracket, so a single undo takes
-     * back the whole edit rather than leaving the barline behind — see {@code docs/mutations.md}.
-     *
-     * <p>Positions are measured against the line as it stands, before the bracket opens: an
-     * insertion moves nothing ahead of itself, so the key the change cancels and the positions of
-     * its predecessors are already settled.
-     *
-     * <p><b>The fit check runs first</b>, in {@link #validate}, exactly as it does for
-     * {@link #changeLineKey}: a change that will be refused for want of room must not first be
-     * written and then taken back.
-     *
-     * <p>An inserted key change moves pitches from its index forward, so it sweeps the same
-     * lines a change to the line's own key sweeps: this line, then every line inheriting from it.
-     * See {@code docs/key-changes.md}.
+     * or a repeat takes the key change alone; every other position takes a barline first. Either
+     * way they enter inside <b>one</b> modification bracket, so a single undo takes back the whole
+     * edit — see {@code docs/mutations.md}.
      *
      * <p>A key change further along the line, or on a line that inherits, which the inserted key
      * leaves restating what is already in effect is removed with its barline, in this same
-     * bracket, swept before the new element lands. The inserted key change itself can never be
-     * one of them: writing the key already in effect at the bound position changes nothing, and
-     * never reaches a commit route.
-     *
-     * @param key the key taking effect from the bound position on
-     * @throws IndexOutOfBoundsException if the bound index is below
-     *                                   {@link Line#FIRST_LEGAL_KEY_CHANGE_INDEX} or above
-     *                                   {@link Line#effectiveElementCount()} — a key change is
-     *                                   never the first element on a line, and never lands past
-     *                                   its end
+     * bracket, before the new element lands. See {@code docs/key-changes.md}.
      */
     private void insertKeyChange(Key key) {
         if (elementIndex < Line.FIRST_LEGAL_KEY_CHANGE_INDEX
@@ -402,10 +280,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * @return the undo-step name for a change to the bound line's own key, resolved: <em>Add</em>
-     *         where the line inherited its key until now, <em>Change</em> where it had one of its
-     *         own. Read before the mutation, so it describes what the notator did rather than what
-     *         the line ended up storing
+     * Read before the mutation, so it describes what the notator did, not what the line stores.
      */
     private String lineKeyLabel() {
         return Strings.get(line.getKey() != null
@@ -414,27 +289,16 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     }
 
     /**
-     * The refusal for a line's own key.
-     *
-     * <p><b>Deliberately does not say "this line".</b> A line-key change is refused for a line the
-     * notator did not click: the cautionary it creates at the end of the previous one, or the
-     * header of any line down the inheritance chain that it re-keys. Naming the clicked line would
-     * send them to look at the wrong place.
-     *
-     * @return the message a refused line-key change carries
+     * <b>Deliberately does not say "this line"</b>: the refusal can be for a line the notator did
+     * not click, such as the previous line's cautionary or a line down the inheritance chain.
      */
     private static LocalizedMessage lineKeyRefusal() {
         return new LocalizedMessage(Strings.ERROR_LINE_FULL_KEY_CHANGE);
     }
 
     /**
-     * The refusal for a mid-line key change, which does occupy a column on the line the notator
-     * is looking at — so its message says "this line" and names what did not fit.
-     *
-     * <p>The category name is carried as a nested {@link LocalizedMessage} rather than as text:
-     * deciding what is wrong is this side's job and wording it is the presenter's.
-     *
-     * @return the message a refused mid-line key change carries
+     * A mid-line key change occupies a column on the line the notator is looking at, so the
+     * message says "this line" and names what did not fit.
      */
     private static LocalizedMessage midLineKeyRefusal() {
         return new LocalizedMessage(
@@ -442,13 +306,6 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
             List.of(new LocalizedMessage(ElementType.Kind.KEY_CHANGE.labelKey())));
     }
 
-    /**
-     * @param fits what the fit measurement answered
-     * @param message the refusal to carry when it did not
-     * @return a valid result when {@code fits}, otherwise that one refusal under the shared
-     *         line-too-full title, which both routes report under because both are refusals about
-     *         room on a line
-     */
     private static ValidationResult refusalUnless(boolean fits, LocalizedMessage message) {
         return fits
             ? ValidationResult.valid()

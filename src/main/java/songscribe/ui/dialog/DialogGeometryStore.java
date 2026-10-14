@@ -31,14 +31,8 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 
 /**
- * Where each dialog class's window geometry lives between openings.
- * <p>
- * A dialog instance serves one opening, so the geometry it closed with has to be held
- * outside it. This store holds it per dialog class for the life of the process, and backs
- * it with the {@link PrefsKey#DIALOG_GEOMETRY} preference so a class opened for the first
- * time in a session starts where the previous session left it.
- * <p>
- * EDT-only by contract, like the dialogs that use it.
+ * Where each dialog class's window geometry lives between openings, backed by the
+ * {@link PrefsKey#DIALOG_GEOMETRY} preference. EDT-only by contract.
  */
 final class DialogGeometryStore {
 
@@ -52,10 +46,7 @@ final class DialogGeometryStore {
     private DialogGeometryStore() {}
 
     /**
-     * Returns the geometry {@code dialogClass} last closed with.
-     *
-     * @return the geometry saved for {@code dialogClass} in this process, else the one the
-     *         preference holds for it, or {@code null} if neither has one
+     * @return {@code null} if neither this process nor the preference has one
      */
     static @Nullable DialogGeometry load(Class<?> dialogClass) {
         var geometry = GEOMETRY_BY_CLASS.get(dialogClass);
@@ -71,13 +62,6 @@ final class DialogGeometryStore {
         return geometry;
     }
 
-    /**
-     * Records {@code geometry} as what {@code dialogClass} closed with.
-     *
-     * @effects a later {@link #load} for {@code dialogClass} returns {@code geometry}, in this
-     *          process and in the next; writes the preference, which posts
-     *          {@code PrefsDidChangeNotification}
-     */
     static void save(Class<?> dialogClass, DialogGeometry geometry) {
         GEOMETRY_BY_CLASS.put(dialogClass, geometry);
 

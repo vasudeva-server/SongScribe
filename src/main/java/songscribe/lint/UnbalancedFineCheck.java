@@ -67,10 +67,8 @@ import songscribe.dom.StaffElement;
  */
 final class UnbalancedFineCheck implements LintCheck {
 
-    /** The text of a Fine, compared without case. */
     private static final String FINE_TEXT = "fine";
 
-    /** What makes an annotation other than a Fine a reference to one. */
     private static final Pattern REFERENCE_PATTERN = Pattern.compile("\\bfine\\b", Pattern.CASE_INSENSITIVE);
 
     /**
@@ -89,11 +87,9 @@ final class UnbalancedFineCheck implements LintCheck {
         return new Pass(lastElementOf(song)).run(song);
     }
 
-    /** A Fine still waiting for a reference, with its position from {@link LintCheck#walk}. */
     private record WaitingFine(StaffElement element, int position) {
     }
 
-    /** Each kind of violation this check finds: the heading it is listed under, and its text. */
     private enum Problem {
         NOT_ON_BAR(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_ON_BAR),
         ON_LAST_BAR(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_ON_LAST_BAR),
@@ -109,7 +105,6 @@ final class UnbalancedFineCheck implements LintCheck {
         }
     }
 
-    /** The state of one forward pass over a song. */
     private static final class Pass {
 
         private final @Nullable StaffElement lastElement;
@@ -175,12 +170,6 @@ final class UnbalancedFineCheck implements LintCheck {
         }
     }
 
-    /**
-     * The last element of the song.
-     *
-     * @return the last element of the last line that has elements, or {@code null} when no
-     *         line has any
-     */
     private static @Nullable StaffElement lastElementOf(Song song) {
         var lines = song.getLines();
 

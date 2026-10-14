@@ -40,53 +40,22 @@ import songscribe.dom.StaffElement;
  * with every accidental the walk decided drawn, and guarantees that a refusal leaves every note
  * exactly as it was.
  *
- * <h2>Why a gate is needed at all</h2>
- * An edit measured for fit before it mutates — a preview insertion, a preview replacement, a
- * paste, a selection action that widens a column — is refused when a line it would widen no
- * longer fits, and the refusal must mutate nothing: the caller's modification bracket stays
- * closed and no notification is posted. But the fit check has to <em>measure</em> the accidentals
- * the walk decided: {@code ElementColumnBuilder} derives a note's extents from what it draws and
- * {@link LayoutEngine} takes accidental widths as a layout input, so the decided states must
- * already be on the notes when the projected column chain is built. Stamping before measuring and
- * measuring before deciding therefore pull against each other, and this class is the one place
- * that resolves them.
- *
- * <p>A restamp is written plainly with {@link AccidentalChain.Restamp#stamp}, which records
- * nothing — mutation recording happens only through {@link Line#modifyElement} — so the gate
- * changes what the notes draw without making anything undoable. The song runs the chain walk
- * after every recorded change, so once the accepted edit commits, the walk stamps every live note
- * the gate had restamped and records those stamps in the edit's own undo step. The gate is called
- * before that bracket opens; the live notes it stamped are put back before it returns, so the
- * walk finds them as they stood.
+ * <p>The gate stamps plainly ({@link AccidentalChain.Restamp#stamp} records nothing) and is called
+ * before the edit's modification bracket opens; the live notes it stamped are put back before it
+ * returns, so the song's own chain walk finds them as they stood.
  *
  * <p>A chain crosses line breaks, so a restamp may land on a line other than the one the edit
- * touches. Such a line is not projected — it is measured as it stands, with the restamp in place
- * — and only when the restamp changes what its note draws: a state change that draws the same
- * accidental, or none either way, leaves the line's columns as they were and needs no measuring.
+ * touches. Such a line is measured as it stands, and only when the restamp changes what its note
+ * draws.
  */
 public final class AccidentalFitGate {
 
-    /**
-     * A note the gate stamped, with what it held before so the gate can put it back.
-     *
-     * @param line           The live line the note is on or is about to land on
-     * @param prior          The note, with the state it held on entry
-     * @param drawnChanged   Whether stamping changed what the note draws, and so the width of its
-     *                       column
-     */
     private record Stamped(Line line, NoteElement.SavedAccidental prior, boolean drawnChanged) {
     }
 
-    /**
-     * The gate's answer. A refusal names the line that has no room, because the user is told
-     * which: the line being edited, or another line whose accidentals the edit changes.
-     */
     public enum Verdict {
-        /** The edited line and every other line the walk widens still fit. */
         FITS,
-        /** The edited line, as the edit will leave it, has no room. */
         EDITED_LINE_FULL,
-        /** The edited line fits, but another line a restamp widens has no room. */
         OTHER_LINE_FULL
     }
 
@@ -156,10 +125,6 @@ public final class AccidentalFitGate {
         return verdict;
     }
 
-    /**
-     * Stamps every restamp's note plainly and returns what each held before, in {@code restamps}
-     * order.
-     */
     private static List<Stamped> stamp(List<AccidentalChain.Restamp> restamps) {
         var stamped = new ArrayList<Stamped>(restamps.size());
 
@@ -175,10 +140,6 @@ public final class AccidentalFitGate {
         return stamped;
     }
 
-    /**
-     * Measures, as it stands, every line other than {@code editedLine} on which a stamp changed
-     * what a note draws. Each such line is measured once, however many of its notes were stamped.
-     */
     private static boolean otherLinesFit(
         Line editedLine, List<Stamped> stamped, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
@@ -201,10 +162,6 @@ public final class AccidentalFitGate {
         return true;
     }
 
-    /**
-     * Puts each stamped note's prior state back plainly, except the notes in
-     * {@code keepStamped}, which keep the state the gate gave them.
-     */
     private static void restore(List<Stamped> stamped, Set<StaffElement> keepStamped) {
         for (var stamp : stamped) {
             var prior = stamp.prior();
@@ -215,10 +172,7 @@ public final class AccidentalFitGate {
         }
     }
 
-    /**
-     * The elements of {@code elements} as an identity set: a restamp names the note object the
-     * projection holds, so which notes are detached is a question of identity, not equality.
-     */
+    /** Detached notes are matched by identity, not equality. */
     private static Set<StaffElement> identities(List<? extends StaffElement> elements) {
         Set<StaffElement> identities = Collections.newSetFromMap(new IdentityHashMap<>());
         identities.addAll(elements);

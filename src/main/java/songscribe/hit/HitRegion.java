@@ -23,30 +23,14 @@ package songscribe.hit;
 import java.awt.Shape;
 
 /**
- * One clickable area on a staff line: a shape, what clicking it selects, and how it
- * resolves against the other areas it overlaps.
+ * One clickable area on a staff line: a shape and what clicking it addresses. Its priority
+ * follows from the target, never from the registration site.
  *
- * <p>The shape is a {@link Shape} rather than a rectangle because two kinds tilt with
- * the ink they cover: a glissando's hit strip is a rotated four-point {@code Path2D},
- * and a bracketed tuplet's is the sloped bracket quad together with its number's box.
- * Everything else registered today is a {@code Rectangle2D.Double}.
- *
- * <p><b>Coordinates are layout space:</b> X in line-local staff spaces, Y in staff
- * spaces relative to the staff midline, positive downward. A click point is converted
- * into that space once, at query time.
- *
- * <p>How the region resolves against the ones it overlaps follows from what it addresses rather
- * than from anything chosen where it is registered — so two regions addressing the same kind can
- * never disagree about it.
- *
- * @param shapeSs the clickable area, in layout space (staff spaces)
- * @param target  what a click inside {@code shapeSs} addresses
+ * <p>Coordinates are layout space: X in line-local staff spaces, Y in staff spaces relative to
+ * the staff midline, positive downward.
  */
 public record HitRegion(Shape shapeSs, HitTarget target) {
 
-    /**
-     * @return the resolution rank of the kind this region addresses; see {@link HitPriority}
-     */
     public HitPriority priority() {
         return target.priority();
     }

@@ -27,8 +27,7 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
 /**
- * Abstract base for actions whose attributes apply only to notes
- * (not rests or barlines). Provides a shared {@link #admit} implementation.
+ * Base for actions whose attributes apply only to notes, not rests or barlines.
  */
 public abstract class NoteOnlyAction extends PreviewElementAction
     implements UIAction.ElementModifiable<NoteElement> {

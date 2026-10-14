@@ -24,7 +24,6 @@ import songscribe.dom.Line;
 
 /**
  * Mutation recording a line deletion from the song.
- * The line reference is required because after deletion the line is no longer accessible via the song.
  */
 public record LineDeletion(int lineIndex, Line deletedLine)
     implements Mutation {

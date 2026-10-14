@@ -22,9 +22,8 @@ package songscribe.dom;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The number a tuplet prints — <em>N</em> in "<em>N</em> notes in the time of <em>M</em>" —
- * over the whole range this editor can create or a file may state. A group of one re-times
- * nothing, so the range starts at two.
+ * The number a tuplet prints — <em>N</em> in "<em>N</em> notes in the time of <em>M</em>". The
+ * range starts at two, since a group of one re-times nothing.
  */
 public enum TupletGrade {
     DUPLET(2),
@@ -40,22 +39,12 @@ public enum TupletGrade {
         this.number = number;
     }
 
-    /**
-     * The number this grade prints over its group.
-     *
-     * @return <em>N</em>, the count of notes the group plays
-     */
     public int number() {
         return number;
     }
 
     /**
-     * Converts a printed number read from a file into the grade that prints it.
-     *
-     * @param number the printed tuplet number, as read
-     * @return the grade whose {@link #number()} is {@code number}, or {@code null} when no grade
-     *     prints it
-     * @invariant {@code of(grade.number()) == grade} for every grade
+     * @return {@code null} when no grade prints {@code number}
      */
     public static @Nullable TupletGrade of(int number) {
         for (var grade : values()) {

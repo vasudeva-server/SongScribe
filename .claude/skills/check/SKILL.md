@@ -176,7 +176,7 @@ axis's job.
 
 Give the Contract & API agent the doc scope as well when it is non-empty. A
 promise stated in two places is one finding, and that axis is the only one
-holding both copies — see rule 11 in `reference/axes.md`.
+holding both copies — see rule 12 in `reference/axes.md`.
 
 With every scope populated that is four agents in one message.
 
@@ -224,10 +224,9 @@ runs here automatically.
 Wait for every launched agent to complete, then choose the path based on whether
 `--fix` was in `$ARGUMENTS`.
 
-**Before writing or editing any contract**, read `~/.claude/guides/design.md` for
-whether the API's fan-in earns one, then `.claude/guides/contracts.md` and the
-**Writing a Contract in Javadoc** section of `.claude/rules/java.md` in full —
-once, not once per contract.
+**Before writing or editing any Javadoc**, read `.claude/guides/contracts.md`
+and the **Contracts in Javadoc** section of `.claude/rules/java.md` in full —
+once, not once per Javadoc.
 
 **Before writing or editing any test**, read `~/.claude/guides/design.md` for
 whether the behavior earns a test at all, then `.claude/guides/testing-common.md`
@@ -298,9 +297,9 @@ get it confirmed before writing it.
    - any concrete **production bug**, first;
    - **design findings**, each followed by the symptoms and tests it explains,
      so the reader sees one decision rather than a list of unrelated patches;
-   - **contract findings** — missing, incomplete, or implementation-derived
-     contracts, wrong names, and signatures that need a parameter object or an
-     enum. Put a proposed change to an existing contract at the top of this
+   - **contract findings** — clauses that restate the body, missing clauses,
+     full contracts missing where a test derives, wrong names, and signatures
+     that need a parameter object or an enum. Put a proposed change to an existing contract at the top of this
      group, since it is an approval case;
    - the remaining findings, grouped by axis — Correctness & Efficiency, then
      Test Conformance. Within Test Conformance, put first the tests that pass

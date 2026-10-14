@@ -21,24 +21,8 @@
 package songscribe.engraving;
 
 /**
- * The base stroke thickness every LilyPond-derived width in the program is a fixed
- * multiple of, together with the widths that belong to no single engraved thing — each
- * read either by more than one class, or by several classes all about one thing.
- * {@link #KEY_SIGNATURE_PADDING_SS} is the one member that is not a thickness at all; its
- * own doc says where it comes from.
- *
- * <p>A width read by exactly one class lives in that class instead, as a private
- * multiplier beside the resolved value, so the thing measured and the number measuring it
- * stay together.
- *
- * <p>LilyPond derives all element thicknesses from a single base staff-line thickness
- * using fixed multiplier ratios. The same ratios are used for both screen and print
- * output — screen pixel crispness is handled separately by device-pixel snapping (the
- * equivalent of LilyPond's {@code setstrokeadjust}).
- *
- * <p>At screen resolution (~72 dpi effective), raw SMuFL values collapse to the same 1–2
- * device pixels, destroying the intended distinctions in visual weight. The multiplier
- * ratios keep the elements distinguishable at any resolution.
+ * The base stroke thickness every LilyPond-derived width is a fixed multiple of, and the widths
+ * shared by more than one class. A width read by exactly one class lives in that class.
  */
 public final class EngravingConstants {
     // LilyPond multipliers relative to base staff-line thickness
@@ -46,36 +30,21 @@ public final class EngravingConstants {
     private static final double VOLTA_BRACKET_MULTIPLIER = 1.61;
 
     /**
-     * LilyPond base staff-line thickness in staff spaces. SMuFL Bravura's own staff line is
-     * heavier; applying LilyPond multipliers to a LilyPond base reproduces LilyPond's absolute
-     * weights, which is what this program's strokes follow.
-     *
-     * <p>That holds for a stroke this program draws on its own — a staff line, a barline, a
-     * bracket, a hairpin. A stroke that has to register against geometry the font draws takes
-     * its width from the font instead, because the glyphs are cut around the font's own value
-     * and not LilyPond's: see {@link StemMetrics#thicknessSs()}.
+     * LilyPond's base staff-line thickness. Holds for strokes this program draws on its own; a
+     * stroke that registers against font glyphs takes the font's width: see
+     * {@link StemMetrics#thicknessSs()}.
      */
     public static final double LILYPOND_BASE_THICKNESS_SS = 0.1;
 
     public static final double STAFF_LINE_THICKNESS_SS = LILYPOND_BASE_THICKNESS_SS * STAFF_LINE_MULTIPLIER;
     public static final double VOLTA_BRACKET_SS = LILYPOND_BASE_THICKNESS_SS * VOLTA_BRACKET_MULTIPLIER;
 
-    /** Half the staff line width — the distance from a staff line's center to its edge. */
     public static final double STAFF_LINE_HALF_THICKNESS_SS = STAFF_LINE_THICKNESS_SS / 2.0;
 
     /**
-     * Padding around a key signature that stands behind a barline: between that barline and the
-     * signature's first accidental, and — for a cautionary, which also ends the staff line — between
-     * its last accidental and the staff's right edge. Both a mid-line key change and a cautionary
-     * are a barline followed by a run of accidentals, so both clear their barline by this distance
-     * and a key change reads the same wherever it falls.
-     * <p>
-     * The staff header's own signature is not one of these: nothing stands behind it but the clef,
-     * which is {@link StaffHeaderMetrics#CLEF_GAP_SS} away.
-     * <p>
-     * Not a LilyPond port — this program's own padding, {@value} staff spaces, and the same on both
-     * sides of a cautionary so the signature reads as one unit rather than as a run that leans
-     * toward one of its neighbours.
+     * Padding between a barline and the first accidental of a key signature behind it, and for a
+     * cautionary also between its last accidental and the staff's right edge. Not a LilyPond port.
+     * The staff header's own signature uses {@link StaffHeaderMetrics#CLEF_GAP_SS} instead.
      */
     public static final double KEY_SIGNATURE_PADDING_SS = 0.75;
 

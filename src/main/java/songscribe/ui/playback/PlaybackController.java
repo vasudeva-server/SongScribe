@@ -49,12 +49,8 @@ import songscribe.ui.selection.ElementSelection;
 /**
  * <h2>Lifecycle</h2>
  * {@link #initialize(MainFrame)} constructs the four playback action constants against one
- * owner frame; each subscribes itself to the message bus and lives for the process. Nothing
- * tears them down. A caller that replaces them must first have retired the bus they joined.
- *
- * <p>Playback state — the registered score, the transport state, the sequencer —
- * is established by {@link #register} and {@link #play}, not by {@code initialize}.
- * Stopping playback is {@link #stop()}.
+ * owner frame; each subscribes itself to the message bus and lives for the process. A caller
+ * that replaces them must first have retired the bus they joined.
  */
 // The playback action constants are @NonNull but populated lazily by initialize() (which
 // needs the MainFrame, unavailable at class-load), mirroring the Actions holder. NullAway.Init
@@ -105,15 +101,9 @@ public final class PlaybackController {
     }
 
     /**
-     * Populates the playback action constants using {@code mainFrame} as the owner, so the
-     * actions do not call {@link MainFrame#getInstance()} themselves.
-     *
-     * <p>Called once per process, at the top of {@link MainFrame#initFrame()} — adjacent to
-     * {@code Actions.initialize(this)} — before any constant in this class is first
-     * referenced. The constants this replaces keep whatever bus registrations they made, so a
-     * caller that calls it again must first have retired the bus the previous constants joined.
-     *
-     * @effects every constant is assigned a freshly constructed action subscribed to the bus
+     * Called once per process, at the top of {@link MainFrame#initFrame()}, before any constant
+     * in this class is first referenced. The constants this replaces keep their bus
+     * registrations, so a second call must first retire the bus they joined.
      */
     public static void initialize(MainFrame mainFrame) {
         PLAY_STOP_ACTION = PlayStopAction.createAction(mainFrame);
@@ -216,11 +206,7 @@ public final class PlaybackController {
         return registeredScore.getLineComponent(lineIndex);
     }
 
-    /**
-     * Ends playback and returns to the top of the song. Rewinding is {@link #stop} plus
-     * dropping the music selection, so the next {@link #play} starts at the beginning of
-     * the song rather than at the beginning of whatever was selected.
-     */
+    /** Drops the music selection, so the next {@link #play} starts at the beginning of the song. */
     public static void rewindToBeginning() {
         // Already at the top with nothing selected, so there is nothing left to rewind.
         // This also absorbs the auto-repeat of the keyboard shortcut, which would
@@ -232,12 +218,7 @@ public final class PlaybackController {
         endPlayback(PlaybackState.REWOUND);
     }
 
-    /**
-     * Reclassifies a rewind as an ordinary stop once the user selects music again: the
-     * next Play should start at that new selection, not at the top of the song. Posts
-     * nothing, because the two states are indistinguishable to every subscriber — they
-     * differ only in what Play does next.
-     */
+    /** The next Play starts at the new selection, not the top of the song. Posts nothing. */
     public static void selectionDidChange() {
         if (state == PlaybackState.REWOUND) {
             state = PlaybackState.STOPPED;
@@ -255,11 +236,8 @@ public final class PlaybackController {
     }
 
     /**
-     * Halts the sequencer and parks it at the start. No wait for the asynchronous stop to
-     * settle, unlike {@link #reloadSequenceDuringPlayback}: nothing reads the position
-     * again until the next {@link #play}, which loads a fresh sequence and rewinds it
-     * anyway. Callers that drive the sequencer themselves straight afterwards want
-     * {@link #stopAndAwaitSequencer} instead.
+     * Does not wait for the asynchronous stop to settle; callers that drive the sequencer
+     * straight afterwards want {@link #stopAndAwaitSequencer}.
      */
     private static void stopSequencer() {
         var sequencer = MidiController.sequencer;
@@ -354,17 +332,13 @@ public final class PlaybackController {
     }
 
     /**
-     * Ends playback, leaving the music selection alone so the next {@link #play} resumes
-     * at the beginning of it.
+     * Leaves the music selection alone so the next {@link #play} resumes at the beginning of
+     * it.
      */
     public static void stop() {
         endPlayback(PlaybackState.STOPPED);
     }
 
-    /**
-     * Ends playback and does not return until the sequencer has actually gone quiet, for
-     * callers that immediately load and start a sequence of their own on it.
-     */
     public static void stopAndAwaitSequencer() {
         stop();
 
@@ -375,10 +349,6 @@ public final class PlaybackController {
         }
     }
 
-    /**
-     * The shared tail of {@link #stop} and {@link #rewindToBeginning} — the two differ
-     * only in the state they land in, and hence in what the next {@link #play} starts from.
-     */
     private static void endPlayback(PlaybackState newState) {
         state = newState;
         activeSelection = null;
@@ -392,11 +362,6 @@ public final class PlaybackController {
         MidiController.setPlaybackVolume(Prefs.getChoice(PrefsKey.PLAYBACK_VOLUME, PlaybackVolume.class).percent());
     }
 
-    /**
-     * Rebuilds and reloads the MIDI sequence during active playback so that
-     * changes to tempo, note duration, or instrument take effect immediately.
-     * Does nothing if playback is not in the PLAYING state.
-     */
     public static void applyPrefsDuringPlayback() {
         if (state != PlaybackState.PLAYING) {
             return;
@@ -419,11 +384,6 @@ public final class PlaybackController {
         }
     }
 
-    /**
-     * Loads {@code sequence} into an already-playing {@code sequencer} and resumes it at
-     * {@code tickPosition}, without the channel reinitialization that a fresh {@link #play}
-     * performs.
-     */
     private static void reloadSequenceDuringPlayback(
         Sequencer sequencer,
         Sequence sequence,
@@ -449,14 +409,10 @@ public final class PlaybackController {
     }
 
     /**
-     * Spins until the sequencer's internal thread is fully stopped.
-     * <p>
-     * {@link Sequencer#stop()} is asynchronous — without this gate, loading and starting a
-     * sequence can race with the play thread that is still winding down, causing missed
-     * note-offs or silent playback. The wait is typically under a millisecond, so the EDT
-     * impact is negligible; the deadline only exists so a wedged sequencer degrades to a
-     * warning instead of freezing the EDT forever. Proceeding after the deadline reopens
-     * the race this guards against, which is the better of the two failures.
+     * {@link Sequencer#stop()} is asynchronous: without this gate, loading and starting a
+     * sequence can race with the winding-down play thread, causing missed note-offs or silence.
+     * The deadline only keeps a wedged sequencer from freezing the EDT; proceeding after it
+     * reopens the race.
      */
     private static void awaitSequencerStopped(Sequencer sequencer) {
         var deadlineNanos =

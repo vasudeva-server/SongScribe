@@ -30,56 +30,26 @@ import songscribe.error.RuntimeError;
 
 /**
  * An element occupying a column of a staff line: a note, a rest, a barline, a breath mark, a
- * mid-line key change. Abstract, and instantiated only through one of its leaves, one per
- * {@link ElementAppearance} arm — {@link NoteElement} for a note, {@link RestElement} for a
- * rest, {@link BreathMarkElement} for a breath mark, {@link BarElement} for a barline or a
- * repeat, {@link KeyChangeElement} for a key change — so that the class always states what the
- * {@link ElementType} is drawn
- * from, which {@link ElementType#newInstance()} is the general way to get right.
+ * mid-line key change. Abstract, and instantiated only through one of its leaves;
+ * {@link ElementType#newInstance()} is the general way to get the right one.
  *
- * <p>Abstract because every element is one of those leaves: the root states what all of them
- * share and is never an element on its own.
+ * <p>Lyrics hold at most one per script and attachments at most one of any one class, both
+ * invariants between calls. The attachment bound is a precondition of {@link #addAttachment}.
  *
- * <p>What every element carries besides its type: lyrics, at most one per script, and
- * attachments, at most one of any one class. Both bounds are object invariants that hold
- * between calls. The lyric bound is kept by every write to the lyric list — {@link #putLyric}
- * and {@link #removeLyricForScript} element by element, {@link #applyConversionFrom} and
- * {@link #copyStateFrom} by taking a whole list that already satisfies it; the attachment
- * bound is a precondition of {@link #addAttachment}, which the file readers enforce at the
- * boundary and the interactive paths keep by asking {@link #findAttachment} before adding.
- *
- * <p><b>The parent line.</b> {@link #getParentLine()} is the authoritative answer to "is this
- * element live in the document?": {@code null} means in no line, whether never added or
- * detached by a removal, and no membership scan is needed to decide. The line it answers is the
- * line whose elements hold this one, and that is a two-way tie holding at modification-bracket
- * boundaries: {@code getParentLine() == L} exactly when {@code L}'s elements contain this
- * element. Inside a bracket a re-parent may briefly have attached the element to one line while
- * another's list still holds it. What hangs on the element — its attachments, and a note's
- * articulations — is in whatever line the element is in, derived rather than stored, so
- * moving the element moves them with nothing to push down.
+ * <p>{@link #getParentLine()} is the authoritative answer to "is this element live in the
+ * document?", and a two-way tie holding at modification-bracket boundaries:
+ * {@code getParentLine() == L} exactly when {@code L}'s elements contain this element. Inside a
+ * bracket a re-parent may briefly break it.
  */
 public abstract sealed class StaffElement extends LineElement implements LineContent, Cloneable
     permits NoteElement, StructuralElement {
 
-    /** Written only by {@code Line.attach} and {@code Line.detach}. */
     private @Nullable Line parentLine;
 
-    /**
-     * This element's lyrics, at most one per script. {@link #putLyric} and
-     * {@link #removeLyricForScript} write it element by element; {@link #applyConversionFrom}
-     * and {@link #copyStateFrom} write it by {@code addAll} from a list that already satisfies
-     * the bound.
-     */
     private final List<Lyric> lyrics = new ArrayList<>();
 
-    /** Attachments on this element (tempo, fermata, dynamics, etc.), at most one per class. */
     private final List<Attachment> attachments = new ArrayList<>();
 
-    /**
-     * Written by the constructor and by {@link #copyStateFrom}, which undo replay uses to
-     * restore a type change in place. A leaf answers its appearance from this field, so a type
-     * restored here is drawn as the restored type with nothing else to keep current.
-     */
     private ElementType type;
 
     protected StaffElement(ElementType type) {
@@ -113,14 +83,6 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
         return converted;
     }
 
-    /**
-     * Copies onto this freshly built element the attributes of {@code source} that apply under
-     * this element's own type: the base state every line element carries, through
-     * {@link #copyBaseStateFrom}, so a nudge survives a duration change and a note-to-rest
-     * swap; the lyrics and the attachments every staff element carries; then whatever
-     * {@link #applySubtypeConversionFrom} takes. See {@link #convertedFrom}, which is the only
-     * caller.
-     */
     private void applyConversionFrom(StaffElement source) {
         copyBaseStateFrom(source);
         lyrics.addAll(source.lyrics);
@@ -136,18 +98,7 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Copies onto this freshly built element the state {@code source} carries beyond
-     * {@link #applyConversionFrom}'s field list, as far as this element's class has a field to
-     * hold it. Does nothing here: a leaf that adds state of its own overrides it and takes what
-     * the source's class can give — the field layout decides what a conversion carries, so a
-     * source of another class contributes only what the two classes share, and a leaf whose
-     * every answer derives from its type has nothing to take.
-     *
-     * <p>Unlike {@link #copySubtypeStateFrom}, {@code source} may be of any class: a
-     * conversion turns a note into a rest or a barline into a repeat, so an override narrows
-     * with a guarded pattern match rather than a cast.
-     *
-     * @param source the element being converted, of any class, left untouched
+     * Unlike {@link #copySubtypeStateFrom}, {@code source} may be of any class.
      */
     protected void applySubtypeConversionFrom(StaffElement source) {
     }
@@ -196,54 +147,27 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Copies onto this element the state {@code source} carries beyond
-     * {@link #copyStateFrom}'s field list. Does nothing here: a leaf that adds state of its own
-     * overrides it, and a leaf whose every answer derives from its type has nothing to add.
+     * A leaf that adds a field must override this, or clone and undo replay quietly drop it and the
+     * notator sees the value the undone edit gave it.
      *
-     * <p>Both copy paths — {@link #clone()} and undo replay of an {@code ElementModification} —
-     * go through {@link #copyStateFrom}, so a leaf that adds a field and does not override this
-     * gets an identity-preserving restore that quietly drops that field, which reaches the
-     * notator as an element still holding the value the undone edit gave it.
-     *
-     * @param source an element of this element's own class, whose subtype state to copy
+     * @param source an element of this element's own class
      */
     protected void copySubtypeStateFrom(StaffElement source) {
     }
 
-    /**
-     * Returns this element's type: what it is drawn as and what it is worth.
-     *
-     * <p>Fixed at construction. The only write after that is {@link #copyStateFrom}, which undo
-     * replay uses to restore a type change onto the same element, so a caller holding the element
-     * across an undo sees the restored type on the instance it already has.
-     *
-     * @return the type; never null
-     */
     public ElementType getType() {
         return type;
     }
 
     /**
-     * Returns the line this element is in. See the class Javadoc for the tie to that line's
-     * elements.
-     *
-     * @return the line, or {@code null} when the element is in no line — never added, or
-     *     detached by a removal
+     * @return {@code null} when the element is in no line
      */
     public @Nullable Line getParentLine() {
         return parentLine;
     }
 
     /**
-     * Returns the line this element is in, for a caller that holds an element it knows is in
-     * one: an element reached through a line, the song, the selection, a tie, or a lint
-     * finding, each of which reaches only elements in lines. An element is in no line only
-     * between its construction and its addition to a line, and after a removal detaches it;
-     * a caller that may hold such an element asks {@link #getParentLine()} instead.
-     *
-     * @return the line holding this element
-     * @effects exits the program through {@link RuntimeError#exit(String)} when this element is
-     *     in no line
+     * For a caller that knows the element is in a line; otherwise ask {@link #getParentLine()}.
      */
     public Line requireParentLine() {
         var line = parentLine;
@@ -255,23 +179,12 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
         return line;
     }
 
-    /**
-     * Returns the line {@code element} is in, for a caller holding an element that may be
-     * absent — the host of something hung on an element, which has none until it is added.
-     *
-     * @param element the element, or {@code null}
-     * @return {@code element}'s line, or {@code null} when there is no element or it is in no
-     *     line
-     */
     static @Nullable Line parentLineOf(@Nullable StaffElement element) {
         return element != null ? element.getParentLine() : null;
     }
 
     /**
-     * Sets the line this element is in. The only callers are {@code Line.attach} and
-     * {@code Line.detach}; calling it elsewhere breaks the two-way tie in the class Javadoc.
-     * Package-private so the compiler enforces that, rather than leaving it to a reader of
-     * this comment.
+     * Only {@code Line.attach} and {@code Line.detach} call it, to keep the class's two-way tie.
      */
     void setParentLine(@Nullable Line parentLine) {
         this.parentLine = parentLine;
@@ -290,27 +203,15 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     public abstract StaffElement clone();
 
     /**
-     * Returns the distance in staff spaces from this element's origin to the right edge of the
-     * glyph it draws — the notehead alone for a note, excluding stem, flag and augmentation dots.
-     *
-     * <p>The instance-level counterpart of {@link ElementType#getElementWidthSs()}, and the answer
-     * every caller wants: a type knows one width, and for a mid-line key signature that width is
-     * only a floor, since what a key signature draws depends on the key it establishes and the key
-     * it cancels. Both the spacing column and the click hit rect read this, so a key signature is
-     * as wide to the mouse as it is on the staff.
-     *
-     * @return the right edge of this element's glyph, measured from its origin, in staff spaces
+     * The notehead alone for a note, excluding stem, flag and augmentation dots. Prefer it to
+     * {@link ElementType#getElementWidthSs()}, which for a mid-line key signature is only a
+     * floor: the spacing column and the click hit rect read this, so a key signature is as wide
+     * to the mouse as on the staff.
      */
     public double getGlyphWidthSs() {
         return getType().getElementWidthSs();
     }
 
-    /**
-     * Returns the element's full advance width — the glyph plus whatever the type reserves
-     * beside it — in staff spaces.
-     *
-     * @return {@link ElementType#getFullElementWidthSs()} for this element's type
-     */
     public double getAdvanceWidthSs() {
         return getType().getFullElementWidthSs();
     }
@@ -319,46 +220,26 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     // Attachments
     // ========================================================================
 
-    /**
-     * Returns the attachments on this element, in the order they were added.
-     *
-     * @return an unmodifiable view; empty when the element carries none
-     */
     public List<Attachment> getAttachments() {
         return Collections.unmodifiableList(attachments);
     }
 
     /**
-     * Puts {@code attachment} on this element. Afterwards {@link Attachment#owner()} answers this
-     * element, the attachment is in this element's line, and
-     * {@link #findAttachment findAttachment(attachment.getClass())} returns it.
-     *
      * @param attachment an attachment on no element, of a class this element does not already
-     *     carry; the file readers convert a document that breaks the second into a rejected
-     *     document, so no interior caller checks it
-     * @effects appends it to {@link #getAttachments()} and makes this element its owner
+     *     carry; the file readers reject a document that breaks the second, so no interior
+     *     caller checks it
      */
     public void addAttachment(Attachment attachment) {
         attachments.add(attachment);
         attachment.setOwner(this);
     }
 
-    /**
-     * Takes {@code attachment} off this element. An attachment this element does not hold is
-     * left alone. Afterwards {@link Attachment#owner()} answers {@code null} for it.
-     *
-     * @param attachment the attachment to remove
-     * @effects removes it from {@link #getAttachments()} and clears its owner
-     */
     public void removeAttachment(Attachment attachment) {
         if (attachments.remove(attachment)) {
             attachment.setOwner(null);
         }
     }
 
-    /**
-     * Removes all attachments from this element.
-     */
     private void clearAttachments() {
         for (var attachment : attachments) {
             attachment.setOwner(null);
@@ -368,11 +249,7 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Returns the attachment of class {@code type} on this element. There is at most one of any
-     * class, so this is the attachment rather than the first of several.
-     *
-     * @param type the attachment class to look for
-     * @return the attachment, or {@code null} when this element carries none of that class
+     * @return {@code null} when this element carries none of that class
      */
     @SuppressWarnings("unchecked")
     public <T extends Attachment> @Nullable T findAttachment(Class<T> type) {
@@ -386,33 +263,18 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Whether a syllable can be written on this element, given what stands in front of it.
+     * The only place the two conditions are stated together: the type bears syllable text
+     * ({@link ElementType#bearsSyllableText()}), and this element is not the host of a paired
+     * grace note, whose syllable belongs to the grace note.
      *
-     * <p>Two things have to hold, and this is the only place they are stated together. The type
-     * must be one a syllable can be sung on ({@link ElementType#bearsSyllableText()}), and this
-     * element must not be the host of a paired grace note — a host's syllable belongs to the
-     * grace note in front of it, so the host takes none of its own.
-     *
-     * <p>The predecessor is a parameter rather than something this element looks up, because the
-     * two callers reach it differently and both are legitimate: {@link Line#canBearSyllableAt}
-     * reads the line, while {@code LyricLayoutBuilder} reads the columns it is laying out, so
-     * that a run of elements belonging to no line — a clipboard fragment, a projected insertion —
-     * gets the same answer as a live line.
-     *
-     * @param predecessor the element immediately in front of this one, or {@code null} when this
-     *     element is first in its line or run, which pairs it with no grace note
-     * @return {@code true} when a syllable may be written on this element
+     * @param predecessor {@code null} when this element is first in its line or run, which pairs
+     *     it with no grace note
      */
     public boolean canBearSyllable(@Nullable StaffElement predecessor) {
         return getType().bearsSyllableText()
             && !(predecessor instanceof NoteElement note && note.isPairedGraceNote());
     }
 
-    /**
-     * Returns the position of the given script's lyric in {@link #lyrics}, or {@code null} if
-     * none is set. The single place the script lookup is written: {@link #getLyricForScript}
-     * reads the lyric off it, and {@link #putLyric} replaces the lyric at it.
-     */
     private @Nullable Integer indexOfLyricForScript(Song.Script script) {
         for (var i = 0; i < lyrics.size(); i++) {
             if (lyrics.get(i).script() == script) {
@@ -424,10 +286,7 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     }
 
     /**
-     * Returns this element's lyric for {@code script}.
-     *
-     * @param script the script whose lyric is wanted
-     * @return the lyric, or {@code null} when nothing is written on this element in that script
+     * @return {@code null} when nothing is written on this element in that script
      */
     public @Nullable Lyric getLyricForScript(Song.Script script) {
         var index = indexOfLyricForScript(script);
@@ -486,13 +345,6 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
         lyrics.removeIf(lyric -> lyric.script() == script);
     }
 
-    /**
-     * Returns the time this element is written to occupy, in ticks: its type's duration
-     * lengthened by its augmentation dots. Only a {@link Dottable} element carries dots; every
-     * other element occupies its type's plain duration, which for all of them is none.
-     *
-     * @return the written duration in ticks, 0 for an element that occupies no time
-     */
     public int writtenDuration() {
         return Dottable.dotsOf(this).augment(getType().getDefaultDuration());
     }

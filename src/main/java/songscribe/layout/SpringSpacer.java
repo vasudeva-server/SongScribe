@@ -25,38 +25,14 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Solves a chain of {@link Spring}s against an available span by weighted water-filling: it drains
- * every free gap to a common unit level {@code U}, giving gap {@code i} the length
- * {@code levelOffset_i + weight_i × U} and clamping each up to its strut (collision floor) and down
- * to its natural length. The level offset is the gap's non-whitespace component (left-glyph ink
- * plus optical corrections, see {@link Spring#levelOffsetSs}), so the fill levels <em>visual
- * whitespace</em> rather than raw origin-to-origin deltas: thin-left-glyph gaps (barline→note)
- * compress alongside their neighbours instead of being exempted by their small natural length, and
- * optical corrections survive compression as relative offsets instead of being levelled away.
+ * Solves a chain of {@link Spring}s against an available span by weighted water-filling,
+ * levelling visual whitespace rather than raw origin-to-origin deltas.
  * <p>
  * The solver is compress-only: a chain that already fits is left at its natural length, which
  * keeps lines ragged-right and preserves the even lyric lift the builder applied.
  * <p>
- * Water-filling replaces an earlier proportional-to-compliance compression, which drained each gap
- * in proportion to its slack and so pinched hardest exactly the gaps flanked by the narrowest
- * glyphs (the ones with the most slack). Equalising the lengths spreads the deficit evenly instead,
- * matching this engine's non-proportional principle: beyond the hard collision floor, glyph width
- * and rhythmic value do not dictate how far apart two columns sit.
- * <p>
- * One per-spring property breaks that uniformity by design, folded into the spring by the builder so
- * this class needs no beam/grace knowledge of its own: {@code weight}. A tight beam-internal gap
- * carries {@code weight < 1}, so it levels to {@code weight × U} and stays proportionally tighter
- * than a normal gap at every compression level. Its strut still clamps the result, so a hard
- * collision floor always wins.
- * <p>
- * Every gap participates in the fill — there is no pinned-and-excluded case. A gap that must not
- * give (or must give only a little) says so through its strut, which the builder raises to the floor
- * it wants; a grace→host gap uses exactly that mechanism to bound how far it can tighten. This keeps
- * "how far may this gap compress?" a single question with a single answer per spring, rather than a
- * flag the solver has to special-case.
- * <p>
- * This class is lyric-unaware: syllable requirements are already folded into each spring's
- * rest/strut by the spring builder and the lyric lift.
+ * Every gap participates in the fill; a gap that must not give says so through its strut. The
+ * class is lyric-unaware: syllable requirements are already folded into each spring.
  */
 public final class SpringSpacer {
 
@@ -64,35 +40,10 @@ public final class SpringSpacer {
     }
 
     /**
-     * Solves the spring chain so that the gaps sum to at most {@code availableSpanSs}.
-     * <p>
-     * Each gap starts at its natural length {@code max(rest, strut)} — {@code max} rather than
-     * {@code rest} because a wide-glyph gap can have {@code rest < strut}, in which case the strut
-     * wins and the gap starts on its floor. Such a gap simply never gives; it is one whose strut
-     * equals its natural length, and the water-fill below leaves it there. That is the only way a
-     * gap can be immovable — there is no separate pinning flag.
+     * See {@code docs/layout-geometry.md} for the decision diagram.
      *
-     * <p>When the natural span {@code SUM max(rest_i, strut_i)} already fits in
-     * {@code availableSpanSs}, every gap keeps its natural length and the solve is O(n) with no
-     * loop — the line is simply ragged right. Otherwise the floor sum {@code SUM strut_i} decides:
-     * if even that overflows, the chain is infeasible; if it fits, the gaps are compressed by a
-     * weighted water-fill to the unit {@code U} that makes
-     * {@code SUM clamp(w_i·U, strut_i, natural_i)} equal {@code availableSpanSs}. Each gap then
-     * takes {@code clamp(w_i·U, strut_i, natural_i)}: frozen on its strut where the weighted level
-     * falls below it, capped at natural where it rises above (gaps never stretch), and at the
-     * weighted level in between.
-     *
-     * <p>{@code U} is found by levelling the still-free gaps, clamping the single most-violated
-     * one, and re-levelling the rest — so the loop is bounded by {@code springs.size()} passes.
-     * Exceeding that bound is a solver bug, not a layout condition, and throws rather than
-     * mis-spacing.
-     *
-     * <p>See {@code docs/layout-geometry.md} for the decision diagram.
-     *
-     * @param springs         the gaps between adjacent column origins, in left-to-right order
-     * @param availableSpanSs the maximum allowed sum of gap lengths (delta-X Ss)
-     * @return a solved result carrying {@code springs.size()} gap lengths, or
-     *         {@link SpringSolveResult#infeasible()} when the chain overflows even fully
+     * @param springs the gaps between adjacent column origins, in left-to-right order
+     * @return {@link SpringSolveResult#infeasible()} when the chain overflows even fully
      *         compressed
      */
     public static SpringSolveResult solve(List<Spring> springs, double availableSpanSs) {
@@ -114,13 +65,7 @@ public final class SpringSpacer {
         return compress(springs, lengthsSs, availableSpanSs);
     }
 
-    /**
-     * Weighted water-fill: finds the common unit level {@code U} that makes the gaps sum to
-     * {@code availableSpanSs}, giving free gap {@code i} the length {@code weight_i × U}, clamped up
-     * to its strut (collision floor) and down to its natural length (compress-only, so no gap is
-     * stretched past where it started). Every gap enters the fill. {@code lengthsSs} enters at
-     * natural length and is mutated in place.
-     */
+    /** {@code lengthsSs} enters at natural length and is mutated in place. */
     private static SpringSolveResult compress(
         List<Spring> springs,
         double[] lengthsSs,
@@ -188,20 +133,8 @@ public final class SpringSpacer {
             "SpringSpacer.solve did not settle within " + gapCount + " passes");
     }
 
-    /**
-     * The clamp a water-fill pass applies: the free gap that most violates one of its bounds at the
-     * current level, and which bound — {@code atStrut} pins it on its collision floor, otherwise it
-     * stays at its natural length.
-     */
     private record Clamp(int gap, boolean atStrut) {}
 
-    /**
-     * Finds the still-free gap whose offset plus weighted share of {@code unitLevelSs} most
-     * violates a bound. Below its strut floor it holds more than its share (clamp up to the strut);
-     * above its natural length, compress-only forbids stretching (clamp down to natural).
-     *
-     * @return the clamp to apply, or {@code null} when no free gap violates a bound
-     */
     private static @Nullable Clamp worstViolator(
         List<Spring> springs,
         double[] naturalSs,

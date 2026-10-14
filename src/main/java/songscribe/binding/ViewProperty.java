@@ -25,37 +25,14 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link Property} that views storage owned by something else: a read function, a
- * write function, and the observer list whatever owns that storage drives.
+ * A {@link Property} that views storage owned by something else, never a second copy of it.
  *
- * <p>The counterpart to {@link ValueProperty}, which holds its value itself. Use this
- * one when the value already lives somewhere — in a Swing control, in the preferences
- * store, in a model object — and a second copy would be a value that can disagree with
- * the real one.
- *
- * <p>This is the whole of what an adapter package needs from this package. Every view
- * differs only in its two functions and in what calls {@link #notifyObservers}, so
- * there is one implementation rather than one per kind of storage, and the framework's
- * own bookkeeping stays internal.
- *
- * <p>Registering whatever calls {@link #notifyObservers} — a Swing listener, a message
- * subscription — is the adapter's job, and so is deciding whether that registration
- * needs undoing. A listener on a control the dialog owns dies with the control; a
- * subscription to anything process-global does not, and a view over such storage must
- * outlive the dialogs that bind it rather than being created per dialog.
- *
- * @param <T> the viewed value's type, declared {@code @Nullable} when absence is a value
- *     the graph carries
+ * <p>Registering whatever calls {@link #notifyObservers}, and undoing it, is the adapter's
+ * job. A view over process-global storage must outlive the dialogs that bind it rather than
+ * being created per dialog.
  */
 public final class ViewProperty<T extends @Nullable Object> implements Property<T> {
 
-    /**
-     * Whether a write made through this view notifies on its own.
-     *
-     * <p>Which one an adapter passes follows from the storage: a write route that
-     * reports back on its own notifies by itself, and one that reports nothing has
-     * nothing else to notify with.
-     */
     public enum WriteNotification {
         /** The storage reports a write on its own, so notifying here too would notify twice. */
         FROM_SOURCE,
@@ -69,11 +46,6 @@ public final class ViewProperty<T extends @Nullable Object> implements Property<
     private final Consumer<T> writer;
     private final WriteNotification writeNotification;
 
-    /**
-     * @param reader reads the current value from the underlying storage
-     * @param writer writes a value to the underlying storage
-     * @param writeNotification whether {@link #set} notifies, or the storage does
-     */
     public ViewProperty(Supplier<T> reader, Consumer<T> writer, WriteNotification writeNotification) {
         this.reader = reader;
         this.writer = writer;
@@ -101,10 +73,6 @@ public final class ViewProperty<T extends @Nullable Object> implements Property<
         return observers.add(onNotify);
     }
 
-    /**
-     * Notifies this property's observers, called by whatever watches the underlying
-     * storage when that storage reports a change.
-     */
     public void notifyObservers() {
         observers.notifyObservers();
     }

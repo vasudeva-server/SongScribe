@@ -22,32 +22,13 @@ package songscribe.binding;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A value that can be read, observed and written — the two-way case.
+ * A value that can be read, observed and written — storage the user edits and the framework
+ * also writes. The promises of {@link ObservableValue} and {@link WritableValue} apply unchanged.
  *
- * <p>This is the shape of storage the user edits and the framework also writes: a
- * text field, a checkbox, a combo box, a spinner. Both directions are real, so both
- * capabilities are declared, and a {@code Property} may stand on either end of a
- * binding.
+ * <p>Do not type a target as {@code Property} for convenience: a target the framework only
+ * writes is a {@link WritableValue}, so the compiler refuses it as a source. Widening it
+ * compiles a binding that can never fire.
  *
- * <p>It adds no members of its own. The whole of it is the conjunction of
- * {@link ObservableValue} and {@link WritableValue}, and the promises of
- * {@link ObservableValue#get}, {@link ObservableValue#observe} and
- * {@link WritableValue#set} apply here unchanged — including the requirement that
- * {@code get} register the read with the dependency tracker.
- *
- * <p><b>Do not type a target as {@code Property} for convenience.</b> A target the
- * framework only ever writes is declared {@link WritableValue}, so the compiler
- * refuses it as a source. Widening it to {@code Property} makes a binding that can
- * never fire compile, and nothing at runtime reports one.
- *
- * <p>A write is expected to fire the underlying control's notification, so
- * {@code set} on a {@code Property} generally causes {@code observe} actions to
- * run. Bindings absorb the write they caused themselves; see
- * {@link Bindings#bindBidirectional(Property, Property)}.
- *
- * <p><b>Threading:</b> EDT-only, like everything in this package.
- *
- * @param <T> the value's type, declared {@code @Nullable} when absence is a value the graph
- *     carries
+ * <p>EDT-only.
  */
 public interface Property<T extends @Nullable Object> extends ObservableValue<T>, WritableValue<T> {}

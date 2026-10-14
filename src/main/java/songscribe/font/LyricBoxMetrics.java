@@ -24,15 +24,6 @@ import songscribe.layout.LyricRenderMetrics;
 
 /**
  * Visual layout metrics for a lyric box, all in staff-space units.
- *
- * @param advanceSs     cursor-advance width (the layout width used for column placement
- *                      and centering math)
- * @param leftBearingSs offset from the advance origin to the leftmost painted pixel;
- *                      typically 0 or slightly negative for glyphs that overhang to
- *                      the left of their advance origin
- * @param rightExtentSs offset from the advance origin to the rightmost painted pixel;
- *                      may exceed {@code advanceSs} for glyphs that overhang past their
- *                      advance width
  */
 public record LyricBoxMetrics(double advanceSs, double leftBearingSs, double rightExtentSs) {
     public static final LyricBoxMetrics EMPTY = new LyricBoxMetrics(0.0, 0.0, 0.0);

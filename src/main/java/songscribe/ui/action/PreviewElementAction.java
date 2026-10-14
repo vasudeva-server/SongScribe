@@ -29,7 +29,7 @@ import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.ui.component.MainFrame;
 
 /**
- * This class is the superclass for all actions that change the preview element.
+ * Superclass for all actions that change the preview element.
  */
 public class PreviewElementAction extends SelectableUIAction {
 

@@ -34,23 +34,15 @@ import songscribe.ui.component.toolbar.Toolbar;
 
 /**
  * A popup button whose panel is a toolbar of {@link StickyToggleButton}s, one per action.
- * <p>
- * The button reflects the aggregate state of its actions: it is enabled if any action is enabled,
- * and selected if any action is selected. Clicking a panel button performs its action and dismisses
- * the popup.
  */
 public class PopupToolbarButton extends BasePopupButton {
 
-    /**
-     * Vertical gap between the bottom of the toolbar panel and the top of the popup.
-     */
     static final int POPUP_GAP_PX = 2;
     private static final String POPUP_BORDER_CORNER_RADIUS_KEY = "Popup.borderCornerRadius";
     private static final int POPUP_BORDER_CORNER_RADIUS_PX = 8;
 
     /**
-     * Padding between the popup's edge and the toolbar's buttons. The toolbar carries all of it,
-     * because the popup's own border is zeroed — see {@link #updatePopupUI}.
+     * The toolbar carries all the padding: the popup's own border is zeroed.
      */
     static final int TOOLBAR_PADDING_X_PX = 6;
     static final int TOOLBAR_PADDING_Y_PX = 8;
@@ -91,13 +83,8 @@ public class PopupToolbarButton extends BasePopupButton {
     }
 
     /**
-     * Makes the whole panel read as an extension of the toolbar it drops out of: the popup takes
-     * the toolbar's background and gives up its own border, so the opaque toolbar paints the whole
-     * panel and carries all the padding that spaces its buttons off the popup's edge.
-     * <p>
-     * The popup is not part of this button's component tree, so a theme change never reaches it on
-     * its own — {@link #updateUI()} reapplies both, which also restores the border that
-     * re-installing the toolbar's UI would otherwise put back.
+     * The popup is outside this button's component tree, so a theme change never reaches it on
+     * its own; {@link #updateUI()} reapplies this.
      */
     private void updatePopupUI(JPopupMenu popup) {
         popup.setBackground(toolbar.getBackground());
@@ -130,18 +117,12 @@ public class PopupToolbarButton extends BasePopupButton {
         }
     }
 
-    /**
-     * Adds the selected half of the derivation: the button is lit when any of its actions is.
-     */
     @Override
     protected void refreshFromActions() {
         super.refreshFromActions();
         setSelected(actions.stream().anyMatch(SelectableUIAction::isSelected));
     }
 
-    /**
-     * Keeps the button lit when one of its actions is armed, rather than deselecting it.
-     */
     @Override
     protected void popupDidClose() {
         refreshFromActions();
@@ -153,9 +134,8 @@ public class PopupToolbarButton extends BasePopupButton {
     }
 
     /**
-     * The component the popup hangs below. The popup clears the entire toolbar panel rather than
-     * just this button, so that it never overlaps the toolbars beside it. Null when the button has
-     * no toolbar panel above it, which outside of tests means it is not yet in the window.
+     * The popup clears the entire toolbar panel, so it never overlaps the toolbars beside it.
+     * Null when the button has no toolbar panel above it.
      */
     @Nullable Container popupAnchor() {
         return SwingUtilities.getAncestorOfClass(MainToolbarPanel.class, this);

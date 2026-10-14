@@ -35,28 +35,14 @@ import songscribe.font.SourceSans3Font;
 import songscribe.font.TextMeasurement;
 
 /**
- * Lyrics-font-derived values hoisted to song scope so they are computed once
- * per relayout rather than per element. Used by both the layout engine (for measuring
- * syllable widths and reserving inter-syllable gaps) and the renderers (for drawing).
+ * Lyrics-font-derived values computed once per relayout rather than per element.
  *
- * @param lyricsFont       the lyrics font in unscaled (pixel-size) units; used by the
- *                         layout engine with {@link TextMeasurement#textWidthSs} to measure
- *                         syllable advances in staff-space units
- * @param scaledLyricsFont the lyrics font scaled to staff-space units; used by renderers
- *                         that draw inside the staff-space coordinate transform
- * @param placeholderFont  the font of the "?" drawn where a lyric is missing, at the size of
- *                         {@code lyricsFont}; layout measures the placeholder in it and the
- *                         renderer draws in it, so the box matches the drawn glyph
- * @param hyphenWidthSs   width of a hyphen glyph in staff-space units
- * @param spaceWidthSs     width of one space character in staff-space units; used as the
- *                         gap between non-hyphenated syllables
- * @param placeholderWidthSs width of {@link LyricLayoutBuilder#PLACEHOLDER_TEXT} in
- *                         {@code placeholderFont}, in staff-space units
- * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
- *                         to the baseline of its lyric row. Equals
- *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus
- *                         {@link #fontAboveBaselineSs}, so a baseline placed at this distance
- *                         puts the text <em>ink top</em> one visual gap below the content.
+ * @param lyricsFont       the lyrics font in unscaled (pixel-size) units
+ * @param scaledLyricsFont the lyrics font scaled to staff-space units
+ * @param placeholderFont  layout measures and the renderer draws the "?" for a missing lyric in
+ *                         it, so the box matches the drawn glyph
+ * @param staffToLyricsGapSs a <em>baseline</em> offset from a line's below-staff content to the
+ *                         lyric row's baseline, not the visual gap
  */
 public record LyricRenderMetrics(
     Font lyricsFont,
@@ -68,19 +54,11 @@ public record LyricRenderMetrics(
     double staffToLyricsGapSs
 ) {
 
-    /** Preferred hyphen cell width as a multiple of the "-" glyph width. */
     public static final double HYPHEN_WIDENING_FACTOR = 1.75;
 
     /**
-     * Derives the full set of metrics from the lyrics font alone — every component is a
-     * function of it, so this is the only way they should be built outside tests that
-     * deliberately inject degenerate values.
-     * <p>
-     * In particular {@code staffToLyricsGapSs} is a <em>baseline</em> offset, not the visual
-     * gap: it is {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus the font's above-baseline ink,
-     * so a baseline placed at this distance puts the text's ink top one visual margin below
-     * the line's content. Getting that composition wrong shifts every script in the song, which
-     * is why it lives here rather than at the call site.
+     * Every component is a function of the lyrics font, so this is the only way to build them
+     * outside tests that deliberately inject degenerate values.
      */
     public static LyricRenderMetrics forFont(Font lyricsFont) {
         // SemiBold so the mark stands out from the lyrics; the face ships with the
@@ -97,14 +75,10 @@ public record LyricRenderMetrics(
             LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
     }
 
-    /** Returns the preferred cell width for a hyphen connector (glyph width × widening factor). */
     public double preferredHyphenCellWidthSs() {
         return HYPHEN_WIDENING_FACTOR * hyphenWidthSs;
     }
 
-    /**
-     * Returns the full lyric box width for {@code text} in staff spaces.
-     */
     public double lyricBoxWidthSs(String text) {
         if (text.isEmpty()) {
             return 0.0;
@@ -114,10 +88,7 @@ public record LyricRenderMetrics(
     }
 
     /**
-     * Returns the width in staff spaces of {@code text}'s first grapheme cluster — one
-     * user-perceived character, so a base letter plus its combining marks measures as a unit.
-     * A grace note anchors this first cluster on its notehead rather than the whole syllable,
-     * so the syllable reads as beginning at the grace note.
+     * A grace note anchors only the first grapheme cluster on its notehead.
      */
     public double firstGraphemeWidthSs(String text) {
         if (text.isEmpty()) {
@@ -136,39 +107,25 @@ public record LyricRenderMetrics(
     }
 
     /**
-     * Returns advance plus visual left/right extents for {@code text}. Use this when sizing
-     * a container that must include glyph overhang (e.g. an in-place editor) so leftmost or
-     * rightmost ink pixels are not clipped. Plain layout callers should keep using
-     * {@link #lyricBoxWidthSs} since they want advance-only.
+     * Includes glyph overhang; plain layout callers want the advance-only {@link #lyricBoxWidthSs}.
      *
      * @param text the lyric text; empty yields {@link LyricBoxMetrics#EMPTY}
-     * @return the box's advance and ink extents in staff-space units
      */
     public LyricBoxMetrics lyricBoxMetricsSs(String text) {
         return TextMeasurement.lyricBoxMetricsSs(lyricsFont, text);
     }
 
     /**
-     * Returns a stable lyric-box height in staff spaces: the ink height of
-     * {@link #LYRIC_EXTENT_REFERENCE} in the lyrics font. Independent of the currently typed
-     * text, so the editor box does not change height as characters with descenders are typed
-     * or deleted.
+     * Independent of the typed text, so the editor box does not change height as descenders are
+     * typed or deleted.
      */
     public double lyricBoxHeightSs() {
         return fontHeightSs(lyricsFont);
     }
 
     /**
-     * Returns the height of the in-place lyric editor's text box in staff spaces — the lyrics
-     * font's ascent + descent.
-     * <p>
-     * Deliberately not {@link #lyricBoxHeightSs}. The reserved lyric row hugs the ink of
-     * {@link #LYRIC_EXTENT_REFERENCE}, but a live text field has to fit whatever the user
-     * types, and {@link JTextField} lays its own painting out from the font-wide ascent and
-     * descent — its baseline lands at {@code insets.top + ascent}, with the descender below.
-     * Sizing the editor from ink would clip glyphs mid-edit.
-     *
-     * @return the editor box's height in staff spaces
+     * Deliberately not {@link #lyricBoxHeightSs}: {@link JTextField} lays out from the font-wide
+     * ascent and descent, so sizing the editor from ink would clip glyphs mid-edit.
      */
     public Ss editorBoxHeightSs() {
         return new Ss(
@@ -182,21 +139,13 @@ public record LyricRenderMetrics(
     // ==========================================================================
 
     /**
-     * The reference string measured to size a lyrics row. {@code Ā} contributes the tallest
-     * ink a lyric can carry above the baseline — a capital plus a combining macron — and
-     * {@code j} the deepest below it.
-     * <p>
-     * Real ink is measured rather than the font's own ascent/descent because those are
-     * font-wide worst cases: ascent reserves height for glyphs lyrics never contain, and
-     * descent reserves room for under-character marks. That slack sits inside every line's
-     * lyrics band and reads as excess space between staff lines.
+     * Real ink is measured rather than the font's ascent/descent, whose font-wide slack would
+     * read as excess space in every line's lyrics band.
      */
     private static final String LYRIC_EXTENT_REFERENCE = "Ājyg";
 
-    /** Identifies a font for caching purposes; the extents depend on face and size only. */
     private record FontInfo(String psName, float size) {}
 
-    /** Baseline-relative ink bounds of {@link #LYRIC_EXTENT_REFERENCE}, in pixels. */
     private static final Map<FontInfo, Rectangle2D> lyricExtentCache = new HashMap<>();
 
     private static Rectangle2D lyricExtentPx(Font font) {
@@ -212,21 +161,10 @@ public record LyricRenderMetrics(
         return extent;
     }
 
-    /**
-     * Returns the full ink height of a lyrics row in {@code font}, in staff spaces — the
-     * distance from the top of {@link #LYRIC_EXTENT_REFERENCE}'s ink to its bottom. This is
-     * the height a line's lyric row reserves.
-     */
     public static double fontHeightSs(Font font) {
         return DocumentScale.pxToSs(lyricExtentPx(font).getHeight());
     }
 
-    /**
-     * Returns the ink height above the baseline of a lyrics row in {@code font}, in staff
-     * spaces. Use this to place a first baseline a known distance below other content:
-     * offsetting by this puts the row's <em>ink top</em> at that distance, with no descender
-     * included.
-     */
     public static double fontAboveBaselineSs(Font font) {
         return DocumentScale.pxToSs(TextMeasurement.inkHeight(lyricExtentPx(font)));
     }

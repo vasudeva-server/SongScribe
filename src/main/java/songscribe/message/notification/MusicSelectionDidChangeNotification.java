@@ -30,11 +30,7 @@ public class MusicSelectionDidChangeNotification extends Message {
     private final int selectionSize;
     private final HitTarget.@Nullable Selectable selectedTarget;
 
-    /**
-     * @param selectionSize  the number of elements the score has selected
-     * @param selectedTarget the score's single selected target, or {@code null} when nothing is
-     *                       selected by identity
-     */
+    /** {@code selectedTarget} is {@code null} when nothing is selected by identity. */
     public MusicSelectionDidChangeNotification(
         int selectionSize, HitTarget.@Nullable Selectable selectedTarget
     ) {
@@ -50,10 +46,7 @@ public class MusicSelectionDidChangeNotification extends Message {
         return selectedTarget instanceof HitTarget.Lyric;
     }
 
-    /**
-     * Returns the score's single selected target when the message was posted, or null if
-     * nothing was selected by identity.
-     */
+    /** @return {@code null} if nothing was selected by identity */
     public HitTarget.@Nullable Selectable getSelectedTarget() {
         return selectedTarget;
     }

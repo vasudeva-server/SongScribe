@@ -42,43 +42,17 @@ import songscribe.dom.TupletValidator;
  * Decides which spans survive a paste: the destination spans the paste lands <em>inside</em>
  * of, and the fragment spans the destination refuses where they land.
  *
- * <p>The two rules are independent and run in that order, at two different moments of
- * the paste, and each answers with a type of its own: {@link #reconcile} with this record,
- * {@link #settle} with a {@link Settlement}. {@link FragmentPaste} runs the paste around them.
- *
- * <table border="1">
- *   <caption>The two drop rules</caption>
- *   <tr><th>Rule</th><th>Runs</th><th>Drops</th></tr>
- *   <tr>
- *     <td>straddle</td>
- *     <td>before the paste mutates anything</td>
- *     <td>straddled destination spans, and the fragment spans of a kind that a
- *         straddle invalidates</td>
- *   </tr>
- *   <tr>
- *     <td>target</td>
- *     <td>after the fragment's elements are in, before any of its spans is added</td>
- *     <td>fragment tuplets, beams, endings and hairpins that their kind's own rule
- *         refuses where they landed</td>
- *   </tr>
- * </table>
- *
- * <p>A paste never cancels because of a span. It leaves out what either rule drops, and every
- * span it leaves out reaches the paste's report: a straddled destination span through
- * {@link Span#removeReported}, with the reason its {@link LostSpan} carries, and a fragment
- * span either rule drops through {@link Settlement#reports}.
+ * <p>The straddle rule ({@link #reconcile}) runs before the paste mutates anything; the target
+ * rule ({@link #settle}) runs after the fragment's elements are in and before any of its spans
+ * is added. A paste never cancels because of a span: every span it leaves out reaches the
+ * paste's report, a straddled destination span through {@link Span#removeReported} and a
+ * fragment span through {@link Settlement#reports}.
  *
  * <h2>The straddle rule</h2>
  *
- * <p>{@link Fragment#capture} already guarantees the source side is internally
- * consistent — a span is captured only when both its endpoints are inside the copied
- * range — and the deletion sweep in {@link Line#removeRange} already drops any target
- * span whose anchor or end is deleted by a paste-replace. What neither covers is the
- * span that <em>straddles</em> the paste: its anchor sits before the paste region and
- * its end sits after, so both endpoints survive and the span silently stretches over
- * material the user never put under it. {@link Span#straddling} is the test.
- *
- * <p>A straddling target span is reconciled by kind:
+ * <p>A span that <em>straddles</em> the paste has its anchor before the paste region and its end
+ * after, so it would silently stretch over material the user never put under it
+ * ({@link Span#straddling}). Straddling target spans are reconciled by kind:
  *
  * <table border="1">
  *   <caption>Straddle policy by span kind</caption>
@@ -90,95 +64,32 @@ import songscribe.dom.TupletValidator;
  *   <tr><td>{@link Ending}</td><td>kept</td><td>endings dropped</td></tr>
  * </table>
  *
- * <p>Tuplets and beams are rhythmic groupings: a group that no longer covers the
- * notes it was written for is not merely misplaced but wrong, and a pasted group
- * dropped into the wreckage of a broken one is equally wrong — so both sides go.
- * A trill binds specific adjacent notes, so a straddled one is dropped, but a
- * fragment's own trill still binds its own notes and is kept. A tie is not a span
- * and this class does not judge one: it is state the anchor note carries, travels
- * with the pasted notes however they land, and is judged by the tie rule when the
- * paste's modification bracket closes, the same as any other tie in a line the
- * bracket touched — including one that spans the paste point.
+ * <p>Tuplets and beams are rhythmic groupings, so a broken group and a group pasted into its
+ * wreckage are both wrong. A trill binds specific adjacent notes, so a straddled one is dropped,
+ * but a fragment's own trill is kept. A tie is not a span and is judged by the tie rule when the
+ * paste's modification bracket closes.
  *
- * <p><b>Hairpins reconcile by type</b>, because a crescendo and a diminuendo say
- * opposite things when they <em>overlap</em> — which is all the straddle rule judges,
- * since it only reconciles a destination hairpin the paste straddles. A straddled
- * destination hairpin is kept — and silently widened by the insertion, which reads
- * correctly over any span of notes — only while the fragment says nothing that
- * contradicts it: if the fragment carries a hairpin of a <em>different</em> type, the
- * destination's is removed and the fragment's own hairpins win, since a diminuendo nested
- * inside a crescendo is a contradiction no widening can fix. Otherwise the destination's
- * wins and the fragment's — necessarily a shorter hairpin of the same type inside it — is
- * dropped as redundant.
+ * <p><b>Hairpins reconcile by type.</b> A straddled destination hairpin is kept, and widened by
+ * the insertion, unless the fragment carries a hairpin of a different type: then the
+ * destination's is removed and the fragment's win, since a diminuendo nested inside a crescendo
+ * is a contradiction no widening can fix. Otherwise the destination's wins and the fragment's
+ * is dropped as redundant.
  *
- * <p>An ending straddling the paste follows the hairpin rule for the same reason in
- * reverse: an ending bracket covering a few extra notes is still valid notation, but an
- * ending <em>nested inside</em> another one never is. So the destination ending is kept and
- * the fragment's is dropped. Whether the destination ending survives the pasted
- * <em>content</em> is a separate and more precise question that {@link Line#addElement}
- * already answers per clone via {@link Ending#outcomeFor}, the ending's own
- * barline/repeat-aware rule; this class does not second-guess it. A fragment carrying a
- * whole ending necessarily carries that ending's own barlines, so in practice that rule
- * usually removes the destination ending too.
+ * <p>A straddling ending is kept and the fragment's dropped, because an ending nested inside
+ * another is never valid.
  *
- * <p><b>Only a straddle counts.</b> The tuplet/beam rule reads as "if the paste
- * does not completely replace a group, remove it from both sides", which literally
- * also covers a paste-replace that clips a group at its edge — deleting one endpoint
- * and orphaning notes on the other side. That case is excluded: the destination group
- * dies anyway (the deletion sweep sees the lost endpoint), and the pasted group lands
- * contiguous and self-consistent at the boundary rather than interleaved with the
- * orphaned remains, which is the mess the rule exists to prevent. Dropping it there
- * would strip beaming from a paste merely for landing next to a beamed note. The
- * orphaned notes' own beaming is left to the user, matching the "beams at the seams"
- * note in {@code docs/clipboard.md}.
+ * <p><b>Only a straddle counts.</b> A paste-replace that merely clips a group at its edge is not
+ * one: the destination group dies in the deletion sweep, and dropping the pasted group would
+ * strip beaming from a paste merely for landing next to a beamed note.
  *
  * <h2>The target rule</h2>
  *
- * <p>A fragment span is a copy of a span that was valid where it was captured. What the
- * destination can change is whether its range is still valid where it lands, and the
- * paste is the only moment that is knowable. Every kind with a factory is judged by it, the
- * same rule that judges creating that kind by hand there:
- *
- * <table border="1">
- *   <caption>Target policy by span kind</caption>
- *   <tr><th>Kind</th><th>Judged by</th><th>What is added when accepted</th></tr>
- *   <tr><td>{@link Tuplet}</td><td>{@link Tuplet#spanningStated}, strictly, with the
- *       tuplet's own grade and ratio</td><td rowspan="4">the span the factory built,
- *       carrying the fragment span's user state</td></tr>
- *   <tr><td>{@link Beam}</td><td>{@link Beam#spanning}</td></tr>
- *   <tr><td>{@link Ending}</td><td>{@link Ending#spanning}</td></tr>
- *   <tr><td>{@link Hairpin}</td><td>{@link Hairpin#spanning}</td></tr>
- *   <tr><td>{@link Trill}</td><td>nothing</td><td>the fragment's trill</td></tr>
- * </table>
- *
- * <p>A span that its factory accepts is built by the factory, never taken from the fragment,
- * so every tuplet, beam, ending and hairpin a paste adds is one its kind's own rule made. That
- * rule covers what the straddle rule does not see: a tuplet that now crosses a beat barrier or
- * a barline; an ending pasted after a {@code ||}, or in front of a barline; a hairpin whose
- * range now holds a repeat; an ending that would overlap one the destination keeps. A trill
- * has no rule a destination can break: it binds the fragment's own notes, which land
- * together.
- *
- * <p>A tuplet travels through the clipboard with its ratio, so it is judged with that ratio
- * rather than one re-derived from the destination's beat. Re-deriving would destroy the
- * tuplets the model goes out of its way to preserve — a document may state a ratio the
- * convention would not choose, and pasting such a tuplet back where it came from would refuse
- * it. What the destination can break is its placement.
- *
- * <p><b>A paste that merely abuts a hairpin is not a refusal.</b> Two same-type hairpins
- * left nose to tail are one hairpin, and {@link Hairpin#spanning} judges and builds the range
- * the converged hairpin will hold, whose absorbed hairpins {@link Span#addTo} then removes —
- * the same rule that applies when the user draws a hairpin flush against an existing one.
- * A different type merges with nothing, and the two hairpins stand side by side, again
- * exactly as when drawn.
- *
- * @param targetSpansToRemove  the spans on the destination line the paste straddles, each with
- *                             the reason it is removed; still on the line
- * @param fragmentSpansKept    the fragment's spans the straddle rule kept, in the fragment's
- *                             order; not yet judged by the target rule, which {@link #settle}
- *                             applies
- * @param fragmentSpansDropped the fragment's spans the straddle rule dropped, each with the
- *                             reason it is reported with
+ * <p>Every kind with a factory is judged by the same rule that judges creating it by hand where
+ * it lands, and a span its factory accepts is built by the factory, never taken from the
+ * fragment. A trill has no rule a destination can break. A tuplet is judged with its own ratio,
+ * not one re-derived from the destination's beat. A paste that merely abuts a hairpin is not a
+ * refusal: same-type hairpins converge as when the user draws one flush against another, and
+ * different types stand side by side.
  */
 public record PasteSpanReconciliation(
     List<LostSpan> targetSpansToRemove,
@@ -195,20 +106,14 @@ public record PasteSpanReconciliation(
     /**
      * A span the paste does not keep, paired with the reason the user is told.
      *
-     * @param span      the span: a destination span still on its line, or a fragment span never
-     *                  added to any line
-     * @param reasonKey the {@code Strings} key of the reason, whose value is plain text
+     * @param span a destination span still on its line, or a fragment span never added to any line
      */
     public record LostSpan(Span<?> span, String reasonKey) {}
 
     /**
-     * What the target rule leaves of the fragment's spans: the spans to add, and the report
-     * entry for every fragment span the paste leaves out.
+     * What the target rule leaves of the fragment's spans.
      *
-     * @param spansToAdd the span to add for each fragment span accepted, in the fragment's order;
-     *                   none of them is on a line yet
-     * @param reports    one entry per fragment span the straddle rule dropped or the target rule
-     *                   refused, naming the line the span's elements landed on, ready to record
+     * @param spansToAdd in the fragment's order; none of them is on a line yet
      */
     public record Settlement(List<Span<?>> spansToAdd, List<RecordedChange> reports) {
 
@@ -348,11 +253,6 @@ public record PasteSpanReconciliation(
         return new Settlement(spansToAdd, reports);
     }
 
-    /**
-     * Settles {@code fragmentSpan} on its factory's {@code answer}: the span the factory built,
-     * taking {@code fragmentSpan}'s user state, joins {@code spansToAdd}; a refusal joins
-     * {@code reports}, naming the line {@code fragmentSpan}'s elements landed on.
-     */
     private static <E extends StaffElement, S extends Span<E>> void settleWith(
         S fragmentSpan,
         Spanning<S> answer,
@@ -368,16 +268,11 @@ public record PasteSpanReconciliation(
         }
     }
 
-    /** The removal of {@code span}, a destination span the paste straddles. */
     private static LostSpan straddled(Span<?> span) {
         return new LostSpan(span, Strings.REPORT_REASON_PASTE_STRADDLED);
     }
 
-    /**
-     * Whether the fragment carries a hairpin of a type other than {@code hairpin}'s —
-     * the one thing that can beat a straddled destination hairpin, since the pasted
-     * notes would then be reading two opposite dynamics at once.
-     */
+    /** The one thing that can beat a straddled destination hairpin. */
     private static boolean fragmentContradictsHairpin(
         List<Span<?>> fragmentSpans,
         Hairpin hairpin

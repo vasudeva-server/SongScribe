@@ -23,30 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The observer bookkeeping shared by every {@link ObservableValue} implementation
- * in this package: the list of registered actions, the {@link Subscription} that
- * removes one, and the notification pass.
- *
- * <p>Every implementation that notifies — {@link ValueProperty}, {@link Computed},
- * and each view an adapter package builds over its own storage — holds one of these rather than
- * repeating the list, the idempotent cancel and the copy-iterating pass. Every call
- * happens on the EDT, per the package invariant, so nothing here is synchronized.
+ * The observer bookkeeping shared by every {@link ObservableValue} implementation in this
+ * package. EDT-only; not synchronized.
  */
 final class Observers {
 
     private final List<Runnable> observers = new ArrayList<>();
 
-    /**
-     * Registers {@code onNotify} and returns the subscription that removes it.
-     *
-     * <p>The same {@code Runnable} may be registered more than once; each
-     * registration is independent and each returned subscription removes exactly
-     * one of them.
-     *
-     * @param onNotify the action to run on every notification
-     * @return the subscription that removes this registration, idempotent per
-     *     {@link Subscription#cancel}
-     */
+    /** The same {@code Runnable} may be registered more than once; each registration is independent. */
     Subscription add(Runnable onNotify) {
         observers.add(onNotify);
 
@@ -65,12 +49,8 @@ final class Observers {
     }
 
     /**
-     * Runs every registered action, in registration order.
-     *
-     * <p>Iterates a copy, so an action that registers or cancels an observation —
-     * which a {@code computed} re-collecting its dependencies routinely does —
-     * cannot invalidate the pass in progress. An action registered during a pass is
-     * not run by that pass; one cancelled during a pass may still be run by it.
+     * An action registered during a pass is not run by that pass; one cancelled during a pass
+     * may still be run by it.
      */
     void notifyObservers() {
         for (var observer : List.copyOf(observers)) {

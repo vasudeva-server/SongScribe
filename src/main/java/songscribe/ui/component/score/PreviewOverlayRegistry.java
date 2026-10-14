@@ -28,45 +28,26 @@ import songscribe.layout.LayoutResult;
 import songscribe.ui.edit.EditModeManager;
 
 /**
- * Owns the hover-preview overlays and decides when their ink is rebuilt, re-anchored, or taken
- * down.
- * <p>
- * The overlays are static like the rest of the preview subsystem's state: only one line across all
- * hosts can carry the preview at a time, so one set serves whichever host installed it. Position
- * and hover tracking stay on {@link PreviewElementManager}; this class holds only the components
- * themselves and the deferred re-anchor that a mid-bracket type change leaves behind.
+ * Owns the hover-preview overlays. Static like the rest of the preview subsystem's state: only
+ * one line across all hosts can carry the preview at a time.
  */
 final class PreviewOverlayRegistry {
 
-    /**
-     * The component that draws the hover preview, or null before a host has installed one
-     * (headless converters never do).
-     */
+    /** Null before a host has installed one (headless converters never do). */
     @Nullable
     private static PreviewElementOverlay overlay = null;
 
-    /**
-     * The component that draws the connecting glissando between a grace note and the host-note
-     * insertion preview, or null before a host has installed one. It is gated on grace mode, and
-     * the note-head preview it connects to is showing at the same time.
-     */
+    /** Null before a host has installed one. */
     @Nullable
     private static GraceGlissandoPreviewOverlay graceGlissandoOverlay = null;
 
-    /**
-     * True when {@link #previewTypeDidChange()} ran while a modification bracket was open and had
-     * to defer re-anchoring the overlay until the bracket closes and layout is fresh. Consumed by
-     * {@link #applyPendingRestore}.
-     */
     private static boolean pendingRestore = false;
 
     private PreviewOverlayRegistry() {
     }
 
     /**
-     * Creates {@code host}'s hover-preview overlays and registers them as children of the host.
-     * Exactly one of each exists for the host's lifetime; none is ever recreated, only
-     * retargeted.
+     * Exactly one of each exists for the host's lifetime; none is recreated, only retargeted.
      */
     static void install(OverlayHost host) {
         overlay = new PreviewElementOverlay(host);
@@ -78,12 +59,8 @@ final class PreviewOverlayRegistry {
     }
 
     /**
-     * Rebuilds every hover-preview overlay's ink and bounds from the current tracking state,
-     * hiding each one that no longer applies. Call whenever anything the renderers read has
-     * changed — the preview element itself, its decorations, or the staff position it sits at.
-     * Each overlay's own gate decides whether it is the one that should be visible, so a single
-     * call here keeps them all in sync without the caller having to know which one currently
-     * applies.
+     * Call whenever anything the renderers read has changed. Each overlay's own gate decides
+     * whether it is visible, so the caller need not know which one applies.
      */
     static void previewDidChange() {
         var previewLine = PreviewElementManager.getCurrentInsertionLine();
@@ -94,9 +71,7 @@ final class PreviewOverlayRegistry {
     }
 
     /**
-     * The installed overlays, or an empty list before {@link #install} (headless converters never
-     * install any). They are all created and cleared together, so the all-or-nothing check covers
-     * each of them.
+     * Empty before {@link #install}. They are created and cleared together.
      */
     private static List<RecordedInkOverlay> installed() {
         if (overlay == null || graceGlissandoOverlay == null) {
@@ -107,23 +82,12 @@ final class PreviewOverlayRegistry {
     }
 
     /**
-     * Re-derives the insertion position from the real mouse location, then rebuilds the
-     * overlays' ink for the newly-selected preview element type.
+     * Call instead of {@link #previewDidChange()} when the preview element's identity changes,
+     * not merely its decorations; otherwise the overlay re-anchors to a possibly stale insertion
+     * index and staff position.
      * <p>
-     * Call this instead of {@link #previewDidChange()} when the preview element's identity
-     * changes (e.g. a toolbar tool selection, or the next-insertion element set up after a click)
-     * rather than merely its decorations — otherwise the overlay re-anchors to whatever insertion
-     * index and staff position were last computed, which can be stale relative to the line's
-     * current layout.
-     * <p>
-     * When called from inside an open modification bracket — the post-insertion case, where
-     * {@link EditModeManager#previewElementDidChange} sets up the next preview element while
-     * {@code line.getSong().withModification(...)} is still open — the current {@link LayoutResult} is
-     * one insertion out of date (invalidated only when the bracket closes), so re-anchoring
-     * here would land on the just-inserted element and fall back to an empty-line offset. The
-     * re-anchor is deferred to {@link #applyPendingRestore}, run from
-     * {@code PreviewElementManager.songDidChange} once the bracket has closed and layout can be
-     * made fresh again.
+     * Inside an open modification bracket the current {@link LayoutResult} is one insertion out
+     * of date, so re-anchoring is deferred to {@link #applyPendingRestore}.
      */
     static void previewTypeDidChange() {
         var mouseLine = PreviewElementManager.getCurrentMouseLine();
@@ -138,8 +102,8 @@ final class PreviewOverlayRegistry {
     }
 
     /**
-     * Re-anchors the preview overlay without rebuilding its ink. Only legal when the glyphs the
-     * renderers would emit are unchanged and just the insertion X moved.
+     * Only legal when the glyphs the renderers would emit are unchanged and just the insertion X
+     * moved.
      */
     static void previewDidMove() {
         var previewLine = PreviewElementManager.getCurrentInsertionLine();
@@ -164,10 +128,8 @@ final class PreviewOverlayRegistry {
     }
 
     /**
-     * Re-anchors the preview overlay for a pending click-to-insert, if any. Invoked from
-     * {@code PreviewElementManager.songDidChange} once the outermost modification bracket has
-     * committed, so the layout has been invalidated and can be recomputed to place the preview
-     * against the just-inserted element rather than a stale {@link LayoutResult} that predates it.
+     * Runs once the outermost modification bracket has committed, so layout can be recomputed
+     * against the just-inserted element.
      */
     static void applyPendingRestore() {
         if (!pendingRestore) {
@@ -190,7 +152,7 @@ final class PreviewOverlayRegistry {
         previewDidChange();
     }
 
-    /** Returns the installed hover-preview overlay, or null before {@link #install}. */
+    /** Null before {@link #install}. */
     static @Nullable PreviewElementOverlay getOverlay() {
         return overlay;
     }

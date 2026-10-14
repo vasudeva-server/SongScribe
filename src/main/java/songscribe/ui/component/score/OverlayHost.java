@@ -26,29 +26,19 @@ import javax.swing.JComponent;
  * A container that hosts {@link LineOverlayComponent}s as free-floating, absolute-bounds
  * children.
  * <p>
- * Overlays refer to their host through this interface rather than by concrete type: the host
- * is {@code ScoreView} today and becomes {@code PageComponent} under {@code
- * specs/184-pagination.md} §4, and no overlay should have to change when that lands. An overlay
- * computes its bounds in the host's coordinate space, so the host is also the ancestor it
- * converts against.
+ * Overlays refer to their host through this interface, not by concrete type, so no overlay has
+ * to change when the host moves from {@code ScoreView} to {@code PageComponent} under {@code
+ * specs/184-pagination.md} §4.
  * <p>
  * Implementors must be {@link JComponent}s and must return {@code false} from
  * {@link JComponent#isOptimizedDrawingEnabled()} — see {@code ScoreView.isOptimizedDrawingEnabled}.
  */
 public interface OverlayHost {
 
-    /**
-     * Adds {@code overlay} as a free-floating absolute-bounds child, positioned in this host's
-     * z-order according to the host's overlay z-order contract.
-     */
     void addOverlay(JComponent overlay);
 
-    /** Removes a previously added overlay and repaints the region it occupied. */
     void removeOverlay(JComponent overlay);
 
-    /**
-     * Returns this host as a component, for coordinate conversion and hierarchy tests.
-     * Implementors return {@code this}.
-     */
+    /** Implementors return {@code this}. */
     JComponent getHostComponent();
 }

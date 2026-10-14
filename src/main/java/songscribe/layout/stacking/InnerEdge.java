@@ -26,13 +26,6 @@ import songscribe.layout.LayoutResult;
 /**
  * Where an element's staff-facing edge lies: the side of the staff, the edge's Y, and the margin
  * recorded with the element's layout.
- *
- * @param direction the side of the staff: {@link Direction#UP} for an element above it, whose inner
- *                  edge is its bottom; {@link Direction#DOWN} for one below it, whose inner edge is
- *                  its top
- * @param ySs       the inner edge's Y, in staff spaces
- * @param marginSs  the margin recorded in the element's {@link LayoutResult.DecorationLayout}: the
- *                  clearance its placement rule keeps from whatever lies inside it
  */
 record InnerEdge(Direction direction, double ySs, double marginSs) {
 }

@@ -25,23 +25,17 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 
 /**
- * The accent (">") marking, converted from accent.svg. Local coordinates: origin at the glyph's
- * bounding-box center, tip pointing toward +x, open/wide end at -x.
- * <p>
- * Sized in fixed staff-space units (1 staff space = 1.0): the ambient {@code Graphics2D} is
- * already under a {@code pixelsPerStaffSpace} scale transform by the time renderers draw, so the
- * shape itself has no zoom dependency.
+ * The accent (">") marking, in staff-space units. Origin at the bounding-box center, tip
+ * toward +x, wide end at -x.
  */
 public final class AccentShape {
 
-    /** Target wedge width, in staff spaces, that the raw SVG path is scaled to. */
     private static final double WEDGE_WIDTH_SS = 1.43;
 
     private static final Shape ACCENT = build();
 
     private AccentShape() {}
 
-    /** Returns the accent wedge, in staff-space units, centered vertically and horizontally at the origin. */
     public static Shape accent() {
         return ACCENT;
     }
@@ -61,11 +55,6 @@ public final class AccentShape {
         return transform.createTransformedShape(rawPath);
     }
 
-    /**
-     * Builds the accent path in accent.svg's document coordinates: the raw {@code <path>} data
-     * with the two nested {@code <g transform="matrix(...)">} transforms baked in, since Path2D
-     * has no notion of an ambient SVG transform stack.
-     */
     private static Path2D buildRawPath() {
         var path = new Path2D.Double();
 

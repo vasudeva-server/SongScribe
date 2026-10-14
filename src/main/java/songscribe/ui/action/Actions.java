@@ -50,20 +50,15 @@ import songscribe.util.UIUtils;
 import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
 /**
- * This class serves as a repository for global action-related constants and action groups.
- * Playback actions are in the playback package.
+ * A repository for global action-related constants and action groups.
  *
  * <p>Constants are populated by {@link #initialize(MainFrame)}, which must be called
- * before any constant is first read. {@code MainFrame.getInstance()} calls
- * {@code MainFrame.initFrame()}, which calls {@code Actions.initialize(this)}; only after that
- * does the first constant use (for example {@code MODE_ACTION_GROUP.select(...)}) occur.
+ * before any constant is first read.
  *
  * <h2>Lifecycle</h2>
- * {@link #initialize(MainFrame)} constructs every action constant against one owner frame,
- * each subscribing itself to the message bus, together with this class's document-load reset
- * handler. All of them live for the process; nothing tears them down. A caller that
- * replaces them must first have retired the bus they joined, because the constants it
- * replaces keep whatever registrations they made.
+ * All constants live for the process; nothing tears them down. A caller that replaces them must
+ * first have retired the bus they joined, because the constants it replaces keep whatever
+ * registrations they made.
  */
 // The action constants are @NonNull but populated lazily by initialize() (which needs
 // the MainFrame, unavailable at class-load), not at declaration. NullAway.Init suppresses
@@ -197,15 +192,8 @@ public final class Actions {
     public static ToggleMessagesAction TOGGLE_MESSAGES_ACTION;
 
     /**
-     * Initializes all action constants using {@code mainFrame} as the owner.
-     *
-     * <p>Called once per process, at the top of {@link MainFrame#initFrame()}, before any
-     * constant in this class is first referenced. The constants this replaces keep whatever
-     * bus registrations they made, so a caller that calls it again must first have retired
-     * the bus the previous constants joined.
-     *
-     * @effects every constant is assigned a freshly constructed action subscribed to the bus,
-     *     the reset handler is subscribed, and the app-menu cache is rebuilt on its next read
+     * Called once per process, at the top of {@link MainFrame#initFrame()}, before any
+     * constant in this class is first referenced.
      */
     public static void initialize(MainFrame mainFrame) {
         // Constructed here rather than in a static initializer so that merely loading this
@@ -381,12 +369,6 @@ public final class Actions {
         appMenuActions = null;
     }
 
-    /**
-     * Returns the action that selects {@code mode}.
-     *
-     * @param mode the editing mode
-     * @return {@link #SELECT_MODE_ACTION} or {@link #EDIT_MODE_ACTION}
-     */
     public static ModeAction modeAction(Mode mode) {
         return switch (mode) {
             case SELECT -> SELECT_MODE_ACTION;
@@ -423,11 +405,8 @@ public final class Actions {
     }
 
     /**
-     * Clears every toggle that {@link songscribe.ui.edit.EditModeManager#decorateElement}
-     * reads (dot, accidental, and articulations), so this is the single place that set has
-     * to stay in sync. Callers that need a freshly-inserted
-     * element to start undecorated — e.g. a grace note's host — should call this instead
-     * of clearing the toggles individually.
+     * The one place that must stay in sync with the toggles
+     * {@link songscribe.ui.edit.EditModeManager#decorateElement} reads.
      */
     public static void clearNoteDecorations() {
         DOT_ACTION_GROUP.clearSelection();
@@ -438,11 +417,6 @@ public final class Actions {
 
     private static @Nullable List<AppMenuAction> appMenuActions = null;
 
-    /**
-     * Returns all actions that implement {@link AppMenuAction}, discovered
-     * via reflection over the {@code public static} fields of this class.
-     * The result is cached after the first call and invalidated by {@link #initialize}.
-     */
     public static List<AppMenuAction> getAppMenuActions() {
         if (appMenuActions != null) {
             return appMenuActions;
@@ -480,9 +454,7 @@ public final class Actions {
     }
 
     /**
-     * Resets the action constants on every document load. Registered by {@link #initialize}
-     * once the constants it dereferences exist, for the life of the process; the bus holds it
-     * strongly because nothing else does.
+     * Lives for the process; the bus holds it strongly because nothing else does.
      */
     @Listener(references = References.Strong)
     private static final class ResetHandler {

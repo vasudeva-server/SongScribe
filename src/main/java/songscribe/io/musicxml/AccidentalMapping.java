@@ -29,15 +29,8 @@ import songscribe.dom.Accidental;
  * Bidirectional lookup between SongScribe {@link Accidental} values and
  * their MusicXML {@code <accidental>} glyph token.
  *
- * <p>The sounding {@code <alter>} semitone is <b>not</b> kept here: it is derived
- * from {@link Accidental#semitones()} (the same source
- * playback uses) via {@link PitchSpelling}, so there is a single source of truth
- * for the alteration.
- *
  * <p>Every {@link Accidental} has a MusicXML token and every token here maps back
- * to an {@link Accidental}, so the two directions are exact inverses. Tokens for
- * retired accidentals that only appear in old files live in
- * {@link songscribe.io.LegacyAccidentals}, not here.
+ * to an {@link Accidental}, so the two directions are exact inverses.
  */
 public final class AccidentalMapping {
 
@@ -69,15 +62,6 @@ public final class AccidentalMapping {
     // Public API
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the MusicXML {@code <accidental>} token for the given
-     * {@link Accidental}. Every accidental has one, so this never returns
-     * {@code null}.
-     *
-     * <p>A switch rather than a map so that adding an {@link Accidental} without
-     * a token here fails to compile, instead of failing when a user first saves
-     * a score using the new accidental.
-     */
     public static String forAccidental(Accidental accidental) {
         return switch (accidental) {
             case NATURAL -> ACCIDENTAL_NATURAL;
@@ -89,8 +73,7 @@ public final class AccidentalMapping {
     }
 
     /**
-     * Returns the {@link Accidental} for the given MusicXML {@code <accidental>}
-     * token, or {@code null} if the token is not recognised.
+     * Returns {@code null} if the token is not recognised.
      */
     @Nullable
     public static Accidental forToken(String token) {

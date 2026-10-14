@@ -21,11 +21,10 @@ package songscribe.dom;
 
 /**
  * A beat unit is a note value with at most one dot, which is the whole domain a tempo or a beat
- * change can name; {@code dotted} is a boolean rather than a count for that reason.
+ * change can name.
  *
- * <p>The constants are declared longest first. The tempo and beat-change dialogs list their
- * combos straight from {@link #values()}, so declaration order is the order a user sees, and a
- * new constant is declared where its length puts it.
+ * <p>The constants are declared longest first: the tempo and beat-change dialogs list their
+ * combos straight from {@link #values()}.
  */
 public enum BeatUnit {
     SEMI_BREVE(NoteValue.WHOLE, false),
@@ -37,8 +36,7 @@ public enum BeatUnit {
     QUAVER(NoteValue.EIGHTH, false);
 
     /**
-     * The parts a dotted beat divides into before subdividing binarily. Public because
-     * {@link #binaryDivisionRootTicks}'s contract names it.
+     * Public because {@link #binaryDivisionRootTicks}'s contract names it.
      */
     public static final int DOTTED_BEAT_PARTS = 3;
 
@@ -77,15 +75,8 @@ public enum BeatUnit {
     }
 
     /**
-     * The longest length this beat subdivides binarily from. An undotted beat halves directly,
-     * so it is its own root. A dotted beat first divides into {@value #DOTTED_BEAT_PARTS} and
-     * only then halves, so its root is that part.
-     *
-     * @return the root length in ticks, at {@link songscribe.midi.MidiSequenceBuilder#PPQ} ticks
-     *     per quarter
-     * @invariant the result is exact for every unit — a dotted unit is
-     *     {@value #DOTTED_BEAT_PARTS} halves of its undotted value, and every undotted value a
-     *     unit names is an even number of ticks
+     * The longest length this beat halves from: itself, or for a dotted beat one of its
+     * {@value #DOTTED_BEAT_PARTS} parts. Exact for every unit.
      */
     public int binaryDivisionRootTicks() {
         var ticks = ticks();

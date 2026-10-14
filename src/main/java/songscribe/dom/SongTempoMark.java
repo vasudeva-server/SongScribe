@@ -24,15 +24,9 @@ package songscribe.dom;
  * The non-interactive mark that depicts the song's tempo at the right edge of the first
  * line's staff header.
  * <p>
- * It carries no state of its own — {@link LineElement} already provides the position and the
- * user offsets, and nothing can set an offset on this mark because it is never selectable.
- * Its sole purpose is to be a stable identity key in {@code LayoutResult}'s
- * {@code decorationLayouts} map, one instance per {@link Song} (see
- * {@link Song#getTempoMarkElement()}).
- * <p>
- * The tempo it depicts is read from {@link Song#getTempo()} at layout and paint time rather
- * than stored here, so the mark cannot go stale: it holds no tempo of its own for a later edit
- * to leave behind.
+ * It carries no state of its own: it is a stable identity key, one instance per {@link Song}
+ * ({@link Song#getTempoMarkElement()}), and reads the tempo from {@link Song#getTempo()} at
+ * layout and paint time.
  */
 public final class SongTempoMark extends LineElement {
 }

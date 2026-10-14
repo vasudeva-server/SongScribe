@@ -24,9 +24,6 @@ package songscribe.dom;
  * A pitch as the staff writes it: a pitch class and an octave, with no accidental. This is
  * the one place the staff's pitch lattice is turned into a sounding pitch or a written
  * spelling, and the one place the octave boundary is computed.
- *
- * @param pitchClass the letter
- * @param octave     the scientific-pitch-notation octave number
  */
 public record DiatonicPitch(PitchClass pitchClass, int octave) {
 
@@ -35,7 +32,7 @@ public record DiatonicPitch(PitchClass pitchClass, int octave) {
 
     private static final int SEMITONES_PER_OCTAVE = 12;
 
-    /** MIDI numbers put C-1 at 0, so the octave's first note is (octave + 1) × 12. */
+    /** MIDI numbers put C-1 at 0. */
     private static final int MIDI_OCTAVE_ORIGIN = 1;
 
     /**

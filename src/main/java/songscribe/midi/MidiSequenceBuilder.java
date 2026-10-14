@@ -43,12 +43,7 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
 
 /**
  * Builds the MIDI sequence that plays a song, whole or from a given note to its end. The
- * sequence holds one track at {@value #PPQ} ticks per quarter note: the instrument and starting
- * tempo the {@link PlaybackSettings} select, then every element in playing order, each line's
- * note events written by a {@link LineTrackBuilder}.
- *
- * <p>Which elements play, and in what order, follows
- * {@link PlaybackSettings#playWithRepeats()}.
+ * sequence holds one track at {@value #PPQ} ticks per quarter note.
  *
  * <p>A tie chain sounds as one note. Its first note strikes, the notes tied into it strike
  * nothing, and the chain releases once, where its last note releases: at the end of that note's
@@ -61,61 +56,31 @@ public class MidiSequenceBuilder {
     // when playing back the score or generating a MIDI file.
     public static final int PPQ = 96;
 
-    /** MIDI CC number for Bank Select MSB. */
     private static final int BANK_SELECT_MSB_CC = 0;
 
-    /** MIDI CC number for Bank Select LSB. */
     private static final int BANK_SELECT_LSB_CC = 32;
 
     private final Song song;
     private final PlaybackSettings settings;
 
-    /**
-     * Creates a new MIDI sequence builder.
-     *
-     * @param song The song to build a sequence from
-     * @param settings Playback settings (instrument, tempo adjustment, note duration, colorize)
-     */
     public MidiSequenceBuilder(Song song, PlaybackSettings settings) {
         this.song = song;
         this.settings = settings;
     }
 
     /**
-     * Builds the sequence that plays the whole song, from its first element, at the song's own
-     * starting tempo scaled by {@link PlaybackSettings#tempoChangePercent()}.
-     *
-     * @return the sequence, ending at the end of the last played element's written duration
-     * @throws InvalidMidiDataException if an element yields an event value outside the range
-     *     MIDI allows for it
+     * Starts at the song's own tempo scaled by {@link PlaybackSettings#tempoChangePercent()} and
+     * ends at the end of the last played element's written duration.
      */
     public Sequence buildFullSequence() throws InvalidMidiDataException {
         return buildSequence(0, 0, song.getTempo());
     }
 
-    /**
-     * Builds a MIDI sequence starting from a specific note and continuing to the end
-     * of the song.
-     *
-     * @param lineIndex The line containing the starting note
-     * @param startNote The index of the first note to include
-     * @return The MIDI sequence from startNote to the end of the song
-     * @throws InvalidMidiDataException if MIDI data is invalid
-     */
     public Sequence buildFromNoteToEnd(int lineIndex, int startNote) throws InvalidMidiDataException {
         var startTempo = song.getTempoAt(lineIndex, startNote);
         return buildSequence(lineIndex, startNote, startTempo);
     }
 
-    /**
-     * Builds a MIDI sequence for a range of notes.
-     *
-     * @param startLine The starting line index
-     * @param startNote The starting note index within the start line
-     * @param initialTempo The tempo at the start of the sequence
-     * @return The MIDI sequence
-     * @throws InvalidMidiDataException if MIDI data is invalid
-     */
     private Sequence buildSequence(
         int startLine,
         int startNote,
@@ -184,14 +149,8 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * Returns the first ending in {@code endings} covering {@code elementIndex}, or null when
-     * none does — a list already narrowed to one line's endings, so a per-note call does not
-     * re-walk that line's every span.
-     *
-     * @param endings      the endings of the line {@code elementIndex} is on
-     * @param elementIndex the element's index on that line
-     * @return the first ending in {@code endings} whose range contains {@code elementIndex}, or
-     *     null when no ending in it does
+     * Returns null when none covers {@code elementIndex}. {@code endings} is already narrowed to
+     * one line's endings.
      */
     private static @Nullable Ending endingCovering(List<Ending> endings, int elementIndex) {
         for (var ending : endings) {
@@ -204,19 +163,9 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * Builds a MIDI sequence with repeat handling. A {@code :|} or {@code :|:} plays the
-     * section it closes twice, jumping back to {@link RepeatSections#sectionStart} — which may
-     * lie on an earlier line — and playing on past the marker the second time. A {@code :|}
-     * with no open section is unbalanced; playback plays it as an ordinary bar. On the replay
-     * pass a first ending is skipped in favor of the second.
-     *
-     * @param track The MIDI track to add to
-     * @param startLine The starting line index
-     * @param startNote The index of the first note to include on the start line
-     * @param initialTempo The tempo at the start of the sequence
-     * @param velocityMap Dynamic-aware velocities
-     * @return Pair of (ending tick position, ending tempo)
-     * @throws InvalidMidiDataException if MIDI data is invalid
+     * A {@code :|} or {@code :|:} plays the section it closes twice, jumping back to
+     * {@link RepeatSections#sectionStart}, which may lie on an earlier line. A {@code :|} with
+     * no open section plays as an ordinary bar. On the replay pass a first ending is skipped.
      */
     private TrackPosition buildSequenceWithRepeats(
         Track track,
@@ -313,29 +262,9 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * Adds a line to the track with repeats off, skipping each first-ending span so only
-     * the common section and the second ending are played.
-     *
-     * <pre>
-     *   line:     common | [anchor .. split] (1st ending) | 2nd ending
-     *   emitted:  common |          (skipped)              | 2nd ending
-     * </pre>
-     *
-     * A single {@link SlideMidiHelper} is shared across all emitted segments so
-     * grace-note/slide state survives the skipped gaps; pending resets are flushed
-     * once at the end. Every ending has a split, so each contributes exactly one
-     * first-ending skip span.
-     *
-     * @param track The MIDI track to add to
-     * @param builder The track builder for this line
-     * @param lineIndex This line's index in the song
-     * @param lineStart Index of the first element to consider
-     * @param lineEnd Index of the last element to consider
-     * @param startPosition Tick position and tempo at the start of this line
-     * @param endings The endings on this line
-     * @param velocityMap Dynamic-aware velocities
-     * @return Pair of (ending tick position, ending tempo)
-     * @throws InvalidMidiDataException if MIDI data is invalid
+     * With repeats off, each first-ending span is skipped so only the common section and the
+     * second ending are played. One {@link SlideMidiHelper} is shared across the segments so
+     * grace-note/slide state survives the skipped gaps.
      */
     private TrackPosition addLineSkippingFirstEndings(
         Track track,
@@ -394,18 +323,10 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * A contiguous element-index span of a first ending to skip during repeats-off playback,
-     * inclusive of both endpoints.
+     * Inclusive of both endpoints.
      */
     private record SkipSpan(int start, int end) {}
 
-    /**
-     * Adds a program change (instrument selection) to the track.
-     *
-     * @param track The MIDI track
-     * @param instrument The MIDI instrument number (0-127)
-     * @throws InvalidMidiDataException If MIDI data creation fails
-     */
     private void addProgramChange(Track track, int instrument) throws InvalidMidiDataException {
         var programChange = new ShortMessage();
         programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);

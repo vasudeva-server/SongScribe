@@ -26,19 +26,8 @@ import songscribe.message.Message;
 /**
  * The notification that a song's lint inputs changed.
  *
- * <p>Its constructor lints the song ({@code song.getLinter().lint()}), so the song's report is
- * current before the notification exists. Every subscriber therefore reads the current report,
- * whatever its priority: no handler can run before the lint, because there is no notification to
- * deliver until the lint has run.
- *
- * <p>Its three subtypes are the three moments a song's lint inputs change:
- * {@link SongDidChangeNotification} (an edit, undo or redo), {@link DocumentDidLoadNotification}
- * (a load) and {@link ActiveScriptDidChangeNotification} (a script change).
- *
- * <p>The bus delivers each subtype to a handler whose parameter type is
- * {@code LintingNotification}, because it delivers a message to the handlers of its supertypes
- * unless a handler sets {@code rejectSubtypes}. A subscriber that reacts the same way to all three
- * moments has one handler of this type.
+ * <p>Its constructor lints the song, so every subscriber reads the current report whatever its
+ * priority.
  *
  * <p>EDT only, as the song and its linter are.
  */
@@ -46,22 +35,11 @@ public abstract class LintingNotification extends Message {
 
     private final Song song;
 
-    /**
-     * Lints {@code song}, then holds it as the song whose lint inputs changed.
-     *
-     * @param song the song whose lint inputs changed
-     * @effects replaces {@code song}'s lint report
-     */
     protected LintingNotification(Song song) {
         this.song = song;
         song.getLinter().lint();
     }
 
-    /**
-     * The song whose lint inputs changed.
-     *
-     * @return the song; its lint report is already current
-     */
     public Song getSong() {
         return song;
     }

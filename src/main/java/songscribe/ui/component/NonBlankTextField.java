@@ -32,23 +32,12 @@ public class NonBlankTextField extends MyJTextField {
 
     private final NonBlankGuard guard;
 
-    /**
-     * @param columns the field's width in columns, as {@link javax.swing.JTextField}
-     *                takes it
-     */
     public NonBlankTextField(int columns) {
         super(columns);
         guard = new NonBlankGuard(this);
         setInputVerifier(guard);
     }
 
-    /**
-     * Marks the field's current text as the value to restore, per
-     * {@link NonBlankGuard#rememberCurrentText()}.
-     *
-     * @effects replaces the text this field restores on a blank entry, unless the current
-     *     text is blank, which is ignored
-     */
     public void rememberCurrentText() {
         guard.rememberCurrentText();
     }

@@ -39,55 +39,36 @@ import songscribe.util.Copyable;
 import songscribe.util.UIUtils;
 
 /**
- * A dialog with OK and Cancel, and a Remove button when its operations offer one.
- *
- * <p><strong>A widget shell over {@code I → O}.</strong> It is handed what to show, it shows it, it
- * reads its controls back, and it hands the result to the operations it was constructed with. It
- * has no collaborator it can query: everything outside the window reaches it as a
- * {@link DialogOps}, and a subclass writes only {@link #populate} and {@link #gather}.
+ * A dialog with OK and Cancel, and a Remove button when its operations offer one. A subclass
+ * writes only {@link #populate} and {@link #gather}.
  *
  * <p><strong>The OK lifecycle, in full:</strong> the focused field's {@link InputVerifier} is
  * consulted, then the controls are read exactly once, then those values are validated, then — only
  * if validation accepted them — they are committed and the window is dismissed. <strong>The values
- * validated are the values committed</strong>, because there is one read and both steps are handed
- * its result; a dialog cannot read the controls a second time before committing, because it is not
- * the thing doing the committing.
+ * validated are the values committed.</strong>
  *
- * <p><strong>Nothing is committed when validation refuses.</strong> A refused OK leaves the
- * document untouched and the dialog up with its controls exactly as the user left them, so the
- * failure can be corrected and OK pressed again. The user is shown the <strong>first</strong>
- * failure only: stacking one modal alert per failure is worse than under-reporting, and
- * {@link ValidationResult} promises the failures arrive in the order they should be read.
+ * <p><strong>Nothing is committed when validation refuses.</strong> The dialog stays up with its
+ * controls as the user left them. The user is shown the <strong>first</strong> failure only.
  *
- * <p>Cancel dismisses the window without either step, which is what makes it "discard everything":
- * nothing this dialog can do to the outside world happens anywhere but on the OK path. Remove is
- * the third path, and neither gathers nor validates.
+ * <p>Cancel dismisses the window without either step: nothing this dialog does to the outside
+ * world happens anywhere but on the OK path. Remove neither gathers nor validates.
  *
- * <p><strong>Cancel and Remove decline the focused field's {@link InputVerifier}</strong>, because
- * neither reads the field. Swing runs that verifier before handing focus to the button, in the
- * middle of the mouse press; a verifier that puts a modal alert up there takes the release with it,
- * so the button's action never runs and the dialog the user was dismissing stays open. Nothing a
- * field says about its value is relevant to a path that never reads the value. A dismissing button
- * outside this class exempts itself the same way.
+ * <p><strong>Cancel and Remove decline the focused field's {@link InputVerifier}</strong>:
+ * Swing runs it in the middle of the mouse press, and a verifier that puts a modal alert up there
+ * takes the release with it, so the button's action never runs. A dismissing button outside this
+ * class exempts itself the same way.
  *
- * <p><strong>Always modal.</strong> Cancel promises that nothing happened, and that promise is only
- * worth anything if nothing could have happened meanwhile. A dialog that applies each edit as it is
- * made has no OK/Cancel cycle to put a boundary across and extends {@link BaseDialog} directly —
- * {@code PreferencesDialog} is the one such window.
+ * <p><strong>Always modal</strong>, because Cancel promises that nothing happened. A dialog that
+ * applies each edit as it is made extends {@link BaseDialog} directly.
  *
- * <p><strong>A commit becomes visible through the notification it posts</strong>, not through
- * anything this class does. A commit that writes the document does so inside a modification
- * bracket, and the bracket's {@code SongDidChangeNotification} is what re-lays out and repaints the
- * score — see {@code docs/mutations.md}. A commit that reaches the screen some other way arranges
- * that itself.
+ * <p><strong>A commit becomes visible through the notification it posts.</strong> A commit that
+ * reaches the screen some other way arranges that itself; see {@code docs/mutations.md}.
  *
- * @param <I> what to show, supplied by {@link DialogOps#read()} on each opening — already a copy,
- *            so a subclass may edit it in place without reaching the document. Its bound permits
- *            {@code @Nullable} itself, for a family like {@code AttachmentDialog} whose input is
- *            absent on Add
- * @param <O> what the controls say, gathered on OK. Values only — never a handle on the document.
- *            Its bound permits {@code @Nullable} itself, for a dialog that gathers nothing and
- *            names {@code @Nullable Void}
+ * @param <I> what to show — already a copy, so a subclass may edit it in place without reaching
+ *            the document. Its bound permits {@code @Nullable} itself, for a family like
+ *            {@code AttachmentDialog} whose input is absent on Add
+ * @param <O> what the controls say, gathered on OK. Its bound permits {@code @Nullable} itself,
+ *            for a dialog that gathers nothing and names {@code @Nullable Void}
  */
 public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends @Nullable Object> extends BaseDialog {
 
@@ -142,10 +123,6 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
         }
     }
 
-    /**
-     * @param button a button that dismisses the dialog without reading the controls
-     * @effects stops the focused field's verifier from running when {@code button} takes focus
-     */
     private static void dismissWithoutVerifying(JButton button) {
         button.setVerifyInputWhenFocusTarget(false);
     }
@@ -155,13 +132,6 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
         return okButton;
     }
 
-    /**
-     * Runs the {@link InputVerifier} of the currently focused field, as a mouse click on OK would.
-     *
-     * @return {@code true} when there is no focused field, the field has no verifier, or the
-     *         verifier yields focus; {@code false} when the verifier rejects the value, in which
-     *         case it has already shown the user the reason and focus remains on the field
-     */
     private boolean verifyFocusedField() {
         var focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
 
@@ -182,8 +152,6 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
     }
 
     /**
-     * Called once, on the first {@code setVisible(true)}, before the dialog is shown.
-     * Subclasses may mutate {@code buttonPanel} in place or reassign the field.
      * The return value is the {@code BorderLayout} constraint used to attach the panel.
      */
     protected Object modifyButtonPanel() {
@@ -201,15 +169,8 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Final: reading what to show is not a decision any dialog makes for itself. After the
-     * registered tabs have populated themselves, the values to show are read and handed to
-     * {@link #populate} — once per opening, from the document as it stands at that moment, so a
-     * dialog reached from a cached action never shows a document that has since been closed.
-     *
-     * @return {@code true} unless a registered tab declined to show, in which case
-     *         {@link #populate} is not reached and nothing has been read
+     * Final: reading what to show is not a decision any dialog makes for itself. The values are
+     * read once per opening, from the document as it stands at that moment.
      */
     @Override
     protected final boolean getData() {
@@ -222,49 +183,27 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
     }
 
     /**
-     * Sets the controls to show {@code values}.
+     * An implementation writes to controls, and decides what the buttons say.
      *
-     * <p>Called once per opening, before the window appears. An implementation writes to controls
-     * and does nothing else — including deciding what the buttons say, which is a presentation
-     * decision made from {@code values} and belongs here rather than anywhere that can see the
-     * document.
-     *
-     * @param values what to show — a copy of what the document holds, belonging to this dialog, so
-     *               retaining or editing it reaches nothing outside the window
+     * @param values a copy belonging to this dialog, so retaining or editing it reaches nothing
+     *               outside the window
      */
     protected abstract void populate(I values);
 
     /**
-     * Reads the controls and returns the values they currently describe.
-     *
-     * <p>Reads only: calling it leaves the controls untouched. It is total over every state the
-     * controls can reach through the UI — there is no combination of selections for which an
-     * implementation may decline to produce a value. Whether the values are acceptable is
-     * {@link DialogOps#validate()}'s question, not this one's.
-     *
-     * <p>Called exactly once per OK, before validation.
-     *
-     * @return the values described by the controls as they now stand
+     * Reads only. It is total over every state the controls can reach through the UI: whether the
+     * values are acceptable is {@link DialogOps#validate()}'s question. Called exactly once per
+     * OK, before validation.
      */
     protected abstract O gather();
 
     /**
-     * Performs whatever OK does beyond dismissing the dialog, and says whether it may be dismissed.
+     * Private, with no hook beside it: the order of the steps, and that all of them see the same
+     * values, are this class's promises.
      *
-     * <p>Private, and there is no hook beside it: the order of the steps, and the fact that all of
-     * them see the same values, are this class's promises rather than each dialog's. A dialog
-     * varies what OK does by varying {@link #gather} and the operations it was constructed with,
-     * never by taking over this path.
-     *
-     * <p><strong>"Did anything change?" comes first.</strong> Values that change nothing are not a
-     * proposed change, so there is nothing for validation to judge and nothing to write. Asking
-     * anyway would let a rule about a change the notator never made refuse to let them out of the
-     * dialog — and would run its measurement on every dismissal. See
+     * <p><strong>"Did anything change?" comes first</strong>, so a rule about a change the
+     * notator never made cannot refuse to let them out of the dialog. See
      * {@link DialogController#dataWasModified}.
-     *
-     * @return {@code true} when the dialog may close — because the commit ran, or because there
-     *         was nothing to commit; {@code false} when validation refused and the user has been
-     *         told why
      */
     private boolean commitOnOk() {
         var values = gather();
@@ -285,18 +224,11 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
     }
 
     /**
-     * Tells the user why something was refused, as an error alert over this dialog.
+     * Both OK's refusals and a refusal a control reports before OK is pressed come through here,
+     * so the user cannot be told two different things about one mistake. Shows exactly one alert;
+     * choosing which failure is the OK path's decision.
      *
-     * <p>OK's own refusals come through here, and so does any refusal a control reports before OK
-     * is ever pressed — a field whose {@link java.awt.event.FocusListener} or
-     * {@link InputVerifier} checks the same rule the controller will. Both routes present the same
-     * {@link ValidationFailure}, so the user cannot be told two different things about one
-     * mistake, and the rule stays stated in one place whichever way it is reached.
-     *
-     * <p>Shows exactly one alert. Where several failures were reported, choosing which is the OK
-     * path's decision, not this method's.
-     *
-     * @param failure the reason to show, resolved to text here and nowhere earlier
+     * @param failure resolved to text here and nowhere earlier
      */
     protected final void showFailure(ValidationFailure failure) {
         var message = failure.message();
@@ -306,12 +238,7 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends 
     }
 
     /**
-     * Resolves the arguments a message's pattern needs, turning any that is itself a
-     * {@link LocalizedMessage} into its text.
-     *
-     * <p>That nesting is how a failure names a user-facing word — a unit, a role — without
-     * whoever decided the failure having resolved it. Nested messages carry no arguments of
-     * their own, so one level is the whole of it.
+     * Nested messages carry no arguments of their own, so one level is the whole of it.
      */
     private static Object[] resolveArgs(LocalizedMessage message) {
         return message

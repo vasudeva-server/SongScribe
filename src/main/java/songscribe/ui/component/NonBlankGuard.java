@@ -33,39 +33,23 @@ import songscribe.ui.OptionDialogs;
  *
  * <p><strong>The field is never blank once focus has left it, and never carries leading or
  * trailing whitespace.</strong> Whoever populates the field gives the guard the value it restores,
- * by calling {@link #rememberCurrentText()}; a caller that also wants the commit disabled while
- * the field is blank binds {@code requireValid} over the field's property, which speaks while the
- * user types where the guard speaks when they leave.
- *
- * <p>Blank rather than empty is the test throughout: a field holding only spaces is a field the
- * user has left with no value in it, whatever the document length says. Text that survives the
- * test is stripped, so the surrounding whitespace never reaches the value either.
+ * by calling {@link #rememberCurrentText()}. Blank, not empty, is the test: a field holding only
+ * spaces has no value.
  */
 public final class NonBlankGuard extends InputVerifier {
 
     private final JTextComponent field;
     private String previousText;
 
-    /**
-     * @param field the text component to guard
-     */
     public NonBlankGuard(JTextComponent field) {
         this.field = field;
         previousText = "";
     }
 
     /**
-     * Marks the field's current text as the value to restore.
-     *
-     * <p>Call it after setting the field programmatically. Such a write is invisible here — it
-     * leaves the document looking exactly as typing would — so without this the guard cannot tell a
-     * value a dialog just put in from a half-finished edit.
-     *
-     * <p>Blank text is ignored rather than remembered: a field populated with nothing has no
-     * previous value worth restoring. That makes the call safe after a write that may or may not
-     * have produced anything.
-     *
-     * @effects remembers the current text, stripped, unless it is blank
+     * Call it after setting the field programmatically: such a write looks to the guard like
+     * typing. Blank text is ignored, so the call is safe after a write that may have produced
+     * nothing.
      */
     public void rememberCurrentText() {
         var text = field.getText();
@@ -75,32 +59,18 @@ public final class NonBlankGuard extends InputVerifier {
         }
     }
 
-    /**
-     * @return {@code true} when the field holds something other than whitespace
-     */
     @Override
     public boolean verify(JComponent input) {
         return !field.getText().isBlank();
     }
 
     /**
-     * Strips the field's text when it holds a value, and tells the user and restores the previous
-     * value when it does not. Always yields.
+     * Yielding either way keeps the guard from trapping the user: once the previous value is
+     * back the field is valid. A button that dismisses the dialog and never reads the field
+     * declines this verification instead; see {@link songscribe.ui.dialog.StandardDialog}.
      *
-     * <p>Yielding either way is what keeps the guard from trapping the user: once the previous
-     * value is back the field is valid, so there is nothing to keep the caret for.
-     *
-     * <p>Yielding does not on its own keep a button that dismisses the dialog clickable; a button
-     * that never reads the field declines this verification instead. See
-     * {@link songscribe.ui.dialog.StandardDialog}.
-     *
-     * <p>Stripping happens here, so what the user is left looking at is what the value will be. A
-     * field whose text is already stripped is not written, so leaving a field untouched costs no
-     * document change and fires nothing.
-     *
-     * @return always {@code true}
-     * @effects replaces the field's text with its stripped form, or with the previous value when
-     *     the field is blank, in which case the user is alerted first
+     * <p>A field whose text is already stripped is not written, so leaving it untouched fires
+     * nothing.
      */
     @Override
     public boolean shouldYieldFocus(JComponent source, JComponent target) {

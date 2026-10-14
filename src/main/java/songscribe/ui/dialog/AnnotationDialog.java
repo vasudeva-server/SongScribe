@@ -44,13 +44,10 @@ import songscribe.ui.binding.Controls;
 import songscribe.ui.component.MainFrame;
 
 /**
- * A fixed-list annotation combo plus alignment and placement radios, for editing the annotation on
- * an element.
+ * Edits the annotation on an element.
  *
- * <p><strong>The text is never blank.</strong> This dialog is where that is enforced: the combo
- * offers a fixed list of non-blank annotations plus an {@code Other…} row whose prompt cannot
- * commit a blank value, so blank text cannot be entered through it. Emptying a field is therefore
- * not a way to delete an annotation; the Remove button is.
+ * <p><strong>The text is never blank.</strong> This dialog is where that is enforced; Remove,
+ * not emptying a field, deletes an annotation.
  */
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
@@ -144,10 +141,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @return the annotation the controls describe. Where it sits is the attachment's, not this
-     *         dialog's, so an edit here cannot move it — see {@link Annotation}
+     * Where it sits is the attachment's, so an edit here cannot move it — see {@link Annotation}.
      */
     @Override
     protected Annotation gather() {

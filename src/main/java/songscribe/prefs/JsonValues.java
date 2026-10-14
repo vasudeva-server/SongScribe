@@ -27,9 +27,8 @@ import com.google.gson.JsonElement;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Coerces a parsed JSON element into the plain Java value {@link Prefs} stores it as.
- * The mapping is fixed by the element's JSON kind, never by an expected type at the
- * call site.
+ * Coerces a parsed JSON element into the plain Java value {@link Prefs} stores it as, by the
+ * element's JSON kind alone.
  */
 public final class JsonValues {
 
@@ -39,24 +38,11 @@ public final class JsonValues {
     }
 
     /**
-     * Converts {@code element} to the Java value {@link Prefs} holds in its store.
+     * A JSON number always becomes a {@link Long}, so a stored value round-trips through both
+     * {@code Prefs.getInt} and {@code Prefs.getLong}.
      *
-     * <p>A JSON boolean becomes a {@link Boolean}; a JSON number becomes a {@link Long}
-     * — always, never a {@code Double} or {@code Integer} — so a stored value round-trips
-     * through both {@code Prefs.getInt} and {@code Prefs.getLong} without a cast failure; a
-     * JSON string becomes a {@link String}. A JSON object becomes an unstructured
-     * {@code Map<String, Object>} via Gson's default object mapping. A JSON array becomes a
-     * {@code List<String>}, reading every element with {@link JsonElement#getAsString()}.
-     *
-     * <p>{@code null} is returned only for {@link com.google.gson.JsonNull}, and for
-     * nothing else — every other {@link JsonElement} kind is covered above.
-     *
-     * @param element the parsed JSON element to convert
-     * @return the corresponding Java value, or {@code null} if {@code element} is
-     *     {@link com.google.gson.JsonNull}
-     * @throws UnsupportedOperationException if {@code element} is a JSON array containing
-     *     an element that is itself an object or array, since {@link JsonElement#getAsString()}
-     *     does not support those
+     * @param element no element of a JSON array is itself an object or an array
+     * @return the Java value, or {@code null} only for {@link com.google.gson.JsonNull}
      */
     public static @Nullable Object toJavaValue(JsonElement element) {
         if (element.isJsonPrimitive()) {

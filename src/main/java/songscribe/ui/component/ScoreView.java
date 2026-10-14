@@ -114,25 +114,13 @@ import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
 /**
- * This class is responsible for managing and drawing the music score
- * and its lyrics. It also handles user input for editing the score.
- *
- * <p>A {@code ScorePanel} inside the scroll pane centers this view, which is sized to the full
- * page and bordered by the page margins. Its children are the {@code LyricEditor} (absolute
- * bounds, topmost, and present only while a lyric is being edited), the per-line
- * {@code LineOverlayComponent}s (absolute bounds, above the score and below the editor), and a
- * {@code MainPanel} that stacks the title, subtitle, margin strut, {@code StaffPanel} of
- * {@code LinePanel}s, text panel and footnotes down the Y axis.
- *
- * <p>See {@code docs/score-view-hierarchy.md} for the full containment tree.
+ * Manages and draws the music score and its lyrics, and handles input for editing it. See
+ * {@code docs/score-view-hierarchy.md}.
  *
  * <h2>Lifecycle</h2>
- * Process-lifetime. {@code MainFrame} is the only construction site, and the view lives as long
- * as the window — the long-lived-views case in {@code docs/lifecycle.md}. {@link #init()}
- * subscribes the view to the message bus; nothing ever unsubscribes it, because nothing retires
- * it while the process continues. The class therefore does not implement
- * {@code songscribe.lifecycle.Disposable}: the absence of a {@code dispose()} is the decision
- * that there is nothing to release, not an omission.
+ * Process-lifetime: {@link #init()} subscribes the view to the message bus and nothing ever
+ * unsubscribes it. The class is deliberately not {@code songscribe.lifecycle.Disposable}; there is
+ * nothing to release (the long-lived-views case in {@code docs/lifecycle.md}).
  */
 
 public final class ScoreView
@@ -151,9 +139,7 @@ public final class ScoreView
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
 
     /**
-     * Z-order index of the active lyric editor: the topmost child of this view. Overlays
-     * registered through {@link #addOverlay} sit directly beneath it — see that method's
-     * z-order contract.
+     * Z-order index of the active lyric editor, the topmost child. See {@link #addOverlay}.
      */
     public static final int LYRIC_EDITOR_Z_ORDER = 0;
 
@@ -174,9 +160,8 @@ public final class ScoreView
     }
 
     /**
-     * The color the score draws a lint finding in. It is the overflow color on purpose: a lint
-     * error and an overflowing line both mean that the score shows something wrong with the
-     * document.
+     * Deliberately the overflow color: a lint error and an overflowing line both mean the score
+     * shows something wrong with the document.
      */
     public static Color getLintColor() {
         return FlatLafProps.getColor(FlatLafKey.SCORE_OVERFLOW_COLOR);
@@ -256,14 +241,6 @@ public final class ScoreView
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
 
-    /**
-     * Creates a ScoreView with core infrastructure (selection, clipboard, edit mode, input).
-     * <p>
-     * Call {@link #init()} after construction to create the UI components (view, panels,
-     * message coordinator) and the initial Song.
-     *
-     * @param onFileOpened callback invoked when a file is successfully opened
-     */
     public ScoreView(Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         viewState = new ScoreViewState();
@@ -282,12 +259,7 @@ public final class ScoreView
         bindings.onNotify(zoomPercent, this::refreshOverlayBounds);
     }
 
-    /**
-     * Initializes the interactive UI: view, panels, message coordinator,
-     * and the initial Song. Must be called exactly once after construction.
-     *
-     * @effects installs a new, empty song through {@link #setSong}, as the last step
-     */
+    /** Must be called exactly once after construction. */
     public void init() {
         setName(ComponentNames.SCORE);
 
@@ -377,12 +349,6 @@ public final class ScoreView
         setupLineComponentState();
     }
 
-    /**
-     * Sets up selection provider and initial state for all LineComponents.
-     * <p>
-     * This wires up the selection checking from ScoreView to enable
-     * note coloring in the component-based rendering.
-     */
     void setupLineComponentState() {
         hierarchyNavigator.setupLineComponentState(this, this);
 
@@ -390,11 +356,6 @@ public final class ScoreView
         retargetOverlays();
     }
 
-    /**
-     * Returns the MainPanel for the new component hierarchy.
-     * <p>
-     * This is the top-level panel for the JComponent-based rendering.
-     */
     @Override
     public @Nullable MainPanel getMainPanel() {
         return mainPanel;
@@ -414,27 +375,15 @@ public final class ScoreView
         return dragDisabled;
     }
 
-    /**
-     * Returns the LineComponent for the given line index, or null if not found.
-     */
+    /** Null if not found. */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
         return hierarchyNavigator.getLineComponent(lineIndex);
     }
 
     /**
-     * Returns the component drawing {@code line}, for a caller that holds a line it knows the
-     * score draws: a line of the song this score shows, reached while the score is on screen.
-     * The score has a component for every line of its song from the time the song is shown;
-     * a line is without one only while the score is being built, or once the song no longer
-     * holds it, and a caller that may hold such a line asks {@link #getLineComponent} instead.
-     *
-     * @param line a line of the song this score shows
-     * @return the component drawing {@code line}
-     * @throws IllegalStateException when {@code line} is not one of its song's lines, as
-     *     {@link Line#index()} throws
-     * @effects exits the program through {@link RuntimeError#exit(String)} when the score has no
-     *     component for {@code line}
+     * The line must be one the score draws; a caller that may hold a line without a component
+     * asks {@link #getLineComponent} instead.
      */
     public LineComponent requireLineComponent(Line line) {
         var lineIndex = line.index();
@@ -448,12 +397,8 @@ public final class ScoreView
     }
 
     /**
-     * Returns the line's live layout — the very one it is painted from — so a saved file's
-     * coordinates match the score on screen by construction rather than by re-derivation.
-     * <p>
-     * Nearly free: a line whose layout is clean is returned as is, and only the few dirty lines
-     * are laid out. Saving is user-initiated and there is no autosave timer, so even a full pass
-     * costs nothing the user would notice.
+     * Returns the line's live layout, the one it is painted from, so a saved file's coordinates
+     * match the score on screen.
      */
     @Override
     public @Nullable LayoutResult layoutFor(Line line) {
@@ -601,10 +546,6 @@ public final class ScoreView
         return scrollPane;
     }
 
-    /**
-     * Implements {@link songscribe.ui.renderer.RenderContext}, which still asks the question by
-     * index. Renderers ask {@link #isSelected(HitTarget, int)} instead.
-     */
     @Override
     public boolean isElementSelected(int elementIndex, int lineIndex) {
         return selectionCoordinator.isElementSelected(elementIndex, lineIndex);
@@ -636,19 +577,10 @@ public final class ScoreView
     }
 
     /**
-     * Declares that this container has overlapping children: the line overlays are siblings of
-     * the score content and deliberately paint on top of it.
-     * <p>
-     * This is a statement of fact, not a workaround. {@link JLayeredPane} returns {@code false}
-     * for exactly the same reason, and any future container that hosts overlays — the page
-     * components under {@code specs/184-pagination.md} — must too.
-     * <p>
-     * The consequence is that Swing cannot resolve a repaint to a single child: this view
-     * repaints <b>every</b> child intersecting the damaged rectangle, including the
-     * {@link LineComponent} beneath an overlay, which runs the full line render pipeline.
-     * Sizing overlays to exact ink <b>shrinks</b> that rectangle, but it does not remove the
-     * underlying repaint. The win is
-     * correctness (no stale ink, no clipped glyphs), not a reduction in repaint cost.
+     * The line overlays are siblings that deliberately paint over the score content, as in
+     * {@link JLayeredPane}; any container hosting overlays must return {@code false} too. Swing
+     * then repaints every child intersecting the damaged rectangle, including the
+     * {@link LineComponent} beneath an overlay.
      */
     @Override
     public boolean isOptimizedDrawingEnabled() {
@@ -707,19 +639,10 @@ public final class ScoreView
     }
 
     /**
-     * Repaints the line of a tie's anchor and the line of its end; does nothing for any other
-     * target.
-     * <p>
-     * Every {@link HitTarget} kind but one is drawn wholly by the line component the user
-     * clicked, so that component repainting itself is enough. A tie can cross a line break
-     *, with half drawn by each of its two lines, and
-     * {@link SelectionCoordinator#isSelected} answers "selected" for both. Without this the far
-     * half keeps painting the stale color until something unrelated happens to repaint it.
-     * <p>
-     * Both lines are repainted rather than only the far one, so no caller has to work out
-     * which half it is holding. For a tie within one line the two are the same line, and
-     * repainting it again costs nothing — Swing coalesces it with the repaint that line
-     * already asked for.
+     * A tie can cross a line break, half drawn by each line, and
+     * {@link SelectionCoordinator#isSelected} answers "selected" for both; the far half would
+     * keep the stale color. Both lines are repainted so no caller has to work out which half
+     * it holds.
      */
     public void repaintTieHalves(@Nullable HitTarget target) {
         if (!(target instanceof HitTarget.Tie(var tie))) {
@@ -730,10 +653,6 @@ public final class ScoreView
         repaintLine(tie.end().requireParentLine());
     }
 
-    /**
-     * Repaints the component drawing {@code line}, if there is one. A line the song no longer
-     * holds, or one whose component has not been built, has nothing to repaint.
-     */
     private void repaintLine(@Nullable Line line) {
         if (line == null || !getSong().contains(line)) {
             return;
@@ -902,15 +821,7 @@ public final class ScoreView
     }
 
     /**
-     * Installs {@code song} as the document this view edits, replacing and disposing the
-     * outgoing one.
-     *
-     * @param song   the document to install
-     * @param report what loading {@code song} changed in it on its own, {@link ChangeReport#EMPTY}
-     *               for a song no file holds; once the view is initialized it travels on the
-     *               {@link DocumentDidLoadNotification}, from which the undo engine decides
-     *               whether the song starts out modified and the user is told what changed
-     * @effects posts {@link DocumentDidLoadNotification} once the view is initialized
+     * @param report {@link ChangeReport#EMPTY} for a song no file holds
      */
     public void setSong(Song song, ChangeReport report) {
         // MBassador holds Song subscribers by weak reference, so the outgoing Song
@@ -1009,14 +920,8 @@ public final class ScoreView
     }
 
     /**
-     * Stores {@code lineWidthSs} on the song and re-lays out the page for it.
-     * <p>
-     * The width is taken in staff spaces, not pixels, so the stored value is exactly the one
-     * passed in. Taking int pixels here meant the model's width was reconstructed from a
-     * quantized pixel count, which snapped it to a {@code 1/DEFAULT_PIXELS_PER_STAFF_SPACE}
-     * grid — including on file open, where the callers below pass the song's own width purely
-     * to re-lay out the page. Pixels are still where this ends up, but only inside
-     * {@link #layoutPage}, at the Swing boundary that actually needs an int.
+     * Takes staff spaces, not pixels: a quantized pixel count would snap the model's width to a
+     * {@code 1/DEFAULT_PIXELS_PER_STAFF_SPACE} grid, including on file open.
      */
     public void updatePageLayout(Ss lineWidthSs) {
         getSong().setLineWidthSs(lineWidthSs);
@@ -1024,16 +929,8 @@ public final class ScoreView
     }
 
     /**
-     * Re-centers the page for the current zoom and the song's stored line width, writing
-     * nothing to the model.
-     * <p>
-     * Only a change of the line width or the zoom needs this. Content that grows or shrinks
-     * needs nothing: {@link #getPreferredSize} derives the page height from the content on
-     * every ask, so the ordinary {@code revalidate} a changed component already fires re-fits
-     * the page.
-     * <p>
-     * {@link #updatePageLayout} is the entry point for a change <em>of</em> the line width; it
-     * stores the width and then comes here.
+     * Writes nothing to the model. Only a change of line width or zoom needs this; content
+     * changes re-fit the page through {@link #getPreferredSize}.
      */
     public void relayoutPage() {
         // layoutPage expects view px, so fold in the current zoom. Skipping this left the page
@@ -1043,19 +940,8 @@ public final class ScoreView
     }
 
     /**
-     * The page canvas: a full page, or taller when the score's content outgrows one.
-     * <p>
-     * Derived on every ask rather than stored through {@code setPreferredSize}, because the
-     * content's height is not this view's to know about. A line gains an accidental that
-     * lifts an ending above it, a title wraps to a second line, an attribution block grows —
-     * each changes what the page must hold, and none of them is a thing this view can be told
-     * about without a list of change kinds that would have to name every mutation there is.
-     * The {@code revalidate} that the changed component itself fires reaches here and asks
-     * again, which is the whole mechanism.
-     *
-     * @return the page size in view pixels at the current zoom
-     * @invariant never shorter than a full page, and never shorter than the content plus the
-     *     top and bottom margins
+     * Derived on every ask, never stored through {@code setPreferredSize}: this view cannot be
+     * told about every mutation that changes the content's height.
      */
     @Override
     public Dimension getPreferredSize() {
@@ -1074,19 +960,6 @@ public final class ScoreView
         );
     }
 
-    /**
-     * The page policy {@link #getPreferredSize} answers with: a page never shrinks below a
-     * full page, and never crops its content.
-     * <p>
-     * Unit-agnostic on purpose, so a future caller in a different unit space needs no
-     * conversion of its own.
-     *
-     * @param pageHeight the full page height
-     * @param contentHeight the height of what the page holds, excluding margins
-     * @param topMargin the page's top margin
-     * @param bottomMargin the page's bottom margin
-     * @return the greater of {@code pageHeight} and the content plus both margins
-     */
     private static double pageHeightForContent(
         double pageHeight,
         double contentHeight,
@@ -1096,23 +969,17 @@ public final class ScoreView
         return Math.max(pageHeight, contentHeight + topMargin + bottomMargin);
     }
 
-    /** The page's top margin in view pixels at the current zoom. */
     private int topMarginPx() {
         return viewScale.toViewPx(PageModel.getTopMarginPx()).positionPx();
     }
 
-    /** The page's bottom margin in view pixels at the current zoom. */
     private int bottomMarginPx() {
         return viewScale.toViewPx(PageModel.getBottomMarginPx()).positionPx();
     }
 
     /**
-     * Re-centers the content for {@code lineWidthPx} at the current zoom, <em>without</em>
-     * mutating the song's stored line width. {@link #updatePageLayout} writes the width to the
-     * model first and then calls this; the zoom handler calls it directly so a pure view change
-     * never records a document mutation or undo entry.
-     * <p>
-     * Sizing the canvas is not part of this — {@link #getPreferredSize} derives it.
+     * Does not mutate the song's stored line width, so a pure view change such as zoom never
+     * records a document mutation or undo entry.
      */
     private void layoutPage(int lineWidthPx) {
         var topMarginPx = topMarginPx();
@@ -1139,21 +1006,9 @@ public final class ScoreView
     }
 
     /**
-     * Invalidates {@code component} and every descendant.
-     * <p>
-     * {@link Container#invalidate} propagates <em>upward</em> only, and a still-valid
-     * container serves cached geometry: {@link Container#getPreferredSize} reuses its last
-     * answer, and a {@code LayoutManager2} is told to discard its own cache only when the
-     * container it manages is invalidated. Every other trigger for that — a mutation, a
-     * resize — originates inside the tree, so the normal upward propagation suffices.
-     * <p>
-     * A zoom change is the one input that comes from outside it: it alters every pixel
-     * dimension in the tree while changing no component's own state, so nothing below this
-     * view is ever marked invalid. Without this walk {@code StaffPanel} kept returning the
-     * previous zoom's cached preferred size, was therefore never resized, was therefore
-     * never invalidated, and {@code StaffLinesLayout} never ran again — leaving every line
-     * painting at the new zoom inside bounds measured at the old one, so the lines
-     * overlapped and clipped.
+     * A zoom change alters every pixel dimension without changing any component's state, so
+     * nothing below this view is marked invalid and {@code StaffPanel} keeps its cached
+     * preferred size; lines then paint at the new zoom inside bounds measured at the old one.
      */
     private static void invalidateTree(Component component) {
         component.invalidate();
@@ -1166,44 +1021,30 @@ public final class ScoreView
     }
 
     /**
-     * Returns the scale this view currently converts at. On-score components read it on
-     * demand rather than storing it: a zoom change replaces the instance, so a stored
-     * reference reports the zoom it was taken at.
-     *
-     * @return the current scale, never null
+     * Never store the result: a zoom change replaces the instance.
      */
     public ViewScale getViewScale() {
         return viewScale;
     }
 
     /**
-     * Returns this view's zoom, as an integer percentage, for what has to react to a
-     * zoom change rather than read the zoom as it paints.
-     *
-     * @return the zoom percentage; it notifies after a zoom change has been applied and
-     *     the view re-laid out, so an observer reads a settled view
-     * @invariant the value equals {@code getViewScale().getZoomPercent()} at every point
-     *     an observer can run.
+     * Notifies after the zoom is applied and the view re-laid out; its value equals
+     * {@code getViewScale().getZoomPercent()} wherever an observer runs.
      */
     public ObservableValue<Integer> zoomPercent() {
         return zoomPercent;
     }
 
     /**
-     * Applies a {@link ZoomDidChangeNotification} to this view. The sole handler responsible
-     * for actually performing a zoom change — see {@link #applyZoomPercent}. It runs at
-     * {@link ZoomDidChangeNotification#APPLY_PRIORITY}, so the zoom is already applied by the
-     * time the other handlers react.
+     * The sole handler that performs a zoom change. Runs at
+     * {@link ZoomDidChangeNotification#APPLY_PRIORITY} so the zoom is applied before other
+     * handlers react.
      */
     @Handler(priority = ZoomDidChangeNotification.APPLY_PRIORITY)
     public void zoomDidChangeApplyZoom(ZoomDidChangeNotification message) {
         applyZoomPercent(message.getNewZoomPercent(), message.getAnchorPoint());
     }
 
-    /**
-     * Lays the score out again and repaints it, because the active script decides which lyrics
-     * the lines show.
-     */
     @Handler
     public void activeScriptDidChange(ActiveScriptDidChangeNotification message) {
         for (var linePanel : requireMainPanel().getStaffPanel().getLinePanels()) {
@@ -1213,16 +1054,11 @@ public final class ScoreView
         repaint();
     }
 
-    /**
-     * Repaints the score, so it draws the findings of the song's current lint report. The
-     * notification's construction has already linted the song.
-     */
     @Handler
     public void linting(LintingNotification message) {
         repaint();
     }
 
-    /** The controller that decides when this score's lint tooltips show and hide. */
     public LintCalloutController requireLintCalloutController() {
         var result = lintCalloutController;
 
@@ -1234,15 +1070,10 @@ public final class ScoreView
     }
 
     /**
-     * Refreshes every hosted overlay's on-screen bounds against the current zoom, and the
-     * active lyric editor's font and bounds with them.
-     * <p>
-     * Overlay bounds are pixel-cached ({@link LineOverlayComponent#updateBounds()}) and
-     * otherwise only refreshed on the next validation pass or mouse-driven update; without
-     * this an overlay (e.g. the hover preview) stays at its pre-zoom screen position until
-     * the mouse moves. The lyric editor is an absolutely-positioned child rather than a
-     * layout-managed one, so a zoom change moves and resizes it only through this call; its
-     * font is re-derived first because its bounds are computed from that font.
+     * Overlay bounds are pixel-cached ({@link LineOverlayComponent#updateBounds()}), so without
+     * this an overlay stays at its pre-zoom position until the mouse moves. The lyric editor is
+     * absolutely positioned, so a zoom moves it only through here; its font is re-derived first
+     * because its bounds come from that font.
      */
     private void refreshOverlayBounds() {
         forEachLineOverlay(LineOverlayComponent::updateBounds);
@@ -1254,23 +1085,11 @@ public final class ScoreView
     }
 
     /**
-     * Applies {@code newPercent} to this view's {@link ViewScale} and re-anchors
-     * the viewport around {@code anchorPoint}, a point in this ScoreView's local
-     * (content) coordinate space — e.g. the cursor position for wheel/pinch zoom.
-     * When {@code anchorPoint} is null, anchors at the viewport's horizontal
-     * center and top edge instead (menu/keyboard zoom). A view with no viewport yet takes
-     * the zoom and the re-layout, and has no scroll position to re-anchor.
+     * {@code anchorPoint} is in this view's content coordinates; when null, anchors at the
+     * viewport's horizontal center and top edge.
      * <p>
-     * Called only from {@link #zoomDidChangeApplyZoom}, which is this view's own
-     * high-priority handler of {@link ZoomDidChangeNotification} — see that message's
-     * class doc for why every other reactor to a zoom change goes through the same
-     * notification rather than a direct call. On-score components read
-     * {@link #getViewScale()} on demand, so nothing is pushed into the tree here.
-     * EDT-only, per the {@code ZoomController} contract.
-     *
-     * @effects replaces this view's {@link ViewScale}, re-lays out and repaints the score,
-     *     and then reports the settled zoom through {@link #zoomPercent()}. The report is
-     *     last so that every observer reads a view whose layout already reflects it.
+     * Called only from {@link #zoomDidChangeApplyZoom}. EDT-only, per the {@code ZoomController}
+     * contract.
      */
     public void applyZoomPercent(int newPercent, @Nullable Point anchorPoint) {
         var scoreScrollPane = getScoreScrollPane();
@@ -1288,14 +1107,7 @@ public final class ScoreView
     }
 
     /**
-     * Replaces this view's {@link ViewScale} with one at {@code newPercent} and re-lays out
-     * the score at it, leaving the scroll position alone.
-     * <p>
-     * This is the whole of a zoom change for a view with no viewport yet, and the first
-     * half of one for a view that has a viewport to re-anchor.
-     *
-     * @effects replaces {@link #getViewScale()} and invalidates and re-lays out the score
-     *     tree, so that sizes read after it returns are the ones the new zoom produces
+     * Leaves the scroll position alone.
      */
     private void applyZoomPercentAndRelayout(int newPercent) {
         viewScale = viewScale.withZoomPercent(newPercent);
@@ -1317,22 +1129,11 @@ public final class ScoreView
     }
 
     /**
-     * Runs {@code body} against this view's scroll pane with the viewport's blit
-     * optimization disabled, restoring the previous scroll mode afterward. Does nothing
-     * when this view has no scroll pane yet. Safe to nest — each level restores the mode
-     * it found.
+     * Safe to nest — each level restores the mode it found.
      * <p>
-     * A relayout that resizes the content or moves the scroll position invalidates every
-     * pixel in the viewport, but JViewport's blit optimization cannot know that. In
-     * {@code BLIT_SCROLL_MODE} every scroll-position change — an explicit
-     * {@code setViewPosition}, and the clamping one {@code ViewportLayout} performs from
-     * inside {@code validate()} — synchronously copies the pixels already on screen to the
-     * new offset and repaints only the newly exposed strip. That puts a frame of the
-     * <em>previous</em> rendering, shifted, on screen before the queued repaint draws the
-     * score afresh: glaring on a large jump such as 800% to 400% zoom, imperceptible when
-     * the per-step delta is tiny, as during a pinch or slider drag.
-     * {@code SIMPLE_SCROLL_MODE} paints from scratch instead, so no stale pixels ever reach
-     * the screen; the previous mode is restored so ordinary scrolling keeps the blit.
+     * A relayout invalidates every viewport pixel, but blit scrolling copies the stale
+     * on-screen pixels to the new offset first, flashing a shifted frame of the previous
+     * rendering on a large zoom jump.
      */
     private void runWithoutViewportBlit(Consumer<? super JScrollPane> body) {
         if (scrollPane == null) {
@@ -1351,14 +1152,8 @@ public final class ScoreView
     }
 
     /**
-     * Applies {@code newPercent} to this view's {@link ViewScale}, re-lays out the page at
-     * the new zoom, and scrolls so that {@code anchorPoint} — in this view's local (content)
-     * coordinate space, or the viewport's horizontal center and top edge when null — stays
-     * put on screen.
-     * <p>
-     * The anchor is read before {@link #applyZoomPercentAndRelayout} runs, because component
-     * bounds still describe the old zoom at that point and the anchor has to be captured
-     * against them.
+     * The anchor is captured before {@link #applyZoomPercentAndRelayout}, while bounds still
+     * describe the old zoom.
      */
     private void applyZoomPercentAndReanchor(
         JScrollPane scoreScrollPane,
@@ -1410,14 +1205,8 @@ public final class ScoreView
     }
 
     /**
-     * Computes the post-zoom scroll position that keeps {@code anchorContentPoint}
-     * (a point in old-zoom ScoreView-content coordinates) under
-     * {@code anchorViewportOffset} (a point in viewport-local coordinates).
-     * <p>
-     * Pure function of its arguments — no Swing component access — so it can be
-     * unit-tested. Scales the content anchor by {@code zoomRatio}, offsets it by the
-     * post-validate content origin within the scrolled view, subtracts the viewport
-     * anchor offset, and clamps into {@code [0, viewSize - extentSize]} per axis.
+     * {@code anchorContentPoint} is in old-zoom content coordinates, {@code anchorViewportOffset}
+     * in viewport-local coordinates.
      */
     static Point computeAnchoredViewPosition(
         Point anchorContentPoint,
@@ -1461,17 +1250,14 @@ public final class ScoreView
         return selectionCoordinator.canDeleteLine();
     }
 
-    /** @see DocumentFontManager#findLyricRenderMetrics() */
     public @Nullable LyricRenderMetrics findLyricRenderMetrics() {
         return documentFontManager.findLyricRenderMetrics();
     }
 
-    /** @see DocumentFontManager#getLyricRenderMetrics() */
     public LyricRenderMetrics getLyricRenderMetrics() {
         return documentFontManager.getLyricRenderMetrics();
     }
 
-    /** @see DocumentFontManager#rebuildLyricRenderMetrics() */
     public void rebuildLyricRenderMetrics() {
         documentFontManager.rebuildLyricRenderMetrics();
     }
@@ -1489,41 +1275,30 @@ public final class ScoreView
     // Document fonts
     // -------------------------------------------------------------------------
 
-    /** @see DocumentFontManager#getFonts() */
     public DocumentFonts getDocumentFonts() {
         return documentFontManager.getFonts();
     }
 
-    /** {@inheritDoc} */
     @Override
     public Font getFont(FontKey key) {
         return documentFontManager.getFont(key);
     }
 
-    /** @see DocumentFontManager#installFonts(DocumentFonts) */
     public void installDocumentFonts(DocumentFonts fonts) {
         documentFontManager.installFonts(fonts);
     }
 
-    /** @see DocumentFontManager#setFonts(DocumentFonts) */
     @Override
     public void setFonts(DocumentFonts newFonts) {
         documentFontManager.setFonts(newFonts);
     }
 
     /**
-     * Adds {@code overlay} as a free-floating absolute-bounds child. ScoreView uses BorderLayout
-     * for its main panel, so we must register the overlay with null constraints (so the
-     * layout manager ignores it) and restore the main panel's center mapping that
-     * {@link #add(Component)} silently overwrote.
-     *
      * <h2>Z-order contract</h2>
-     * Overlays paint above the score content and <b>below</b> the active lyric editor: a lyric
-     * editor is a focused text field with a caret, and an overlay painting over it is a defect.
-     * The ordering is a property of this container, not of the order things were registered in
-     * — this method places every overlay directly beneath {@link #LYRIC_EDITOR_Z_ORDER}, and
-     * {@link LyricEditor#openOn} reclaims that index when an editor opens, pushing the existing
-     * overlays down by one.
+     * Overlays paint above the score content and <b>below</b> the active lyric editor; an overlay
+     * painting over the editor is a defect. The ordering belongs to this container, not to
+     * registration order: every overlay sits directly beneath {@link #LYRIC_EDITOR_Z_ORDER},
+     * and {@link LyricEditor#openOn} reclaims that index, pushing the overlays down by one.
      */
     @Override
     public void addOverlay(JComponent overlay) {
@@ -1555,18 +1330,12 @@ public final class ScoreView
     }
 
     /**
-     * Notifies the overlays once this host's subtree is laid out.
+     * Overlay bounds go stale whenever a line moves or resizes, by causes that share no
+     * mechanism; validating the tree first makes every descendant's bounds final before the
+     * overlays read them.
      * <p>
-     * Overlay bounds are fixed in staff spaces but not in pixels, so they go stale whenever a
-     * line moves or resizes. The causes do not share a mechanism: a title or subtitle height
-     * change moves StaffPanel without re-running its layout manager, while a line height change
-     * re-runs it. {@code validateTree()} sits above both and is cause-independent by
-     * construction. {@link Container#validateTree()} lays out this container and then recurses
-     * into its children, so calling it first guarantees every descendant's bounds are final
-     * before the overlays read them.
-     * <p>
-     * Only {@code setBounds}/{@code setLocation} may be called on the overlays from here —
-     * never {@code revalidate()}, which would re-enter layout.
+     * Only {@code setBounds}/{@code setLocation} may be called on the overlays from here, never
+     * {@code revalidate()}, which would re-enter layout.
      */
     @Override
     protected void validateTree() {
@@ -1576,28 +1345,14 @@ public final class ScoreView
     }
 
     /**
-     * Re-resolves every overlay's target line after the line components have been recreated.
-     * <p>
-     * A rebuilt layout discards the {@link LineComponent}s the overlays point at, and an
-     * overlay holding a stale target hides itself. Managers retarget on mouse motion only, so
-     * without this the preview would visibly wink out on every edit that rebuilds the layout
-     * and stay hidden until the pointer moved.
+     * A rebuilt layout discards the {@link LineComponent}s the overlays target, and managers
+     * retarget on mouse motion only; without this the preview hides until the pointer moves.
      */
     private void retargetOverlays() {
         // retarget() ends in inkDidChange(), which recomputes the bounds itself.
         forEachLineOverlay(LineOverlayComponent::retarget);
     }
 
-    /**
-     * Applies {@code action} to every {@link LineOverlayComponent} currently parented to this
-     * view.
-     * <p>
-     * Derived from the children rather than from a list maintained by
-     * {@link #addOverlay}/{@link #removeOverlay}, so it cannot disagree with the component
-     * hierarchy — an overlay removed by any route simply stops being visited. Indexes rather
-     * than {@link Container#getComponents()} because that returns a defensive copy, and this
-     * runs from {@link #validateTree()} on every layout pass.
-     */
     private void forEachLineOverlay(Consumer<? super LineOverlayComponent> action) {
         for (var i = 0; i < getComponentCount(); i++) {
             if (getComponent(i) instanceof LineOverlayComponent overlay) {

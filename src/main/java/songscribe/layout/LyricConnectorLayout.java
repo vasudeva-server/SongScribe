@@ -25,28 +25,12 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Song;
 
 /**
- * Line-level lyric span connector (a hyphen between syllables or a melisma extender line).
- * <p>
- * Coordinates are in staff spaces, relative to the line's left edge. {@link Kind#HYPHEN}
- * spans are drawn with one or more hyphens distributed across the gap; a
- * {@link Kind#DANGLING_HYPHEN} draws exactly one hyphen centered in the gap between the
- * syllable end and the next eligible element on the same line — except while the lyric
- * editor is open past that syllable, where the renderer engraves the chain up to the
- * edited element instead so it grows as the user hyphenates along the line;
- * {@link Kind#EXTENDER}
- * lines run horizontally from {@code startXSs} to {@code endXSs}; a
- * {@link Kind#DANGLING_EXTENDER} is an extender that reaches the end of the line without
- * a closing element — it is anchored to the right edge of the last eligible element on
- * the line rather than the line width. The renderer reads Y from
- * {@link LayoutResult#lyricBaselineYSsInLine(LyricRenderMetrics)}.
+ * Line-level lyric span connector (a hyphen between syllables or a melisma extender line), in
+ * staff spaces relative to the line's left edge. A dangling extender reaches the end of the line
+ * without a closing element and is anchored to the last eligible element, not the line width.
  *
- * @param startXSs           left edge of the connector in staff spaces
- * @param endXSs             right edge of the connector in staff spaces
- * @param script             the script the connector joins syllables of
- * @param kind               connector kind
- * @param sourceElementIndex index of the element that opened this connector within its line,
- *                           or {@code null} when the connector is a leading continuation
- *                           carried in from the previous line (no source element on this line)
+ * @param sourceElementIndex index of the element that opened this connector within its line, or
+ *                           {@code null} for a leading continuation from the previous line
  */
 public record LyricConnectorLayout(
     double startXSs,

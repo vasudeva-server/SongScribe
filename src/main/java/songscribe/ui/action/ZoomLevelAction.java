@@ -30,19 +30,12 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * Jumps the score zoom straight to one discrete {@link ZoomController} stop,
- * bypassing the stepping that {@link ZoomAction} does. The variants differ only
- * in their target percent and accelerator digit, so all of them are produced
- * from a single parameterized class.
+ * Jumps the score zoom straight to one {@link ZoomController} stop.
  */
 public final class ZoomLevelAction extends UIAction {
 
     /**
-     * The zoom stops that get their own accelerator, paired with the digit key
-     * that selects them. Every percent listed here is a
-     * {@link ZoomController#ZOOM_LEVEL_PERCENTS} stop, so the status-bar percent
-     * menu has an item to hang the accelerator on; the static initializer below
-     * enforces that rather than leaving the two lists to agree by hand.
+     * Every percent listed here is a {@link ZoomController#ZOOM_LEVEL_PERCENTS} stop.
      */
     private static final List<ZoomLevelShortcut> ZOOM_LEVEL_SHORTCUTS = List.of(
         new ZoomLevelShortcut(100, KeyEvent.VK_1),
@@ -67,7 +60,6 @@ public final class ZoomLevelAction extends UIAction {
 
     private final int zoomPercent;
 
-    /** Creates one action per shortcut-bearing zoom stop, in ascending percent order. */
     public static List<ZoomLevelAction> createActions(MainFrame mainFrame) {
         return ZOOM_LEVEL_SHORTCUTS.stream()
             .map(shortcut -> new ZoomLevelAction(mainFrame, shortcut))
@@ -89,7 +81,6 @@ public final class ZoomLevelAction extends UIAction {
         zoomPercent = shortcut.zoomPercent();
     }
 
-    /** The zoom stop this action selects, as an integer percent. */
     public int getZoomPercent() {
         return zoomPercent;
     }

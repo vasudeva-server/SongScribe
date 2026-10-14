@@ -38,20 +38,9 @@ import songscribe.dom.StaffElement;
 /**
  * The fundamental horizontal spacing unit in the engraving system.
  * <p>
- * An ElementColumn represents a vertical slice of the staff containing:
- * <ul>
- *   <li>A primary element (note, rest, or barline)</li>
- *   <li>Horizontal extents (left edge including accidentals; right edge including augmentation for minimum spacing, excluding augmentation for comfortable spacing)</li>
- *   <li>Stem information (top/bottom for beam group coordination)</li>
- *   <li>Associated lyric syllable (which drives horizontal spacing per Gould/Ross)</li>
- *   <li>The beam it belongs to (for internal spacing coordination)</li>
- * </ul>
- * <p>
- * Construction is two-phase: {@link ElementColumnBuilder} creates the column and immediately sets
- * {@link #minGapToNextSyllableSs}, {@link #minCollisionGapToNextSyllableSs} and
- * {@link #noteheadWidthSs} (note columns only), then
- * {@link HorizontalSpacingCalculator} sets {@link #xSs} once positions are computed.
- * Every other field is immutable. Use {@link ElementColumnBuilder} to create instances.
+ * Construction is two-phase: {@link ElementColumnBuilder} creates the column and sets the syllable
+ * gaps and {@link #noteheadWidthSs}, then {@link HorizontalSpacingCalculator} sets {@link #xSs}
+ * once positions are computed. Every other field is immutable.
  */
 public final class ElementColumn {
 
@@ -88,15 +77,10 @@ public final class ElementColumn {
     private double noteheadWidthSs;
 
     /**
-     * Creates a new ElementColumn.
-     * <p>
      * Use {@link ElementColumnBuilder} rather than calling this constructor directly.
      *
-     * @param element The primary element (note, rest, barline, etc.)
-     * @param extents The element's geometry extents
-     * @param lyric   The element's lyric for the script being laid out and its measured width, or
-     *                null when it carries none there
-     * @param beam    The beam this element belongs to, or null when it is unbeamed
+     * @param lyric null when the element carries none in the script being laid out
+     * @param beam  null when the element is unbeamed
      */
     public ElementColumn(
         StaffElement element,
@@ -115,15 +99,9 @@ public final class ElementColumn {
      * The geometry extents of a column's element, all relative to the element head's left edge
      * (the glyph origin) horizontally and to the element's staff position vertically.
      *
-     * @param leftSs                       left extent; 0.0 without an accidental, negative with one
-     * @param rightSs                      right extent; the element head width, plus augmentation
-     *                                     (dots and fall) and an unbeamed flag where present
-     * @param rightExcludingAugmentationSs right extent without augmentation; used for comfortable
-     *                                     spacing
-     * @param stemTopSs                    top of the stem when it points up, or the element head
-     *                                     top when it has none
-     * @param stemBottomSs                 bottom of the stem when it points down, or the element
-     *                                     head bottom when it has none
+     * @param stemTopSs    top of the stem when it points up, or the element head top when it has none
+     * @param stemBottomSs bottom of the stem when it points down, or the element head bottom when it
+     *                     has none
      */
     public record Extents(
         double leftSs,
@@ -133,10 +111,7 @@ public final class ElementColumn {
         double stemBottomSs) {}
 
     /**
-     * An element's lyric for the script being laid out, with the width its syllable measures.
-     *
-     * @param lyric   the lyric
-     * @param widthSs the syllable text's measured width in staff spaces; 0 when the text is empty
+     * @param widthSs 0 when the text is empty
      */
     public record MeasuredLyric(Lyric lyric, double widthSs) {}
 
@@ -144,53 +119,31 @@ public final class ElementColumn {
     // Primary Element
     // ==========================================================================
 
-    /**
-     * Returns the primary element (note, rest, barline, etc.) for this column.
-     */
     public StaffElement getElement() {
         return element;
     }
 
-    /**
-     * Returns whether this column represents a rest.
-     */
     public boolean isRest() {
         return element.getType().isRest();
     }
 
-    /**
-     * Returns whether this column represents a barline.
-     */
     public boolean isBarline() {
         return element.getType().isBarLine();
     }
 
-    /**
-     * Returns whether this column represents a grace note.
-     */
     public boolean isGraceNote() {
         return element.getType().isGraceNote();
     }
 
-    /**
-     * Returns whether this column represents a mid-line key change — the run of accidentals a
-     * {@link KeyChangeElement} draws. A caller spacing the gap in front of one relies on the
-     * barline the pair rule in {@code docs/key-changes.md} puts there.
-     *
-     * @return {@code true} when this column's element is a mid-line key change
-     */
     public boolean isKeyChange() {
         return element.getType().isKeyChange();
     }
 
     /**
-     * Returns the <em>drawn</em> stem direction of this column's element
-     * ({@link NoteGeometry#effectiveDirection}), so a grace note reports {@code UP} — the only
-     * direction it ever renders — rather than whatever direction it happens to store.
+     * The <em>drawn</em> stem direction ({@link NoteGeometry#effectiveDirection}), so a grace note
+     * reports {@code UP}, the only direction it ever renders.
      *
-     * @return the drawn stem direction, or {@code null} when this column's element renders no stem
-     *     (a rest, a whole note, a barline, or anything else that is not a pitched or grace note
-     *     shorter than a whole note)
+     * @return {@code null} when this column's element renders no stem
      */
     public @Nullable Direction stemDirection() {
         return element.getType().isNoteWithStem() && element instanceof NoteElement note
@@ -202,63 +155,31 @@ public final class ElementColumn {
     // Horizontal Extents
     // ==========================================================================
 
-    /**
-     * Returns the left extent relative to the element head left edge (glyph origin).
-     * 0.0 with no accidental; negative when an accidental is present (extends further left).
-     */
     public double getLeftExtentSs() {
         return extents.leftSs();
     }
 
-    /**
-     * Returns the right extent relative to the element head left edge (glyph origin).
-     * Equal to the element head width with no dots or fall; larger when dots or a fall are present.
-     */
     public double getRightExtentSs() {
         return extents.rightSs();
     }
 
-    /**
-     * Returns the right extent excluding augmentation dots and fall.
-     * Used for comfortable (default) spacing so dots and a fall do not push the next element
-     * unless the minimum gap would otherwise be violated.
-     */
     public double getRightExtentExcludingAugmentationSs() {
         return extents.rightExcludingAugmentationSs();
     }
 
     /**
-     * Returns how much of {@link #getRightExtentExcludingAugmentationSs()} is owed to an unbeamed
-     * flag rather than the notehead itself — the difference between the two, since the flag is the
-     * only thing that widens the augmentation-excluded right extent past {@link #getNoteheadWidthSs()}.
-     * Zero for beamed notes, notes with no flag, and non-note columns.
-     * <p>
-     * A flag's footprint sits well above or below the staff and has no bearing on lyric clearance
-     * (which measures from the notehead, see {@link #getNoteheadWidthSs()}), so callers that judge
-     * whether a gap needs widening <em>for lyrics</em> must subtract this out of the comfortable rest
-     * first — otherwise a stem flip, which changes only the flag's side and footprint, would silently
-     * change how much lyric-driven lift the rest of the line receives.
+     * Callers judging whether a gap needs widening <em>for lyrics</em> must subtract this from the
+     * comfortable rest first, or a stem flip would silently change the lyric lift the line gets.
      */
     public double getFlagExtentSs() {
         return getRightExtentExcludingAugmentationSs() - noteheadWidthSs;
     }
 
     /**
-     * Returns how far this column's ink reaches right of its origin <em>as met by a neighbour whose
-     * left-facing band is</em> {@code [neighbourTopYSs, neighbourBottomYSs]} (absolute layout Y,
-     * screen-down Ss — see {@link #getLeftFacingTopYSs()}). This is {@link #getRightExtentSs()},
-     * except that a flag hanging entirely clear of that band is not charged.
-     *
-     * <p>{@link #getRightExtentSs()} is a bounding box: it collapses a two-level ink profile — the
-     * notehead at the note's own height, the flag up at the stem tip — into the wider of the two, at
-     * every height. That is the right answer for a neighbour standing beside the flag, and the wrong
-     * one for a neighbour four steps below it, which is pushed away for a collision that cannot
-     * happen. The flag is the only glyph that can widen a note column past its notehead
-     * ({@link #getFlagExtentSs()}), so discounting it is the whole of the correction.
-     *
-     * <p>Once augmentation is present the flag no longer sets the right edge — dots stack to the
-     * right of it ({@link NoteGeometry#firstDotXSs}) and a fall reaches past it — so there is nothing
-     * to discount and the full extent stands.
+     * How far this column's ink reaches right of its origin as met by a neighbour whose
+     * left-facing band is {@code [neighbourTopYSs, neighbourBottomYSs]}: {@link #getRightExtentSs()}
+     * except that a flag hanging entirely clear of that band is not charged. Once augmentation is
+     * present the flag no longer sets the right edge, so the full extent stands.
      *
      * @param neighbourTopYSs    top (higher, numerically smaller) of the neighbour's vertical span
      * @param neighbourBottomYSs bottom (lower, numerically larger) of the neighbour's vertical span
@@ -292,74 +213,44 @@ public final class ElementColumn {
         return rightExtentSs;
     }
 
-    /**
-     * Returns the total width of this column (leftExtent + rightExtent).
-     */
     public double getWidthSs() {
         return Math.abs(getLeftExtentSs()) + getRightExtentSs();
     }
 
     /**
-     * The left edge of everything this column draws, which is further left than the glyph body
-     * whenever the element carries a leading accidental.
-     * <p>
-     * Callers wanting the note itself rather than what is drawn with it want {@link #getXSs},
-     * the glyph origin.
-     *
-     * @return the absolute X of the leftmost drawn ink, in staff spaces; meaningful only after
-     *         the spacing calculator has assigned this column its X
+     * @return meaningful only after the spacing calculator has assigned this column its X
      */
     public double getLeftEdgeXSs() {
         return xSs + getLeftExtentSs();
     }
 
     /**
-     * The right edge of everything this column draws, enclosing augmentation dots and a fall
-     * where the element carries them.
-     *
-     * @return the absolute X of the rightmost drawn ink, in staff spaces; meaningful only after
-     *         the spacing calculator has assigned this column its X
+     * @return meaningful only after the spacing calculator has assigned this column its X
      */
     public double getRightEdgeXSs() {
         return xSs + getRightExtentSs();
     }
 
-    /**
-     * Returns the notehead's own width in staff spaces — the reduced notehead for grace notes, the
-     * standard notehead for other notes — excluding the stem, flag, and augmentation dots. Lyric
-     * centering uses this so neither a flag nor a dot shifts the syllable off the notehead (the
-     * Gould/Ross rule, which already excluded dots, extended to the flag). Set by
-     * {@link ElementColumnBuilder} for note columns; otherwise the augmentation-excluded right extent.
-     */
+    /** Lyric centering uses this, so neither a flag nor a dot shifts the syllable off the notehead. */
     public double getNoteheadWidthSs() {
         return noteheadWidthSs;
     }
 
-    /**
-     * Sets the notehead-only width. Called by {@link ElementColumnBuilder} for note columns so lyric
-     * centering uses the head width rather than the flag-inflated right extent.
-     */
     public void setNoteheadWidthSs(double noteheadWidthSs) {
         this.noteheadWidthSs = noteheadWidthSs;
     }
 
     /**
-     * Returns the absolute X of the notehead center, excluding the flag and augmentation dots.
-     * Used to horizontally anchor lyrics so neither a flag nor a dot shifts the lyric position.
-     * Only valid after X position has been set by the spacing calculator.
-     * <p>
-     * Agrees with {@link NoteGeometry#getNoteheadCenterXSs} for every type, because both derive
-     * from the same per-type width, {@link ElementType#getElementWidthSs()}.
+     * Only valid after X position has been set by the spacing calculator. Agrees with
+     * {@link NoteGeometry#getNoteheadCenterXSs} for every type.
      */
     public double getNoteheadCenterXSs() {
         return xSs + noteheadWidthSs / 2.0;
     }
 
     /**
-     * Returns the absolute X of the notehead's right edge, excluding the stem, flag, and
-     * augmentation dots. Used to anchor melisma extenders so a terminating flag or dot never
-     * shifts where the extender ends (see {@link LyricLayoutBuilder#MIN_MELISMA_LENGTH_SS}).
-     * Only valid after X position has been set by the spacing calculator.
+     * Anchors melisma extenders, so a terminating flag or dot never shifts where the extender
+     * ends. Only valid after X position has been set by the spacing calculator.
      */
     public double getNoteheadRightEdgeXSs() {
         return xSs + noteheadWidthSs;
@@ -369,77 +260,38 @@ public final class ElementColumn {
     // Stem Information
     // ==========================================================================
 
-    /**
-     * Returns the Y position of the stem top (for stem-up elements or beaming).
-     * For elements without stems, returns the element head top.
-     */
     public double getStemTopSs() {
         return extents.stemTopSs();
     }
 
-    /**
-     * Returns the Y position of the stem bottom (for stem-down elements or beaming).
-     * For elements without stems, returns the element head bottom.
-     */
     public double getStemBottomSs() {
         return extents.stemBottomSs();
     }
 
-    /**
-     * Returns this column's notehead-center staff position converted to ss. Screen-down convention:
-     * a more negative value is higher on the staff. Single source of truth for the absolute vertical
-     * anchor shared by {@link #getAbsoluteTopYSs()}, {@link #getAbsoluteBottomYSs()}, and the optical
-     * spacing corrections.
-     */
+    /** Screen-down: a more negative value is higher on the staff. The absolute vertical anchor. */
     public double getPositionSs() {
         return ElementSeat.seatSs(element);
     }
 
-    /**
-     * Returns the absolute layout-Y top of this column: the element's staff position converted
-     * to ss, plus the note-local stem top extent. Single source of truth for the absolute top used
-     * when building skyline contours.
-     */
     public double getAbsoluteTopYSs() {
         return getPositionSs() + getStemTopSs();
     }
 
     /**
-     * Returns the top (higher, numerically smaller) of this column's <em>left-facing</em> vertical
-     * span — the band of ink a neighbour approaching from the left can actually meet, which is not
-     * the same as the column's whole span ({@link #getAbsoluteTopYSs()}).
-     *
-     * <p>An up-stem hangs off the notehead's <em>right</em> edge and carries its flag with it, a
-     * column-width away from anything on the left; only the notehead itself faces left. So the
-     * left-facing band starts at the notehead top in every case, and the column's own top counts only
-     * when the stem points down — which {@link #getLeftFacingBottomYSs()} covers, since a down-stem
-     * reaches downward.
-     *
-     * <p>"Notehead top" is this element type's own glyph bounding-box top
-     * ({@link ElementType#getNoteheadTopOffsetSs()}), not a fixed notehead half-height: a rest or a
-     * barline faces left with all the ink its glyph actually occupies.
+     * The top of this column's <em>left-facing</em> vertical span: the ink a neighbour approaching
+     * from the left can meet, not the whole span. An up-stem hangs off the notehead's right edge,
+     * so the span starts at the notehead top in every case; a down-stem is covered by
+     * {@link #getLeftFacingBottomYSs()}.
      */
     public double getLeftFacingTopYSs() {
         return getPositionSs() + element.getType().getNoteheadTopOffsetSs();
     }
 
-    /**
-     * Returns the bottom (lower, numerically larger) of this column's left-facing vertical span. A
-     * down-stem sits on the notehead's left edge, so it and its flag do face left and the span runs
-     * all the way to the stem tip; for an up-stem or a stemless element
-     * {@link #getAbsoluteBottomYSs()} is already the notehead bottom.
-     * See {@link #getLeftFacingTopYSs()} for why the two ends are asymmetric.
-     */
+    /** A down-stem sits on the notehead's left edge, so the span runs to the stem tip. */
     public double getLeftFacingBottomYSs() {
         return getAbsoluteBottomYSs();
     }
 
-    /**
-     * Returns the absolute layout-Y bottom of this column: the element's notehead-center position
-     * plus the note-local stem bottom extent. Single source of truth for the absolute bottom used
-     * when measuring vertical overlap between columns. Screen-down convention: this is the
-     * numerically larger (lower) of the column's two vertical extremes.
-     */
     public double getAbsoluteBottomYSs() {
         return getPositionSs() + getStemBottomSs();
     }
@@ -449,40 +301,28 @@ public final class ElementColumn {
     // ==========================================================================
 
     /**
-     * Returns the associated lyric syllable text, read off {@link #getLyric()} so it always
-     * belongs to the script {@link #getSyllableWidthSs()} was measured for.
-     *
-     * @return Syllable text, or null if no syllable
+     * @return null if no syllable
      */
     public @Nullable String getSyllable() {
         return lyric != null ? lyric.lyric().text() : null;
     }
 
-    /**
-     * Returns whether this column has an associated syllable.
-     */
     public boolean hasSyllable() {
         var syllable = getSyllable();
         return syllable != null && !syllable.isEmpty();
     }
 
     /**
-     * Returns the measured width of the syllable text in staff spaces.
-     *
-     * @return Syllable width, or 0 if no syllable
+     * @return 0 if no syllable
      */
     public double getSyllableWidthSs() {
         return lyric != null ? lyric.widthSs() : 0;
     }
 
     /**
-     * Returns the measured width of the syllable's first grapheme cluster in staff spaces, which is
-     * what a grace note centers on its notehead (see
-     * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}). Defaults to the whole syllable
-     * width until {@link ElementColumnBuilder} measures it, so a column built without it behaves as
-     * though the syllable were a single grapheme.
+     * Defaults to the whole syllable width until {@link ElementColumnBuilder} measures it.
      *
-     * @return First grapheme width, or 0 if no syllable
+     * @return 0 if no syllable
      */
     public double getSyllableFirstGraphemeWidthSs() {
         return syllableFirstGraphemeWidthSs;
@@ -493,20 +333,13 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the element's lyric for the script this column was built for, or null if it carries
-     * none there. Reading the lyric off the column rather than off the element is what keeps every
-     * later pass on the same script the syllable width was measured for — the element itself holds
-     * every script and cannot say which one is being laid out.
+     * Null if the element carries none in the script this column was built for. Every later pass
+     * reads the lyric from the column, so it stays on the script the width was measured for.
      */
     public @Nullable Lyric getLyric() {
         return lyric != null ? lyric.lyric() : null;
     }
 
-    /**
-     * Returns the minimum required gap between this column's right edge and the next
-     * column's syllable left edge. Equals the lyric space width for non-hyphenated or
-     * lyric-less columns; equals the bare hyphen glyph advance for hyphenated ones.
-     */
     public double getMinGapToNextSyllableSs() {
         return minGapToNextSyllableSs;
     }
@@ -516,13 +349,9 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the hard collision floor for the gap to the next syllable — the closest two
-     * syllables may ever come. Equals one lyric space width for non-hyphenated or lyric-less
-     * columns (including melisma carriers); equals the bare hyphen glyph advance for hyphenated
-     * ones. Equal to {@link #getMinGapToNextSyllableSs()} — the gap a lyric aims for is already
-     * the tightest one it tolerates — but kept distinct because the two answer different
-     * questions: this one floors the spring strut so lyrics never touch, that one feeds the rest
-     * the lyric lift aims at.
+     * The hard collision floor for the gap to the next syllable. Kept distinct from
+     * {@link #getMinGapToNextSyllableSs()} though currently equal: this one floors the spring
+     * strut so lyrics never touch, that one feeds the rest the lyric lift aims at.
      */
     public double getMinCollisionGapToNextSyllableSs() {
         return minCollisionGapToNextSyllableSs;
@@ -536,29 +365,15 @@ public final class ElementColumn {
     // Beam Group
     // ==========================================================================
 
-    /**
-     * Returns whether this element is part of a beam group.
-     *
-     * @return {@link Beaming#BEAMED} when the column was built with a beam, otherwise
-     *     {@link Beaming#UNBEAMED}
-     */
     public Beaming beaming() {
         return Beaming.of(beam);
     }
 
-    /**
-     * Returns whether this column and {@code other} sit in the same beam group. False when either is
-     * unbeamed, so two unbeamed columns do not count as sharing a group. Single source of truth for
-     * the "one beam spans this gap" question, which the beam-internal rest reduction and
-     * {@link OpticalSpacing}'s knee exclusion both ask.
-     */
+    /** Two unbeamed columns do not count as sharing a group. */
     public boolean sharesBeamGroupWith(ElementColumn other) {
         return beam != null && beam == other.beam;
     }
 
-    /**
-     * Returns whether this element has an outgoing glissando.
-     */
     public boolean hasGlissando() {
         return element instanceof NoteElement note && note.hasGlissando();
     }
@@ -567,20 +382,10 @@ public final class ElementColumn {
     // X Position (set by HorizontalSpacingCalculator)
     // ==========================================================================
 
-    /**
-     * Returns the X position of this column's element head left edge (glyph origin).
-     * This is set by the HorizontalSpacingCalculator during layout.
-     */
     public double getXSs() {
         return xSs;
     }
 
-    /**
-     * Sets the X position of this column's element head left edge (glyph origin).
-     * Called by the HorizontalSpacingCalculator during layout.
-     *
-     * @param xSs X position in staff spaces
-     */
     void setXSs(double xSs) {
         this.xSs = xSs;
     }
@@ -617,12 +422,7 @@ public final class ElementColumn {
     // ==========================================================================
 
     /**
-     * Resolves a {@link Span} span's anchor and end elements to their columns, or {@code null}
-     * when either endpoint has no column in {@code columnsByElement}.
-     *
-     * @param span              the span to resolve
-     * @param columnsByElement  element-to-column lookup for the line being laid out
-     * @return the resolved endpoints and their columns, or {@code null} if the span cannot be placed
+     * @return {@code null} if the span cannot be placed
      */
     @Nullable
     public static SpanColumns resolveSpan(
@@ -630,10 +430,6 @@ public final class ElementColumn {
         return resolveEndpoints(span.getAnchorElement(), span.getEndElement(), columnsByElement);
     }
 
-    /**
-     * Resolves two endpoint elements to their columns, or {@code null} when either has no
-     * column in {@code columnsByElement}.
-     */
     private static @Nullable SpanColumns resolveEndpoints(
         StaffElement anchor, StaffElement end, Map<StaffElement, ElementColumn> columnsByElement) {
         var anchorColumn = columnsByElement.get(anchor);
@@ -646,22 +442,13 @@ public final class ElementColumn {
         return new SpanColumns(anchor, end, anchorColumn, endColumn);
     }
 
-    /**
-     * Two endpoint elements together with their resolved columns: a {@link Span}'s, returned
-     * by {@link #resolveSpan}, or a whole tie's, carried by {@link TieColumns.Whole}.
-     */
     public record SpanColumns(
         StaffElement anchor, StaffElement end, ElementColumn anchorColumn, ElementColumn endColumn) {}
 
     /**
-     * Pairs a tie's place in the line being laid out with the columns of the notes it holds.
-     * <p>
-     * A tie's end may be in the line after its anchor's (see {@link NoteElement#tie()}), so a
-     * tie is laid out once in each line that holds one of its notes, and each line draws the
-     * part next to the note it holds. Which part that is, {@code placement} already says.
+     * A tie is laid out once in each line that holds one of its notes, and each line draws the
+     * part next to the note it holds.
      *
-     * @param placement        the tie's place in the line being laid out
-     * @param columnsByElement element-to-column lookup for that line
      * @return the whole tie when {@code placement} has no open edge, the half next to the one
      *     note the line holds otherwise, or {@code null} when a note the line holds has no column
      */
@@ -686,26 +473,11 @@ public final class ElementColumn {
         return attachedColumn == null ? null : new TieColumns.Half(attached, attachedColumn, openEdge);
     }
 
-    /**
-     * What {@link #resolveTie} found: either the whole tie or the half of it this line draws.
-     * A note with no column is not a case here — {@link #resolveTie} returns {@code null} for
-     * that, as {@link #resolveSpan} does.
-     */
     public sealed interface TieColumns {
 
-        /** Both notes are in this line, so the arc runs from one column to the other. */
         record Whole(SpanColumns columns) implements TieColumns {}
 
-        /**
-         * One note is in this line and the other is in another line of the song, so this half
-         * runs from {@code attachedColumn} off the edge named by {@code openEdge}. There is
-         * deliberately no column for the far note: it belongs to another line's layout, and
-         * fabricating one here would put a notehead where the staff edge belongs.
-         *
-         * @param attached       the note of the tie that is in this line
-         * @param attachedColumn that note's column
-         * @param openEdge       the edge this half runs off
-         */
+        /** There is deliberately no column for the far note: it belongs to another line's layout. */
         record Half(StaffElement attached, ElementColumn attachedColumn, Line.Edge openEdge)
             implements TieColumns {}
     }

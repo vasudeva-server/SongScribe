@@ -21,25 +21,16 @@
 package songscribe.layout;
 
 /**
- * One drawable piece of a decoration's typeset content, positioned relative to the content's
- * top-left corner.
- * <p>
- * An item carries everything needed to draw it, so a renderer walking a list of items resolves no
- * font, measures no advance and decides no position on either axis. Both offsets are in staff
- * spaces and therefore zoom-invariant; the view transform supplies zoom.
- * <p>
- * The hierarchy is sealed so that a renderer dispatching over it can do so without a
- * {@code default} arm: a third kind of item fails to compile at every such switch rather than
- * falling through one of them at run time.
+ * One drawable piece of a decoration's typeset content, positioned in staff spaces relative to
+ * the content's top-left corner.
  */
 public sealed interface TypesetItem permits GlyphItem, TextItem {
 
-    /** Offset from the content's left edge, in staff spaces. */
     double xSs();
 
     /**
-     * Offset from the content's top edge down to this item's drawing origin, in staff spaces —
-     * the baseline for text, the glyph origin for a glyph.
+     * Offset from the content's top edge down to this item's drawing origin: the baseline for
+     * text, the glyph origin for a glyph.
      */
     double baselineOffsetSs();
 }

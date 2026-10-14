@@ -25,29 +25,15 @@ import songscribe.dom.Song;
 
 /**
  * Posted when a document is installed as the one being edited: File &gt; Open, File &gt; New and
- * Revert to Saved. Subscribers that need to perform a full reset in response to a new document
- * should handle this notification via a dedicated {@code @Handler} method.
- *
- * <p>Carries the report of what the load changed in the song on its own
- * ({@link #getReport()}), which is empty for File &gt; New, since no file was read.
+ * Revert to Saved. The report ({@link #getReport()}) is empty for File &gt; New.
  */
 public class DocumentDidLoadNotification extends LintingNotification {
 
-    /** Whether the load left the song as its file holds it. */
     public enum LoadChange {
-        /** The song is what the file holds, or a new document no file holds yet. */
         UNCHANGED,
 
-        /** The load changed the song, so it differs from its file until it is saved. */
         CHANGED;
 
-        /**
-         * Returns the load change a load with {@code report} made.
-         *
-         * @param report what the load changed in the document
-         * @return {@link #CHANGED} when {@code report} holds an entry, otherwise
-         *     {@link #UNCHANGED}
-         */
         public static LoadChange of(ChangeReport report) {
             return report.isEmpty() ? UNCHANGED : CHANGED;
         }
@@ -55,31 +41,15 @@ public class DocumentDidLoadNotification extends LintingNotification {
 
     private final ChangeReport report;
 
-    /**
-     * @param report what the load changed in the song on its own; {@link ChangeReport#EMPTY}
-     *               for a song no file holds yet
-     */
     public DocumentDidLoadNotification(Song song, ChangeReport report) {
         super(song);
         this.report = report;
     }
 
-    /**
-     * Returns the changes the load made to the song on its own, for the user to be told about.
-     *
-     * @return the load's report; empty when the song is what its file holds, and for File &gt;
-     *     New
-     */
     public ChangeReport getReport() {
         return report;
     }
 
-    /**
-     * Returns whether the load changed the song.
-     *
-     * @return {@link LoadChange#CHANGED} when the song differs from the file it was read from,
-     *     as {@link LoadChange#of} decides it from {@link #getReport()}
-     */
     public LoadChange getLoadChange() {
         return LoadChange.of(report);
     }

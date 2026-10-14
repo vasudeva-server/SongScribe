@@ -23,13 +23,10 @@ package songscribe.dom;
 /**
  * How an element type is drawn.
  *
- * <p>Every {@link ElementType} has exactly one appearance, supplied at its declaration,
- * so the question "what is this drawn from?" is answered by a field the compiler forces
- * every constant to fill in rather than by a lookup that can be missing an entry.
+ * <p>Every {@link ElementType} has exactly one appearance, supplied at its declaration.
  *
- * <p>The four arms cover every drawn element kind, so a switch over an appearance is
- * exhaustive and needs no default: a new kind of drawn element is a new arm, and the
- * compiler names every switch that has to account for it.
+ * <p>The arms cover every drawn element kind, so a switch over an appearance is exhaustive and
+ * needs no default.
  */
 public sealed interface ElementAppearance
     permits NoteheadAppearance, GlyphAppearance, BarAppearance, KeySignatureAppearance {}

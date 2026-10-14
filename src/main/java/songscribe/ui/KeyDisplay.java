@@ -54,13 +54,6 @@ public final class KeyDisplay {
 
     private KeyDisplay() {}
 
-    /**
-     * Returns the key's display name, e.g. {@code "D" + SHARP_GLYPH + " · 2 sharps"}.
-     *
-     * @param key the key to name
-     * @return an {@link AttributedString} with the tonic's accidental, if any, rendered in the
-     *         music font and the rest in the UI label font
-     */
     public static AttributedString getDisplayName(Key key) {
         var tonic = tonicFor(key);
         var suffix = suffixFor(key);

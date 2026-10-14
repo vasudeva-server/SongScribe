@@ -32,14 +32,8 @@ import songscribe.ui.component.MainFrame;
 /**
  * Reads and writes the annotation on one element, for {@link AnnotationDialog}.
  *
- * <p>Unlike the beat and tempo changes, an annotation is purely a piece of text placed against
- * the staff: it redefines nothing about the music, so nothing here goes through a beat-defining
- * chokepoint.
- *
- * <p>Nothing is refused, so {@link DialogController#validate} keeps its default. Blank text would
- * be the one candidate, and nothing is refused here because the UI already guarantees it never
- * arrives: the non-editable combo offers only non-blank items, and its {@code Other…} prompt
- * refuses a blank entry before this controller ever sees the value.
+ * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: the UI
+ * guarantees blank text never arrives.
  */
 public final class AnnotationController extends AttachmentDialogController<Annotation> {
 
@@ -69,14 +63,7 @@ public final class AnnotationController extends AttachmentDialogController<Annot
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The element ends up carrying exactly {@code change}, replacing any annotation already
-     * there, and exactly one {@link SongDidChangeNotification} is posted.
-     *
-     * <p>Removal is {@link #removal()}'s job and never this one's. There is no blank-text case to
-     * read as a deletion request, because the UI — the non-editable combo plus the {@code
-     * Other…} prompt — guarantees non-blank text before it ever reaches this controller.
+     * Removal is {@link #removal()}'s job; blank text is never read as a deletion request.
      */
     @Override
     protected void commit(Annotation change) {

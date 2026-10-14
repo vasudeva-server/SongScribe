@@ -23,7 +23,6 @@ package songscribe.message.command;
 import songscribe.dom.TupletGrade;
 import songscribe.message.Message;
 
-/** Asks for the selection to become a tuplet of a grade. */
 public class ToggleTupletCommand extends Message {
 
     private final TupletGrade grade;

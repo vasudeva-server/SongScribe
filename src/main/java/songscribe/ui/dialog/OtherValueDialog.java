@@ -27,23 +27,17 @@ import songscribe.ui.component.NonBlankTextField;
 
 
 /**
- * Asks for a value an {@link OtherValueComboBox} does not offer: one field under one prompt, with
- * OK and Cancel and no Remove. The wording of both the title and the prompt comes from the combo
- * that opened it, as an {@link OtherValuePrompt}.
+ * Asks for a value an {@link OtherValueComboBox} does not offer, with OK and Cancel and no
+ * Remove. Its title and prompt come from the combo, as an {@link OtherValuePrompt}.
  *
  * <p><strong>OK is unavailable while the field is blank</strong>, rather than blankness being
- * refused when OK is pressed. Stated as a validity condition, the user sees the commit become
- * unavailable at the moment they make it unavailable, and they see it come back the moment they
- * type; refused at OK, they would learn it only after asking for the thing they cannot have. The
- * condition reads the field's property, so it answers to a cut and a paste as readily as to
- * typing.
+ * refused when OK is pressed. The condition reads the field's property, so it answers to a cut
+ * and a paste as readily as to typing. The field is a {@link NonBlankTextField}, so the same
+ * rule also holds once focus leaves it. See the validity section of
+ * {@code .claude/guides/dialogs.md}.
  *
- * <p>The field is a {@link NonBlankTextField}, so the same rule also holds once focus leaves it:
- * the condition speaks while the user types, the field's own guard restores what was there when
- * they move on. See the validity section of {@code .claude/guides/dialogs.md}.
- *
- * <p><strong>It opens while another modal dialog is already up</strong>, which is the ordinary case
- * rather than the exception: the combo it serves lives inside a dialog.
+ * <p><strong>It opens while another modal dialog is already up</strong>: the combo it serves
+ * lives inside a dialog.
  */
 final class OtherValueDialog extends StandardDialog<OtherValue, String> {
 
@@ -52,11 +46,6 @@ final class OtherValueDialog extends StandardDialog<OtherValue, String> {
     private final NonBlankTextField field = new NonBlankTextField(FIELD_COLUMNS);
     private final Property<String> text = Controls.text(field, Timing.WHILE_TYPING);
 
-    /**
-     * @param mainFrame the application window, for parenting
-     * @param prompt    the title and field label to show, already resolved to display text
-     * @param ops       the operations this dialog's OK reads from and commits through
-     */
     OtherValueDialog(MainFrame mainFrame, OtherValuePrompt prompt, DialogOps<OtherValue, ? super String> ops) {
         super(mainFrame, prompt.title(), ops);
 
@@ -65,12 +54,7 @@ final class OtherValueDialog extends StandardDialog<OtherValue, String> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Written through the property rather than through the field, so the value propagates as an
-     * edit does rather than depending on which route the control reports.
-     *
-     * @param values the value to open on, which {@link OtherValueController} leaves empty
+     * Written through the property, so the value propagates as an edit does.
      */
     @Override
     protected void populate(OtherValue values) {
@@ -79,14 +63,8 @@ final class OtherValueDialog extends StandardDialog<OtherValue, String> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p><strong>The text is returned as it stands, unstripped.</strong> Stripping belongs to the
-     * field's guard, which {@code StandardDialog.verifyFocusedField} runs before this dialog
-     * commits, so the focused field has already been normalized by the time OK reads it. A strip
-     * here would be a second copy of that rule, and the copy is the one that drifts.
-     *
-     * @return the text the field now shows
+     * <strong>The text is returned as it stands, unstripped.</strong> Stripping belongs to the
+     * field's guard, which {@code StandardDialog.verifyFocusedField} runs before OK reads it.
      */
     @Override
     protected String gather() {

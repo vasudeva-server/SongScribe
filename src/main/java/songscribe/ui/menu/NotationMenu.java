@@ -124,12 +124,7 @@ public class NotationMenu extends JMenu {
         });
     }
 
-    /**
-     * Every action reachable from this menu operates on individual elements, so none of
-     * them apply when a whole line is selected. Tagging the built menu tree rather than
-     * each action at its construction site keeps the two from drifting apart, and catches
-     * the actions that submenus create inline rather than exposing via {@code Actions}.
-     */
+    /** Every action reachable from this menu operates on individual elements. */
     private static void disableWhenLineSelected(MenuElement element) {
         if (element instanceof JMenuItem menuItem && menuItem.getAction() instanceof UIAction action) {
             action.setFlags(UIAction.Flag.DISABLE_WHEN_LINE_SELECTED);

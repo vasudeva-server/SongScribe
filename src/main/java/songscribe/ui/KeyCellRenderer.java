@@ -88,13 +88,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
         GLYPHS = Map.copyOf(glyphs);
     }
 
-    /**
-     * Returns the height of every cell this renderer paints. There is one height rather than a
-     * per-key measurement because all fifteen cells are sized to the tallest glyph, so a caller
-     * dividing available space by it counts rows exactly rather than approximately.
-     *
-     * @return the cell height in pixels
-     */
+    /** One height for every key: all cells are sized to the tallest glyph. */
     public static int cellHeightPx() {
         return KeyLabel.CELL_SIZE.height;
     }

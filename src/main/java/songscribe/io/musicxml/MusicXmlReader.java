@@ -34,37 +34,20 @@ import songscribe.io.SongLoadResult;
 /**
  * Reads a MusicXML 4.0 document produced by {@link MusicXmlWriter} back into a
  * {@link SongLoadResult.Success}.
- * <p>
- * This is not a general MusicXML importer — it only handles SongScribe's own output.
- * <p>
- * Parses via {@link MusicXmlSerializer#unmarshal} into a
- * {@link org.audiveris.proxymusic.ScorePartwise} object graph, then hands that graph to
- * {@link SongMapper#map} to build the {@link songscribe.dom.Song}. {@link #read(File)} is a
- * one-line delegation to {@link #read(InputSource)}, so there is exactly one parse path.
- * <p>
- * The three exceptions below are thrown by the mapping classes ({@link SongMapper},
- * {@link HeaderMapper}, {@link ProxyMusicAccess}, {@link NoteMapper}) rather than by this
- * class directly; they are nested here because {@link songscribe.io.SongFileLoader} and
- * callers throughout the codebase catch them by this class's name.
+ *
+ * <p>This is not a general MusicXML importer — it only handles SongScribe's own output.
+ *
+ * <p>The three exceptions below are thrown by the mapping classes, not by this class; they are
+ * nested here because callers catch them by this class's name.
  */
 public final class MusicXmlReader {
 
     private MusicXmlReader() {}
 
     /**
-     * Parses a MusicXML document from the given {@link InputSource} and returns
-     * the resulting {@link SongLoadResult.Success} (the settled song plus its
-     * document fonts). A malformed document surfaces as a thrown exception; the
-     * warning list is empty on this path, and what the load changed is in the
-     * result's report.
-     * <p>
-     * When the document carries no {@code <defaults>} font block, the result's
-     * fonts default to {@link songscribe.font.DocumentFonts#defaultFonts()}.
-     *
-     * @param source the MusicXML input to parse
-     * @return the parsed song plus its document fonts
-     * @throws IOException  on I/O errors
-     * @throws SAXException on parse errors
+     * The warning list is empty on this path; what the load changed is in the result's report.
+     * When the document carries no {@code <defaults>} font block, the result's fonts default to
+     * {@link songscribe.font.DocumentFonts#defaultFonts()}.
      */
     public static SongLoadResult.Success read(InputSource source) throws IOException, SAXException {
         var documentFonts = DocumentFonts.defaultFonts();
@@ -74,20 +57,9 @@ public final class MusicXmlReader {
     }
 
     /**
-     * Parses a MusicXML document from the given {@link File} and returns the
-     * resulting {@link SongLoadResult.Success}.
-     *
-     * <p>The file is opened here, not left to the parser. A parse source built from a
-     * location alone is opened lazily, so a path that does not exist would surface
-     * mid-parse as a parse error; {@link songscribe.io.SongFileLoader} maps the two to
-     * different results, so the distinction is user-visible — "this file is not there"
-     * against "this file is damaged". Opening it here is also what closes it: the parser
-     * never closes a stream it was handed.
-     *
-     * @param file the MusicXML file to parse
-     * @return the parsed song plus its document fonts
-     * @throws IOException  on I/O errors
-     * @throws SAXException on parse errors
+     * The file is opened here, not left to the parser: a missing path would otherwise surface
+     * mid-parse as a parse error, and {@link songscribe.io.SongFileLoader} maps "not there" and
+     * "damaged" to different results. Opening it here is also what closes it.
      */
     public static SongLoadResult.Success read(File file) throws IOException, SAXException {
         try (var stream = new FileInputStream(file)) {
@@ -120,13 +92,11 @@ public final class MusicXmlReader {
     }
 
     /**
-     * Thrown when a document cannot be read as this program's format: either it breaks the
-     * MusicXML schema SongScribe implements, or it states, in valid MusicXML, something
-     * SongScribe cannot represent — a pitch beyond the outermost ledger line, a note with three
-     * or more dots.
+     * Thrown when a document cannot be read as this program's format: it breaks the MusicXML
+     * schema SongScribe implements, or states, in valid MusicXML, something SongScribe cannot
+     * represent.
      *
-     * <p>{@link #detail()} carries the specific reason, and each throw site states a distinct
-     * one, since the detail is what reaches the user.
+     * <p>{@link #detail()} reaches the user, so each throw site states a distinct one.
      */
     public static final class InvalidFormatException extends SAXException {
 

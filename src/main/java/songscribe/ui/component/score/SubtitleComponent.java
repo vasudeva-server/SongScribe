@@ -29,11 +29,6 @@ import songscribe.ui.dialog.SongSettingsDialog;
 /**
  * Component that renders the song subtitle.
  * <p>
- * The subtitle is centered horizontally, below a gap derived from the
- * {@code SongScribe.score.subtitle.gap} FlatLaf property (in staff spaces).
- * When the subtitle is empty the component collapses to {@code (0, 0)} and
- * emits no gap, so songs without a subtitle are not affected.
- * <p>
  * The page draws {@value songscribe.dom.SongMetadata#MAX_SUBTITLE_LINES} line of it. A
  * subtitle too wide to fit on one line is not wrapped onto a second: the first line draws
  * and the rest does not, in the overflow colour.
@@ -56,9 +51,7 @@ public class SubtitleComponent extends BaseTitleComponent {
     }
 
     /**
-     * The gap above the subtitle, in view pixels. The gap is a fixed FlatLaf property
-     * (in staff spaces) but is converted per layout through the view zoom rather than
-     * cached, so it tracks the current zoom.
+     * Converted per layout through the view zoom, so it tracks the current zoom.
      */
     @Override
     protected int topGapPx() {

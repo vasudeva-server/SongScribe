@@ -28,14 +28,8 @@ import java.util.regex.Pattern;
 /**
  * A face named the way a person reads it, rather than the way a font file spells it.
  * <p>
- * A font file's own names are written for machines: styles arrive abbreviated
- * ({@code It}, {@code Cn}), run together in camel case ({@code SemiBoldItalic}), and repeat a
- * weight the family name already carries ({@code Source Sans 3 SemiBold SemiBold}). What this
- * class produces is what belongs in a label beside a font chooser.
- * <p>
- * The names are for display only. Nothing here round-trips: a description cannot be turned back
- * into the PostScript name it came from, and a stored font name is resolved by
- * {@link InstalledFonts#createFont} instead.
+ * The names are for display only. Nothing here round-trips: a stored font name is resolved by
+ * {@link InstalledFonts#createFont}.
  */
 public final class FontDescription {
 
@@ -69,13 +63,6 @@ public final class FontDescription {
 
     private FontDescription() {}
 
-    /**
-     * The whole of a face named for a person: family, style and point size.
-     *
-     * @param font the face to describe
-     * @return the family, then the {@link #style} description, then the size followed by
-     *         {@code pt}, separated by single spaces
-     */
     public static String full(Font font) {
         var family = font.getFamily();
         var style = style(font);

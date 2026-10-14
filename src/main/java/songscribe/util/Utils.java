@@ -59,16 +59,7 @@ public final class Utils {
         return Calendar.getInstance().get(Calendar.YEAR);
     }
 
-    /**
-     * Compares two dotted numeric version strings (e.g. "4.0", "2.10")
-     * component by component. Missing trailing components count as 0, so
-     * "4" and "4.0" compare equal. Comparison is numeric per component, so
-     * "4.10" correctly orders after "4.9" (unlike a floating-point compare).
-     *
-     * @return a negative number, zero, or a positive number as {@code a} is
-     *     respectively less than, equal to, or greater than {@code b}
-     * @throws NumberFormatException if either string has a non-numeric component
-     */
+    /** Missing trailing components count as 0, so "4" and "4.0" compare equal. */
     public static int compareVersions(String a, String b) {
         var aParts = a.split("\\.");
         var bParts = b.split("\\.");
@@ -138,11 +129,6 @@ public final class Utils {
         return getPlatformModifiersString(key) + getPlatformKeyString(key);
     }
 
-    /**
-     * Returns just the modifier portion of the keystroke (e.g. {@code ⌘⇧} on macOS,
-     * {@code Ctrl+Shift+} elsewhere). On macOS these are symbol glyphs that the UI
-     * font may lack, so callers can render this part in a font that includes them.
-     */
     public static String getPlatformModifiersString(KeyStroke key) {
         var sb = new StringBuilder();
         var modifiers = key.getModifiers();
@@ -178,10 +164,6 @@ public final class Utils {
         return sb.toString();
     }
 
-    /**
-     * Returns just the key portion of the keystroke (e.g. {@code S}, or a word/symbol
-     * such as {@code Enter} for Enter).
-     */
     public static String getPlatformKeyString(KeyStroke key) {
         var sb = new StringBuilder();
 

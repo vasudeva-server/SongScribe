@@ -24,8 +24,8 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * One stroke a barline or repeat sign is built from, left to right — a thin line, a
- * thick line, or a repeat-dots pair — each carrying its own width in staff spaces.
+ * One stroke a barline or repeat sign is built from: a thin line, a thick line, or a
+ * repeat-dots pair.
  */
 public enum BarStroke {
     THIN,
@@ -39,21 +39,12 @@ public enum BarStroke {
     public static final double THIN_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * THIN_MULTIPLIER;
     public static final double THICK_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * THICK_MULTIPLIER;
 
-    /**
-     * The gap between two adjacent strokes of one barline or repeat sign, in staff spaces.
-     */
     public static final double SEPARATION_SS =
         EngravingConstants.LILYPOND_BASE_THICKNESS_SS * SEPARATION_MULTIPLIER;
 
     /**
-     * Returns how much horizontal room this stroke takes, in staff spaces, excluding the
-     * {@link #SEPARATION_SS} that stands between it and the stroke beside it.
-     * <p>
-     * A drawn line is as wide as the engraver says; repeat dots are as wide as the glyph the
-     * font supplies, so the two answers come from different places and only this method knows
-     * which applies.
-     *
-     * @return the stroke's width in staff spaces, always positive
+     * Excludes the {@link #SEPARATION_SS} that stands between it and the stroke beside it.
+     * Always positive.
      */
     public double widthSs() {
         return switch (this) {

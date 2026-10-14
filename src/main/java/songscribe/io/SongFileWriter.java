@@ -31,39 +31,20 @@ import songscribe.layout.LineLayoutProvider;
 
 /**
  * Writes a {@link Song} to disk without requiring a {@code ScoreView}.
- * <p>
- * Symmetric with {@link SongLoader}: this owns the write mechanics for the
- * save path so the {@code PrintWriter} error-checking guard is unit-testable
- * independent of {@code MainFrame}.
  */
 public final class SongFileWriter {
 
     private SongFileWriter() {}
 
     /**
-     * Writes {@code song} through {@code pw} and reports whether the write
-     * succeeded. Does not close {@code pw} — the caller owns its lifecycle.
-     *
-     * @param song the song to write
-     * @param fonts the document fonts to write alongside the song
-     * @param pw the writer to write through
-     * @return true on success, false if {@code pw} recorded an error
+     * Does not close {@code pw} — the caller owns its lifecycle.
      */
     public static boolean write(Song song, DocumentFontsHolder fonts, PrintWriter pw) {
         return write(song, fonts, LineLayoutProvider.headless(song, fonts), pw);
     }
 
     /**
-     * Writes {@code song} through {@code pw}, taking its line geometry from
-     * {@code layoutProvider}, and reports whether the write succeeded. Does not
-     * close {@code pw} — the caller owns its lifecycle.
-     *
-     * @param song the song to write
-     * @param fonts the document fonts to write alongside the song
-     * @param layoutProvider supplies each line's layout, the source of the written
-     *        glissando coordinates
-     * @param pw the writer to write through
-     * @return true on success, false if {@code pw} recorded an error
+     * Does not close {@code pw} — the caller owns its lifecycle.
      */
     public static boolean write(
         Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider, PrintWriter pw) {
@@ -72,33 +53,10 @@ public final class SongFileWriter {
         return !pw.checkError();
     }
 
-    /**
-     * Writes {@code song} to {@code file}, opening and closing the underlying
-     * {@code PrintWriter}.
-     *
-     * @param song the song to write
-     * @param fonts the document fonts to write alongside the song
-     * @param file the file to write to
-     * @return true on success, false if the write recorded an error
-     * @throws IOException if the file cannot be opened for writing
-     */
     public static boolean write(Song song, DocumentFontsHolder fonts, File file) throws IOException {
         return write(song, fonts, LineLayoutProvider.headless(song, fonts), file);
     }
 
-    /**
-     * Writes {@code song} to {@code file}, taking its line geometry from
-     * {@code layoutProvider} and opening and closing the underlying
-     * {@code PrintWriter}.
-     *
-     * @param song the song to write
-     * @param fonts the document fonts to write alongside the song
-     * @param layoutProvider supplies each line's layout, the source of the written
-     *        glissando coordinates
-     * @param file the file to write to
-     * @return true on success, false if the write recorded an error
-     * @throws IOException if the file cannot be opened for writing
-     */
     public static boolean write(
         Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider, File file)
         throws IOException {

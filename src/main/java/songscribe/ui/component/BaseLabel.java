@@ -39,16 +39,10 @@ public class BaseLabel extends JLabel {
     }
 
     /**
-     * Colors the cell as selected or not, in {@code list}'s colors.
+     * The closed combo's display cell is never highlighted, whatever selection state Swing
+     * reports for it.
      *
-     * <p>The closed combo's display cell is never highlighted, whatever selection state
-     * Swing reports for it: it shows the chosen value in the combo itself, not a row of
-     * the open popup, so it takes the list background.
-     *
-     * @param list the list the cell is rendered for
-     * @param index the cell's row, or {@link UIUtils#COMBO_DISPLAY_INDEX} for the closed
-     *     combo's display cell
-     * @param isSelected whether Swing reports the cell as selected
+     * @param index {@link UIUtils#COMBO_DISPLAY_INDEX} for the closed combo's display cell
      */
     protected final void applySelectionColors(JList<?> list, int index, boolean isSelected) {
         if (index == UIUtils.COMBO_DISPLAY_INDEX) {

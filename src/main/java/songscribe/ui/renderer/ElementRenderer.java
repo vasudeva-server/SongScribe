@@ -24,26 +24,9 @@ import java.awt.Graphics2D;
 
 import songscribe.dom.LineElement;
 
-/**
- * Strategy interface for rendering what a line holds — its elements, and the header it opens
- * with.
- * <p>
- * Each type has a corresponding renderer implementation that knows how to draw it. What is
- * rendered is passive data; rendering is delegated.
- *
- * @param <T> The type this renderer handles
- */
 @FunctionalInterface
 public interface ElementRenderer<T> {
 
-    /**
-     * Renders the element to the graphics context.
-     *
-     * @param invariants     The per-line invariants
-     * @param frame   The per-element frame
-     * @param element The element to render
-     * @param g2      The graphics context
-     */
     void render(LineInvariants invariants, ElementFrame frame, T element, Graphics2D g2);
 
 

@@ -22,10 +22,6 @@ package songscribe.message.mutation;
 
 import songscribe.dom.Line;
 
-/**
- * Marker interface for mutations scoped to a specific line.
- * Element mutations implement this interface; song-scoped mutations do not.
- */
 @FunctionalInterface
 public interface LineScopedMutation {
     Line getLine();

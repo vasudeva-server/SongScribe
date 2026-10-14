@@ -26,18 +26,12 @@ import songscribe.dom.Ss;
 
 /**
  * Component that renders Bengali (Bangla) lyrics.
- * <p>
- * Displays multi-line Bangla text centered horizontally below the main lyrics.
- * Uses the song's Bangla font with appropriate spacing.
  */
 public class BanglaLyricsComponent extends LyricsComponent {
 
-    /** Vertical spacing for Bangla lyrics (2 staff lines). */
     private static final Ss BANGLA_LYRICS_TOP_MARGIN_SS = new Ss(2.0);
 
-    /**
-     * The top margin in view pixels, recomputed per layout so it tracks the current zoom.
-     */
+    /** Recomputed per layout so it tracks the current zoom. */
     @Override
     public int getMarginTop() {
         return toViewPx(BANGLA_LYRICS_TOP_MARGIN_SS).positionPx();

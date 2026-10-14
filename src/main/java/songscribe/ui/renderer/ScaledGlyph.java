@@ -25,9 +25,6 @@ import songscribe.smufl.SMuFLMetadata;
 
 /**
  * A SMuFL glyph drawn at a uniform scale of its design size, in both X and Y.
- *
- * @param glyph the glyph
- * @param scale the factor applied to the glyph's design size; 1 draws it at design size
  */
 record ScaledGlyph(SMuFLGlyph glyph, double scale) {
 
@@ -37,22 +34,12 @@ record ScaledGlyph(SMuFLGlyph glyph, double scale) {
         return new ScaledGlyph(glyph, DESIGN_SCALE);
     }
 
-    /**
-     * The distance in staff spaces from one glyph's pen origin to the next in a tiled run, after
-     * scaling.
-     *
-     * @return the glyph's design advance width times {@link #scale}, in staff spaces
-     */
     double advanceSs() {
         return SMuFLMetadata.advanceWidthSs(glyph) * scale;
     }
 
     /**
-     * The Y of the glyph's ink top relative to its baseline, in staff spaces, after scaling.
      * Negative when the ink rises above the baseline.
-     *
-     * @return the top of the glyph's design bounding box times {@link #scale}, in staff spaces
-     *     from the baseline
      */
     double inkTopYSs() {
         return SMuFLMetadata.bboxSs(glyph).topSs() * scale;

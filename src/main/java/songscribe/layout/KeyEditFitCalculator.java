@@ -35,46 +35,21 @@ import songscribe.dom.Song;
  * Answers "will this key change still fit?" for the key-editing UI, so an edit that cannot be
  * drawn is refused <em>before</em> it is written to the model.
  * <p>
- * There is one query per edit, and each answers for the whole edit rather than for one line of it.
- * A key change claims horizontal space in four places, and a check that covered only some of them
- * would accept an edit that then overflows somewhere else:
- * <ul>
- *   <li>the <b>cautionary</b> at the end of the line before it, warning what the next line begins
- *       in, which widens that line's trailing reservation
- *       ({@link HorizontalSpacingCalculator#trailingReservationSs});</li>
- *   <li>the <b>header</b> of every line the change re-keys, which moves that line's first element
- *       right or left ({@link HorizontalSpacingCalculator#calculateFirstElementXSs});</li>
- *   <li>the <b>cautionary at the end of each of those lines</b>, since the key they leave off in
- *       moves with them;</li>
- *   <li>for a mid-line change, the <b>key signature column</b> itself — plus, where the chosen
- *       position has no barline before it, the barline the editor inserts alongside it.</li>
- * </ul>
- * <p>
- * "Every line the change re-keys" is the inheritance chain: a line with no key of its own inherits
- * from the line before it, so a change propagates forward and stops at the first line that
- * establishes its own key. Each query measures the chain {@link Song#inheritanceFrom} reports, so
- * it measures exactly the lines the song re-derives once the edit commits.
- * <p>
- * Every line is measured by the identical solve the committed layout runs
- * ({@link ElementColumnBuilder} + {@link HorizontalSpacingCalculator#solveLine}), over the same
- * columns, so a change these queries accept is one the layout can always place. The committed
- * layout only discovers an overflow at paint time, and by then it can only place the line on its
- * collision floors and draw the tail clipped, in red.
+ * There is one query per edit, and each answers for the whole edit rather than for one line of it:
+ * every line the key change re-keys, as {@link Song#inheritanceFrom} reports. Each line is measured
+ * by the same solve the committed layout runs, so a change these queries accept is one the layout
+ * can always place.
  *
  * <p><b>Deliberate divergence from {@link LyricEditFitCalculator}, decided by the domain owner.</b>
  * That class's callers first ask {@link LyricEditFitCalculator#lineFits} and let the edit through
  * when the line was <em>already</em> overflowing, so a user can still shorten a syllable to
  * recover. Key edits get no such escape, and this class deliberately exposes no query that would
- * grant one. The consequence, which is the cost of the decision: on an overflowing line the user
- * cannot simplify the key signature to recover either, even though a narrower signature would
- * help. A reader who checks the precedent and reads this as an oversight should not "fix" it.
+ * grant one; do not "fix" it.
  *
- * <p>Rejection covers these interactive edits only. A line that overflows on load, on a font
- * change, or from any non-key edit is still rendered overflowing rather than refused — refusing
- * would make a document unopenable.
+ * <p>Rejection covers these interactive edits only; a line that overflows on load or from any
+ * non-key edit is still rendered overflowing, since refusing would make a document unopenable.
  *
- * <p>Everything here is pure measurement: no line, element or column is ever mutated, and no
- * mutation is recorded.
+ * <p>Pure measurement: nothing is mutated or recorded.
  */
 public final class KeyEditFitCalculator {
 
@@ -187,18 +162,6 @@ public final class KeyEditFitCalculator {
             columnBuilder);
     }
 
-    /**
-     * Runs the fit check over every line an edit touches: the line before the edited one, for the
-     * cautionary the edit creates at its end; the edited line, with the columns and keys the edit
-     * would leave it; and then every line of the inheritance chain the song reports after it,
-     * each re-keyed by what the one before it would leave off in.
-     *
-     * @param editedLine    the line the edit lands on; one of its song's lines
-     * @param editedColumns its columns as the edit would leave them
-     * @param headerKey     the key its header would draw
-     * @param endKey        the key it would leave off in
-     * @param columnBuilder the builder every other affected line's columns come from
-     */
     private static boolean chainFits(
         Line editedLine,
         List<ElementColumn> editedColumns,
@@ -244,11 +207,7 @@ public final class KeyEditFitCalculator {
         }
     }
 
-    /**
-     * The key the line at {@code position} of {@code chain} starts in, counting its inheriting
-     * lines from 0: the key that line inherits, the stop's own key just past them, or null when
-     * the inheriting lines run to the end of the song and no line follows.
-     */
+    /** Null when the inheriting lines run to the end of the song and no line follows. */
     private static @Nullable Key runningKeyAt(Song.InheritanceChain chain, int position) {
         var inheriting = chain.inheriting();
 
@@ -260,11 +219,6 @@ public final class KeyEditFitCalculator {
         return (stop != null) ? stop.ownKey() : null;
     }
 
-    /**
-     * Returns whether {@code previousLine} still fits once its trailing reservation is widened for
-     * a cautionary key signature warning that the line after it begins in {@code nextRunningKey}.
-     * Its own header and the key it leaves off in are untouched by an edit on the line after it.
-     */
     private static boolean cautionaryFits(
         Line previousLine, Key nextRunningKey, ElementColumnBuilder columnBuilder, double staffRightMarginSs) {
 
@@ -277,7 +231,6 @@ public final class KeyEditFitCalculator {
             staffRightMarginSs);
     }
 
-    /** A line with no columns has nothing a key signature can push against, so it always fits. */
     private static boolean fits(
         List<ElementColumn> columns, Line line, LineKeys keys, double staffRightMarginSs) {
 
@@ -285,12 +238,6 @@ public final class KeyEditFitCalculator {
             || !HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs, keys).isInfeasible();
     }
 
-    /**
-     * Builds {@code line}'s columns as the editor would leave them with a key signature for
-     * {@code key} spliced in at {@code insertionIndex} — the same columns
-     * {@link ElementColumnBuilder} gives the committed layout, with the inserted ones (and the
-     * barline the position may need) in place.
-     */
     private static List<ElementColumn> columnsWithKeySignature(
         Line line, int insertionIndex, Key key, ElementColumnBuilder columnBuilder) {
 
@@ -312,7 +259,6 @@ public final class KeyEditFitCalculator {
         return columns;
     }
 
-    /** Appends the columns the editor's insertion adds: the key signature, behind any barline it needs. */
     private static void appendInsertedColumns(
         List<? super ElementColumn> columns,
         Line line,
@@ -328,18 +274,6 @@ public final class KeyEditFitCalculator {
         columns.add(keySignatureColumn(line, insertionIndex, key, columnBuilder));
     }
 
-    /**
-     * Builds {@code line}'s columns as the editor would leave them with the key change standing
-     * at {@code keyChangeIndex} establishing {@code key} instead — every other column exactly as
-     * the committed layout builds it.
-     *
-     * @param line           the line as it stands, unmodified
-     * @param keyChangeIndex the index of the key change whose key is being swapped
-     * @param key            the key it would establish instead
-     * @param columnBuilder  the builder the committed layout would use, so the projected columns
-     *                       are measured on the same terms
-     * @return the projected columns, in element order
-     */
     private static List<ElementColumn> columnsWithSwappedKeySignature(
         Line line, int keyChangeIndex, Key key, ElementColumnBuilder columnBuilder) {
 
@@ -355,20 +289,6 @@ public final class KeyEditFitCalculator {
         return columns;
     }
 
-    /**
-     * The column a key signature for {@code key} occupies at {@code index} on {@code line},
-     * measured against the key in effect immediately before that index — the key it cancels.
-     * <p>
-     * The one measurement both edits need: an insertion does not move the elements before it and a
-     * swap replaces one column in place, so in either case the cancelled key is settled on the
-     * line as it stands.
-     *
-     * @param line          the line as it stands, unmodified
-     * @param index         where the key signature would stand
-     * @param key           the key it would establish
-     * @param columnBuilder the builder to measure with
-     * @return the column that key signature would occupy
-     */
     private static ElementColumn keySignatureColumn(
         Line line, int index, Key key, ElementColumnBuilder columnBuilder) {
 

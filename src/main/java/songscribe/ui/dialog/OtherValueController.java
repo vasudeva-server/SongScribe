@@ -24,12 +24,10 @@ import songscribe.ui.component.MainFrame;
 
 /**
  * The controller behind {@link OtherValueDialog}. Writes one {@link OtherValueComboBox} and
- * nothing else; the prompt opens empty, so there is nothing to read.
+ * nothing else.
  *
- * <p><strong>It touches no document.</strong> The combo it serves is a control inside whatever
- * dialog opened it, so an OK here changes what that combo says and nothing more; the document is
- * written, if at all, when that dialog's own OK commits. A prompt that wrote the score would commit
- * an edit the user has not yet accepted in the dialog they are still standing in.
+ * <p><strong>It touches no document</strong>: a prompt that wrote the score would commit an edit
+ * the user has not yet accepted in the dialog they are still standing in.
  *
  * <p>Constructed per gesture, by the combo whose {@code Other…} row was chosen, and discarded with
  * the dialog.
@@ -38,22 +36,13 @@ final class OtherValueController extends DialogController<OtherValue, String> {
 
     private final OtherValueComboBox combo;
 
-    /**
-     * @param mainFrame the application window, for parenting the prompt
-     * @param combo     the combo the prompt writes its answer back to
-     */
     OtherValueController(OtherValueComboBox combo) {
         this.combo = combo;
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>The combo is not consulted. The prompt is reached by choosing {@code Other…}, which asks
-     * for a value the list does not offer, so whatever is selected is by definition not the value
-     * being asked for — seeding it would make every use begin by clearing text.
-     *
-     * @return an empty value, so the prompt opens on an empty field
+     * The combo is not consulted: whatever is selected is by definition not the value being asked
+     * for, so seeding it would make every use begin by clearing text.
      */
     @Override
     protected OtherValue read() {
@@ -61,14 +50,10 @@ final class OtherValueController extends DialogController<OtherValue, String> {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * <p>Refuses a value the combo already shows, so the list never ends up with two rows the user
-     * cannot tell apart. Comparison is against what the rows display, which is what makes the
-     * {@code (none)} and {@code Other…} labels unavailable as values.
+     * Refuses a value the combo already shows, so the list never has two rows the user cannot
+     * tell apart; the {@code (none)} and {@code Other…} labels are unavailable as values.
      *
      * @param text the text the user entered, already known to be non-blank
-     * @return {@link ValidationResult#valid()} unless some row already shows {@code text}
      */
     @Override
     protected ValidationResult validate(String text) {
@@ -83,11 +68,7 @@ final class OtherValueController extends DialogController<OtherValue, String> {
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @param text the text the user entered, already known to be non-blank and not already in use
-     * @effects selects {@code text} in the combo, adding it to the combo's list when the list does
-     *     not already contain it — see {@link OtherValueComboBox#setSelectedItem}
      */
     @Override
     protected void commit(String text) {

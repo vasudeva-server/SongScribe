@@ -50,20 +50,8 @@ final class LintToolTipPlacement {
     private LintToolTipPlacement() {
     }
 
-    /**
-     * A lint tooltip and where it goes.
-     *
-     * @param toolTip                the tooltip, with its text set
-     * @param locationOnScreenViewPx its top-left corner, in screen coordinates
-     */
     record Placed(JToolTip toolTip, Point locationOnScreenViewPx) {
 
-        /**
-         * Returns the tooltip's top-left corner in {@code component}'s coordinates.
-         *
-         * @param component a component on the screen
-         * @return the corner, a new point
-         */
         Point locationIn(Component component) {
             var location = new Point(locationOnScreenViewPx);
             SwingUtilities.convertPointFromScreen(location, component);
@@ -80,15 +68,6 @@ final class LintToolTipPlacement {
      */
     record Request(Rectangle itemOnScreenViewPx, Dimension toolTipSizeViewPx, Rectangle usableScreenViewPx) { }
 
-    /**
-     * Returns the tooltip of a mark with {@code text}, placed at the mark's item by the rule in
-     * the class comment.
-     *
-     * @param itemBoundsViewPx the item the mark is drawn on, in {@code component}'s view pixels
-     * @param component        the component the item is drawn in, which owns the tooltip
-     * @param text             the tooltip's text
-     * @return the tooltip, and its top-left corner on the screen
-     */
     static Placed place(Rectangle itemBoundsViewPx, JComponent component, String text) {
         var itemOrigin = itemBoundsViewPx.getLocation();
         SwingUtilities.convertPointToScreen(itemOrigin, component);
@@ -134,18 +113,11 @@ final class LintToolTipPlacement {
         return new Point(xViewPx, yViewPx);
     }
 
-    /**
-     * Returns {@code positionViewPx} pushed into {@code [minViewPx, maxViewPx]}, or
-     * {@code minViewPx} when the range is empty because the tooltip is larger than the screen.
-     */
+    /** The result is {@code minViewPx} when the range is empty because the tooltip is larger than the screen. */
     private static int pushOnto(int positionViewPx, int minViewPx, int maxViewPx) {
         return Math.max(minViewPx, Math.min(positionViewPx, maxViewPx));
     }
 
-    /**
-     * Returns the usable part of the screen {@code component} is on: the screen less what the
-     * system keeps at its edges.
-     */
     private static Rectangle usableScreenViewPx(Component component) {
         var configuration = component.getGraphicsConfiguration();
         var screenViewPx = configuration.getBounds();

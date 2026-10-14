@@ -47,25 +47,8 @@ import songscribe.dom.StaffElementRun;
  * {@link Line} it was captured from.
  *
  * <p>This is the one place "clone + re-anchor" is defined, used by both capture
- * and every paste:
- *
- * <p>{@code capture} extends the run past a trailing breath mark, drops an orphan paired grace note
- * at the tail, clones the elements into an identity map from original to clone, demotes a final
- * double barline to a plain one, and ends every syllabic or melisma chain that would otherwise
- * leave the run. A span survives only when both its endpoints are in the map, and is copied onto
- * the corresponding clones.
- *
- * <p>{@code instantiate} produces fresh clones and fresh spans. Each clone's {@code xOffset} is
- * zeroed — a fragment carries semantic content, not layout corrections. Which of those spans
- * a paste keeps is {@link PasteSpanReconciliation}'s to decide, and {@link FragmentPaste} lands
- * the clones and the spans it keeps.
- *
- * <p>Because the stored {@code Fragment} is never itself inserted, repeated pastes
- * are independent by construction. {@code docs/clipboard.md} gives the surrounding
- * arrangement this sits in.
- *
- * @param elements The captured elements, cloned from the source line
- * @param spans    The {@link Span} spans fully contained within {@code elements}
+ * and every paste. The stored {@code Fragment} is never itself inserted, so repeated pastes
+ * are independent.
  */
 public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
 
@@ -152,16 +135,9 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
     }
 
     /**
-     * Clones {@code original} for capture, stripping the one thing an element may not carry
-     * out of the song it belongs to.
-     *
-     * <p>A {@code FINAL_DOUBLE_BARLINE} becomes a plain {@code DOUBLE_BARLINE}, so pasted
+     * A {@code FINAL_DOUBLE_BARLINE} becomes a plain {@code DOUBLE_BARLINE}, so pasted
      * content can never violate the song-owned invariant that only the last line ends the
-     * song. (Cloning is skipped entirely in that case — the replacement is a fresh element,
-     * so nothing of the original survives to be copied.)
-     *
-     * <p>A {@code TempoChangeAttachment} is always an ordinary tempo change now that the
-     * song's own tempo lives on the {@code Song}, so it is always kept.
+     * song.
      */
     private static StaffElement cloneForCapture(StaffElement original) {
         if (original.getType() == ElementType.FINAL_DOUBLE_BARLINE) {
@@ -171,10 +147,6 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         return original.clone();
     }
 
-    /**
-     * Unties each tied clone in {@code originalToClone} whose original's tie ends on an element
-     * with no clone in the map, or reaches no note to end on.
-     */
     private static void untieClippedTies(Map<StaffElement, StaffElement> originalToClone) {
         for (var entry : originalToClone.entrySet()) {
             if (!(entry.getKey() instanceof NoteElement original)
@@ -191,11 +163,6 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         }
     }
 
-    /**
-     * Copies every span in {@code source} onto the clones in {@code originalToClone},
-     * keeping only those whose anchor and end are both present in the map — a span
-     * with an endpoint outside the captured run cannot be re-anchored and is dropped.
-     */
     private static List<Span<?>> cloneSpans(
         List<Span<?>> source, Map<StaffElement, ? extends StaffElement> originalToClone) {
         var clonedSpans = new ArrayList<Span<?>>();
@@ -211,13 +178,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         return clonedSpans;
     }
 
-    /**
-     * Copies {@code span} onto the clones of its endpoints, each narrowed to its endpoint type.
-     * A clone is of its original's type, so the narrowing always succeeds.
-     *
-     * @return the copy, or {@code null} when either endpoint has no clone in
-     *     {@code originalToClone}
-     */
+    /** @return {@code null} when either endpoint has no clone in {@code originalToClone} */
     private static <E extends StaffElement> @Nullable Span<E> cloneOnto(
         Span<E> span, Map<StaffElement, ? extends StaffElement> originalToClone) {
         var clonedAnchor = originalToClone.get(span.getAnchorElement());
@@ -251,26 +212,10 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         return new Fragment(clonedElements, cloneSpans(spans, originalToClone));
     }
 
-    /**
-     * This fragment's elements as the {@link StaffElementRun} they are, which is what answers
-     * where its key changes stand and what each of them is paired with.
-     *
-     * <p>{@link DetachedLyricRun} is that run: it is the one implementation over a bare element
-     * list, and {@link #capture} already repairs the captured lyrics through it.
-     */
     private StaffElementRun run() {
         return new DetachedLyricRun(elements);
     }
 
-    /**
-     * Returns the key this fragment leaves in effect when its first element lands where
-     * {@code keyAtInsertion} is running — {@link StaffElementRun#keyAtEndUnder(Key)} asked of a run
-     * that has not landed on a line. It tells a paste which key it hands to the rest of the
-     * destination line and to every line inheriting past it.
-     *
-     * @param keyAtInsertion the key in effect immediately before the insertion point
-     * @return the key in effect after this fragment's last element; never null
-     */
     public Key keyAtEndUnder(Key keyAtInsertion) {
         return run().keyAtEndUnder(keyAtInsertion);
     }
@@ -315,12 +260,6 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         return without(stranded);
     }
 
-    /**
-     * Returns the effective range of each bar line that starts this fragment, in ascending order:
-     * the first element when it is a bar line, then the first element after that range when it
-     * is one too, and so on. Each range is widened to the pair its bar line belongs to, so a key
-     * change behind a bar line goes with it.
-     */
     private List<StaffElementRun.EffectiveRange> leadingBarRanges() {
         var run = run();
         var ranges = new ArrayList<StaffElementRun.EffectiveRange>();
@@ -335,12 +274,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         return ranges;
     }
 
-    /**
-     * Returns this fragment with the elements of {@code removed} left out, and every span with an
-     * endpoint on one of them named as stranded.
-     *
-     * @param removed the ranges to leave out, pairwise disjoint
-     */
+    /** @param removed pairwise disjoint */
     private Reduction without(List<StaffElementRun.EffectiveRange> removed) {
         var removedIndices = new HashSet<Integer>();
 
@@ -382,11 +316,8 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
      * What {@link #withoutRedundantKeyChanges}, and then {@link #withoutLeadingBars}, leave of a
      * fragment.
      *
-     * @param fragment      the fragment to land
-     * @param strandedSpans every span of the original fragment with an endpoint on a removed
-     *                      element: those of each reduction in the order the reductions ran,
-     *                      and within one reduction in the original fragment's order; empty when
-     *                      nothing was removed
+     * @param strandedSpans in the order the reductions ran, and within one reduction in the
+     *     original fragment's order; empty when nothing was removed
      */
     public record Reduction(Fragment fragment, List<StrandedSpan> strandedSpans) {
 
@@ -395,25 +326,9 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         }
 
         /**
-         * Returns this reduction with the bar lines that start its fragment left out as well,
-         * each together with the element it is paired with, for a paste that lands at the
-         * start of the song, where no bar line may stand ({@link SongStart}).
-         *
-         * <p>An ending can start on a bar line, so a span with an endpoint on a removed element
-         * is left out with it and named in {@link #strandedSpans}, as
-         * {@link #withoutRedundantKeyChanges} does.
-         *
-         * <p>A key change left out with its bar line set the key every element after it sounds
-         * in, so the drop names the key of the last one it left out, for the paste to move onto
-         * the destination line ({@link SongStart#keyBehind}).
-         *
-         * @return the drop: this reduction and no moved key when its fragment does not start with
-         *     a bar line; otherwise a reduction whose fragment no longer does — and which may hold
-         *     no elements at all — with this reduction's stranded spans followed by those it adds,
-         *     and the key of the last key change it left out, or {@code null} when it left out
-         *     none
-         * @invariant every span of this reduction's fragment is either in the returned
-         *     fragment's spans or in the stranded spans it adds, never both
+         * For a paste that lands at the start of the song, where no bar line may stand
+         * ({@link SongStart}). The drop names the key of the last key change it left out, for
+         * the paste to move onto the destination line ({@link SongStart#keyBehind}).
          */
         public LeadingBarDrop withoutLeadingBars() {
             var leadingBars = fragment.leadingBarRanges();
@@ -444,10 +359,8 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
     /**
      * What {@link Reduction#withoutLeadingBars} leaves of a fragment, and the key it moves.
      *
-     * @param reduction the reduction, its fragment no longer starting with a bar line
-     * @param movedKey  the key of the last key change the drop left out, which the paste makes
-     *                  the destination line's own key; {@code null} when the drop left out no key
-     *                  change
+     * @param movedKey the key the paste makes the destination line's own; {@code null} when the
+     *     drop left out no key change
      */
     public record LeadingBarDrop(Reduction reduction, @Nullable Key movedKey) {
     }
@@ -455,9 +368,8 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
     /**
      * A span a {@link Reduction} left out because an endpoint of it was removed.
      *
-     * @param span    the span, never added to any line
-     * @param covered the elements it covered in the original fragment, from its anchor to its
-     *                end, both inclusive; those not removed land with the reduced fragment
+     * @param span never added to any line
+     * @param covered the elements it covered in the original fragment, anchor to end inclusive
      */
     public record StrandedSpan(Span<?> span, List<StaffElement> covered) {
 
@@ -465,12 +377,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
             covered = List.copyOf(covered);
         }
 
-        /**
-         * The {@code Strings} key of the reason the span is reported with: the one a deletion
-         * that takes a span's endpoint gives.
-         *
-         * @return {@link Strings#REPORT_REASON_ENDPOINT_DELETED}
-         */
+        /** The same reason a deletion that takes a span's endpoint gives. */
         public String reasonKey() {
             return Strings.REPORT_REASON_ENDPOINT_DELETED;
         }

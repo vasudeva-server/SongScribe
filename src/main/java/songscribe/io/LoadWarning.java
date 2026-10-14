@@ -20,22 +20,14 @@
 package songscribe.io;
 
 /**
- * A non-fatal problem detected while loading a song. The loader stays in the
- * headless {@code io} layer: it reports <em>what</em> went wrong as a
- * {@link Type} plus the offending raw text, and leaves the mapping to
- * user-facing strings and dialogs to the UI layer.
- *
- * @param type        which load problem occurred
- * @param description the offending raw text, identifying the occurrence to the
- *                    user — for {@link Type#INVALID_LYRICS_DATE}, the date that
- *                    would not parse
+ * A non-fatal problem detected while loading a song: a {@link Type} plus the offending raw text.
+ * User-facing strings belong to the UI layer.
  */
 public record LoadWarning(Type type, String description) {
 
     /**
-     * The kinds of non-fatal load problems. Related conditions add a constant
-     * here rather than a new carrier type — new ISO-8601 date fields (such as a
-     * future music date) alongside {@link #INVALID_LYRICS_DATE}, for instance.
+     * The kinds of non-fatal load problems. Related conditions add a constant here, not a new
+     * carrier type.
      */
     public enum Type {
         INVALID_LYRICS_DATE

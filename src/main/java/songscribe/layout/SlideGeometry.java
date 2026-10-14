@@ -31,22 +31,7 @@ import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Layout-time geometry for the two {@link Slide} kinds attached to a note: a connecting
- * {@link Slide#GLISSANDO} (a line between two notes) and a trailing {@link Slide#FALL} (the
- * {@code brassFallLipShort} glyph hanging off the note's right).
- * <p>
- * A connecting glissando attaches at the stem-free extents of the two notes — the leading note's
- * right edge and the trailing note's left edge (notehead, augmentation dots, and accidental, but
- * not the stem or flag) — each at its own notehead-center Y. The drawn line is a sub-segment of
- * that attach-to-attach ray, trimmed by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} along the line
- * direction at each end, so it stays collinear with the ray and clears the noteheads by a constant
- * distance regardless of slope.
- * <p>
- * A fall's glyph sits {@link NoteGeometry#FALL_GAP_SS} past the host note's column edge, at the
- * note's notehead-center Y.
- * <p>
- * Everything here is stateless arithmetic in staff spaces. Y is relative to whatever
- * {@code middleLineYSs} the caller passes into {@link #noteContextAt}: layout passes 0, which
- * yields the midline-relative layout space the renderer and the hit registry both work in.
+ * {@link Slide#GLISSANDO} and a trailing {@link Slide#FALL}. Stateless arithmetic in staff spaces.
  */
 public final class SlideGeometry {
 
@@ -54,10 +39,6 @@ public final class SlideGeometry {
     // Constants
     // ==========================================================================
 
-    /**
-     * Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn.
-     * 0.75 ss stays clearly visible at tight spacing (notably a target carrying an accidental).
-     */
     public static final double MIN_RECT_LENGTH_SS = 0.75;
 
     private SlideGeometry() {
@@ -67,10 +48,6 @@ public final class SlideGeometry {
     // Records
     // ==========================================================================
 
-    /**
-     * Resolved geometry for a single note in layout space: notehead-center Y, the stem-full
-     * column right edge (the fall anchor), and the stem-free glissando attachment extents.
-     */
     public record NoteContext(
         NoteElement note,
         double cySs,
@@ -79,10 +56,6 @@ public final class SlideGeometry {
         double glissRightXSs
     ) {
 
-        /**
-         * Returns a copy shifted right by {@code shiftSs} along X: the fall anchor and both
-         * glissando attach extents are translated, leaving Y intact.
-         */
         public NoteContext shiftedX(double shiftSs) {
             return new NoteContext(
                 note,
@@ -94,10 +67,6 @@ public final class SlideGeometry {
         }
     }
 
-    /**
-     * Immutable record holding the computed slide endpoint positions in layout space,
-     * plus the derived angle and length so callers need not recompute them.
-     */
     public record Endpoints(
         double startXSs, double startYSs, double endXSs, double endYSs,
         double angle, double length
@@ -108,13 +77,7 @@ public final class SlideGeometry {
     // ==========================================================================
 
     /**
-     * Resolves the geometry context for a note at the given origin X: notehead-center Y, the
-     * stem-full column right edge (fall anchor), and the stem-free glissando attach extents.
-     *
-     * @param note          the note whose geometry to resolve
-     * @param elementXSs    the note column's origin X in the line's staff spaces
-     * @param beaming       whether the note belongs to a beam group (affects dot placement)
-     * @param middleLineYSs Y position of the middle staff line; pass 0 for layout space
+     * @param middleLineYSs pass 0 for layout space
      */
     public static NoteContext noteContextAt(
         NoteElement note, double elementXSs, Beaming beaming, double middleLineYSs
@@ -136,22 +99,9 @@ public final class SlideGeometry {
     // ==========================================================================
 
     /**
-     * Computes the glissando start/end positions in layout space (staff-space coordinates).
-     * Returns null if the glissando is too short to render.
-     * <p>
-     * The attachment points are the stem-free column extents — the leading note's right
-     * ({@link NoteContext#glissRightXSs}) and the trailing note's left
-     * ({@link NoteContext#glissLeftXSs}) — each at its own notehead-center Y. The drawn line
-     * is a sub-segment of the attach-to-attach ray, trimmed by
-     * {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} <em>along the line direction</em> at each
-     * end. Because the gap is measured along the line, its horizontal component is
-     * {@code gap·cosθ}, so the line clears the noteheads by a constant distance regardless of
-     * slope. The glissando is rejected when the attach length leaves no room for both gaps
-     * ({@code len ≤ 2·gap}) or when the drawn length falls below {@link #MIN_RECT_LENGTH_SS}.
+     * Null if the glissando is too short to render.
      *
-     * @param src Source note context
-     * @param tgt Target note context, or null when there is no following note to connect to
-     * @return the glissando endpoints, or null if the glissando cannot render
+     * @param tgt null when there is no following note to connect to
      */
     public static @Nullable Endpoints computeEndpoints(
         NoteContext src, @Nullable NoteContext tgt
@@ -198,17 +148,6 @@ public final class SlideGeometry {
         return new Endpoints(startX, startY, endX, endY, angle, length);
     }
 
-    /**
-     * Returns the axis-aligned drawn rect of a fall's {@code brassFallLipShort} glyph, in the same
-     * layout space as {@code src}. The glyph sits one {@link NoteGeometry#FALL_GAP_SS} past the host
-     * note's column right edge, at the note's notehead-center Y.
-     * <p>
-     * Unlike a glissando, a fall has no reject case: it is a single glyph with no target note, so
-     * this never returns null.
-     *
-     * @param src the host note's context
-     * @return the glyph's drawn rect in staff spaces
-     */
     public static Rectangle2D.Double computeFallBoundsSs(NoteContext src) {
         var glyphXSs = src.columnRightXSs() + NoteGeometry.FALL_GAP_SS;
         var glyphYSs = src.cySs();

@@ -25,7 +25,6 @@ import java.awt.Graphics2D;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 
-/** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
 public final class TempoChangeRenderer extends MetronomeRenderer {
 
     private static final TempoChangeRenderer INSTANCE = new TempoChangeRenderer();
@@ -54,13 +53,8 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
     }
 
     /**
-     * Renders one tempo change.
-     * <p>
-     * Every mark this renderer draws is attached to a note and is therefore addressable as a hit
-     * target. The song's own tempo is not one of them — it is drawn at the first line's staff
-     * header by {@link SongTempoMarkRenderer}, through the same
-     * {@link MetronomeRenderer#drawContent} core fed by one {@code MetronomeContent}, and is
-     * deliberately not hittable.
+     * Every mark this renderer draws is attached to a note and is therefore a hit target; the
+     * song's own tempo ({@link SongTempoMarkRenderer}) deliberately is not.
      */
     private void renderTempoChange(
         Graphics2D g2,

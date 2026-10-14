@@ -36,53 +36,30 @@ import songscribe.message.mutation.SpanRemoval;
 
 /**
  * The spans drawn over one line's elements — beams, trills, hairpins, tuplets and endings —
- * and everything that concerns them as a collection: the typed span queries, each stated in
- * terms of an index through a {@link Span.RangePredicate} and answered by
- * {@link #findSpans(Class, Span.RangePredicate)}, {@link #findFirstSpan(Class, Span.RangePredicate)},
- * {@link #findSpans(Class)} or, for a caller that judges every kind in one walk,
- * {@link #findSpans(Span.RangePredicate)}; the decision and the sweep that re-judge every span
- * when an element changes; and the merge rules that decide what two same-kind spans become.
- * How the sweep, the per-kind policies and the merge divide the work is in
- * {@code docs/span-invalidation.md}. A tie is not
- * a span; it is a note's own state (see {@link NoteElement}).
+ * and everything that concerns them as a collection. See {@code docs/span-invalidation.md}.
  * <p>
- * One per {@link Line}, reached through {@link Line#spanRegistry()}, and the only writer of
- * the list it holds: a span enters or leaves only through {@link #add} and {@link #remove} here.
- * {@link Span#addTo} and {@link Span#removeFrom} end in them, and the sweep adds the hairpin a
- * deletion joins through {@link #add} directly, since it has already decided that hairpin's
- * merge.
+ * The only writer of the list it holds: a span enters or leaves only through {@link #add} and
+ * {@link #remove} here.
  * <p>
- * Every span lies in one line and sits in that line's registry only. A span is never attached
- * to a line: its line is derived from where its endpoints sit. Every endpoint of
- * a span in this registry sits in this line: a deletion sweeps first and removes every span
- * whose endpoint it takes, a replacement re-points, a merge moves endpoints only within the
- * line, and replay undoes in reverse order. So {@link Span#range} and every
- * {@link Span.RangePredicate} are total over this registry.
+ * Every span lies in one line and sits in that line's registry only. Every endpoint of a span in
+ * this registry sits in this line, so {@link Span#range} and every {@link Span.RangePredicate}
+ * are total over this registry.
  */
 public final class LineSpans {
 
     /**
-     * How far past a span's endpoint a same-type span may sit and still count as
-     * touching it, in elements. Two spans this close describe one uninterrupted
-     * gesture, so adding or reshaping either one merges them.
+     * How far past a span's endpoint a same-type span may sit and still count as touching it,
+     * in elements; adding or reshaping either one merges them.
      * <p>
-     * Every place that decides "are these two spans adjacent?" must read this, or
-     * the menu would offer to extend a hairpin the model then declines to merge.
+     * Every place that decides "are these two spans adjacent?" must read this, or the menu would
+     * offer to extend a hairpin the model then declines to merge.
      */
     public static final int SPAN_ADJACENCY_REACH = 1;
 
     private final Line line;
 
-    /**
-     * This line's spans (beams, trills, crescendo, diminuendo, tuplets, endings), each with both
-     * endpoints in this line, and held in no other line's registry.
-     */
     private final List<Span<?>> spans = new ArrayList<>();
 
-    /**
-     * Live unmodifiable view of {@link #spans}, held once rather than wrapped per call of
-     * {@link #getSpans()}: the wrapper tracks later mutations of {@code spans}.
-     */
     private final List<Span<?>> spansView = Collections.unmodifiableList(spans);
 
     LineSpans(Line line) {
@@ -90,13 +67,11 @@ public final class LineSpans {
     }
 
     /**
-     * The spans drawn over this line.
-     * <p>
-     * A live view, not a copy: a span added or removed while a caller iterates it gives that
-     * caller {@link java.util.ConcurrentModificationException}, so a caller that removes spans as
-     * it walks them copies the list first.
+     * A live view, not a copy: a span added or removed while a caller iterates it throws
+     * {@link java.util.ConcurrentModificationException}, so a caller that removes spans as it
+     * walks them copies the list first.
      *
-     * @return an unmodifiable live view of this line's spans, in no defined order
+     * @return in no defined order
      */
     public List<Span<?>> getSpans() {
         return spansView;
@@ -107,7 +82,7 @@ public final class LineSpans {
     // ========================================================================
 
     /**
-     * Appends {@code element} to {@code spans}. Call from inside an applyChange mutator lambda,
+     * Call from inside an applyChange mutator lambda,
      * so the list write moves with the recorded change.
      */
     private void appendChild(Span<?> element) {
@@ -115,19 +90,16 @@ public final class LineSpans {
     }
 
     /**
-     * Removes the span at {@code index} of {@code spans}, the index its caller already located,
-     * rather than scanning the list a second time. Call from inside an applyChange mutator
-     * lambda, so the list write moves with the recorded change.
+     * Call from inside an applyChange mutator lambda, so the list write moves with the recorded
+     * change.
      */
     private void removeChild(int index) {
         spans.remove(index);
     }
 
     /**
-     * Points every span endpoint that is {@code oldElement} at {@code newElement}, so
-     * {@link Span#requireAnchorElementIndex()}/{@link Span#requireEndElementIndex()} remain valid
-     * after {@link Line#replace} swaps the element out. Runs inside that mutator, on
-     * replay too: it is self-inverting, and the recorded batch carries no record of it.
+     * Runs inside the {@link Line#replace} mutator, on replay too: it is self-inverting, and the
+     * recorded batch carries no record of it.
      */
     void repoint(StaffElement oldElement, StaffElement newElement) {
         for (var span : spans) {
@@ -135,13 +107,6 @@ public final class LineSpans {
         }
     }
 
-    /**
-     * Points each endpoint of {@code span} that is {@code oldElement} at {@code newElement},
-     * narrowed to {@code span}'s endpoint type.
-     *
-     * @throws IllegalArgumentException if an endpoint is {@code oldElement} and
-     *     {@code newElement} is not of {@code span}'s endpoint type
-     */
     private static <E extends StaffElement> void repointEndpoints(
         Span<E> span,
         StaffElement oldElement,
@@ -156,20 +121,12 @@ public final class LineSpans {
         }
     }
 
-    /**
-     * Records a {@link SpanAddition} of {@code span} and appends it inside that record, with no
-     * displacement. The primitive {@link Span#addTo} ends in, after the span's displacement, and
-     * the one the sweep adds a joined hairpin through.
-     */
     void add(Span<?> span) {
         line.applyChange(new SpanAddition(line, span), () -> appendChild(span));
     }
 
     /**
-     * Records a {@link SpanRemoval} of {@code span} and removes it inside that record, or does
-     * nothing at all when {@code span} is not in this registry. The primitive
-     * {@link Span#removeFrom} ends in, and the one place the absent-span early return exists,
-     * so a second removal of the same span finds nothing left to remove and records nothing.
+     * A second removal of the same span finds nothing left to remove and records nothing.
      */
     void remove(Span<?> span) {
         var index = spans.indexOf(span);
@@ -185,28 +142,14 @@ public final class LineSpans {
     // The sweep behind every element change
     // ========================================================================
 
-    /**
-     * A span paired with a range over it, so a caller that has already resolved the range does
-     * not resolve it again from the span's live endpoints.
-     */
     private record SpanAt<S extends Span<?>>(S span, ElementRange range) {
     }
 
-    /**
-     * A span the sweep removes, with the reason its rule gave for removing it.
-     *
-     * @param span      the span to remove
-     * @param reasonKey the {@code Strings} key of the reason, as {@link Span#removeReported} takes it
-     */
     private record Removal(Span<?> span, String reasonKey) {
     }
 
     /**
-     * What a pending change does to this line's spans, decided before any of it is carried
-     * out: the spans it deletes along with their elements, the spans it removes, and the
-     * hairpins it reshapes.
-     *
-     * @param deleted        the spans a deletion takes whole, each once; their removal is the one
+     * @param deleted       the spans a deletion takes whole, each once; their removal is the one
      *     the user asked for, so none is reported
      * @param removed        the spans the change removes, each once, with its reason; a span in
      *     {@code deleted} is not here
@@ -222,16 +165,8 @@ public final class LineSpans {
     }
 
     /**
-     * Decides what {@code change} does to this line's spans, without doing any of it;
-     * {@link #sweep} says why the decision comes first.
-     * <p>
-     * A deletion that takes every element a span covers takes the span with them, and no span
-     * kind is asked about it: the user deleted the whole span, so its removal is the one the user
-     * asked for. Every other span is asked its own outcome ({@link Span#outcomeFor}).
-     *
-     * @param change a pending change to this line, not yet applied
-     * @return the spans {@code change} deletes whole, the spans it removes, and the hairpins it
-     *     reshapes
+     * A deletion that takes every element a span covers takes the span with them without asking
+     * it: the user deleted the whole span.
      */
     private SweepDecision decide(ElementChange change) {
         var deleted = new ArrayList<Span<?>>();
@@ -258,34 +193,17 @@ public final class LineSpans {
     }
 
     /**
-     * Decides what {@code change} does to every span on this line ({@link #decide}), and
-     * carries out that decision — the single sweep behind every element insertion,
-     * replacement, deletion and in-place modification.
+     * Called <b>before</b> the change is applied, so each span is judged against the projection
+     * and the companion span mutations are recorded before the primary element mutation: undo
+     * replays a step in reverse and has to restore the element before the spans that point at it.
      * <p>
-     * Called <b>before</b> the change is applied, so each span is judged against the
-     * projection rather than the mutated line, and so the companion span mutations are
-     * recorded before the primary element mutation: undo replays a step in reverse, and
-     * has to restore the element before the spans that point at it.
+     * Does nothing while the song is replaying undo or redo; see
+     * {@code docs/span-invalidation.md}.
      * <p>
-     * Does nothing while the song is replaying undo or redo; {@code docs/span-invalidation.md}
-     * gives both reasons, with an example.
-     * <p>
-     * The whole decision is made first and acted on afterwards. Acting while deciding would
-     * both mutate the {@code spans} list being walked and let one span's removal change what
-     * a later span is judged against.
-     * <p>
-     * Two answers are properties of the collection rather than of one span, since no span
-     * knows its siblings. Same-type hairpins the change leaves with nothing between them
-     * become one, unless joining them would make the joined hairpin share more than one
-     * element with a surviving hairpin of the opposite kind: the reshaped spans are grouped by
-     * hairpin kind and handed to {@link #mergeAdjacentSpans} with the projected ranges of the
-     * other kind, which expresses each reshape as a tracked removal plus a tracked addition of
-     * a copy, since a span has no modification mutation of its own.
-     * Each span a deletion takes whole is removed with {@link Span#removeFrom}, since the user
-     * deleted it; each other span the decision removes is removed with
+     * The whole decision is made before any of it is acted on, so one span's removal cannot
+     * change what a later span is judged against. A span a deletion takes whole is removed with
+     * {@link Span#removeFrom}; each other span the decision removes is removed with
      * {@link Span#removeReported}, so the user is told why.
-     *
-     * @param change the pending change, not yet applied to this line
      */
     void sweep(ElementChange change) {
         if (spans.isEmpty() || line.getSong().isReplaying()) {
@@ -312,7 +230,6 @@ public final class LineSpans {
         }
     }
 
-    /** Files {@code reshape} under its hairpin's kind, ready for the merge pass. */
     private static void collectReshape(
         Map<Hairpin.Kind, List<SpanAt<Hairpin>>> reshapedByKind,
         SpanOutcome.Reshape reshape
@@ -325,23 +242,14 @@ public final class LineSpans {
     }
 
     /**
-     * Replaces each run of same-type hairpin {@code hairpinSpans} that the deletion leaves
-     * touching with a single hairpin covering the run. Runs of one whose endpoints both
-     * survive are left untouched, so a deletion that misses a hairpin emits no hairpin
-     * mutations.
+     * Runs of one whose endpoints both survive are left untouched, so a deletion that misses a
+     * hairpin emits no hairpin mutations.
      * <p>
      * A run ends before a hairpin that would make the joined range share more than one element
-     * with a range in {@code oppositeRanges} ({@link Span#overlappingBeyondEndpoint}, the test
-     * {@link Hairpin#spanning} applies for the opposite-kind rule of {@link Hairpin}'s class
-     * invariant). Both hairpins then stay, each reshaped on its own. A crescendo on
-     * {@code [0, 2]}, a diminuendo on {@code [2, 3]} and a crescendo on {@code [3, 5]} stay three
-     * hairpins, since the joined crescendo {@code [0, 5]} would hold the whole diminuendo.
-     *
-     * @param hairpinSpans   all post-deletion spans of one hairpin type, in any order, each
-     *     paired with its range over the projection
-     * @param oppositeRanges the range over the projection of every hairpin of the opposite kind
-     *     that survives the deletion, reshaped or not
-     * @param survivors      the line's elements as the deletion leaves them
+     * with a range in {@code oppositeRanges} ({@link Span#overlappingBeyondEndpoint}). A
+     * crescendo on {@code [0, 2]}, a diminuendo on {@code [2, 3]} and a crescendo on
+     * {@code [3, 5]} stay three hairpins, since the joined crescendo would hold the whole
+     * diminuendo.
      */
     private void mergeAdjacentSpans(
         List<SpanAt<Hairpin>> hairpinSpans,
@@ -373,25 +281,10 @@ public final class LineSpans {
         }
     }
 
-    /**
-     * The post-deletion range of a run of same-kind hairpins, which a later hairpin of the kind
-     * may join. The run is always the earlier of the two, so a call cannot put the later
-     * hairpin's range where the run's belongs.
-     *
-     * @param range the run's post-deletion range
-     */
     private record RunRange(ElementRange range) {
 
         /**
-         * Whether a same-kind hairpin over {@code later} joins this run.
-         *
-         * @param later          the hairpin's post-deletion range; it begins at or after this
-         *     run's begin
-         * @param oppositeRanges the post-deletion range of every surviving hairpin of the
-         *     opposite kind
-         * @return {@code true} when {@code later} begins within {@link LineSpans#SPAN_ADJACENCY_REACH} of
-         *     the run's end and the joined range shares at most one element, an endpoint, with
-         *     each of {@code oppositeRanges}
+         * @param later it begins at or after this run's begin
          */
         boolean admits(ElementRange later, List<ElementRange> oppositeRanges) {
             // One surviving element between two hairpins is still a break in the gesture.
@@ -405,10 +298,7 @@ public final class LineSpans {
         }
 
         /**
-         * This run once the hairpin over {@code later} joins it.
-         *
          * @param later a range that begins at or after this run's begin
-         * @return the run from this run's begin to the further of the two ends
          */
         RunRange joinedWith(ElementRange later) {
             return new RunRange(new ElementRange(range.begin(), Math.max(range.end(), later.end())));
@@ -416,17 +306,11 @@ public final class LineSpans {
     }
 
     /**
-     * Reshapes the hairpins in {@code run} into one hairpin spanning the run's surviving
-     * endpoints, carrying over the first one's user offsets.
-     * <p>
-     * The joined hairpin is registered through {@link #add}, with no displacement. The sweep has
-     * already decided which hairpins join, over the line as the deletion leaves it;
+     * The joined hairpin is registered through {@link #add}, with no displacement:
      * {@link Span#addTo} would merge again over the line as it stands before the deletion, and
      * could absorb a same-kind hairpin across a hairpin of the opposite kind.
      *
-     * @param run      the hairpins to replace, ordered by their post-deletion start, each paired
-     *     with its range over the projection
-     * @param runRange the run's post-deletion range
+     * @param run the hairpins to replace, ordered by their post-deletion start
      */
     private void applySpanRun(List<SpanAt<Hairpin>> run, ElementRange runRange, List<? extends StaffElement> survivors) {
         var first = run.getFirst().span();
@@ -457,16 +341,11 @@ public final class LineSpans {
     // ========================================================================
 
     /**
-     * The {@link Displacement#ABSORB_OVERLAPPING} and {@link Displacement#ABSORB_ADJACENT}
-     * displacements: widens {@code span} to the range {@link #absorption} answers, then removes
-     * every span that absorption took in through its own {@link Span#removeFrom}. The widened
-     * span covers every span it absorbs, so a merge loses nothing and reports nothing. The
-     * tracked removals are emitted before the widened span's addition so undo restores the
-     * original spans after removing the merged one.
+     * The widened span covers every span it absorbs, so a merge loses nothing and reports
+     * nothing. The tracked removals are emitted before the widened span's addition so undo
+     * restores the original spans after removing the merged one.
      *
-     * @param span  the span about to be added, whose endpoints both sit in this line
-     * @param reach how far past an endpoint, in elements, a same-kind span may sit and still be
-     *              absorbed; {@code 0} absorbs only what {@code span} overlaps
+     * @param span the span about to be added, whose endpoints both sit in this line
      */
     <E extends StaffElement> void mergeOverlapping(Span<E> span, int reach) {
         var own = span.range();
@@ -488,23 +367,15 @@ public final class LineSpans {
     }
 
     /**
-     * What an absorbing displacement makes of a span: the range it widens to, and the spans it
-     * takes in.
-     *
-     * @param range    the widened range, which holds the span's own range
+     * @param range   the widened range, which holds the span's own range
      * @param absorbed every same-kind span whose range lies inside {@code range}, in no defined
      *                 order; empty when none does
      */
     record Absorption(ElementRange range, List<Span<?>> absorbed) {
 
         /**
-         * The absorbed spans, typed as the kind the same-kind test admitted.
-         *
          * @param kind the class of every absorbed span: the same-kind test admits only spans of
          *             this class
-         * @return {@link #absorbed}, each cast to {@code kind}
-         * @throws ClassCastException when an absorbed span is not a {@code kind}, which means the
-         *     same-kind test admitted another class
          */
         <S extends Span<?>> List<S> absorbedAs(Class<S> kind) {
             return absorbed.stream().map(kind::cast).toList();
@@ -512,39 +383,18 @@ public final class LineSpans {
     }
 
     /**
-     * Decides what an absorbing displacement makes of {@code span} on this line, without
-     * changing anything: {@link #absorption(ElementRange, Predicate, int)} over {@code span}'s
-     * own range, with {@link Span#isSameKindAs} as the same-kind test.
-     * {@link #mergeOverlapping} carries this out when a span is added.
-     *
-     * @param span  a span whose endpoints both sit in this line, not in this registry
-     * @param reach how far past an end, in elements, a same-kind span may sit and still be
-     *              absorbed; {@code 0} absorbs only what overlaps
-     * @return the widened range and the same-kind spans inside it; the range equals
-     *     {@code span}'s own when no same-kind span overlaps it or sits within {@code reach}
+     * @param span a span whose endpoints both sit in this line, not in this registry
      */
     Absorption absorption(Span<?> span, int reach) {
         return absorption(span.range(), span::isSameKindAs, reach);
     }
 
     /**
-     * Decides what an absorbing displacement makes of a span over {@code own} on this line,
-     * before the span exists and without changing anything. The range starts as {@code own} and
-     * widens over every span {@code sameKind} accepts that overlaps it or sits within
-     * {@code reach} of either end, again and again until a pass finds nothing that widens it,
-     * since absorbing one span can bring a further one into reach.
-     * <p>
-     * {@link Hairpin#spanning} and {@link Beam#spanning} ask this before the span exists, with
-     * the same-kind test the span's displacement applies, so the range a span is judged over is
-     * the range adding it produces.
+     * {@link Hairpin#spanning} and {@link Beam#spanning} ask this before the span exists, so the
+     * range a span is judged over is the range adding it produces.
      *
-     * @param own      the range the span would cover, as indices of this line
-     * @param sameKind which spans in this registry the span would absorb when in reach; it must
-     *                 agree with {@link Span#isSameKindAs} for the span that would be added
-     * @param reach    how far past an end, in elements, a same-kind span may sit and still be
-     *                 absorbed; {@code 0} absorbs only what overlaps
-     * @return the widened range and the same-kind spans inside it; the range equals {@code own}
-     *     when no same-kind span overlaps it or sits within {@code reach}
+     * @param sameKind it must agree with {@link Span#isSameKindAs} for the span that would be
+     *                 added
      */
     Absorption absorption(ElementRange own, Predicate<Span<?>> sameKind, int reach) {
         var placed = spans.stream()
@@ -582,10 +432,7 @@ public final class LineSpans {
     }
 
     /**
-     * The spans in this registry of {@code span}'s kind ({@link Span#isSameKindAs}), in no
-     * defined order.
-     *
-     * @return a copy, safe to hold while spans are removed
+     * A copy, safe to hold while spans are removed.
      */
     private List<Span<?>> sameKindSpans(Span<?> span) {
         return spans.stream()
@@ -594,14 +441,7 @@ public final class LineSpans {
     }
 
     /**
-     * The {@link Displacement#REPLACE_OVERLAPPING} displacement: removes every same-kind span
-     * ({@link Span#isSameKindAs}) overlapping {@code span}'s range, as {@link Span#overlapping}
-     * judges it.
-     *
      * @param span the span about to be added, whose endpoints both sit in this line
-     * @effects one {@link Span#removeReported} per span removed, with
-     *     {@link Strings#REPORT_REASON_REPLACED}, so each removal is reported and is its
-     *     own mutation, recorded under the rule that method states
      */
     void removeOverlappingSameKind(Span<?> span) {
         var overlapsSpan = Span.overlapping(span.range());
@@ -611,14 +451,6 @@ public final class LineSpans {
             .forEach(existing -> existing.removeReported(Strings.REPORT_REASON_REPLACED));
     }
 
-    /**
-     * Removes every {@code type} span overlapping {@code range}.
-     *
-     * @param type  the kind of span to remove; a span of any other kind stays
-     * @param range the elements a removed span overlaps, as {@link Span#overlapping} judges it
-     * @effects one {@link Span#removeFrom} per span found, so each removal is its own mutation,
-     *     recorded under the rule that method states
-     */
     public void removeOverlapping(Class<? extends Span<?>> type, ElementRange range) {
         for (var span : findSpans(type, Span.overlapping(range))) {
             span.removeFrom();
@@ -629,14 +461,6 @@ public final class LineSpans {
     // Span queries
     // ========================================================================
 
-    /**
-     * Returns every span of {@code type} whose range satisfies {@code matches}.
-     *
-     * @param type    the kind of span to find; a span of any other kind is skipped
-     * @param matches the test each span's range must pass
-     * @param <T>     the kind of span
-     * @return the matching spans, a new list in no defined order; empty when none match
-     */
     public <T extends Span<?>> List<T> findSpans(Class<T> type, Span.RangePredicate matches) {
         var result = new ArrayList<T>();
 
@@ -650,14 +474,9 @@ public final class LineSpans {
     }
 
     /**
-     * Returns a span of {@code type} whose range satisfies {@code matches}, or {@code null} if
-     * there is none. When several spans match, it returns one of them, and which one is not
-     * defined. Short-circuits on the match it finds.
+     * When several spans match, which one is returned is not defined.
      *
-     * @param type    the kind of span to find; a span of any other kind is skipped
-     * @param matches the test the span's range must pass
-     * @param <T>     the kind of span
-     * @return a matching span, or {@code null} when none matches
+     * @return {@code null} when none matches
      */
     public <T extends Span<?>> @Nullable T findFirstSpan(Class<T> type, Span.RangePredicate matches) {
         for (var span : spans) {
@@ -674,16 +493,8 @@ public final class LineSpans {
     }
 
     /**
-     * Returns every span of {@code type}, whatever its endpoints resolve to.
-     * <p>
-     * Filters by type only and resolves no endpoint positions — unlike routing through
-     * {@link #findSpans(Class, Span.RangePredicate)} with an always-true predicate, which
-     * would still resolve both endpoints of every matching span because Java evaluates
-     * arguments eagerly.
-     *
-     * @param type the kind of span to find
-     * @param <T>  the kind of span
-     * @return the spans of {@code type}, a new list in no defined order; empty when there are none
+     * Resolves no endpoint positions, unlike {@link #findSpans(Class, Span.RangePredicate)} with
+     * an always-true predicate.
      */
     public <T extends Span<?>> List<T> findSpans(Class<T> type) {
         var result = new ArrayList<T>();
@@ -697,53 +508,27 @@ public final class LineSpans {
         return result;
     }
 
-    /**
-     * Returns every span, of any kind, whose range satisfies {@code matches}. For a caller that
-     * judges every kind in one walk.
-     *
-     * @param matches the test each span's range must pass
-     * @return the matching spans, an unmodifiable list in no defined order; empty when none match
-     */
     public List<Span<?>> findSpans(Span.RangePredicate matches) {
         return spans.stream().filter(span -> matches.test(span.range())).toList();
     }
 
-    /**
-     * Returns whether any span of {@code type} satisfies {@code matches}.
-     *
-     * @param type    the kind of span to look for
-     * @param matches the test the span's range must pass
-     * @return {@code true} when at least one span of {@code type} satisfies {@code matches}
-     */
     public boolean hasSpan(Class<? extends Span<?>> type, Span.RangePredicate matches) {
         return findFirstSpan(type, matches) != null;
     }
 
     /**
-     * Returns the beam whose anchor-to-end range contains {@code elementIndex}, or {@code null}
-     * if no beam's span covers it. Beams on a line cannot overlap, so at most one contains it.
-     * <p>
      * Containment is not membership: a grace note strictly inside a span is covered by the beam
      * without joining it. To ask which beam an element belongs to, use {@link #findBeamJoining}.
      *
-     * @param elementIndex an index in this line
-     * @return the beam containing {@code elementIndex}, or {@code null} when no beam in this line
-     *     does
+     * @return {@code null} when no beam in this line contains {@code elementIndex}
      */
     public @Nullable Beam findBeamAt(int elementIndex) {
         return findFirstSpan(Beam.class, Span.containing(elementIndex));
     }
 
     /**
-     * Returns the beam the element at {@code elementIndex} is a member of, or {@code null} when it
-     * belongs to none: the beam containing it, unless it is a grace note the beam passes over.
-     * <p>
-     * Agrees with {@link Beam#members()} by construction: both apply the same membership rule to
-     * the elements inside a beam's span.
-     *
-     * @param elementIndex an index in this line
-     * @return the beam whose {@link Beam#members()} include the element at {@code elementIndex},
-     *     or {@code null} when no beam's do
+     * {@code null} when the element belongs to no beam. Agrees with {@link Beam#members()}: both
+     * apply the same membership rule.
      */
     public @Nullable Beam findBeamJoining(int elementIndex) {
         var beam = findBeamAt(elementIndex);
@@ -755,15 +540,6 @@ public final class LineSpans {
         return beam;
     }
 
-    /**
-     * Returns whether one beam contains both indices. A beam is a contiguous range, so that beam
-     * also holds every element between them.
-     *
-     * @param firstIndex  an index in this line
-     * @param secondIndex an index in this line
-     * @return {@code true} when a beam contains {@code firstIndex} and the same beam contains
-     *     {@code secondIndex}
-     */
     public boolean sameBeamAt(int firstIndex, int secondIndex) {
         var beamAtFirst = findBeamAt(firstIndex);
 
@@ -772,33 +548,20 @@ public final class LineSpans {
     }
 
     /**
-     * Returns the tuplet whose anchor-to-end range contains {@code elementIndex}, or
-     * {@code null} if the element is not part of any tuplet. Tuplets on a line cannot overlap,
-     * so at most one contains it.
-     *
-     * @param elementIndex an index in this line
-     * @return the tuplet containing {@code elementIndex}, or {@code null} when no tuplet in this
-     *     line does
+     * @return {@code null} when no tuplet in this line contains {@code elementIndex}
      */
     public @Nullable Tuplet findTupletAt(int elementIndex) {
         return findFirstSpan(Tuplet.class, Span.containing(elementIndex));
     }
 
     /**
-     * Returns true if the given note index falls strictly inside any hairpin (crescendo or
-     * diminuendo), its bound elements excluded.
-     * <p>
-     * This is the editor's rule for where a text dynamic may go: a dynamic may sit on a
-     * hairpin's anchor or end element, but never under the wedge. See
-     * {@code docs/hairpin-editing.md}.
-     *
-     * @return {@code true} when a hairpin covers {@code noteIndex} strictly between its bounds
+     * The editor's rule for where a text dynamic may go: on a hairpin's anchor or end element,
+     * never under the wedge. See {@code docs/hairpin-editing.md}.
      */
     public boolean isInsideHairpin(int noteIndex) {
         return hasSpan(Hairpin.class, Span.strictlyContaining(noteIndex));
     }
 
-    /** Returns whether a hairpin of {@code kind} has a range that satisfies {@code matches}. */
     public boolean hasHairpin(Hairpin.Kind kind, Span.RangePredicate matches) {
         for (var span : spans) {
             if (kind.matches(span) && matches.test(span.range())) {
@@ -809,21 +572,10 @@ public final class LineSpans {
         return false;
     }
 
-    /**
-     * Returns whether a trill shares at least one element with {@code range}.
-     *
-     * @param range the elements to test, as indices in this line
-     * @return {@code true} when a trill on this line overlaps {@code range}
-     */
     public boolean hasTrillOverlapping(ElementRange range) {
         return hasSpan(Trill.class, Span.overlapping(range));
     }
 
-    /**
-     * Returns the endings on this line.
-     *
-     * @return the endings, a new list in no defined order; empty when there are none
-     */
     public List<Ending> findEndings() {
         return findSpans(Ending.class);
     }

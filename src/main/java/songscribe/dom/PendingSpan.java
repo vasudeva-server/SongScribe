@@ -25,55 +25,31 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * A span as a reader found it in a file, before the load pass has judged it.
  * <p>
- * A reader does not build the span: every span of a kind that answers with a {@link Spanning} is
- * well formed, and whether a range holds a well-formed one is that kind's factory's question, not
- * the reader's. So a reader records what the file said here, and {@link SpanLoadPass#run} — once
- * the song is complete — turns each pending span into a span on its anchor's line or drops it.
- * <p>
- * A pending span is not a span. It sits in no registry, is never drawn or recorded for undo, and
- * nothing outside the load path sees one.
- *
- * @param <S> the kind of span the file states
+ * A reader records what the file said here, and {@link SpanLoadPass#run} turns each pending span
+ * into a span on its anchor's line or drops it. A pending span is not a span: nothing outside the
+ * load path sees one.
  */
 public sealed interface PendingSpan<S extends Span<?>> permits PendingEnding, PendingHairpin {
 
     /**
-     * Returns the span's first element.
-     *
-     * @return the span's first element, in a line of the song being read
+     * @return in a line of the song being read
      */
     StaffElement anchor();
 
     /**
-     * Returns the span's last element.
-     *
-     * @return the span's last element, in the anchor's line at or after the anchor
+     * @return in the anchor's line at or after the anchor
      */
     StaffElement end();
 
     /**
-     * Returns the user's horizontal offset of the span.
-     *
-     * @return the offset in staff spaces, positive rightward; it becomes the span's
-     *     {@link LineElement#getUserXOffsetSs()}
+     * @return in staff spaces, positive rightward
      */
     double xOffsetSs();
 
     /**
-     * Returns the user's vertical offset of the span.
-     *
-     * @return the offset in staff spaces, positive downward; it becomes the span's
-     *     {@link LineElement#getUserYOffsetSs()}
+     * @return in staff spaces, positive downward
      */
     double yOffsetSs();
 
-    /**
-     * Asks the kind's factory for the span this pending span states over {@code range} of
-     * {@code line}.
-     *
-     * @param line  the anchor's line
-     * @param range the range from the anchor's index to the end's index in {@code line}
-     * @return the kind's answer for {@code range}: the span, built but not added, or the refusal
-     */
     Spanning<S> spanning(Line line, ElementRange range);
 }

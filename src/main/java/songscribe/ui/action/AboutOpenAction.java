@@ -29,10 +29,8 @@ import songscribe.ui.dialog.AboutDialog;
 import static songscribe.util.StringUtils.toKebabCase;
 
 /**
- * Opens the About window.
- *
- * <p>Not a {@link DialogOpenAction}: that caches one {@code BaseDialog} instance and reopens
- * it, whereas {@link AboutDialog} disposes itself on dismissal and is built fresh each time.
+ * Opens the About window. Not a {@link DialogOpenAction}: {@link AboutDialog} disposes itself on
+ * dismissal and is built fresh each time.
  */
 public final class AboutOpenAction extends UIAction implements UIAction.AppMenuAction {
 

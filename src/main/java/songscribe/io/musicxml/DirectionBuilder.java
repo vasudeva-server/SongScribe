@@ -47,27 +47,13 @@ import songscribe.dom.TempoMarking;
  * graph: tempo marks, metric modulations, hairpin wedges and text annotations.
  *
  * <p><b>Every {@code <direction>} belongs immediately before the {@code <note>} it marks, and
- * the reader binds a direction to the next note.</b> That is not a limitation the object graph
- * lifted — it is the binding mechanism MusicXML provides. {@code <direction>} is a sibling of
- * {@code <note>} inside {@code <measure>}, and MusicXML 4.0 has no attribute by which a
- * direction names the note it applies to; position is the only binding available, and
- * direction-before-note is the universal convention across notation programs. Working from a
- * finished graph does not make the placement negotiable: a direction emitted after its note
- * binds to the following one, in this reader and in every other.
- *
- * <p>Each method here <em>returns</em> the {@link Direction} it builds rather than appending it
- * anywhere. That return value is the handle: the caller places it in the measure's child list
- * at the position that expresses the binding, and the {@code applyHairpins} pass reaches
- * the wedge directions the same way — it builds them from the line's hairpin spans and holds
- * what {@link #buildHairpinStartDirection} and {@link #buildHairpinStopDirection} hand back.
- * A builder that appended to a measure itself would have to know where in that measure the
- * bound note sits, which is exactly the ordering knowledge the orchestrator already has.
+ * the reader binds a direction to the next note.</b> MusicXML 4.0 has no other binding: a
+ * direction emitted after its note binds to the following one.
  */
 final class DirectionBuilder {
 
     /**
-     * Every hairpin wedge SongScribe writes is number 1 — the model has one hairpin level, so
-     * no two wedges are ever open at once and the number never has to distinguish them.
+     * The model has one hairpin level, so the number never has to distinguish wedges.
      */
     private static final int WEDGE_NUMBER = 1;
 
@@ -78,11 +64,8 @@ final class DirectionBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds a tempo {@code <direction>}: a {@code <metronome>} beat-unit form
-     * ({@code <beat-unit>} + any {@code <beat-unit-dot/>} + {@code <per-minute>}), an optional
-     * {@code <words>} description direction-type, and a write-forward {@code <sound tempo>}.
-     * A hidden tempo carries {@code print-object="no"} on the {@code <metronome>}; the
-     * beat-unit/per-minute are still emitted so the visible tempo survives.
+     * The {@code <sound tempo>} is write-forward. A hidden tempo still emits beat-unit and
+     * per-minute, so the visible tempo survives.
      */
     static Direction buildTempoDirection(BuildContext context, Tempo tempo) {
         var beatUnit = BeatUnitMapping.entryFor(tempo.tempoType());
@@ -106,9 +89,7 @@ final class DirectionBuilder {
     }
 
     /**
-     * Builds the tempo {@code <direction>} for {@code element}'s own
-     * {@link TempoChangeAttachment} — a per-note tempo — or {@code null} when the element
-     * carries no tempo change.
+     * Returns {@code null} when the element carries no tempo change.
      */
     static @Nullable Direction buildElementTempoDirection(BuildContext context, StaffElement element) {
         var tempoAttachment = element.findAttachment(TempoChangeAttachment.class);
@@ -120,10 +101,6 @@ final class DirectionBuilder {
         return buildTempoDirection(context, tempoAttachment.getTempo());
     }
 
-    /**
-     * Builds the {@code <direction-type><metronome>} beat-unit form for {@code tempo}, carrying
-     * {@code print-object="no"} when the tempo is hidden.
-     */
     private static DirectionType buildMetronomeDirectionType(
             ObjectFactory factory, Tempo tempo, BeatUnitMapping.BeatUnitEntry beatUnit) {
         var metronome = factory.createMetronome();
@@ -145,7 +122,6 @@ final class DirectionBuilder {
         return directionType;
     }
 
-    /** Builds a {@code <direction-type><words>} carrying {@code text} with no styling. */
     private static DirectionType buildWordsDirectionType(ObjectFactory factory, String text) {
         var words = factory.createFormattedTextId();
         words.setValue(text);
@@ -161,11 +137,7 @@ final class DirectionBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the metric-modulation {@code <direction>} for {@code element}'s own
-     * {@link BeatChangeAttachment}, or {@code null} when the element carries no beat change.
-     *
-     * <p>Like every other direction, it precedes the note it marks and the reader binds it to
-     * the next note.
+     * Returns {@code null} when the element carries no beat change.
      */
     static @Nullable Direction buildElementMetricModulationDirection(
             BuildContext context, StaffElement element) {
@@ -179,27 +151,12 @@ final class DirectionBuilder {
     }
 
     /**
-     * Builds a metric-modulation {@code <direction>}: a {@code <metronome>} carrying two
-     * {@code <metronome-note>}s related by
-     * {@code <metronome-relation>equals</metronome-relation>} — the first for
-     * {@code beatChange.duration()} (the left note value), the second for
-     * {@code beatChange.beat()} (the right). Tokens and dots come from
-     * {@link BeatUnitMapping}. Reuses the same {@code <direction>} envelope as the tempo form;
-     * the reader distinguishes the two by the presence of {@code <metronome-note>} vs
+     * The reader distinguishes this from the tempo form by {@code <metronome-note>} vs
      * {@code <beat-unit>}.
      *
-     * <p><b>Known defect — the generated {@code Metronome} cannot express this form in a
-     * schema-valid order.</b> The schema is
-     * {@code metronome-note+, (metronome-relation, metronome-note+)?}, so the relation must sit
-     * <em>between</em> the two notes. XJC collapsed both note groups into one
-     * {@code List<MetronomeNote>} and made the relation a separate property, and the generated
-     * {@code @XmlType(propOrder = …)} places {@code metronomeRelation} <em>after</em>
-     * {@code metronomeNote}. Whatever order the calls below are made in, JAXB marshals
-     * {@code <metronome-note/><metronome-note/><metronome-relation/>}, which Xerces rejects
-     * with {@code Element 'metronome': Missing child element(s). Expected is (
-     * metronome-note )}. The construction order below is the one the document needs; the
-     * reordering has to be undone where the graph becomes text, in
-     * {@code MusicXmlSerializer}'s stream-writer delegate.
+     * <p>The generated {@code Metronome} cannot express this form in a schema-valid order,
+     * whatever the construction order; {@code MusicXmlSerializer} restores it when the graph
+     * becomes text.
      */
     static Direction buildMetricModulationDirection(BuildContext context, BeatChange beatChange) {
         var factory = context.factory();
@@ -218,11 +175,6 @@ final class DirectionBuilder {
         return direction;
     }
 
-    /**
-     * Appends one {@code <metronome-note>} to {@code metronome}: a {@code <metronome-type>}
-     * token plus one {@code <metronome-dot/>} per augmentation dot, both from
-     * {@link BeatUnitMapping}.
-     */
     private static void addMetronomeNote(
             ObjectFactory factory, Metronome metronome, BeatUnit duration) {
         var beatUnit = BeatUnitMapping.entryFor(duration);
@@ -232,11 +184,6 @@ final class DirectionBuilder {
         metronome.getMetronomeNote().add(metronomeNote);
     }
 
-    /**
-     * Appends {@code dotCount} empty dot elements to {@code dots} — the augmentation dots of a
-     * beat unit, whose element name ({@code <beat-unit-dot/>} or {@code <metronome-dot/>}) is
-     * fixed by which list is passed in.
-     */
     private static void addDots(ObjectFactory factory, List<Empty> dots, int dotCount) {
         for (var dot = 0; dot < dotCount; dot++) {
             dots.add(factory.createEmpty());
@@ -248,11 +195,7 @@ final class DirectionBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the start wedge {@code <direction>} for {@code hairpin}:
-     * {@code <wedge type="crescendo|diminuendo" number="1">}, carrying the hairpin's
-     * {@code userXOffsetSs} as {@code relative-x} and its {@code userYOffsetSs} as
-     * {@code relative-y} (ss × 10 = tenths), each only when non-zero. Belongs immediately before
-     * the hairpin's anchor note.
+     * Belongs immediately before the hairpin's anchor note.
      */
     static Direction buildHairpinStartDirection(BuildContext context, Hairpin hairpin) {
         var factory = context.factory();
@@ -266,11 +209,8 @@ final class DirectionBuilder {
     }
 
     /**
-     * Builds the stop wedge {@code <direction>} for {@code hairpin}:
-     * {@code <wedge type="stop" number="1">}, carrying the hairpin's {@code userXOffsetSs} as
-     * {@code relative-x} (ss × 10 = tenths), only when non-zero. Belongs immediately before the
-     * hairpin's end note — a stop wedge binds forward exactly like a start wedge, which is what
-     * gives the reader one uniform look-ahead rule.
+     * Belongs immediately before the hairpin's end note: a stop wedge binds forward like a start
+     * wedge.
      */
     static Direction buildHairpinStopDirection(BuildContext context, Hairpin hairpin) {
         var factory = context.factory();
@@ -283,15 +223,13 @@ final class DirectionBuilder {
     }
 
     /**
-     * Returns the {@code relative-x} of both of {@code hairpin}'s wedges. A wedge's
-     * {@code relative-x} moves only its own end, so the same value on both wedges moves the
-     * whole hairpin, as {@code userXOffsetSs} does.
+     * A wedge's {@code relative-x} moves only its own end; the same value on both moves the whole
+     * hairpin.
      */
     private static @Nullable BigDecimal hairpinXOffsetTenths(Hairpin hairpin) {
         return MusicXmlUnits.shiftTenths(hairpin.getUserXOffsetSs());
     }
 
-    /** Wraps {@code wedge} in its {@code <direction><direction-type>} envelope. */
     private static Direction buildWedgeDirection(ObjectFactory factory, Wedge wedge) {
         var directionType = factory.createDirectionType();
         directionType.setWedge(wedge);
@@ -307,19 +245,8 @@ final class DirectionBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the annotation {@code <direction placement="above|below">} for {@code element}, to be
-     * placed immediately before the annotated {@code <note>}: a single
-     * {@code <direction-type><words halign="…" justify="…" relative-y="…">text</words>}.
-     * {@code halign} and {@code justify} share the one alignment token, and {@code relative-y}
-     * carries where the attachment sits. {@code default-y} (the computed base position) is
-     * write-forward only and intentionally omitted; the reader recovers the annotation from
-     * {@code placement} + {@code halign} + {@code relative-y} and binds it to the next note.
-     *
-     * @param context the builder context
-     * @param element the staff element whose annotation is being written
-     * @return the direction, or {@code null} when the element carries no annotation or the
-     *         annotation has no text — an annotation with nothing to draw is not written, so a
-     *         reload does not have to decide what an empty {@code <words>} means
+     * @return {@code null} when the element carries no annotation or the annotation has no text;
+     *         such an annotation is not written
      */
     static @Nullable Direction buildElementAnnotationDirection(
             BuildContext context, StaffElement element) {

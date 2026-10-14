@@ -44,25 +44,10 @@ import songscribe.util.DateUtils;
  * the {@code <credit>} blocks — onto a {@link Song} and its {@link DocumentFonts}.
  * The inverse of {@link HeaderBuilder}.
  *
- * <p><b>Credit routing.</b> The writer emits the same value (composer, dates,
- * place) in <em>both</em> the head (canonical) and a {@code <credit>}
- * (display-only). Taking the credit value instead of the head value corrupts the
- * model as soon as anyone hand-edits a file, so every credit routes into exactly
- * one of three classes:
- *
- * <ul>
- *   <li><b>Canonical</b>, read into the model: the subtitle credit, the four
- *       score-below credits, and the attribution {@code relative-y}.</li>
- *   <li><b>Display-only</b>, ignored and re-derived on write: the title credit and
- *       the composer, lyricist, arranger, date, rights and place credits.</li>
- *   <li><b>Write-forward</b>, ignored and recomputed or constant on write: rights,
- *       software, encoding-date, scaling, music-font, and the
- *       {@code default-x}/{@code default-y} an external renderer needs. The
- *       {@code <supports>} entries are read by {@link SupportedFeature}, which says
- *       which of them gate anything.</li>
- * </ul>
- *
- * <p>See {@code docs/musicxml-object-model.md} for the full routing table.
+ * <p><b>Credit routing.</b> The writer emits composer, dates and place in both the head
+ * (canonical) and a {@code <credit>} (display-only). The head value wins, so a hand-edited file
+ * cannot corrupt the model through a credit. See {@code docs/musicxml-object-model.md} for the
+ * full routing table.
  */
 final class HeaderMapper {
 
@@ -133,27 +118,13 @@ final class HeaderMapper {
     // Package API
     // -------------------------------------------------------------------------
 
-    /**
-     * Applies {@code score}'s header to {@code song} and {@code documentFonts}.
-     *
-     * @throws SAXException if a head value is malformed (an unknown
-     *                      {@code lyrics-source} token, an unparseable number)
-     */
     static void map(ScorePartwise score, Song song, DocumentFonts documentFonts) throws SAXException {
         new HeaderMapper(song, documentFonts).mapScore(score);
     }
 
     /**
-     * Provenance gate: only SongScribe-authored documents are accepted. The
-     * {@code <software>} value is read off the graph and judged by
-     * {@link SoftwareProvenance#check}, which decides between foreign software and a
-     * hand-edited document of ours. {@code SongFileLoader.load} maps the two
-     * exceptions to {@code SongLoadResult.WrongSoftware} and
-     * {@code SongLoadResult.UnsupportedVersion} respectively.
-     *
-     * <p>{@code SongMapper.map} calls this before any mapping, so a foreign document
-     * reports its provenance even when its content would also have tripped a mapper,
-     * and no {@code Song} is built out of an input this program does not support.
+     * Called before any mapping, so a foreign document reports its provenance even when its
+     * content would also trip a mapper.
      */
     static void checkProvenance(ScorePartwise score)
         throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedVersionException {
@@ -181,13 +152,6 @@ final class HeaderMapper {
         headNumber = orEmpty(score.getMovementNumber());
     }
 
-    /**
-     * Reads the canonical head values out of {@code <identification>}: the
-     * {@code <creator>}s and the {@code <miscellaneous-field>}s. {@code <rights>},
-     * and {@code <encoding-date>} are write-forward and are not read;
-     * {@code <software>} is read only by {@link #checkProvenance}, and
-     * {@code <supports>} only by {@link SupportedFeature#declaredIn}.
-     */
     private void mapIdentification(ScorePartwise score) throws SAXException {
         var identification = score.getIdentification();
 
@@ -209,8 +173,6 @@ final class HeaderMapper {
     }
 
     /**
-     * Recovers the canonical values from {@code <defaults>}: the line width from
-     * {@code <page-width>} and the annotation/lyric document fonts.
      * {@code <scaling>}, {@code <page-height>}, {@code <staff-layout>},
      * {@code <music-font>} and {@code <lyric-language>} are write-forward.
      */
@@ -248,10 +210,6 @@ final class HeaderMapper {
         }
     }
 
-    /**
-     * Routes one fully-read {@code <credit>} by its {@code <credit-type>}. See the
-     * class Javadoc for the three routing classes.
-     */
     private void mapCredit(Credit credit) throws SAXException {
         var parts = credit.getCreditTypeOrLinkOrBookmark();
         var creditTypes = ProxyMusicAccess.jaxbValues(parts, MusicXmlTags.CREDIT_TYPE, String.class);
@@ -313,10 +271,7 @@ final class HeaderMapper {
     }
 
     /**
-     * Recovers the attribution user Y offset from the current attribution credit's
-     * {@code relative-y}, but only from the first attribution credit that carries
-     * it — the writer emits the same {@code relative-y} on every attribution
-     * credit, so reading it once is sufficient.
+     * The writer emits the same {@code relative-y} on every attribution credit.
      */
     private void readAttributionOffsetOnce(@Nullable FormattedText creditWords) {
         if (attributionOffsetRead || creditWords == null) {
@@ -334,10 +289,7 @@ final class HeaderMapper {
     }
 
     /**
-     * Routes a {@code <creator>}'s text by its {@code type} attribute:
-     * composer/lyricist into the head scratch, arranger into the arrangement flag
-     * (its text is always {@code SRI_CHINMOY}, so only the presence matters).
-     * Unknown or missing types are ignored.
+     * The arranger's text is always {@code SRI_CHINMOY}, so only its presence matters.
      */
     private void applyCreator(@Nullable String creatorType, String text) {
         if (MusicXmlTags.CREATOR_COMPOSER.equals(creatorType)) {
@@ -349,16 +301,6 @@ final class HeaderMapper {
         }
     }
 
-    /**
-     * Routes a {@code <miscellaneous-field>}'s text by its {@code name} attribute.
-     * The head fields go into the metadata scratch; the two dates go through the
-     * shared {@link DateUtils#parseIsoDate} inverse of the writer's
-     * {@link PartialDate#isoDate} (a malformed date parses to {@code null} and is treated as
-     * absent, keeping the scratch date fields at their empty defaults). The
-     * defaults residuals — {@code row-height-adjustment}, the default rest length,
-     * and the sub-attribution font — are applied straight onto the song /
-     * {@link #documentFonts}. Unknown misc-fields are ignored.
-     */
     private void applyMiscField(@Nullable String name, String text) throws SAXException {
         if (MusicXmlTags.MISC_COMPOSITION_DATE.equals(name)) {
             headDate = parsedDateOr(text, headDate);
@@ -391,10 +333,6 @@ final class HeaderMapper {
         }
     }
 
-    /**
-     * Recovers a document-font role from a {@code <credit-words>}'s
-     * {@code font-family}/{@code font-size}. See {@link #applyFont}.
-     */
     private void applyCreditFont(FontKey key, @Nullable FormattedText creditWords) throws SAXException {
         if (creditWords != null) {
             applyFont(key, creditWords.getFontFamily(), creditWords.getFontSize());
@@ -402,10 +340,7 @@ final class HeaderMapper {
     }
 
     /**
-     * Stores a document-font {@code key} from a raw {@code font-family}/
-     * {@code font-size} pair into {@link #documentFonts}. Weight/style are
-     * write-forward (not emitted, not read). Left at its default when either value
-     * is absent — defensive only, since the writer always emits both.
+     * Weight/style are write-forward (not emitted, not read).
      */
     private void applyFont(FontKey key, @Nullable String family, @Nullable String sizeRaw) throws SAXException {
         if (family == null || sizeRaw == null) {
@@ -417,11 +352,6 @@ final class HeaderMapper {
         documentFonts.setFont(key, family, size);
     }
 
-    /**
-     * Sets the {@link FontKey#SUB_ATTRIBUTION} role once both its family and size
-     * misc-fields have been read — they arrive as two separate
-     * {@code <miscellaneous-field>}s, so neither half alone can resolve the font.
-     */
     private void applySubAttributionFont() {
         if (subAttributionFontFamily != null && subAttributionFontSize != null) {
             documentFonts.setFont(FontKey.SUB_ATTRIBUTION, subAttributionFontFamily, subAttributionFontSize);
@@ -429,10 +359,8 @@ final class HeaderMapper {
     }
 
     /**
-     * {@code text} as a date, or {@code fallback} when it is not one. A malformed date is
-     * treated as absent rather than rejected: the writer only ever emits the well-formed
-     * form, so a bad one means a hand-edit, and dropping just the date keeps the rest of
-     * the document readable.
+     * A malformed date is treated as absent, not rejected, so the rest of the document stays
+     * readable.
      */
     private static PartialDate parsedDateOr(String text, PartialDate fallback) {
         var date = DateUtils.parseIsoDate(text);
@@ -440,11 +368,7 @@ final class HeaderMapper {
     }
 
     /**
-     * Assembles the accumulated head scratch and the credit-derived subtitle into
-     * the song's {@link SongMetadata} in one all-args construction, mirroring
-     * {@code SongIO.DocumentReader -> Song.loadFrom}. Building the record once
-     * dissolves the identification-before-credit ordering hazard (the subtitle
-     * credit follows the head) and needs no {@code setSubtitle} mutator.
+     * Builds the record once, so the subtitle credit's following the head cannot matter.
      */
     private void applyHeadMetadata() {
         // The SongMetadata compact constructor normalizes/coerces every field, so
@@ -458,15 +382,8 @@ final class HeaderMapper {
     }
 
     /**
-     * Resolves a {@code lyrics-source} token to a {@link Song.LyricsSource},
-     * throwing on an unknown token. Fails hard rather than defaulting, matching the
-     * reader's {@code parseIntOrThrow}/{@code parseDoubleOrThrow} convention — the
-     * writer only ever emits an enum constant name, so an unknown token means a
-     * corrupt document.
-     *
-     * @param token the {@code lyrics-source} miscellaneous-field value
-     * @return the source it names; never null
-     * @throws SAXException if {@code token} names no {@link Song.LyricsSource} constant
+     * Fails rather than defaulting: the writer only emits an enum constant name, so an unknown
+     * token means a corrupt document.
      */
     private static Song.LyricsSource lyricsSourceOrThrow(String token) throws SAXException {
         try {
@@ -480,7 +397,6 @@ final class HeaderMapper {
         }
     }
 
-    /** An optional text value, with an absent one read as the empty string. */
     private static String orEmpty(@Nullable String value) {
         return value == null ? "" : value;
     }

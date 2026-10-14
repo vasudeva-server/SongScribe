@@ -25,11 +25,10 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * An ending as a reader found it in a file, judged by {@link Ending#spanning}.
  *
- * @param anchor    the ending's first element, in a line of the song being read
- * @param end       the ending's last element, in the anchor's line at or after the anchor
- * @param xOffsetSs the user's horizontal offset of the bracket in staff spaces, positive
- *                  rightward
- * @param yOffsetSs the user's vertical offset of the bracket in staff spaces, positive downward
+ * @param anchor    in a line of the song being read
+ * @param end       in the anchor's line at or after the anchor
+ * @param xOffsetSs in staff spaces, positive rightward
+ * @param yOffsetSs in staff spaces, positive downward
  */
 public record PendingEnding(
     StaffElement anchor,

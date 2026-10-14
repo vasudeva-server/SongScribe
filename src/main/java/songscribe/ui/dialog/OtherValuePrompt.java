@@ -20,14 +20,7 @@
 package songscribe.ui.dialog;
 
 /**
- * The wording {@link OtherValueDialog} opens with: the window's title and the prompt above its one
- * field.
- *
- * <p>It carries <strong>resolved display text</strong>, not {@link songscribe.Strings} keys, which
- * is how every other dialog in this package takes its title — the caller resolves, the dialog
- * shows.
- *
- * @param title the dialog window's title
- * @param label the prompt shown above the field
+ * The wording {@link OtherValueDialog} opens with. It carries <strong>resolved display
+ * text</strong>, not {@link songscribe.Strings} keys.
  */
 record OtherValuePrompt(String title, String label) {}

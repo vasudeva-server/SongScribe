@@ -33,29 +33,14 @@ import songscribe.binding.Binding.InitialWrite;
  * The set of bindings and effects one owner declares, and the handle that tears
  * them all down together.
  *
- * <p>Declaring a binding here is the alternative to wiring a listener by hand: the
- * framework observes the source, decides when the target has to be written, and
- * absorbs the notification its own write causes. Every binding, every derivation and
- * every effect registered here is held until {@link #dispose}, which is the only way
- * to release them.
+ * <p>Every binding settles its target at registration; an {@link #onNotify} effect does not run
+ * at registration, and a {@link #computed} does not evaluate until read.
  *
- * <p><b>Every binding settles its target immediately.</b> A binding evaluates its
- * source once at registration and writes its target, so an owner is consistent the
- * moment it has finished declaring itself and never needs an initial synchronization
- * pass. <b>An effect registered with {@link #onNotify} does not run at
- * registration</b>, and a {@link #computed} does not evaluate until something reads
- * it; neither settles anything by itself.
+ * <p>A {@code Bindings} belongs to exactly one owner, which must call {@link #dispose} when
+ * the owner is disposed; otherwise the observations keep the owner and its controls alive.
+ * See {@code docs/lifecycle.md}.
  *
- * <h2>Lifecycle</h2>
- *
- * <p>A {@code Bindings} belongs to exactly one owner, which creates it when it is
- * built and calls {@code dispose()} on it when the owner itself is disposed. An
- * undisposed {@code Bindings} keeps its observations — and through them the owner,
- * its controls and everything they capture — alive past that point. A dialog is the
- * shortest-lived owner, built per opening and discarded on close; a view that lives
- * as long as the window owns one on the same terms. See {@code docs/lifecycle.md}.
- *
- * <p><b>Threading:</b> EDT-only, like everything in this package.
+ * <p>EDT-only.
  */
 public final class Bindings implements Disposable {
 

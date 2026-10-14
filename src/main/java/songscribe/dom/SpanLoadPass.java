@@ -30,12 +30,9 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * Turns the endings and hairpins a reader found into the song's spans, or drops them.
  *
- * <p>This pass runs once the song is complete and is the one place a {@link PendingSpan} becomes a
- * span: it asks the kind's factory, the same rule the editor and the paste ask, so a span read
- * from a file is well formed by exactly the rule a span made in the editor is. A file an older
- * build saved can hold a span that rule refuses — a hairpin that ends on a rest, say. That span is
- * dropped — the bracket or the wedge goes, the elements stay — and nothing is repaired into
- * something the file did not say.
+ * <p>The one place a {@link PendingSpan} becomes a span, by the same factory rule the editor and
+ * the paste ask. A span that rule refuses is dropped, and nothing is repaired into something the
+ * file did not say.
  */
 final class SpanLoadPass {
 
@@ -75,8 +72,6 @@ final class SpanLoadPass {
      * @effects adds a span to its anchor's line for every pending span not dropped; records to
      *     {@code report}, in the order of {@code pendingSpans}, every pending span the pass
      *     dropped, as {@link Spanning.Refused#reportedAt} states it on the span's line
-     * @log WARN one line for each pending span dropped, naming its kind's heading, its line, its
-     *     range and the reason
      */
     static void run(Song song, List<? extends PendingSpan<?>> pendingSpans, ChangeReport.Builder report) {
         for (var pending : pendingSpans) {

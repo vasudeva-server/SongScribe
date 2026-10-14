@@ -34,7 +34,7 @@ public class InsertLineCommand extends Message {
         return type;
     }
 
-    /** Where the new line goes. The two relative variants need a selected line; the first does not. */
+    /** The two relative variants need a selected line; the first does not. */
     public enum Type {
         ADD_AT_END,
         INSERT_BEFORE,

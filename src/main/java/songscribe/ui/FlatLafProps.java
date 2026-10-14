@@ -33,12 +33,10 @@ import songscribe.error.RuntimeError;
 
 /**
  * Typed access to custom {@code SongScribe.*} properties defined in
- * {@code FlatLaf.properties}. Keys are provided by the generated
- * {@link FlatLafKey} enum.
+ * {@code FlatLaf.properties}.
  *
- * <p>Use the typed getters ({@code getColor}, {@code getInt}, etc.) — one
- * exists for every type FlatLaf supports. A missing or wrongly-typed property
- * is always a fatal error — it indicates a broken installation.
+ * <p>A missing or wrongly-typed property is always a fatal error — it indicates a broken
+ * installation.
  */
 public final class FlatLafProps {
 

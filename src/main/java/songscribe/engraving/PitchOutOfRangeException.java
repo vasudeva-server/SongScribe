@@ -21,12 +21,9 @@
 package songscribe.engraving;
 
 /**
- * A staff position that is diatonic and musically ordinary, but lies beyond the outermost
- * ledger line the renderer draws, so the staff has no position to put its note head at.
- *
- * <p>It is a type rather than a plain {@link IllegalArgumentException} so that a caller can
- * catch this one refusal without also swallowing an {@code IllegalArgumentException} that
- * means a bug. This is what {@link StaffPosition}'s canonical constructor throws.
+ * Thrown by {@link StaffPosition}'s canonical constructor for a position beyond the outermost
+ * ledger line the renderer draws. A distinct type so a caller can catch this refusal without
+ * swallowing an {@code IllegalArgumentException} that means a bug.
  */
 public final class PitchOutOfRangeException extends IllegalArgumentException {
 
@@ -43,10 +40,7 @@ public final class PitchOutOfRangeException extends IllegalArgumentException {
     }
 
     /**
-     * Returns why the position was refused, naming it.
-     *
-     * @return the reason; never null, unlike {@link #getMessage()}, so a caller can carry it
-     *     into a document-level refusal without a null guard
+     * Never null, unlike {@link #getMessage()}.
      */
     public String detail() {
         return detail;

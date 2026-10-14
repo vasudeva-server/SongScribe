@@ -26,40 +26,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The corner points of a first/second ending bracket: up the left leg, across the top, and (when
- * the bracket is closed) down the right leg. The caller strokes the returned polyline.
- * <p>
- * All coordinates are plain staff-space values; the caller resolves them from layout before
- * calling. This class holds no layout or renderer dependency.
+ * The corner points of a first/second ending bracket, in staff-space values. The caller
+ * strokes the returned polyline.
  */
 public final class EndingBracketShape {
 
     private EndingBracketShape() {}
 
-    /** Whether an ending bracket ends in a right leg. */
     public enum Closure {
-        /** The top arm ends free on the right. */
         OPEN,
-
-        /** The top arm turns down into a right leg. */
         CLOSED
     }
 
     /**
-     * Builds the ending bracket corner points as a single polyline, so the top corners join
-     * cleanly when stroked.
-     * <p>
-     * The left leg runs along the outline's left edge from its bottom to its top, and the top arm
-     * along its top edge to its right edge. A closed bracket's right leg then runs down the
-     * outline's right edge to its bottom: the caller sizes a closed outline so that its right edge
-     * is the leg's X, and an open one so that its right edge is where the free arm ends.
+     * The points form a single polyline, so the top corners join cleanly when stroked.
      *
-     * @param outlineSs the rectangle the path's corners lie on, in staff spaces: from the left
-     *                  leg's X to the top arm's right end, and from the top arm's Y to the legs'
-     *                  bottom
-     * @param closure   whether the bracket ends in a right leg
-     * @return the bracket corner points, in draw order: three for an open bracket, four for a
-     *     closed one
+     * @param outlineSs a closed outline's right edge is the leg's X; an open one's is where the
+     *                  free arm ends
      */
     public static Point2D[] points(Rectangle2D outlineSs, Closure closure) {
         var leftXSs = outlineSs.getMinX();

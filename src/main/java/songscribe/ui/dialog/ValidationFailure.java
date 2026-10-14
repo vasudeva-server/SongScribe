@@ -20,23 +20,13 @@
 package songscribe.ui.dialog;
 
 /**
- * One reason a {@link DialogController} refused the values a dialog gathered, in the form the user
- * will eventually see it: an alert title and an alert message.
+ * One reason a {@link DialogController} refused the values a dialog gathered: an alert title and
+ * an alert message, both carried unresolved — see {@link LocalizedMessage}. A failure is a
+ * statement about the input; whether, when and where the user is told is the presenting dialog's
+ * decision.
  *
- * <p>Both are carried unresolved, so the controller states what is wrong without producing text —
- * see {@link LocalizedMessage} for why that separation matters. The title and the message are
- * both required because the alerts this replaces already carry both: a failing font change in
- * the song settings shows {@code alert.title.lines.do.not.fit} over
- * {@code alert.font.change.invalid}, and a message alone would lose the heading.
- *
- * <p>A failure is a statement about the input, not an instruction to display anything. Nothing
- * here decides whether, when or in what window the user is told; that is the presenting
- * dialog's decision.
- *
- * @param titleKey a {@link songscribe.Strings} constant naming the alert title. A bare key
- *                 rather than a {@link LocalizedMessage} because alert titles are topic labels
- *                 with no format arguments — {@link songscribe.ui.OptionDialogs} resolves every
- *                 title through the non-pattern {@code Strings.get}
- * @param message  the alert body, with whatever arguments its pattern needs
+ * @param titleKey a bare {@link songscribe.Strings} key, not a {@link LocalizedMessage}, because
+ *                 {@link songscribe.ui.OptionDialogs} resolves every title through the
+ *                 non-pattern {@code Strings.get}
  */
 public record ValidationFailure(String titleKey, LocalizedMessage message) {}

@@ -32,29 +32,6 @@ import songscribe.dom.Song;
 /**
  * Populates per-note {@code Properties.lyrics} records from a legacy
  * {@code <lyrics>} blob.
- *
- * <p>The blob is a song-level, newline-delimited string where each line
- * corresponds to one {@link Line}. Within each line, whitespace- and delimiter-separated
- * tokens are assigned to successive elements:
- *
- * <ul>
- *   <li>{@code word} → {@code Lyric(NONE, word, extend=false)}</li>
- *   <li>{@code word-} → {@code Lyric(SYLLABLE, word, extend=false)}</li>
- *   <li>{@code word--} or {@code word=} → {@code Lyric(COMPOUND_WORD, word, extend=false)}</li>
- *   <li>{@code word_+} → {@code Lyric(<next boundary>, word, extend=true)} plus one
- *       continuation element (no {@link Lyric} record) per trailing {@code _}</li>
- * </ul>
- *
- * <p>A {@code _} immediately followed by a word character (with no intervening space
- * or relation marker) is absorbed into that word's position rather than producing
- * a standalone continuation. This mirrors the legacy convention where
- * {@code heart_ _ _garden} across 4 notes placed "heart" on note 1 and "garden"
- * on note 4, with two continuation notes between them.
- *
- * <p>A line starting with {@code --} (legacy mid-word continuation marker) signals that
- * the first word on this line continues a compound word from the previous line. The
- * marker is stripped and {@code inWord} is initialized to {@code true} so that
- * {@link #deriveSyllabic} assigns {@code MIDDLE} or {@code END} to the first syllable.
  */
 public final class LegacyLyricsImporter {
 
@@ -65,10 +42,6 @@ public final class LegacyLyricsImporter {
     private LegacyLyricsImporter() {
     }
 
-    /**
-     * Walks {@code lyricsBlock} left-to-right and populates
-     * {@code Properties.lyrics} on each element of {@code lines}.
-     */
     public static void importLegacyLyrics(List<? extends Line> lines, String lyricsBlock) {
         if (lyricsBlock.isBlank()) {
             return;

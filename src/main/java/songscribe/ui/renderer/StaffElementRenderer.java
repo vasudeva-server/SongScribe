@@ -49,20 +49,6 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
-/**
- * Renders notes (head, stem, flags, dots, accidentals, ledger lines).
- * <p>
- * Extracts rendering logic from FughettaRenderer for the new ElementRenderer system.
- * This renderer handles:
- * <ul>
- *   <li>Note heads (whole, half, filled)</li>
- *   <li>Stems (up or down based on note.getDirection())</li>
- *   <li>Flags (for non-beamed 8th, 16th, 32nd notes)</li>
- *   <li>Dots (for dotted notes)</li>
- *   <li>Accidentals (sharps, flats, naturals)</li>
- *   <li>Ledger lines (for notes above/below staff)</li>
- * </ul>
- */
 public final class StaffElementRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
     // Constants
@@ -78,15 +64,9 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Singleton instance
     private static final StaffElementRenderer INSTANCE = new StaffElementRenderer();
 
-    /**
-     * Private constructor - use {@link #getInstance()}.
-     */
     private StaffElementRenderer() {
     }
 
-    /**
-     * Returns the singleton instance.
-     */
     public static StaffElementRenderer getInstance() {
         return INSTANCE;
     }
@@ -117,7 +97,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Note Rendering
     // ==========================================================================
 
-    /** Draws a note or a grace note: its head, its ledger lines and its accidental. */
     private void renderNote(
         NoteElement element,
         Graphics2D g2,
@@ -209,14 +188,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     /**
-     * Draws {@code note}'s stem in its drawn direction ({@link NoteGeometry#effectiveDirection}),
-     * tucked inside its beam when it is beamed.
-     *
-     * @param g2         the graphics, translated to the note's origin
-     * @param note       the note whose stem to draw
-     * @param beaming    whether the note is a member of a beam, which decides the stem's length
-     *                   and its inset into the beam
-     * @param invariants the render invariants holding the line and its layout
+     * @param g2 the graphics, translated to the note's origin
      * @return the flag attachment point (x = stem left edge, y = stem tip), or {@code null} when
      *     the note's type has no stem
      */
@@ -323,17 +295,11 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     /**
-     * Draws the flag {@code note}'s type carries on a stem in its drawn direction
-     * ({@link NoteGeometry#effectiveDirection}), hung from {@code stemTip}. Called only for an
-     * unbeamed note: a beamed one carries its beams instead.
+     * Called only for an unbeamed note: a beamed one carries its beams instead.
      *
      * @param g2      the graphics, translated to the note's origin
-     * @param note    the note whose flag to draw
      * @param stemTip the stem's flag attachment point as {@link #renderStem} answered it (x = stem
      *                left edge, y = stem tip), or {@code null} when the note has no stem
-     * @effects draws nothing when {@code stemTip} is {@code null} or the note's type carries no
-     *     flag ({@link ElementType#getFlagGlyph}); otherwise draws the flag glyph, at grace size
-     *     for a grace note, leaving {@code g2}'s font as it was
      */
     private void renderFlags(Graphics2D g2, NoteElement note, Point2D.@Nullable Double stemTip) {
         if (stemTip == null) {
@@ -414,13 +380,9 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     /**
-     * Draws {@code note}'s accidental, if it has one.
-     * <p>
      * The ambient color the caller set is left alone unless the note's own color resolves to
-     * something other than plain black. That ambient color is what carries the insertion
-     * preview, the grace-cancel red and the slide-preview highlight — a preview note is not on
-     * the line and can never be selected, so overwriting its color unconditionally would draw
-     * its accidental black while the rest of it is blue.
+     * something other than plain black: that color carries the insertion preview, the
+     * grace-cancel red and the slide-preview highlight.
      */
     private void renderAccidental(
         Graphics2D g2,
@@ -457,15 +419,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     /**
-     * Returns whether {@code note} is a member of a beam on the current line. The insertion
-     * preview is drawn on the current line without being one of its elements, so it belongs to
-     * no beam.
-     *
-     * @param note       the note to test
-     * @param invariants the render invariants holding the current line
-     * @return {@link Beaming#BEAMED} when {@code note} is an element of the current line and a
-     *     member of one of its beams ({@link songscribe.dom.LineSpans#findBeamJoining}), otherwise
-     *     {@link Beaming#UNBEAMED}
+     * The insertion preview is not an element of the line, so it belongs to no beam.
      */
     private Beaming noteBeaming(StaffElement note, LineInvariants invariants) {
         var line = invariants.requireCurrentLine();

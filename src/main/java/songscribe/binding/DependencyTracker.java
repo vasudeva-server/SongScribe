@@ -28,15 +28,8 @@ import org.jspecify.annotations.Nullable;
  * Collects the {@link ObservableValue}s read while a derivation body runs, so a
  * {@code computed} can discover its dependencies rather than declare them.
  *
- * <p>Only {@link Bindings#computed} arms the recording. The transforming
- * {@code bind} overloads subscribe to the source they were handed and never run the
- * tracker, so a function passed to {@code bind} may read whatever it likes without
- * acquiring a dependency on it.
- *
- * <p>The recording set is a {@link ThreadLocal} rather than a static field. Nothing
- * in this package is synchronized, and the package's EDT-only invariant is what
- * makes that safe; a thread-local keeps a stray off-EDT derivation from corrupting
- * the EDT's recording as well, which a shared static field would not.
+ * <p>Only {@link Bindings#computed} arms the recording; a function passed to {@code bind}
+ * acquires no dependencies.
  */
 final class DependencyTracker {
 
@@ -45,27 +38,8 @@ final class DependencyTracker {
     private DependencyTracker() {}
 
     /**
-     * Runs {@code body} with {@code into} armed as the recording set, so every
-     * {@link #track} call made during the run lands in it.
-     *
-     * <p>Recordings nest: the set armed on entry is restored on the way out, so an
-     * inner derivation evaluated by an outer one collects its own dependencies and
-     * the outer one keeps collecting its own afterwards. The restore happens in a
-     * {@code finally}, so a body that throws cannot leave recording armed and
-     * poison every later read on this thread.
-     *
-     * <p>Only values read on this thread, during this call, are recorded. A read
-     * deferred to a later event — anything scheduled rather than run — is not part
-     * of the set, and the derivation will not see that value change.
-     *
-     * @param <T> the body's result type
-     * @param into the set to record into; it is not cleared first, so a caller
-     *     reusing a set is responsible for its prior contents
-     * @param body the derivation to run
-     * @return whatever {@code body} returns
-     * @effects adds to {@code into} every observable value read during the run.
-     *     Leaves the previously armed recording set armed on return, whether the
-     *     body returned or threw.
+     * Records only reads made on this thread during this call; a deferred read is not a
+     * dependency. {@code into} is not cleared first.
      */
     static <T> T recording(Set<ObservableValue<?>> into, Supplier<T> body) {
         var previous = recordingInto.get();
@@ -82,20 +56,7 @@ final class DependencyTracker {
         }
     }
 
-    /**
-     * Records {@code read} as a dependency of the derivation in progress, if there
-     * is one.
-     *
-     * <p>A no-op when no recording is armed, which is the common case: most reads
-     * are made by application code rather than by a derivation body. Every
-     * {@link ObservableValue#get} implementation in this package calls this before
-     * answering; one that does not is invisible to every {@code computed} that
-     * reads it.
-     *
-     * @param read the value being read
-     * @effects adds {@code read} to the armed recording set, if any. Recording the
-     *     same value twice in one run is harmless — the set makes it one dependency.
-     */
+    /** Every {@link ObservableValue#get} implementation must call this; one that does not is invisible to {@code computed}. */
     static void track(ObservableValue<?> read) {
         var into = recordingInto.get();
 

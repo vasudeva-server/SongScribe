@@ -25,53 +25,19 @@ import songscribe.engraving.StemMetrics;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Computes horizontal extents of a note in staff spaces (note-local origin) for slide
- * rendering. Two extents are exposed:
+ * Horizontal extents of a note in staff spaces, for slide rendering: the full column extent
+ * including the stem, and the stem-free extent where a glissando attaches. Extents are note-local,
+ * X=0 at the notehead glyph origin. Ledger lines and the flag are excluded because a glissando,
+ * pinned at notehead-center Y, never meets them.
  *
- * <ul>
- *   <li>{@link #extentSs} — the full column extent including the stem, used to anchor a
- *       trailing fall glyph off the note's right edge.
- *   <li>{@link #glissandoAttachExtentSs} — the stem-free extent (notehead, augmentation
- *       dots, accidental), used as the attachment points of a connecting glissando.
- * </ul>
- *
- * <p>Extents are in note-local space, X=0 at the notehead glyph origin. Full-extent left is driven
- * by the accidental if present, else the stem's left edge when the stem points down, else the
- * notehead's left edge. Full-extent right is driven by the stem's right edge when the stem points
- * up, else the notehead's right edge or the augmentation dots.
- * The stem-free glissando-attach extent drops the stem contribution entirely, so its
- * left/right are driven only by the accidental, notehead, and augmentation dots.
- * Ledger lines are excluded — they are reference lines, not ink the glissando must avoid.
- *
- * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
- *
- * <p>The flag is deliberately excluded from both extents because both glissando endpoints
- * are pinned at notehead-center Y, so the flag (which lives near the stem tip, far
- * above/below) has no ink in the line's path. The results are intentionally uncached —
- * each computation is a handful of O(1) bbox lookups, far cheaper than maintaining a
- * cache.
+ * <p>See {@code docs/layout-geometry.md}.
  */
 public final class NoteColumnGeometry {
 
-    /**
-     * Horizontal extent of a single note in note-local staff spaces.
-     *
-     * @param leftSs  left edge in staff spaces (note-local, ≤ 0)
-     * @param rightSs right edge in staff spaces (note-local, ≥ 0)
-     */
     public record ColumnExtent(double leftSs, double rightSs) {}
 
     private NoteColumnGeometry() {}
 
-    /**
-     * Computes the stem-free extent used for connecting-glissando attachment points, in
-     * note-local staff-space coordinates. The stem and flag are excluded; the extent is
-     * driven only by the notehead, augmentation dots (right), and accidental (left).
-     *
-     * @param note   the note whose attach extent to compute
-     * @param beaming whether the note belongs to a beam group (affects dot placement)
-     * @return the stem-free column extent
-     */
     public static ColumnExtent glissandoAttachExtentSs(NoteElement note, Beaming beaming) {
         var noteType = note.getType();
         var direction = NoteGeometry.effectiveDirection(note);
@@ -99,14 +65,7 @@ public final class NoteColumnGeometry {
     }
 
     /**
-     * Widens an already-computed stem-free extent into the full column extent by folding in the
-     * stem. Lets callers that already hold the stem-free attach extent (see
-     * {@link #glissandoAttachExtentSs}) reuse it instead of recomputing the notehead/dots/accidental
-     * geometry.
-     *
-     * @param note     the note whose full extent to compute
      * @param stemFree the stem-free extent for the same note, from {@link #glissandoAttachExtentSs}
-     * @return the full column extent
      */
     public static ColumnExtent extentSs(NoteElement note, ColumnExtent stemFree) {
         var leftSs = stemFree.leftSs();

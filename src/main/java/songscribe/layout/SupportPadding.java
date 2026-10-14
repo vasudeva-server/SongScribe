@@ -23,9 +23,6 @@ package songscribe.layout;
 /**
  * How an element clears its supports in a {@link StaffExtents#clearance} query: the gap it keeps
  * from them and how far beyond its own footprint it looks for them.
- *
- * @param paddingSs        the gap the element keeps from whatever its profile contacts
- * @param horizonPaddingSs how far beyond its own footprint the element looks for a support
  */
 public record SupportPadding(double paddingSs, double horizonPaddingSs) {
 }

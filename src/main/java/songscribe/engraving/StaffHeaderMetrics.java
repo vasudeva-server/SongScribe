@@ -21,45 +21,27 @@
 package songscribe.engraving;
 
 /**
- * Horizontal metrics for the staff header — the clef, the key signature and the space
- * they leave before the music starts — ported from LilyPond. All values are in staff spaces.
- * <p>
- * The gaps between the header's parts come from the {@code space-alist} entries of
- * LilyPond's break-aligned grobs, read by {@code Break_alignment_interface} and
- * {@code Staff_spacing::get_spacing}. The spacing type decides which edge the distance is
- * measured from: {@code extra-space} and {@code shrink-space} measure from the left item's
- * right edge, {@code minimum-fixed-space} from its left edge.
- * <p>
- * The tables are directional: LilyPond reads the {@code space-alist} of the <em>left</em>
- * item and looks the gap up under the <em>right</em> item's name, so the entry to port is the
- * one for the order the two parts actually appear in. Only one order arises here — a
- * cancellation always precedes the key signature it makes way for, never follows it, per the
- * policy on {@code songscribe.dom.Key#accidentalsFrom} — so only that direction is ported.
+ * Horizontal metrics for the staff header (clef, key signature, and the space before the
+ * music), ported from LilyPond's {@code space-alist} entries, in staff spaces. Only the
+ * direction that arises here is ported: a cancellation precedes the key signature, never
+ * follows it.
  */
 public final class StaffHeaderMetrics {
 
     /**
      * Gap from the clef's right edge to the key signature's left edge.
-     * LilyPond {@code Clef} {@code space-alist}: the {@code key-signature} entry,
-     * an {@code extra-space} of {@value}.
      */
     public static final double CLEF_GAP_SS = 0.82;
 
     /**
-     * Gap from the key signature's right edge to the first note.
-     * LilyPond {@code KeySignature} {@code space-alist}: the {@code first-note} entry, a
-     * {@code shrink-space} of {@value}. {@code shrink-space}
-     * makes this the distance at natural spacing, which a crowded line may compress but
-     * never stretches.
+     * Gap from the key signature's right edge to the first note, at natural spacing: a crowded
+     * line may compress it but never stretches it.
      */
     public static final double KEY_SIGNATURE_FIRST_NOTE_GAP_SS = 2.5;
 
     /**
      * Span from the clef's <em>left</em> edge to the first note when no key signature
-     * intervenes. LilyPond {@code Clef} {@code space-alist}: the {@code first-note} entry, a
-     * {@code minimum-fixed-space} of {@value} — a floor on the whole
-     * span rather than a gap added past the clef, so a clef narrower than this leaves the
-     * remainder as open space.
+     * intervenes. A floor on the whole span, not a gap added past the clef.
      */
     public static final double CLEF_FIRST_NOTE_SPAN_SS = 5.0;
 

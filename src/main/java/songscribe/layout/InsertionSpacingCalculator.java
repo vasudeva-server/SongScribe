@@ -37,44 +37,23 @@ import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 
 /**
- * Spacing calculations for element insertion operations.
+ * Spacing calculations for element insertion, answering where the element goes and whether it
+ * still fits, without committing to a full relayout.
  * <p>
- * This class answers two questions for interactive editing (adding or inserting an element)
- * without committing to a full relayout:
- * <ul>
- *   <li><b>Where does the element go?</b> — the natural (uncompressed) length of the
- *       {@link Spring} on either side of the insertion point, measured from the neighbours'
- *       <em>current</em> positions, so only the elements after the insertion point move.</li>
- *   <li><b>Does it still fit?</b> — {@link InsertionResult#fitsWithinLine} hands the projected
- *       columns {@link LayoutEngine} would build after the commit — every column with the new one
- *       spliced in, <em>including the auto-maintained terminal barline</em> — to the same
- *       {@link HorizontalSpacingCalculator#solveLine} the layout engine calls. Running the one
- *       solve rather than reassembling its steps is what guarantees the two agree: an insert the
- *       gate accepts always lays out, and a step added to the solve reaches the gate on its own. An
- *       insert is refused only when even full compression to every gap's strut overflows the
- *       margin; a line with slack simply compresses to absorb the new element.</li>
- * </ul>
+ * Fit hands the projected columns, including the terminal barline, to the same
+ * {@link HorizontalSpacingCalculator#solveLine} the layout engine calls, so an insert the gate
+ * accepts always lays out. An insert is refused only when even full compression to every gap's
+ * strut overflows the margin.
  * <p>
  * The columns surrounding the insertion point carry their real syllable widths whenever a
- * {@link LyricRenderMetrics} is supplied, so previews are spaced by the same lyric rules as the
- * committed layout. Callers with no lyric metrics to hand may pass {@code null}, which falls
- * back to syllable-less columns.
+ * {@link LyricRenderMetrics} is supplied; {@code null} falls back to syllable-less columns.
  */
 public final class InsertionSpacingCalculator {
 
     /**
-     * Result of an insertion spacing calculation, providing the X position for the
-     * inserted element, the shift amount for subsequent elements, and the projected
-     * line width after the insertion.
-     *
-     * @param insertedElementXSs           X position where the inserted element should be placed
-     * @param shiftForSubsequentElementsSs Amount to shift all elements after the insertion point (always >= 0)
-     * @param newLineWidthSs               Projected line width after the insertion
-     * @param line                         The line the insertion lands on
+     * @param shiftForSubsequentElementsSs always >= 0
      * @param projectedColumns             The line's columns as {@link LayoutEngine} will build them
-     *                                     after the commit — every column with the new one spliced
-     *                                     in, including the terminal barline — what {@link #solve}
-     *                                     solves
+     *                                     after the commit, including the terminal barline
      */
     public record InsertionResult(
         double insertedElementXSs,
@@ -87,73 +66,35 @@ public final class InsertionSpacingCalculator {
             projectedColumns = List.copyOf(projectedColumns);
         }
 
-        /**
-         * Runs the projected line through {@link HorizontalSpacingCalculator#solveLine} — the whole
-         * solve the layout engine runs, over the columns the commit will produce.
-         *
-         * @param staffRightMarginSs The maximum allowed line width in staff spaces
-         * @return the anchor, the spring chain and the solver's verdict
-         */
         public HorizontalSpacingCalculator.LineSolution solve(double staffRightMarginSs) {
             return HorizontalSpacingCalculator.solveLine(projectedColumns, line, staffRightMarginSs);
         }
 
-        /**
-         * Returns whether the insertion fits within the given right margin — compress-to-fit:
-         * the line is free to give up slack to absorb the new element, and only a chain that
-         * overflows with every gap frozen at its strut is rejected.
-         *
-         * @param staffRightMarginSs The maximum allowed line width in staff spaces
-         * @return {@code true} unless the projected spring chain solves INFEASIBLE
-         */
+        /** Compress-to-fit: only a chain that overflows with every gap frozen at its strut is rejected. */
         public boolean fitsWithinLine(double staffRightMarginSs) {
             return !solve(staffRightMarginSs).isInfeasible();
         }
     }
 
     /**
-     * The <em>positioning</em> chain for an insertion: every effective column (the terminal barline
-     * excluded, since it is pinned flush-right rather than shifted) in element order with the
-     * inserted column spliced in, plus the lyric-stretched spring chain over them. Drives where the
-     * inserted element lands and how far its successors shift. The separate <em>fit</em> chain that
-     * {@link InsertionResult#fitsWithinLine} solves is built in {@link #calculateInsertion} and does
-     * include the terminal, so it matches the committed layout exactly.
+     * The <em>positioning</em> chain for an insertion, which excludes the terminal barline; the
+     * separate <em>fit</em> chain built in {@link #calculateInsertion} includes it.
      *
-     * @param columns     Projected columns in element order (never empty — it holds at least the
-     *                    inserted column)
-     * @param springs     One lyric-stretched spring per adjacent pair of {@code columns}
-     * @param insertIndex Index of the inserted column within {@code columns}
+     * @param columns Projected columns in element order (never empty)
      */
     private record ProjectedLine(List<ElementColumn> columns, List<Spring> springs, int insertIndex) {}
 
     /**
-     * Result of a fragment insertion spacing calculation: the projected spring chain its fit gate
-     * solves, and the keys it solves against. The multi-element analogue of
-     * {@link InsertionResult}.
-     *
-     * @param line             The line the fragment lands on
      * @param projectedColumns The line's columns as {@link LayoutEngine} will build them after the
-     *                         operation — the surviving columns with the fragment's clones spliced
-     *                         in, including the terminal barline — what {@link #fitsWithinLine}
-     *                         solves
-     * @param projectedKeys    The line's keys as the operation leaves them: the key it starts in,
-     *                         the key it leaves off in, and the key the line after it begins in
+     *                         operation, including the terminal barline
+     * @param projectedKeys    The line's keys as the operation leaves them
      */
     public record FragmentInsertionResult(Line line, List<ElementColumn> projectedColumns, LineKeys projectedKeys) {
         public FragmentInsertionResult {
             projectedColumns = List.copyOf(projectedColumns);
         }
 
-        /**
-         * Returns whether the fragment insertion fits within the given right margin — compress-to-fit,
-         * the identical gate single-element insertion uses: the line is free to give up slack to
-         * absorb the clones, and only a chain that overflows with every gap frozen at its strut is
-         * rejected.
-         *
-         * @param staffRightMarginSs The maximum allowed line width in staff spaces
-         * @return {@code true} unless the projected spring chain solves INFEASIBLE against
-         *         {@link #projectedKeys}
-         */
+        /** Compress-to-fit, the identical gate single-element insertion uses. */
         public boolean fitsWithinLine(double staffRightMarginSs) {
             return !HorizontalSpacingCalculator
                 .solveLine(projectedColumns, line, staffRightMarginSs, projectedKeys).isInfeasible();
@@ -161,33 +102,17 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Result of a modification spacing calculation: the projected spring chain of the line as it
-     * will read once an in-place modification is applied, and the fit gate over it.
-     * <p>
-     * The replace-a-column analogue of {@link InsertionResult} and
-     * {@link FragmentInsertionResult}. A modification changes no element count, so nothing has to
-     * be positioned — every index keeps the element it had — and the result carries only what the
-     * gate needs.
+     * A modification changes no element count, so the result carries only what the gate needs.
      *
-     * @param line             The line being modified
      * @param projectedColumns The line's columns as {@link LayoutEngine} will build them after the
-     *                         modification — every column with the changed ones swapped out,
-     *                         including the terminal barline — what {@link #fitsWithinLine} solves
+     *                         modification, including the terminal barline
      */
     public record ModificationResult(Line line, List<ElementColumn> projectedColumns) {
         public ModificationResult {
             projectedColumns = List.copyOf(projectedColumns);
         }
 
-        /**
-         * Returns whether the modified line fits within the given right margin — compress-to-fit,
-         * the identical gate the insertion paths use: the line is free to give up slack to absorb
-         * the widened columns, and only a chain that overflows with every gap frozen at its strut
-         * is rejected.
-         *
-         * @param staffRightMarginSs The maximum allowed line width in staff spaces
-         * @return {@code true} unless the projected spring chain solves INFEASIBLE
-         */
+        /** Compress-to-fit, the identical gate the insertion paths use. */
         public boolean fitsWithinLine(double staffRightMarginSs) {
             return !HorizontalSpacingCalculator
                 .solveLine(projectedColumns, line, staffRightMarginSs).isInfeasible();
@@ -199,20 +124,10 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Calculates both the X position for an inserted element and the shift amount for subsequent elements.
-     * <p>
-     * This method must be called before the element is added to the line, since it examines the
-     * line's current state to determine proper spacing.
+     * Must be called before the element is added to the line, since it examines the line's
+     * current state to determine proper spacing.
      *
-     * @param line               The line being modified (before insertion)
-     * @param insertedElement    The element being inserted
-     * @param insertIndex        The index where the element will be inserted (0-based)
-     * @param layout             The line's current layout, which the neighbours' positions are
-     *                           read from
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return An {@link InsertionResult} with the element's X position, the shift for subsequent
-     *         elements, and the projected spring chain its fit gate solves
+     * @param lyricRenderMetrics null spaces the line as if it had no lyrics
      */
     public static InsertionResult calculateInsertion(
         Line line,
@@ -284,14 +199,7 @@ public final class InsertionSpacingCalculator {
         return new InsertionResult(insertedElementXSs, shiftSs, newLineWidthSs, line, fitColumns);
     }
 
-    /**
-     * Builds the line as it would be after the insertion — the same column list and
-     * lyric-stretched spring chain {@link LayoutEngine} would build — so the fit gate asks the
-     * solver the identical question the committed layout will ask.
-     * <p>
-     * The auto-maintained terminal is excluded: layout pins it, so it is not the insertion's to
-     * space. An {@code insertIndex} past the last effective element appends.
-     */
+    /** The auto-maintained terminal is excluded: layout pins it. The fit gate's chain includes it. */
     private static ProjectedLine projectLine(
         Line line,
         ElementColumn insertedColumn,
@@ -323,11 +231,6 @@ public final class InsertionSpacingCalculator {
         return new ProjectedLine(columns, springs, splicedIndex);
     }
 
-    /**
-     * Builds the column for an element already on the line, carrying its real syllable width and
-     * beam membership so a preview is spaced by the same lyric rules as the committed layout.
-     * Falls back to a syllable-less column when the caller has no lyric metrics.
-     */
     private static ElementColumn buildSurroundingColumn(
         StaffElement element, Line line, int elementIndex, @Nullable ElementColumnBuilder columnBuilder) {
 
@@ -339,11 +242,8 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Appends the line's auto-maintained terminal barline column to a projected chain, if the line
-     * has one. The positioning chains exclude the terminal — layout pins it flush-right rather than
-     * shifting it — but the fit solve must still include it, because it consumes the span the rest
-     * of the chain has to fit into. Without it a nearly-full line could pass the gate, commit, then
-     * fail to lay out.
+     * The fit solve must include the terminal, because it consumes span the rest of the chain has
+     * to fit into; without it a nearly-full line could pass the gate and then fail to lay out.
      */
     private static void appendTerminalIfPresent(
         List<? super ElementColumn> columns, Line line, @Nullable ElementColumnBuilder columnBuilder) {
@@ -357,35 +257,9 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Calculates the fit of {@code edit}, the paste of a multi-element fragment: its inserted
-     * elements spliced into its line at its index, in place of the elements it removes when it is
-     * a paste-replace. Pure measurement — the line and the fragment elements are never mutated;
-     * the projection is built on lightweight columns.
-     * <p>
-     * The multi-element analogue of {@link #calculateInsertion}: it builds the projected line the
-     * commit will produce — surviving predecessors, the fragment's clones, then the surviving
-     * successors. Fit is the same compress-to-fit solve over the same chain the layout engine
-     * runs, including the terminal barline, so an insert the gate accepts always lays out.
-     * <p>
-     * The solve reads the line in the keys the edit leaves it in. The line's opening key
-     * signature is measured at the width of {@link ProjectedEdit#startKey()}; every key change
-     * on the projected line moves the key on from there, which gives each pasted key signature
-     * the key it cancels, the key the line leaves off in, and so the key the line after it begins
-     * in unless that line has its own.
-     * <p>
-     * The surrounding columns and the fragment's own clones carry their real syllable widths
-     * whenever a {@link LyricRenderMetrics} is supplied, mirroring {@link #calculateInsertion}.
-     * Callers with no lyric metrics to hand may pass {@code null}, which falls back to
-     * syllable-less columns for both.
-     *
-     * @param edit               The paste as the edit leaves its line; it inserts at least one
-     *                           element, and removes none of the line's auto-maintained terminal
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return A {@link FragmentInsertionResult} with the projected spring chain its fit gate
-     *         solves and the projected keys it solves against
-     * @throws IllegalArgumentException if {@code edit} inserts nothing, or removes the line's
-     *     auto-maintained terminal
+     * Pure measurement: the line and the fragment elements are never mutated. The solve reads the
+     * line in the keys the edit leaves it in. A {@code null} {@code lyricRenderMetrics} falls back
+     * to syllable-less columns.
      */
     public static FragmentInsertionResult calculateFragmentInsertion(
         ProjectedEdit edit, @Nullable LyricRenderMetrics lyricRenderMetrics) {
@@ -462,16 +336,12 @@ public final class InsertionSpacingCalculator {
         return new FragmentInsertionResult(line, columns, keys);
     }
 
-    /** The key in effect after {@code element}, when {@code key} is in effect before it. */
     private static Key keyAfter(StaffElement element, Key key) {
         return (element instanceof KeyChangeElement keyChange) ? keyChange.getKey() : key;
     }
 
     /**
-     * The key the line after {@code line} begins in once {@code line} leaves off in
-     * {@code keyAtEndOfLine}: its own key when it has one, and otherwise the key it inherits.
-     *
-     * @return the key, or null when {@code line} is its song's last line
+     * @return null when {@code line} is its song's last line
      */
     private static @Nullable Key nextRunningKey(Line line, Key keyAtEndOfLine) {
         if (line.isLast()) {
@@ -484,30 +354,9 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Calculates whether the line still fits once an in-place modification — an accidental, a dot,
-     * a duration swap — is applied. Pure measurement: the line and the projected elements are
-     * never mutated.
-     * <p>
-     * The replace-a-column analogue of {@link #calculateInsertion} and
-     * {@link #calculateFragmentInsertion}: the same projection with columns <em>replaced</em>
-     * rather than spliced. Because a modification never changes the element count, indices are
-     * preserved 1:1 and there is nothing to position — {@code projectedElements} is simply the
-     * line as it will read, detached stand-ins at the changed positions and the live elements
-     * everywhere else. Each column takes its extents from the projected element and its lyric and
-     * beam context from the same index on the real line, then the auto-maintained terminal barline
-     * is appended, exactly as the insertion projections do.
-     * <p>
-     * Without this gate an infeasible modification is not refused at mutation time: it surfaces
-     * later as a line laid out on its collision floors, whose tail runs past the staff and is
-     * clipped, drawn in red — the modified element may itself be the part cut off.
+     * Pure measurement: the line and the projected elements are never mutated.
      *
-     * @param line               The line being modified, in its pre-modification state
-     * @param projectedElements  The line's effective elements as they will read after the
-     *                           modification, in element order; must have exactly
-     *                           {@code line.effectiveElementCount()} entries, and at least one
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return A {@link ModificationResult} carrying the projected spring chain its fit gate solves
+     * @param lyricRenderMetrics null spaces the line as if it had no lyrics
      */
     public static ModificationResult calculateModification(
         Line line,
@@ -539,15 +388,7 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Determines whether a grace note will fit on a line when inserted at the given index.
-     *
-     * @param line               The line to check (before insertion)
-     * @param atIndex            The index where the grace note would be inserted
-     * @param layout             The line's current layout, which the neighbours' positions are
-     *                           read from
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return {@code true} if the grace note fits on the line
+     * @param lyricRenderMetrics null spaces the line as if it had no lyrics
      */
     public static boolean hasRoomForGraceNote(
         Line line, int atIndex, LayoutResult layout, @Nullable LyricRenderMetrics lyricRenderMetrics) {
@@ -559,35 +400,11 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Determines whether the slides of the given kind will fit on a line when applied to the
-     * elements at the given indices.
-     * <p>
-     * A slide claims horizontal space without adding a column: a fall widens its own source's
-     * column, and a connecting glissando puts a floor under the spring reaching the following
-     * column so the line it draws stays visible. Either way the line it produces is the current
-     * line with those columns swapped out — the same shape as an accidental, a dot or a duration
-     * swap, so this projects the line's effective elements with a slide-carrying clone at each
-     * source index and asks {@link #calculateModification} the identical projection-and-solve
-     * question those modifications do ({@link ModificationResult#fitsWithinLine}). Solving rather
-     * than measuring is what lets a full line with slack in its springs accept a slide: the
-     * projection is derived from the chain, never from the elements' current X positions, which
-     * still carry the pre-slide (and possibly stale) spacing.
-     * <p>
      * The whole batch is projected in one solve, so the verdict accounts for the slides' cumulative
-     * demand. Asking about each candidate separately against the unchanged line would accept N
-     * slides that each fit alone but jointly overrun it.
+     * demand; asking about each candidate separately would accept N slides that each fit alone but
+     * jointly overrun the line.
      *
-     * @param line               The line to check
-     * @param sourceIndices      The indices of the elements the slides would be applied to. Each
-     *                           must name an effective element
-     *                           ({@code < line.effectiveElementCount()}) — the auto-maintained
-     *                           terminal cannot carry a slide, and an index naming it would leave
-     *                           that slide out of the projection entirely, so one that does refuses
-     *                           the whole batch
-     * @param slide              The kind of slide being applied
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return {@code true} if the slides fit on the line
+     * @param lyricRenderMetrics null spaces the line as if it had no lyrics
      */
     public static boolean hasRoomForSlides(
         Line line, int[] sourceIndices, Slide slide, @Nullable LyricRenderMetrics lyricRenderMetrics) {
@@ -628,25 +445,14 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Returns whether {@code line} still fits its song's line width once it reads as
-     * {@code projectedElements}: the in-place gate every modification that widens a column asks —
-     * a slide, a dot, a duration swap, or a chain walk stamping an accidental on a note that drew
-     * none. Pure measurement — neither the line nor the projected elements are mutated.
-     * <p>
-     * The verdict is {@link #calculateModification}'s
-     * {@link ModificationResult#fitsWithinLine compress-to-fit} solve at the song's line width, so a
-     * modification this accepts always lays out, and a step added to the solve reaches this gate on
-     * its own.
+     * Pure measurement: neither the line nor the projected elements are mutated. The verdict is
+     * {@link #calculateModification}'s compress-to-fit solve, so a modification this accepts always
+     * lays out.
      *
-     * @param line               The line being modified, in its pre-modification state
      * @param projectedElements  The line's effective elements as they will read after the
      *                           modification, in element order: detached stand-ins at the changed
-     *                           positions and the live elements everywhere else, or the live
-     *                           elements throughout to measure the line as it stands
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return {@code true} unless the projected line overflows the song's line width with every
-     *         gap frozen at its strut
+     *                           positions and the live elements everywhere else
+     * @param lyricRenderMetrics null spaces the line as if it had no lyrics
      * @throws IllegalArgumentException when {@code projectedElements} is empty, or its size differs
      *                                  from {@code line.effectiveElementCount()}
      */
@@ -659,11 +465,6 @@ public final class InsertionSpacingCalculator {
             .fitsWithinLine(line.getSong().getLineWidthSs().value());
     }
 
-    /**
-     * Projects the line width after shifting the last effective element right by {@code shiftSs},
-     * taking the larger of {@code baseWidthSs} and that element's shifted right edge. Returns
-     * {@code baseWidthSs} unchanged when the line has no effective elements.
-     */
     private static double projectedWidthWithLastShiftSs(
         Line line, double baseWidthSs, double shiftSs, LayoutResult layout) {
 

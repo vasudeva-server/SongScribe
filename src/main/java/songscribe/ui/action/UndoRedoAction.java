@@ -27,12 +27,6 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.message.notification.UndoStateDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
-/**
- * Shared behavior of {@link UndoAction} and {@link RedoAction}: both are Cmd/Ctrl-Z
- * variants whose label and enabled state mirror one side of the undo engine and are
- * refreshed on every {@link UndoStateDidChangeNotification}. Subclasses supply the
- * direction-specific label and stack query.
- */
 abstract class UndoRedoAction extends UIAction {
 
     UndoRedoAction(MainFrame mainFrame, String initialLabel, String iconName, int acceleratorModifiers) {
@@ -48,16 +42,10 @@ abstract class UndoRedoAction extends UIAction {
         refreshLabelAndState();
     }
 
-    /** The current direction-specific label (e.g. "Undo Add Note"). */
     abstract String currentLabel();
 
-    /** Whether the direction's stack has a step to apply. */
     abstract boolean stackHasStep();
 
-    /**
-     * Folds whether the direction's stack has a step on top of the base enabled state
-     * (which honors {@link Flag#DISABLE_WHEN_PLAYING}).
-     */
     @Override
     public final boolean updateEnabledState() {
         var enabledState = super.updateEnabledState() && stackHasStep();

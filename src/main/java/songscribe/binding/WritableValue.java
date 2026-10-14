@@ -22,47 +22,19 @@ package songscribe.binding;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A sink: something the framework can write, and nothing else.
+ * A sink: something the framework can write, and nothing else. With no readable value and no
+ * notification it can only be a bind <i>target</i>, so the compiler refuses a binding that
+ * would take it as a source and silently never run.
  *
- * <p>A {@code WritableValue} has no readable current value and no notification, so
- * it can only ever be a bind <i>target</i>. That is a promise about the underlying
- * storage, not a restriction imposed for tidiness: the presentation state a dialog
- * computes — a component's enabled state, its font, a preview rendering — is
- * write-only in Swing itself. There is no notification behind any of it, so a
- * binding that took one as a source would be a binding that silently never runs.
- * Typing them this way is what makes the compiler refuse that binding.
- *
- * <p>The adapters over such state return this type for exactly that reason. A
- * control the user also edits has a notification route and is typed
- * {@link Property} instead.
- *
- * <p>Because there is no way to read one, a binding into a {@code WritableValue}
- * cannot compare the value it is about to write against what the target currently
- * holds; it compares against the value it last wrote. See
- * {@link Bindings#bind(WritableValue, ObservableValue)}.
- *
- * <p><b>Threading:</b> EDT-only, like everything in this package.
- *
- * @param <T> the written value's type, declared {@code @Nullable} when absence is a value
- *     the graph carries
+ * <p>EDT-only.
  */
 @FunctionalInterface
 public interface WritableValue<T extends @Nullable Object> {
 
     /**
-     * Writes {@code value} into the underlying storage.
-     *
-     * <p>An implementation must be tolerant of being given the value it already
-     * holds: a write is not required to be a change, and callers do not check.
-     * Whether the write is observable at all is up to the storage — writing a Swing
-     * control's enabled state or font has an immediate visual effect, while writing
-     * a plain holder has none until something reads it.
+     * An implementation must tolerate being given the value it already holds.
      *
      * @param value the value to write, never {@code null}
-     * @effects replaces what the storage holds. When the storage is a Swing control
-     *     this repaints it, and — for the control adapters that are also
-     *     {@link Property} — fires that control's own notification route, which is
-     *     what a binding's re-entrancy guard exists to absorb.
      */
     void set(T value);
 }

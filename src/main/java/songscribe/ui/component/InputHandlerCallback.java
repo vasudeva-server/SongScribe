@@ -51,73 +51,46 @@ public interface InputHandlerCallback {
     void selectionChanged();
 
     /**
-     * Gives the score view focus, in response to a press anywhere on the score surface.
-     * <p>
-     * A press on the score always gives the score focus, with no exceptions, which is why
-     * callers do this before any mode or state guard: without it a user who was typing in
-     * the lyric editor and presses back onto the score would have score key bindings typed
-     * into the lyric instead. The lyric editor still takes focus on the double-click path,
-     * which opens the editor after this has run.
-     *
-     * @effects requests focus for the score view; touches no selection or edit-mode state
+     * A press on the score always gives the score focus, so callers do this before any mode or
+     * state guard: otherwise score key bindings would be typed into the lyric editor. The
+     * double-click path opens the editor after this has run.
      */
     void takeFocus();
 
     /**
-     * Cancels a pending insertion-point placement and clears the selection — what a click
-     * nothing else claimed does.
+     * Cancels a pending insertion-point placement and clears the selection. Does nothing when no
+     * placement is in progress and the view is not in select mode. Leaves focus alone.
      * <p>
-     * A click reaches this whether it landed on the view's own background or on a score
-     * component that opened no editor, so both routes leave the view in the same state.
-     * When no placement is in progress and the view is not in select mode, it does nothing.
-     * <p>
-     * The selection is cleared directly rather than by posting a deselect command: that
-     * command's handler acts only while the score holds focus, an arbitration the menu
-     * action and the Escape key need because they fire while something else may hold focus.
-     * A click on the score is itself proof of the target, so it needs none.
-     *
-     * @effects cancels the insertion-point placement when one is in progress; clears the
-     *          selection when the view is in select mode; leaves focus alone
+     * The selection is cleared directly, not by a deselect command, whose handler acts only
+     * while the score holds focus.
      */
     void cancelPlacementAndDeselect();
 
     /**
      * Extends the active element selection to {@code targetIndex}, keeping the anchor
-     * fixed. Shared by shift-click and shift-arrow, which each compute the target index
-     * to extend or shrink the selection to.
+     * fixed.
      */
     void extendSelectionTo(int targetIndex);
 
     /**
-     * Opens the lyric editor on the first note in the current selection, in response to
-     * Return/Enter. A selection holding no note, and no selection at all, are both no-ops.
+     * A selection holding no note, and no selection at all, are no-ops.
      */
     void editLyricOnSelection();
 
     /**
-     * Zooms in or out around {@code viewPoint} (in this view's local coordinate
-     * space) in response to a Cmd+wheel (macOS) or Ctrl+wheel (other platforms)
-     * gesture. {@code preciseWheelRotation} is the raw rotation from the
-     * originating {@link MouseWheelEvent}; negative values zoom in, positive
-     * values zoom out.
+     * Negative {@code preciseWheelRotation} zooms in, positive zooms out.
      */
     void zoomByWheel(double preciseWheelRotation, Point viewPoint);
 
     /**
-     * Zooms in or out around {@code viewPoint} (ScoreView-local coordinates, or
-     * {@code null} to anchor at the viewport center) in response to a native macOS
-     * trackpad-pinch magnification gesture. {@code magnification} is the per-event
-     * delta from {@link com.apple.eawt.event.MagnificationEvent}; positive zooms
-     * in, negative zooms out.
+     * {@code viewPoint} is {@code null} to anchor at the viewport center. Positive
+     * {@code magnification} zooms in, negative zooms out.
      */
     void zoomByMagnification(double magnification, @Nullable Point viewPoint);
 
     /**
-     * Forwards a non-zoom wheel event to the scroll pane's own default scroll
-     * handling. Required because registering a {@code MouseWheelListener} directly
-     * on this view makes AWT stop its ancestor search here instead of continuing
-     * up to the {@code JScrollPane}, so ordinary scroll gestures would otherwise
-     * silently do nothing once a wheel listener is present.
+     * A {@code MouseWheelListener} on this view makes AWT stop its ancestor search here instead
+     * of reaching the {@code JScrollPane}, so ordinary scrolling needs this forward.
      */
     void forwardWheelScroll(MouseWheelEvent e);
 }

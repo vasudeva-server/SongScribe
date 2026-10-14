@@ -75,20 +75,10 @@ import songscribe.util.UIUtils.ToolTipSection;
 
 /**
  * Component that renders a single staff line with its musical content.
- * <p>
- * This is the core rendering component that:
- * <ul>
- *   <li>Draws the 5-line staff</li>
- *   <li>Renders notes and other elements via {@link LineRenderer}</li>
- * </ul>
  */
 public class LineComponent extends ScoreComponent
     implements MouseMotionListener {
 
-    /**
-     * The space, in view pixels, kept on each side of a lint mark's item when it is scrolled into
-     * view, so that the item does not sit at the edge of the viewport.
-     */
     private static final int LINT_MARK_MARGIN = 10;
 
     // ==========================================================================
@@ -96,39 +86,15 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
 
     /**
-     * Interface for checking selection state.
-     * <p>
      * Allows LineComponent to check selection without coupling to ScoreView.
      */
     public interface SelectionProvider {
 
-        /**
-         * Returns whether the given hit target is the current selection.
-         * <p>
-         * This is the whole interface: every kind a click can address asks the same
-         * question, in the same vocabulary, whether it is a note, a lyric syllable, an
-         * articulation or the staff line itself.
-         *
-         * @param target    The thing a click would have selected
-         * @param lineIndex The line index
-         * @return true if that exact target is selected
-         */
         boolean isSelected(HitTarget target, int lineIndex);
 
         /**
-         * Returns whether the element at {@code elementIndex} falls inside the selected
-         * index range.
-         * <p>
-         * The one question {@link #isSelected} cannot answer cheaply. An index range is not
-         * something a click addresses — it is the other shape a selection can take — so it has
-         * no {@link HitTarget} of its own. Every caller here is drawing an element and already
-         * holds its index; asking through {@link #isSelected} would wrap that index into a
-         * target only for the answer to derive it back by scanning the line, once per drawn
-         * element on every repaint.
-         *
-         * @param elementIndex The element's index on the line
-         * @param lineIndex    The line index
-         * @return true if that element falls inside the selected range
+         * An index range has no {@link HitTarget}; routing the question through
+         * {@link #isSelected} would scan the line once per drawn element on every repaint.
          */
         boolean isElementRangeSelected(int elementIndex, int lineIndex);
     }
@@ -137,87 +103,54 @@ public class LineComponent extends ScoreComponent
     // Instance Fields
     // ==========================================================================
 
-    /** The line model containing staff elements. */
     @Nullable
     private Line line;
 
-    /** Index of this line within the song. */
     private int lineIndex;
 
-    /** Y coordinate of the middle staff line (B line) in staff-space units. */
     private double middleLineYSs;
 
-    /** Whether {@link #middleLineYSs} reflects the current layout. */
     private boolean middleLineYSsValid;
 
-    /** Provider for checking note selection state. */
     @Nullable
     private SelectionProvider selectionProvider;
 
-    /** The currently playing note and its paired grace note, or {@code null} if none is playing. */
+    /** {@code null} if none is playing. */
     private LineInvariants.@Nullable Playing playing;
 
-    /** Cached layout result from the last layout pass. */
     @Nullable
     private LayoutResult layoutResult;
 
-    /** Whether layout needs to be recalculated. */
     private boolean layoutDirty = true;
 
     /**
-     * True once the overflow alert has been shown for the current document, so it is shown once
-     * and not once per overflowing line, per paint, or per episode. The red staff lines are the
-     * standing indication from then on, and they clear themselves when the line fits again — so
-     * there is nothing a second alert would tell the user. Reset by
-     * {@link #resetOverflowWarning} when a document is installed. EDT-only, so a plain static
-     * boolean is safe.
-     * <p>
-     * One flag for every line in the process, which is correct only because the app holds one
-     * document at a time: {@code MainFrame} is a singleton owning a single {@link ScoreView}, and
-     * every path that installs a document goes through {@link ScoreView#setSong}, which resets this.
-     * A second window, or a document-installing path that bypasses {@code setSong}, would have to
-     * scope the flag per document — otherwise it either swallows a warning the user needs or fires a
-     * stale one.
+     * EDT-only. One flag for every line in the process, correct only because the app holds one
+     * document at a time and every document install goes through {@link ScoreView#setSong},
+     * which calls {@link #resetOverflowWarning}. A second window, or an install that bypasses
+     * {@code setSong}, would have to scope it per document.
      */
     private static boolean overflowWarningShown = false;
 
-    /** True when the previous line's lyric extender continues into this line. */
     private boolean hasLeadingLyricContinuation;
 
     /**
-     * Element index hit by the most recent press, or {@code null} when that press hit no
-     * element. {@link NoteDragHandler} computes this on press and discards it on release, so it
-     * is captured in {@link #released} for {@link #clicked} — which runs next — to
-     * reuse instead of scanning the line's elements a second time for the same point.
+     * {@code null} when the most recent press hit no element.
      */
     private @Nullable Integer pressHitIndex;
 
-    /** Handles selection, hit-testing, and drag logic. */
     private final LineSelectionHandler selectionHandler = new LineSelectionHandler(this);
 
-    /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
     private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
 
-    /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
 
     /**
-     * The lint mark the latest lookup found under the pointer, and what that lookup read.
-     * <p>
-     * The rule: the stored mark answers for a point while the point equals {@code viewPoint} and
-     * the song's current lint report, this line's current layout and the view's current zoom are
-     * the very instances stored. Each of the three is immutable and replaced, never changed in
-     * place, so an edit, a script change or a zoom fails the comparison and the mark is looked up
-     * again; a stored mark is never one the current report does not hold, or one at a place the
-     * pointer has left.
+     * The stored mark answers for a point only while the point equals {@code viewPoint} and the
+     * lint report, line layout and zoom are the very instances stored. Each is replaced, never
+     * mutated, so any edit, script change or zoom forces a new lookup.
      *
-     * @param viewPoint    the point looked up, in this component's view pixels; a copy, so later
-     *                     changes to the event's point do not reach it
-     * @param report       the lint report the lookup read
-     * @param layoutResult the layout the lookup read
-     * @param viewScale    the zoom the lookup converted the point at
-     * @param hit          the mark under the point and its box, or {@code null} when the point is
-     *                     on no mark
+     * @param viewPoint a copy, so later changes to the event's point do not reach it
+     * @param hit       {@code null} when the point is on no mark
      */
     private record PointerMark(
         Point viewPoint,
@@ -228,15 +161,10 @@ public class LineComponent extends ScoreComponent
     ) { }
 
     /**
-     * The mark under the pointer as of the latest lookup, or {@code null} before the first one
-     * and after the pointer leaves this component. {@link #mouseMoved} sets it on every move, and
-     * the tooltip methods read it, so each mouse event runs the hit test once.
+     * {@code null} before the first lookup and after the pointer leaves this component.
      */
     private @Nullable PointerMark pointerMark = null;
 
-    /**
-     * Creates a new LineComponent.
-     */
     public LineComponent() {
         // This listener must be added before the tooltip manager registers below, and the order
         // must stay: Swing calls motion listeners in the order they were added, so mouseMoved
@@ -249,12 +177,6 @@ public class LineComponent extends ScoreComponent
         ToolTipManager.sharedInstance().registerComponent(this);
     }
 
-    /**
-     * Sets the line to render.
-     *
-     * @param line      The line model
-     * @param lineIndex Index of the line in the song
-     */
     public void setLine(Line line, int lineIndex) {
         this.line = line;
         this.lineIndex = lineIndex;
@@ -274,34 +196,18 @@ public class LineComponent extends ScoreComponent
         repaint();
     }
 
-    /**
-     * Returns the line model.
-     */
     public @Nullable Line getLine() {
         return line;
     }
 
-    /**
-     * Returns the line index.
-     */
     public int getLineIndex() {
         return lineIndex;
     }
 
-    /**
-     * Sets the Y coordinate of the middle staff line in staff-space units.
-     *
-     * @param middleLineYSs Y coordinate in staff-space units
-     */
     public void setMiddleLineYSs(double middleLineYSs) {
         this.middleLineYSs = middleLineYSs;
     }
 
-    /**
-     * Returns the Y coordinate of the middle staff line in staff-space units.
-     * <p>
-     * Lazily calculates the value if it hasn't been set yet.
-     */
     public double getMiddleLineYSs() {
         if (!middleLineYSsValid && song != null) {
             middleLineYSs = calculateMiddleLineYSs();
@@ -311,52 +217,22 @@ public class LineComponent extends ScoreComponent
         return middleLineYSs;
     }
 
-    /**
-     * Returns the Y coordinate of the top staff line in staff-space units.
-     * <p>
-     * The staff's own vertical extent, which anything drawn to straddle it — the selection band
-     * above all — takes from here rather than re-deriving from the midline.
-     */
     public Ss getStaffTopYSs() {
         return new Ss(getMiddleLineYSs() - Staff.STAFF_HALF_SS);
     }
 
-    /**
-     * Returns the Y coordinate of the bottom staff line in staff-space units.
-     *
-     * @see #getStaffTopYSs
-     */
     public Ss getStaffBottomYSs() {
         return new Ss(getMiddleLineYSs() + Staff.STAFF_HALF_SS);
     }
 
-    /**
-     * Returns the zoomed staff-space-to-pixel scale (document {@code pixelsPerStaffSpace} × the
-     * view zoom factor) for this line.
-     * <p>
-     * The component-side counterpart of {@code LineInvariants.getViewPixelsPerStaffSpace()},
-     * which is reachable only from inside a render pass. Callers outside one — the overlay
-     * components, which establish their own scale-and-translate — read the zoomed scale here
-     * rather than re-multiplying the expression inline.
-     */
     public double getViewPixelsPerStaffSpace() {
         return DocumentScale.PIXELS_PER_STAFF_SPACE * getViewScale().factor();
     }
 
-    /**
-     * Sets the selection provider for checking note selection state.
-     *
-     * @param selectionProvider The selection provider
-     */
     public void setSelectionProvider(@Nullable SelectionProvider selectionProvider) {
         this.selectionProvider = selectionProvider;
     }
 
-    /**
-     * Sets the ScoreView reference for accessing song and services.
-     *
-     * @param scoreView The ScoreView component
-     */
     @Override
     public void setScoreView(ScoreView scoreView) {
         super.setScoreView(scoreView);
@@ -367,10 +243,6 @@ public class LineComponent extends ScoreComponent
         }
     }
 
-    /**
-     * Sets the currently playing note and its paired grace note, triggering a single repaint,
-     * or {@code null} when nothing is playing.
-     */
     public void setPlaying(LineInvariants.@Nullable Playing playing) {
         if (!Objects.equals(this.playing, playing)) {
             this.playing = playing;
@@ -378,14 +250,10 @@ public class LineComponent extends ScoreComponent
         }
     }
 
-    /** Returns the currently playing note and its paired grace note, or {@code null} if none. */
     public LineInvariants.@Nullable Playing getPlaying() {
         return playing;
     }
 
-    /**
-     * Marks the layout as dirty, requiring recalculation on next render.
-     */
     public void invalidateLayout() {
         layoutDirty = true;
         layoutResult = null;
@@ -394,49 +262,26 @@ public class LineComponent extends ScoreComponent
         repaint();
     }
 
-    /**
-     * Returns the current layout result, or null if not yet calculated.
-     * <p>
-     * The layout result contains calculated bounds for all elements on this line.
-     * Renderers can use this to get positions instead of calculating them directly.
-     *
-     * @return The layout result, or null if layout hasn't been performed yet
-     */
+    /** Null if layout hasn't been performed yet. */
     @Nullable
     public LayoutResult getLayoutResult() {
         return layoutResult;
     }
 
-    /** Returns true when this line has no layout result to read. */
     private boolean layoutMissing() {
         return layoutResult == null;
     }
 
-    /** Returns true when the layout must be recomputed before its results can be read. */
     private boolean needsLayout() {
         return layoutDirty || layoutMissing();
     }
 
-    /**
-     * Ensures the layout is up to date, computing it if dirty.
-     * <p>
-     * Called by {@link StaffPanel#ensureAllLineLayouts()} before collecting all layout
-     * results, since {@link StaffLinesLayout} measures every line from them.
-     */
     public void ensureLayout() {
         if (song != null && line != null && needsLayout()) {
             performLayout();
         }
     }
 
-    /**
-     * Ensures the layout is up to date, then returns it.
-     *
-     * @return the layout result
-     * @throws RuntimeError.ExitInProgressError if layout ran and still produced none, and the
-     *         fatal-error dialog raised for that is already showing — see
-     *         {@link #unexpectedNullLayout}
-     */
     public LayoutResult requireLayoutResult() {
         ensureLayout();
 
@@ -449,15 +294,6 @@ public class LineComponent extends ScoreComponent
         return result;
     }
 
-    /**
-     * Sets whether this line starts with a lyric extender continuation from the previous line.
-     * <p>
-     * The layout pass uses this flag to emit a leading-stub extender from x = 0 to the first
-     * lyric-bearing element (or to the first rest that breaks the continuation).
-     * <p>
-     * Marks the layout dirty if the value changes so the next {@code performLayout()} picks
-     * up the new state.
-     */
     public void setHasLeadingLyricContinuation(boolean hasLeadingLyricContinuation) {
         if (this.hasLeadingLyricContinuation != hasLeadingLyricContinuation) {
             this.hasLeadingLyricContinuation = hasLeadingLyricContinuation;
@@ -485,21 +321,13 @@ public class LineComponent extends ScoreComponent
         }
     }
 
-    /**
-     * Clears the once-per-document guard on the overflow alert, so the next document that cannot
-     * fit a line warns about it. Called when a document is installed.
-     */
     public static void resetOverflowWarning() {
         overflowWarningShown = false;
     }
 
     /**
-     * Warns, once per document, that content is being clipped.
-     * <p>
-     * Deferred to a later EDT cycle because layout runs during paint; showing a modal dialog
-     * synchronously would re-enter painting. The guard is set before the dialog rather than after
-     * it, so the several lines that typically overflow together produce one alert instead of one
-     * each.
+     * Deferred to a later EDT cycle: layout runs during paint, and a modal dialog shown
+     * synchronously would re-enter painting.
      */
     private static void warnLineOverflows() {
         if (overflowWarningShown) {
@@ -616,11 +444,6 @@ public class LineComponent extends ScoreComponent
         return result.paintAboveMidlineSs();
     }
 
-    /**
-     * Builds the error for the unexpected case where the layout pass produced no result. Layout
-     * itself cannot fail — an over-full line is placed and drawn clipped — so this
-     * means the pass never ran, which it skips only without a score view.
-     */
     private RuntimeException unexpectedNullLayout() {
         return RuntimeError.exit("layout result is null after layout for line " + lineIndex);
     }
@@ -629,25 +452,14 @@ public class LineComponent extends ScoreComponent
     // Insertion Note Delegation
     // ==========================================================================
 
-    /**
-     * Clears the insertion note from all lines.
-     * Delegates to {@link PreviewElementManager}.
-     */
     public static void clearPreviewElement() {
         PreviewElementManager.clearPreviewElement();
     }
 
-    /**
-     * Sets whether the Alt key is currently pressed and updates the cursor.
-     * Delegates to {@link PreviewElementManager}.
-     */
     public static void setAltPressed(boolean pressed) {
         PreviewElementManager.setAltPressed(pressed);
     }
 
-    /**
-     * Returns whether this line currently has the insertion note.
-     */
     public boolean hasPreviewElement() {
         return PreviewElementManager.hasPreviewElement(this);
     }
@@ -831,10 +643,7 @@ public class LineComponent extends ScoreComponent
         PreviewElementManager.handleClick(this);
     }
 
-    /**
-     * Returns the element whose lyric a double-click on {@code lyricHit} edits, or null when the
-     * syllable has no text to edit.
-     */
+    /** Null when the syllable has no text to edit. */
     private static @Nullable StaffElement editableLyricElement(HitTarget.Lyric lyricHit) {
         var element = lyricHit.element();
         var lyric = element.getLyricForScript(lyricHit.script());
@@ -842,15 +651,9 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * The index in {@code line} of the element {@code clickHit} resolved to, or {@code null}
-     * when the click landed on anything else.
-     * <p>
-     * Package-private because every handler in this package that turns a resolved hit into an
-     * element it can act on asks this same question — the double-click lyric editor here, the
-     * pitch drag in {@link NoteDragHandler}, and Shift+click extension in
-     * {@link LineSelectionHandler}. Answering it in one place is what keeps a future change to
-     * what counts as a hit element — a new {@link HitTarget} kind, say — from having to be
-     * remembered three times.
+     * {@code null} when the click landed on anything other than an element. Package-private so
+     * {@link NoteDragHandler} and {@link LineSelectionHandler} share this one definition of a
+     * hit element.
      */
     static @Nullable Integer elementIndexOf(@Nullable HitTarget clickHit, Line line) {
         if (clickHit instanceof HitTarget.Element(var element)) {
@@ -860,13 +663,6 @@ public class LineComponent extends ScoreComponent
         return null;
     }
 
-    /**
-     * Opens the lyric editor on the double-clicked element {@code clickHit} resolved to,
-     * returning true when it did.
-     * <p>
-     * The staff-line route that makes selection active never reaches the editor, since no
-     * element sits in the clef/key signature column for {@code clickHit} to resolve to.
-     */
     private boolean editLyricOnDoubleClickedElement(@Nullable HitTarget clickHit, Line line) {
         var view = getScoreView();
 
@@ -893,25 +689,10 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Opens Song Settings on its Attribution tab when the double-click landed on the attribution
-     * block, returning true when it opened.
-     * <p>
-     * This runs outside the {@code isSelectionActive} test the three notation gestures sit
-     * behind, on purpose, so the gesture works in EDIT mode as well as SELECT. That matches the
-     * title and the subtitle, which reach the same dialog from any mode through
-     * {@link ScoreComponent#openEditor}.
-     * <p>
-     * The preview element takes precedence: the attribution's bottom edge can reach down into
-     * the insertable pitch range, and claiming the click there would make those staff positions
-     * unreachable in EDIT mode. Within that band the click belongs to the preview and the block
-     * is not double-clickable; above it the preview is already cleared and the dialog opens.
-     * <p>
-     * Answering false is safe. When the hit was not the attribution nothing has been claimed,
-     * and when the preview owns the click, letting it fall through to
-     * {@link PreviewElementManager#handleClick} is exactly the intended outcome. This probe
-     * cannot lean on the reason {@link #editDoubleClickedAttachment} gives — it runs outside
-     * {@code isSelectionActive}, so selection need not be active and {@code handleClick} need
-     * not consume the click.
+     * Runs outside the {@code isSelectionActive} test on purpose, so the gesture works in EDIT
+     * mode as well as SELECT. The preview element takes precedence: the attribution's bottom
+     * edge can reach into the insertable pitch range, and claiming the click there would make
+     * those staff positions unreachable in EDIT mode.
      */
     private boolean editDoubleClickedAttribution(@Nullable HitTarget clickHit) {
         if (!(clickHit instanceof HitTarget.Attribution)) {
@@ -927,20 +708,8 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Opens the edit dialog for the double-clicked attachment {@code clickHit} resolved to,
-     * returning true when one opened.
-     * <p>
-     * The press already selected the attachment, so this is only the second half of the
-     * gesture. Unlike {@link #editLyricOnDoubleClickedElement} there is no active-editor
-     * condition: a lyric editor open elsewhere on the line must not block editing an
-     * attachment. A fermata or a dynamic has no dialog, so {@link AttachmentDialogController#edit}
-     * answers false for those and the attachment is simply left selected.
-     * <p>
-     * Answering false is safe even when the click really did land on an attachment.
-     * {@link #clicked} hands the click to {@code handleClick} next, which consumes every
-     * click while selection is active — and the {@code isSelectionActive} test this runs
-     * inside, already true to have got here, says it is. So nothing is inserted at the click
-     * point either way.
+     * A lyric editor open elsewhere on the line must not block editing an attachment. Answering
+     * false is safe: {@code handleClick} consumes every click while selection is active.
      */
     private boolean editDoubleClickedAttachment(@Nullable HitTarget clickHit, Line line) {
         if (!(clickHit instanceof HitTarget.Attachment(var attachment))) {
@@ -951,20 +720,9 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Opens the key change dialog for whichever of the three key edit targets the double-click
-     * landed on, returning true when one opened.
-     * <p>
-     * The targets are the line's header, a key change standing in the middle of the line, and
-     * the cautionary drawn at the line's end — which edits the <em>next</em> line's key, not this
-     * line's, because that is the change it renders. Each is asked of {@link LayoutResult}, so the
-     * rects tested are the ones drawn, including the cautionary's overflow placement.
-     * <p>
-     * The three occupy disjoint horizontal runs — the header precedes every column, a mid-line
-     * key change owns a solved column, and the cautionary sits past the last one — so the order
-     * they are tried in cannot change which target a point resolves to. It is cheapest-first.
-     * <p>
-     * Answering false is safe for the same reason {@link #editDoubleClickedAttachment} gives:
-     * {@code handleClick} consumes the click next, so nothing is inserted at the click point.
+     * The cautionary drawn at the line's end edits the <em>next</em> line's key, because that is
+     * the change it renders. Answering false is safe for the reason
+     * {@link #editDoubleClickedAttachment} gives.
      */
     private boolean editDoubleClickedKeyChange(MouseEvent e, Line line) {
         var ready = readyLayout();
@@ -1107,10 +865,7 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
 
     /**
-     * Returns the tooltip of the lint mark under the pointer: the heading and the description of
-     * each of its findings, as the Messages panel shows them, without their place.
-     *
-     * @return the tooltip text, or {@code null} when the pointer is on no mark, so no tooltip shows
+     * @return {@code null} when the pointer is on no mark, so no tooltip shows
      */
     @Override
     public @Nullable String getToolTipText(MouseEvent event) {
@@ -1119,11 +874,7 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Places the lint tooltip at the item the pointer is on: the "?", the flagged element, or the
-     * flagged annotation, by the rule of {@link LintToolTipPlacement}.
-     *
-     * @return the tooltip's top-left corner in this component's coordinates, or {@code null}
-     *         when the pointer is on no mark
+     * @return {@code null} when the pointer is on no mark
      */
     @Override
     public @Nullable Point getToolTipLocation(MouseEvent event) {
@@ -1132,27 +883,14 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * What one run of the hit cascade found at a point.
-     *
-     * @param region       the region a click there gets, or {@code null} when it gets none
-     * @param missingLyric the "?" under the point, or {@code null} when it is on none
+     * @param region       {@code null} when a click there gets none
+     * @param missingLyric {@code null} when the point is on no "?"
      */
     private record PointerHit(@Nullable HitRegion region, LineSelectionHandler.@Nullable MissingLyricHit missingLyric) {
 
-        /** Nothing under the point, or no line laid out to look in. */
         static final PointerHit NONE = new PointerHit(null, null);
     }
 
-    /**
-     * Runs the hit cascade at {@code viewPoint} once, and stores the lint mark it finds there in
-     * {@link #pointerMark}, with what the lookup read.
-     *
-     * @param viewPoint the point, in this component's view pixels
-     * @return what the cascade found; {@link PointerHit#NONE} when this component has no line
-     *         laid out, in which case {@link #pointerMark} is cleared
-     * @effects when the point is on a mark that differs from the one stored before, hover over
-     *          that mark begins, and the score's {@link LintCalloutController} is told so
-     */
     private PointerHit lookUpPointer(Point viewPoint) {
         var ready = readyLayout();
 
@@ -1179,12 +917,7 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Returns the lint mark under {@code viewPoint}: the stored {@link #pointerMark} while its
-     * rule holds for the point, and otherwise a fresh lookup, which replaces it.
-     *
-     * @param viewPoint the point, in this component's view pixels
-     * @return the mark and its box, or {@code null} when the point is on no mark or this component
-     *         has no line laid out
+     * @return {@code null} when the point is on no mark or this component has no line laid out
      */
     private LineSelectionHandler.@Nullable LintMarkHit lintMarkAtPointer(Point viewPoint) {
         var stored = pointerMark;
@@ -1205,15 +938,6 @@ public class LineComponent extends ScoreComponent
         return looked == null ? null : looked.hit();
     }
 
-    /**
-     * Scrolls the full height of this line and the mark's item into view, when they are not in
-     * view, and returns the tooltip of a lint mark, placed at the mark's item as the hover tooltip
-     * is.
-     *
-     * @param mark a mark of the song's current lint report whose element is on this component's
-     *             line
-     * @return the tooltip and its top-left corner on the screen
-     */
     LintToolTipPlacement.Placed revealLintMark(LintMark mark) {
         var lintMarkHit = selectionHandler.lintMarkHit(mark);
         var markBounds = viewBounds(lintMarkHit.boundsSs());
@@ -1228,16 +952,11 @@ public class LineComponent extends ScoreComponent
         return placeLintToolTip(lintMarkHit);
     }
 
-    /** Returns the tooltip of a mark, placed at its item by {@link LintToolTipPlacement}. */
     private LintToolTipPlacement.Placed placeLintToolTip(LineSelectionHandler.LintMarkHit lintMarkHit) {
         return LintToolTipPlacement.place(
             viewBounds(lintMarkHit.boundsSs()), this, lintToolTipText(lintMarkHit.mark()));
     }
 
-    /**
-     * Converts a box in the hit registry's midline-relative staff spaces to this component's view
-     * pixels.
-     */
     private Rectangle viewBounds(Rectangle2D boundsSs) {
         var viewScale = getViewScale();
         var middleLineYSs = getMiddleLineYSs();
@@ -1268,9 +987,7 @@ public class LineComponent extends ScoreComponent
     // Package-Private Accessors for LineRenderer
     // ==========================================================================
 
-    /**
-     * Returns the ScoreView reference, which a live line component always has.
-     */
+    /** A live line component always has one. */
     @Override
     public ScoreView getScoreView() {
         if (scoreView == null) {
@@ -1281,21 +998,14 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Returns the lyric render metrics this line is laid out with. The view is populated with
-     * them before any line is laid out or interacted with, so a live line component always has
-     * them; insertion spacing uses them to measure the syllables the new element must clear.
+     * Populated before any line is laid out, so a live line component always has them.
      */
     public LyricRenderMetrics getLyricRenderMetrics() {
         return getScoreView().getLyricRenderMetrics();
     }
 
     /**
-     * Returns the lyric render metrics this line is laid out with, or null when the view has not
-     * been populated with them yet.
-     * <p>
-     * Unlike {@link #getLyricRenderMetrics()}, which exits the application when they are missing,
-     * this reports their absence. Hit testing uses it so that a hit test somehow reaching a line
-     * before the first layout declines to find a lyric rather than taking the app down.
+     * Null when the view has not been populated with them yet.
      */
     @Nullable LyricRenderMetrics findLyricRenderMetrics() {
         return getScoreView().findLyricRenderMetrics();
@@ -1309,44 +1019,32 @@ public class LineComponent extends ScoreComponent
         return EditModeManager.getInsertionPointMode();
     }
 
-    /** Returns the preview element from edit mode, or null if unavailable. */
+    /** Null if unavailable. */
     @Nullable StaffElement getPreviewElement() {
         return EditModeManager.getPreviewElement();
     }
 
-    /** Returns whether the preview element should be rendered as visible. */
     boolean isPreviewElementVisible() {
         return EditModeManager.isPreviewElementVisible();
     }
 
-    /** Returns whether grace note insert mode is currently in progress. */
     boolean isGraceModeInProgress() {
         return EditModeManager.getGraceModeManager().isInProgress();
     }
 
-    /**
-     * Returns the locked insertion X for grace mode, in staff spaces.
-     * Only valid when {@link #isGraceModeInProgress()} is true.
-     */
+    /** Only valid when {@link #isGraceModeInProgress()} is true. */
     double getGraceModeLockedXSs() {
         return getGraceModeManager().getLockedInsertionXSs();
     }
 
-    /** Returns whether the given element is pending grace-note cancellation. */
     boolean isPendingCancelElement(StaffElement element) {
         return GraceModeManager.isPendingCancel(element);
     }
 
-    /** Returns whether the given element is a grace note pending a drag-right connect. */
     boolean isPendingConnectElement(StaffElement element) {
         return GraceModeManager.isPendingConnect(element);
     }
 
-    /**
-     * Returns the line-level {@link ElementFrame} for this paint, carrying the grace-mode
-     * host-insertion preview shift when this is the active grace line. {@code LineRenderer}
-     * threads the returned shift into every per-element frame it builds.
-     */
     ElementFrame gracePreviewLineFrame() {
         var graceModeManager = EditModeManager.getGraceModeManager();
 
@@ -1365,11 +1063,7 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Returns the {@link LineInvariants} an overlay needs to run the real renderers against this
-     * line, or null when this line has no layout yet.
-     * <p>
-     * A missing layout is expected rather than fatal here: an overlay can be asked for its bounds
-     * before this line's layout pass has run, which it skips while it has no score view.
+     * Null when this line has no layout yet.
      */
     @Nullable
     LineInvariants previewInvariants() {
@@ -1380,9 +1074,6 @@ public class LineComponent extends ScoreComponent
         return lineRenderer.buildInvariants();
     }
 
-    /**
-     * Returns the selection provider.
-     */
     @Nullable SelectionProvider getSelectionProvider() {
         return selectionProvider;
     }
@@ -1403,39 +1094,23 @@ public class LineComponent extends ScoreComponent
         return new ReadyLayout(line, layoutResult);
     }
 
-    /**
-     * Returns whether a selection drag is in progress.
-     */
     public boolean isDraggingSelection() {
         return selectionHandler.isDragging();
     }
 
-    /**
-     * Ends any live selection band on this line.
-     * Called from ScoreView when a window-level mouseReleased catches an orphaned drag.
-     */
     public void clearSelectionBand() {
         selectionHandler.handleRelease();
     }
 
-    /**
-     * Returns the note pitch-drag handler for this line.
-     */
     NoteDragHandler getNoteDragHandler() {
         return noteDragHandler;
     }
 
-    /**
-     * Returns the selection handler for this line.
-     */
     LineSelectionHandler getSelectionHandler() {
         return selectionHandler;
     }
 
-    /**
-     * Returns the live selection band's horizontal extent, or {@code null} when no drag is in
-     * progress.
-     */
+    /** {@code null} when no drag is in progress. */
     LineSelectionHandler.@Nullable SelectionBand getSelectionBand() {
         return selectionHandler.getSelectionBand();
     }

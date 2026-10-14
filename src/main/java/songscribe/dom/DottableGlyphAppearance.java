@@ -24,10 +24,6 @@ import songscribe.smufl.SMuFLGlyph;
 
 /**
  * A glyph that takes augmentation dots after it — the rests. An element of this appearance is
- * a {@link RestElement}, which is where the dot count lives.
- *
- * @param glyph  the glyph the element is drawn with
- * @param seatSp the staff position the glyph is drawn at and hit-tested at, in staff-position
- *               units from the middle line
+ * a {@link RestElement}.
  */
 public record DottableGlyphAppearance(SMuFLGlyph glyph, int seatSp) implements GlyphAppearance {}

@@ -41,18 +41,12 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 
 /**
- * The section rule of {@link Ending}: an ending's split closes an open repeat section
- * ({@link Ending#closesOpenSection}). An ending whose split an edit leaves closing no open
- * section is removed.
+ * The section rule of {@link Ending} ({@link Ending#closesOpenSection}): an ending whose split
+ * an edit leaves closing no open section is removed.
  * <p>
- * The rule judges every ending in the song, not only those on the lines the batch touched.
- * An edit on one line can open or close the section of an ending any number of lines later,
- * and a line inserted or deleted goes through no span sweep, so no smaller set of lines holds
- * every ending an edit can break.
- * <p>
- * The song is judged only when the batch holds a mutation that adds, removes, replaces or
- * changes an element, or that inserts or deletes a line: those are the mutations that can open
- * or close a repeat section.
+ * The rule judges every ending in the song, not only those on the lines the batch touched: an
+ * edit on one line can open or close the section of an ending any number of lines later, and a
+ * line inserted or deleted goes through no span sweep.
  */
 final class EndingSectionRule implements ModificationRule {
 
@@ -84,9 +78,7 @@ final class EndingSectionRule implements ModificationRule {
     }
 
     /**
-     * Whether {@code mutation} can open or close a repeat section. The switch is exhaustive over
-     * {@link Mutation} with no default arm, so a new mutation type does not compile until it is
-     * decided here.
+     * No default arm, so a new mutation type does not compile until it is decided here.
      */
     private static boolean canChangeSections(Mutation mutation) {
         return switch (mutation) {

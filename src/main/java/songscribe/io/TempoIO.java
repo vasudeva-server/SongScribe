@@ -82,14 +82,6 @@ public final class TempoIO {
             startElement(qName, XML_TEMPO);
         }
 
-        /**
-         * Begins a tempo when {@code qName} opens one, and otherwise records the tag whose text
-         * is about to arrive.
-         *
-         * @param qName    the tag that just opened
-         * @param tempoTag the name the tempo element carries in this document version
-         * @effects discards any text accumulated for the previous tag
-         */
         private void startElement(String qName, String tempoTag) {
             if (qName.equals(tempoTag)) {
                 inTempo = true;
@@ -125,12 +117,7 @@ public final class TempoIO {
         }
 
         /**
-         * Answers the tempo a closing tempo tag completes, with its marking built from the two
-         * values the file stated separately. See {@link TempoMarking#fromFile}.
-         *
-         * @return the tempo just read, or {@code null} when no tempo element was opened
-         * @effects closes the open tempo element
-         * @log warn when it shows a tempo the file asked to hide
+         * @return {@code null} when no tempo element was opened
          */
         @Nullable
         private Tempo finishTempo() {
@@ -167,16 +154,7 @@ public final class TempoIO {
         }
 
         /**
-         * Applies the text of the tempo child that just closed.
-         *
-         * <p>Shared by both document versions, whose tempo elements carry the same children
-         * apart from {@code position}, which only a v1.0 tempo change states.
-         *
-         * @param qName the tag that just closed
-         * @return {@code null} always, so a caller can hand it straight back — a tempo is
-         *         answered only by the closing tempo tag, which does not reach here
-         * @effects discards the accumulated text and forgets the tag it belonged to
-         * @throws SAXException when the tempo type names a duration this reader does not know
+         * @return {@code null} always: a tempo is answered only by the closing tempo tag
          */
         @Nullable
         private Tempo endTempoChild(String qName) throws SAXException {

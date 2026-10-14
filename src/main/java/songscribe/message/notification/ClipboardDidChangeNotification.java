@@ -22,9 +22,5 @@ package songscribe.message.notification;
 
 import songscribe.message.Message;
 
-/**
- * Posted whenever the clipboard's content changes (cleared or a new fragment
- * is set). Triggers pasteboard action enabled-state recalculation, since
- * enablement otherwise only re-evaluates on selection changes.
- */
+/** Posted whenever the clipboard's content changes. */
 public class ClipboardDidChangeNotification extends Message {}

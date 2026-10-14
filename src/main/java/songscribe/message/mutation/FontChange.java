@@ -23,9 +23,7 @@ package songscribe.message.mutation;
 import songscribe.font.DocumentFonts;
 
 /**
- * Mutation recording a change to the document's fonts.
- * Carries full {@link DocumentFonts} snapshots so that a multi-role
- * commit produces one undoable group.
+ * Mutation recording a change to the document's fonts, as full {@link DocumentFonts} snapshots.
  */
 public record FontChange(DocumentFonts oldFonts, DocumentFonts newFonts) implements Mutation {
 }

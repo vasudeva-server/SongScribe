@@ -24,8 +24,7 @@ package songscribe.dom;
  * one, or a span between two. The other line elements are song-level marks, drawn on a line but
  * owned by the song.
  * <p>
- * Sealed so that a switch over it is exhaustive: a new kind of line content fails to compile at
- * every such switch until the switch answers for it.
+ * Sealed so that a switch over it is exhaustive.
  */
 public sealed interface LineContent permits StaffElement, Attachment, Articulation, Span {
 }

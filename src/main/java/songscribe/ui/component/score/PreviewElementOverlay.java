@@ -44,33 +44,19 @@ import songscribe.util.GraphicsState;
  * click would place, drawn in {@link ScoreView#getPreviewElementColor()}.
  *
  * <h2>Record once, replay many</h2>
- * The preview's ink is not composed by hand. The real renderers run against a
- * {@link RecordingGraphics2D} and their output is kept as a {@link DisplayList}; bounds are the
- * union of that list and painting is a replay of it, so the two can never disagree.
- * <p>
- * The list is recorded with the element's X override set to <b>zero</b>, so everything in it is
- * relative to the preview note's own origin. The actual X is applied as a translate at bounds and
- * paint time. That split is structural rather than an optimization: dragging the mouse along a
- * line changes only the translate, while the glyphs the renderers would emit are unchanged, so a
- * move must not rebuild the list. Nothing between here and the renderers snaps to device pixels,
- * so recording at zero and translating is exactly equivalent to recording at the final X.
- * <p>
- * A rebuild is needed only when the drawn glyphs themselves change — a different staff position
- * (which flips the stem direction and crosses the ledger-line threshold), a different accidental,
- * dot count, articulation set or fermata, or a different preview element altogether.
- * {@link PreviewElementManager} drives the two cases through {@link #previewDidMove} and
- * {@link #previewDidChange}.
+ * The list is recorded with the element's X override set to <b>zero</b>; the actual X is applied
+ * as a translate at bounds and paint time. A move must not rebuild the list: only a change of
+ * the drawn glyphs does. {@link PreviewElementManager} drives the two cases through
+ * {@link #previewDidMove} and {@link #previewDidChange}.
  *
  * <h2>Slide placeholders</h2>
- * A slide tool puts a placeholder in the preview slot that has no note head at all — the slide
- * preview components draw for it instead. {@link PreviewElementManager#shouldShowPreviewOn}
- * therefore reports this overlay as hidden for a placeholder.
+ * A slide tool's placeholder has no note head; the slide preview components draw for it, so
+ * {@link PreviewElementManager#shouldShowPreviewOn} reports this overlay as hidden.
  */
 public final class PreviewElementOverlay extends RecordedInkOverlay {
 
     /**
-     * The preview element's X in the target line's staff spaces. Position rather than ink: it is
-     * applied as a translate over {@link #displayList}, never baked into it.
+     * Applied as a translate over {@link #displayList}, never baked into it.
      */
     private double elementXSs;
 
@@ -79,9 +65,7 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
     }
 
     /**
-     * Re-anchors the preview to {@code line} at its current X without rebuilding the display
-     * list. Use when only the insertion index moved: the glyphs are unchanged, so all that
-     * changes is the translate.
+     * Use when only the insertion index moved.
      */
     void previewDidMove(@Nullable LineComponent line) {
         // A different line means different invariants (middle-line Y, layout, grace state), so
@@ -136,13 +120,10 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
     }
 
     /**
-     * Computes the preview element's X in line staff spaces.
-     * <p>
-     * Grace mode uses the locked X directly: it already accounts for grace-note spacing, whereas
-     * {@code calculateInsertionXSs} would apply normal inter-element spacing instead. Otherwise
-     * the X comes from the insertion calculation, fed by the manager's last tracked mouse X
-     * rather than {@code getMousePosition()} — Swing can return null from that during a repaint
-     * even while the pointer is over the component, which would break snap-to-terminal.
+     * Grace mode uses the locked X, which already accounts for grace-note spacing. Otherwise the
+     * insertion calculation is fed the manager's last tracked mouse X, not
+     * {@code getMousePosition()}, which Swing can return null from during a repaint and would
+     * break snap-to-terminal.
      */
     private static double calculateElementXSs(LineComponent line, StaffElement previewElement) {
         if (line.isGraceModeInProgress()) {
@@ -166,15 +147,12 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
     }
 
     /**
-     * Runs the real renderers against the recorder and returns what they drew.
+     * The X override is zero but still <em>set</em>: sub-renderers detect preview rendering
+     * through {@code hasOverrideElementX()} and would otherwise look the preview element up in
+     * the layout, where it does not exist.
      * <p>
-     * The X override is zero so the ink is relative to the preview element's own origin, but the
-     * override is still <em>set</em>: sub-renderers detect preview rendering through
-     * {@code hasOverrideElementX()} and would otherwise look the preview element up in the
-     * layout, where it does not exist.
-     * <p>
-     * The rendering hints must match the ones {@code paintComponent} replays under, because a
-     * glyph vector is bound to the {@link FontRenderContext} it was created with.
+     * The rendering hints must match those {@code paintComponent} replays under: a glyph vector
+     * is bound to the {@link FontRenderContext} it was created with.
      */
     private DisplayList recordPreviewElement(LineComponent line, StaffElement previewElement) {
         var invariants = line.previewInvariants();

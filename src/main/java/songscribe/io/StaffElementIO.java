@@ -198,7 +198,6 @@ public final class StaffElementIO {
     }
 
     /**
-     * Parses a MusicXML-style {@code type} attribute on an {@code <extend>} element.
      * A null or unrecognized value (including the legacy self-closed {@code <extend/>}
      * written by pre-enum versions) defaults to {@link Lyric.Extend#START}.
      */
@@ -261,25 +260,18 @@ public final class StaffElementIO {
         private Lyric.Extend lyricExtend = Lyric.Extend.NONE;
 
         /**
-         * Returns true if the most recently completed element had a legacy {@code <trill>} tag.
          * Valid only after {@code endElement11} returns a non-null element.
          */
         public boolean isTrillFlagged() {
             return trillFlagged;
         }
 
-        /**
-         * Returns true if any element this reader has read so far named a retired
-         * accidental, which was converted to the accidental that sounds the same.
-         */
         public boolean sawLegacyAccidental() {
             return sawLegacyAccidental;
         }
 
         /**
-         * Returns true if the most recently completed element lost a lyric whose number names no
-         * script. Such a lyric is dropped rather than refusing the file, and its line is reported
-         * with {@link songscribe.dom.ParsedSong#lyricDroppedEntry}. Valid only after
+         * A lyric whose number names no script is dropped, not refused. Valid only after
          * {@code endElement11} returns a non-null element.
          */
         public boolean droppedLyric() {
@@ -528,21 +520,6 @@ public final class StaffElementIO {
             return null;
         }
 
-        /**
-         * Applies a tag only a note carries — its staff position, accidental, articulations and
-         * slide — to {@code note}, and returns whether {@code tag} was one of those.
-         *
-         * @param note the note being read
-         * @param tag  the tag just closed
-         * @param str  the tag's text content
-         * @return {@code true} when {@code tag} is a note-only tag, whether or not its content
-         *     changed the note
-         * @throws IllegalArgumentException if {@code tag} names an accidental and {@code str} is
-         *     not one of the accidental names this reader knows
-         * @throws SAXException if {@code tag} names a staff position and {@code str} is not an
-         *     integer, or is one that lies outside the grid {@link StaffPosition#MIN}..
-         *     {@link StaffPosition#MAX}
-         */
         private boolean applyNoteTag(NoteElement note, String tag, String str) throws SAXException {
             if (tag.equals(XML_STAFF_POSITION) || tag.equals(XML_YPOS)) {
                 var staffPositionSp = DocumentValidation.parseIntOrThrow(LOG, tag, str);

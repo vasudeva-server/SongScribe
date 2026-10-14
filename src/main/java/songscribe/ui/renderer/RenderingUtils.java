@@ -44,12 +44,6 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 
-/**
- * Stateless rendering utilities shared by element renderers.
- * <p>
- * Holds the music-font constants and the common drawing/coordinate helpers
- * that the renderers share through {@code BaseElementRenderer}.
- */
 public final class RenderingUtils {
 
     private RenderingUtils() {
@@ -59,25 +53,13 @@ public final class RenderingUtils {
     // Font Constants
     // ==========================================================================
 
-    /**
-     * The base font size for music notation glyphs, in staff-space units.
-     * Under the Graphics2D scale transform, this produces the correct pixel size
-     * (4.0 ss * 8 px/ss = 32px).
-     */
     public static final float FONT_SIZE = BravuraFont.SIZE_SS;
 
-    /**
-     * The Bravura (SMuFL) music notation font at standard note size.
-     */
     public static final Font MUSIC_FONT;
 
-    /**
-     * The music font scaled for grace note rendering ({@link ElementType#GRACE_NOTE_SCALE}).
-     */
     public static final Font GRACE_NOTE_FONT;
 
     /**
-     * Returns the Bravura (SMuFL) music font at standard note size ({@link #FONT_SIZE}).
      * Callers needing a different size should call {@code deriveFont()}.
      */
     public static Font getMusicFont() {
@@ -93,10 +75,6 @@ public final class RenderingUtils {
         }
     }
 
-    /**
-     * Returns the music font to draw {@code note}'s glyphs: {@link #GRACE_NOTE_FONT} for grace notes,
-     * else {@link #MUSIC_FONT}.
-     */
     public static Font getGlyphFont(StaffElement note) {
         return note.getType().isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT;
     }
@@ -109,15 +87,8 @@ public final class RenderingUtils {
     static final Color ELEMENT_COLOR = Color.BLACK;
 
     /**
-     * Returns the rendering color for a decoration attached to {@code element}.
-     * <p>
-     * Uses {@link ElementFrame#currentElementIndex()} when set, since the drawing loop
-     * already has it; otherwise falls back to {@code line.getElementIndex(element)}.
-     * <p>
-     * Returns the preview element color when the current line does not contain the element:
-     * the element is the insertion preview, so its decorations must match the preview note's
-     * color.
-     * Throws on corruption if there is no current line.
+     * An element the current line does not contain is the insertion preview, so its decorations
+     * take the preview note's color.
      */
     static Color getDecorationColor(
         StaffElement element,
@@ -140,20 +111,11 @@ public final class RenderingUtils {
     }
 
     /**
-     * Returns the rendering color for any decoration that is selectable in its own right —
-     * every kind, whether or not it hangs off a note.
-     * <p>
-     * <b>Selection takes precedence over everything else.</b> A selected decoration draws in
-     * {@link ScoreView#getSelectionColor()} even while its note is playing, hovered, or standing
-     * in as the insertion preview. It has to: in edit mode the selection is what the next Delete
-     * removes, and the user cannot be left guessing at that because playback happens to be
-     * running.
-     * <p>
-     * Only when the decoration is <em>not</em> selected does it take its owner note's color, so
-     * that playback, the replaced-element hover, the insertion preview and a range selection each
-     * color the whole note, decorations included. A decoration that belongs to no single note —
-     * a hairpin, an ending, a tuplet — passes a {@code null} owner and is plain black unless it
-     * is the selection.
+     * <b>Selection takes precedence over everything else:</b> a selected decoration draws in
+     * {@link ScoreView#getSelectionColor()} even while its note is playing, hovered, or the
+     * insertion preview. Otherwise it takes its owner note's color, so that each of those colors
+     * the whole note, decorations included. A decoration that belongs to no single note passes a
+     * {@code null} owner and is plain black unless it is the selection.
      *
      * @param owner the note whose color an unselected decoration inherits, or {@code null} when
      *              the decoration belongs to no single note
@@ -179,10 +141,6 @@ public final class RenderingUtils {
         return getDecorationColor(owner, invariants, frame);
     }
 
-    /**
-     * Sets the graphics color for a selectable decoration.
-     * Delegates to {@link #decorationColor}.
-     */
     static void applyDecorationColor(
         Graphics2D g2,
         HitTarget target,
@@ -197,30 +155,10 @@ public final class RenderingUtils {
     // Coordinate Transformation Utilities
     // ==========================================================================
 
-    /**
-     * Converts a layout Y coordinate to component space.
-     * <p>
-     * Layout Y coordinates are relative to middleLineY=0.
-     * Component Y coordinates are relative to the component's top edge.
-     *
-     * @param layoutYSs the Y coordinate in layout space (from a DecorationLayout)
-     * @param invariants       the per-line invariants containing middleLineY
-     * @return the Y coordinate in component space
-     */
     static double layoutYToComponentYSs(double layoutYSs, LineInvariants invariants) {
         return layoutYToComponentYSs(layoutYSs, invariants.getMiddleLineYSs());
     }
 
-    /**
-     * Converts a layout Y coordinate to component space, given the middle-line Y directly.
-     * <p>
-     * {@link SlideRenderer} computes glissando endpoints from a middle-line Y it holds
-     * directly, rather than from a {@link LineInvariants}, and needs this overload for that.
-     *
-     * @param layoutYSs     the Y coordinate in layout space (from a DecorationLayout)
-     * @param middleLineYSs the line's middle-staff-line Y in component space
-     * @return the Y coordinate in component space
-     */
     static double layoutYToComponentYSs(double layoutYSs, double middleLineYSs) {
         return middleLineYSs + layoutYSs;
     }
@@ -229,14 +167,6 @@ public final class RenderingUtils {
     // Shared Drawing Utilities
     // ==========================================================================
 
-    /**
-     * Draws a ledger line for a note above or below the staff.
-     *
-     * @param g2       Graphics context
-     * @param leftXSs  Left edge X position of the ledger line in staff spaces
-     * @param rightXSs Right edge X position of the ledger line in staff spaces
-     * @param ySs      Y position of the ledger line in staff spaces
-     */
     static void drawLedgerLine(Graphics2D g2, double leftXSs, double rightXSs, double ySs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
@@ -244,14 +174,6 @@ public final class RenderingUtils {
         GraphicUtils.drawRoundedLine(g2, leftXSs, ySs, rightXSs, ySs, thicknessSs);
     }
 
-    /**
-     * Draws a SMuFL glyph using the Bravura font.
-     *
-     * @param g2    Graphics context
-     * @param glyph The SMuFL glyph to draw
-     * @param xSs   X position in staff spaces
-     * @param ySs   Y position in staff spaces
-     */
     static void drawBravuraGlyph(
         Graphics2D g2,
         SMuFLGlyph glyph,
@@ -261,15 +183,6 @@ public final class RenderingUtils {
         drawBravuraGlyph(g2, glyph, xSs, ySs, false);
     }
 
-    /**
-     * Draws a SMuFL glyph using the Bravura font.
-     *
-     * @param g2            Graphics context
-     * @param glyph         The SMuFL glyph to draw
-     * @param xSs           X position in staff spaces
-     * @param ySs           Y position in staff spaces
-     * @param preserveColor If true, preserves the current graphics color instead of setting ELEMENT_COLOR
-     */
     static void drawBravuraGlyph(
         Graphics2D g2,
         SMuFLGlyph glyph,
@@ -287,16 +200,8 @@ public final class RenderingUtils {
     }
 
     /**
-     * Converts a layout top Y position to the glyph origin Y for drawing.
-     * <p>
-     * Layout positions represent the top edge of the bounding box, but SMuFL glyphs
-     * are drawn from their origin (y=0 in glyph coordinates). If the glyph extends
-     * below its origin (bbox.bottom > 0), using {@code topY + height} places the glyph
-     * too low. This method correctly computes the origin Y using the bbox top offset.
-     *
-     * @param layoutTopYSs the top edge of the element's bounding box in staff spaces
-     * @param glyph        the SMuFL glyph to draw
-     * @return the Y coordinate to pass to {@link #drawBravuraGlyph}
+     * Layout positions are the top edge of the bounding box, but SMuFL glyphs are drawn from their
+     * origin; {@code topY + height} would place a glyph that extends below its origin too low.
      */
     static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
         var bbox = SMuFLMetadata.bboxSs(glyph);
@@ -304,28 +209,13 @@ public final class RenderingUtils {
     }
 
     /**
-     * Calculates the Y coordinate for a note given its staff position.
-     * <p>
-     * The arithmetic lives in {@link NoteGeometry#noteStaffPositionToCoordinateSs}, on the layout
-     * side of the boundary, because layout needs the same quantity and must not depend on
-     * {@code songscribe.ui}. This delegate keeps the render call sites reading naturally.
-     *
-     * @param staffPosition The note's staff position relative to middle line
-     * @param middleLineYSs Y position of middle staff line in staff spaces
-     * @return Y coordinate for the note in staff spaces
+     * The arithmetic lives in {@link NoteGeometry#noteStaffPositionToCoordinateSs} because layout
+     * needs the same quantity and must not depend on {@code songscribe.ui}.
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
         return NoteGeometry.noteStaffPositionToCoordinateSs(staffPosition, middleLineYSs);
     }
 
-    /**
-     * Returns the X offset in staff spaces from the note reference point to the stem center,
-     * for the given stem direction and notehead.
-     *
-     * @param notehead  the notehead the stem attaches to
-     * @param direction stem direction: UP = stem-up SE anchor; DOWN = stem-down NW anchor
-     * @return X offset from note reference point to stem center, in staff spaces
-     */
     static double stemCenterXOffsetSs(StemmedNotehead notehead, Direction direction) {
         var anchorXSs = NoteGeometry.stemSideAnchor(notehead, direction).xSs();
         var upper = direction.isUp();

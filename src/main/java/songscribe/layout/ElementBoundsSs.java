@@ -26,19 +26,8 @@ import java.awt.geom.Rectangle2D;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Represents the complete box model for a layout element (CSS-like).
- * <p>
- * Box model layers (from inner to outer):
- * <ul>
- *   <li><b>contentBounds</b>: Actual drawn pixels (ink bounds)</li>
- *   <li><b>paddingBounds</b>: Content + padding (used for hit testing/intersection)</li>
- *   <li><b>marginBounds</b>: Padding + margin (space element claims for layout)</li>
- *   <li><b>visualBounds</b>: Full visual extent (may exceed margin for decorative elements)</li>
- * </ul>
- * <p>
- * Example: For a first/second ending bracket, the content bounds would be the
- * bracket glyph, but the visual bounds would extend horizontally to include
- * the connecting line that spans to the next ending.
+ * The CSS-like box model of a layout element: ink bounds, padding (hit testing), margin (space
+ * the element claims) and visual bounds (which may exceed the margin).
  */
 public final class ElementBoundsSs {
 
@@ -48,12 +37,7 @@ public final class ElementBoundsSs {
     private final @Nullable Rectangle2D visualBoundsSs;
 
     /**
-     * Creates element bounds with all four box model layers.
-     *
-     * @param contentBounds Actual drawn pixels (ink bounds)
-     * @param paddingBounds Content + padding (hit testing)
-     * @param marginBounds  Padding + margin (layout spacing)
-     * @param visualBounds  Full visual extent (decorative overflow), null if same as margin
+     * @param visualBounds null if same as margin
      */
     public ElementBoundsSs(
         Rectangle2D contentBounds,
@@ -67,9 +51,6 @@ public final class ElementBoundsSs {
         visualBoundsSs = visualBounds;
     }
 
-    /**
-     * Creates element bounds where visual bounds equals margin bounds.
-     */
     public ElementBoundsSs(
         Rectangle2D contentBounds,
         Rectangle2D paddingBounds,
@@ -78,9 +59,6 @@ public final class ElementBoundsSs {
         this(contentBounds, paddingBounds, marginBounds, null);
     }
 
-    /**
-     * Creates element bounds with no padding (padding equals content).
-     */
     public static ElementBoundsSs withMarginOnly(
         Rectangle2D contentBounds,
         Rectangle2D marginBounds
@@ -88,13 +66,6 @@ public final class ElementBoundsSs {
         return new ElementBoundsSs(contentBounds, contentBounds, marginBounds);
     }
 
-    /**
-     * Creates element bounds with uniform padding and margin.
-     *
-     * @param contentBounds The content rectangle
-     * @param paddingSs     Uniform padding in staff spaces
-     * @param marginSs      Uniform margin in staff spaces (added to padding bounds)
-     */
     public static ElementBoundsSs uniform(
         Rectangle2D contentBounds,
         double paddingSs,
@@ -117,20 +88,10 @@ public final class ElementBoundsSs {
         return new ElementBoundsSs(contentBounds, paddingBounds, marginBounds);
     }
 
-    /**
-     * Creates element bounds with content only (no padding or margin).
-     */
     public static ElementBoundsSs contentOnly(Rectangle2D contentBounds) {
         return new ElementBoundsSs(contentBounds, contentBounds, contentBounds);
     }
 
-    /**
-     * Creates element bounds with a Margin object (no padding layer).
-     *
-     * @param contentBounds The content rectangle
-     * @param margin        The margin specification in staff spaces
-     * @return New bounds with the specified margins and padding equal to content
-     */
     public static ElementBoundsSs withMargin(Rectangle2D contentBounds, Margin margin) {
         var marginBounds = new Rectangle2D.Double(
             contentBounds.getX() - margin.leftSs(),
@@ -141,123 +102,68 @@ public final class ElementBoundsSs {
         return withMarginOnly(contentBounds, marginBounds);
     }
 
-    /**
-     * Returns the content bounds (actual drawn pixels).
-     */
     public Rectangle2D getContentBounds() {
         return contentBoundsSs;
     }
 
-    /**
-     * Returns the padding bounds (content + padding, used for hit testing).
-     */
     public Rectangle2D getPaddingBounds() {
         return paddingBoundsSs;
     }
 
-    /**
-     * Returns the margin bounds (padding + margin, used for layout spacing).
-     */
     public Rectangle2D getMarginBounds() {
         return marginBoundsSs;
     }
 
-    /**
-     * Returns the visual bounds (full visual extent including decorative elements).
-     * Falls back to margin bounds if not explicitly set.
-     */
     public Rectangle2D getVisualBounds() {
         return visualBoundsSs != null ? visualBoundsSs : marginBoundsSs;
     }
 
-    /**
-     * Returns the top Y coordinate of the content bounds.
-     */
     public double getTopSs() {
         return contentBoundsSs.getY();
     }
 
-    /**
-     * Returns the bottom Y coordinate of the content bounds.
-     */
     public double getBottomSs() {
         return contentBoundsSs.getY() + contentBoundsSs.getHeight();
     }
 
-    /**
-     * Returns the left X coordinate of the content bounds.
-     */
     public double getLeftSs() {
         return contentBoundsSs.getX();
     }
 
-    /**
-     * Returns the right X coordinate of the content bounds.
-     */
     public double getRightSs() {
         return contentBoundsSs.getX() + contentBoundsSs.getWidth();
     }
 
-    /**
-     * Returns the top Y coordinate of the margin bounds.
-     */
     public double getMarginTopSs() {
         return marginBoundsSs.getY();
     }
 
-    /**
-     * Returns the bottom Y coordinate of the margin bounds.
-     */
     public double getMarginBottomSs() {
         return marginBoundsSs.getY() + marginBoundsSs.getHeight();
     }
 
-    /**
-     * Returns whether the given point is within the padding bounds (hit testing).
-     */
     public boolean containsForHitTest(double xSs, double ySs) {
         return paddingBoundsSs.contains(xSs, ySs);
     }
 
-    /**
-     * Returns whether this element's margin bounds intersect with another's.
-     */
     public boolean intersectsMargin(ElementBoundsSs other) {
         return marginBoundsSs.intersects(other.marginBoundsSs);
     }
 
-    /**
-     * Returns whether this element's padding bounds intersect with another's.
-     */
     public boolean intersectsPadding(ElementBoundsSs other) {
         return paddingBoundsSs.intersects(other.paddingBoundsSs);
     }
 
-    /**
-     * Calculates the collapsed margin between this element's bottom and another's top.
-     * CSS-style margin collapsing: the larger margin wins.
-     *
-     * @param below The element below this one
-     * @return The effective margin between the two elements in staff spaces
-     */
     public double collapsedMarginWith(ElementBoundsSs below) {
         var thisBottomMargin = getMarginBottomSs() - getBottomSs();
         var belowTopMargin = below.getTopSs() - below.getMarginTopSs();
         return Math.max(thisBottomMargin, belowTopMargin);
     }
 
-    /**
-     * Converts the margin bounds to a java.awt.geom.Area for complex collision detection.
-     *
-     * @return An Area representing the margin bounds
-     */
     public Area toArea() {
         return new Area(marginBoundsSs);
     }
 
-    /**
-     * Returns a new ElementBoundsSs translated by the given offset.
-     */
     public ElementBoundsSs translate(double dxSs, double dySs) {
         return new ElementBoundsSs(
             translateRect(contentBoundsSs, dxSs, dySs),
@@ -276,17 +182,11 @@ public final class ElementBoundsSs {
         );
     }
 
-    /**
-     * Returns the content size as "width×height" string.
-     */
     public String getContentSizeString() {
         return (int) Math.round(contentBoundsSs.getWidth()) + "×" +
                (int) Math.round(contentBoundsSs.getHeight());
     }
 
-    /**
-     * Returns the padding as CSS shorthand (e.g., "4ss", "4ss 8ss", "4ss 8ss 4ss 8ss").
-     */
     public String getPaddingCss() {
         return formatCssSpacing(
             contentBoundsSs.getMinY() - paddingBoundsSs.getMinY(),
@@ -296,9 +196,6 @@ public final class ElementBoundsSs {
         );
     }
 
-    /**
-     * Returns the margin as CSS shorthand (e.g., "4ss", "4ss 8ss", "4ss 8ss 4ss 8ss").
-     */
     public String getMarginCss() {
         return formatCssSpacing(
             paddingBoundsSs.getMinY() - marginBoundsSs.getMinY(),
@@ -308,9 +205,6 @@ public final class ElementBoundsSs {
         );
     }
 
-    /**
-     * Formats spacing values as CSS shorthand.
-     */
     private static String formatCssSpacing(double top, double right, double bottom, double left) {
         var t = Math.abs((int) Math.round(top));
         var r = Math.abs((int) Math.round(right));

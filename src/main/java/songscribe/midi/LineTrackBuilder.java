@@ -51,15 +51,8 @@ public class LineTrackBuilder {
     }
 
     /**
-     * Returns the duration of an element adjusted for tuplet membership.
-     *
-     * <p>Inside a tuplet the duration is the difference of two offsets from the tuplet's
-     * anchor, each scaled and rounded by {@link songscribe.dom.Tuplet#performedTicks}, which
-     * states why an offset is rounded rather than a duration. The ratio is the one the tuplet
-     * stores, never one inferred from the surrounding beat, so what is printed is what is heard.
-     *
-     * @param elementIndex Index of the element
-     * @return Duration in ticks, adjusted for tuplet if applicable
+     * Inside a tuplet the ratio is the one the tuplet stores, never one inferred from the
+     * surrounding beat, so what is printed is what is heard.
      */
     public int getElementDurationWithTuplet(int elementIndex) {
         var element = line.getElement(elementIndex);
@@ -82,15 +75,6 @@ public class LineTrackBuilder {
         return (int) (endOffset - startOffset);
     }
 
-    /**
-     * Adds this line's elements to a MIDI track.
-     *
-     * @param track        The MIDI track to add to
-     * @param lineIndex    This line's index in the song (for colorize messages)
-     * @param startTicks   Starting tick position
-     * @param initialTempo Tempo at the start of this line
-     * @param settings     Playback settings
-     */
     public void addToTrack(
         Track track,
         int lineIndex,
@@ -102,10 +86,6 @@ public class LineTrackBuilder {
             0, line.effectiveElementCount() - 1, (VelocityMap) null);
     }
 
-    /**
-     * Adds all of this line's elements to a MIDI track, using a velocity map
-     * for dynamic-aware note velocities.
-     */
     public TrackPosition addToTrack(
         Track track,
         int lineIndex,
@@ -118,18 +98,6 @@ public class LineTrackBuilder {
             0, line.effectiveElementCount() - 1, velocityMap);
     }
 
-    /**
-     * Adds a range of this line's elements to a MIDI track.
-     *
-     * @param track The MIDI track to add to
-     * @param lineIndex This line's index in the song (for colorize messages)
-     * @param startTicks Starting tick position
-     * @param initialTempo Tempo at the start of this range
-     * @param settings Playback settings
-     * @param startElement Index of the first element to add
-     * @param endElement Index of the last element to add
-     * @return Pair of (ending tick position, ending tempo)
-     */
     @SuppressWarnings("UnusedReturnValue")
     public TrackPosition addToTrack(
         Track track,
@@ -144,10 +112,6 @@ public class LineTrackBuilder {
             startElement, endElement, (VelocityMap) null);
     }
 
-    /**
-     * Adds a range of this line's elements to a MIDI track, using a velocity map
-     * for dynamic-aware note velocities.
-     */
     public TrackPosition addToTrack(
         Track track,
         int lineIndex,
@@ -172,21 +136,7 @@ public class LineTrackBuilder {
     }
 
     /**
-     * Adds a range of this line's elements to a MIDI track using an externally
-     * managed {@link SlideMidiHelper}. This overload is used by the repeat
-     * path, which processes notes one at a time but needs slide state
-     * (e.g. pending grace pitch) to survive across calls. The caller is
-     * responsible for flushing pending resets when done.
-     *
-     * @param track The MIDI track to add to
-     * @param lineIndex This line's index in the song (for colorize messages)
-     * @param startTicks Starting tick position
-     * @param initialTempo Tempo at the start of this range
-     * @param settings Playback settings
-     * @param startElement Index of the first element to add
-     * @param endElement Index of the last element to add
-     * @param slideHelper Shared slide state across calls
-     * @return Pair of (ending tick position, ending tempo)
+     * The caller is responsible for flushing pending resets when done.
      */
     @SuppressWarnings("UnusedReturnValue")
     public TrackPosition addToTrack(
@@ -204,12 +154,7 @@ public class LineTrackBuilder {
     }
 
     /**
-     * Adds a range of this line's elements to a MIDI track using an externally
-     * managed {@link SlideMidiHelper} and an optional {@link VelocityMap}
-     * for dynamic-aware note velocities. This overload is used by the repeat
-     * path, which processes notes one at a time but needs slide state
-     * (e.g. pending grace pitch) to survive across calls. The caller is
-     * responsible for flushing pending resets when done.
+     * The caller is responsible for flushing pending resets when done.
      */
     public TrackPosition addToTrack(
         Track track,
@@ -264,9 +209,6 @@ public class LineTrackBuilder {
         return new TrackPosition(ticks, currentTempo);
     }
 
-    /**
-     * Adds a colorize meta message to the track for playback highlighting.
-     */
     private void addColorizeMetaMessage(
         Track track,
         int lineIndex,
@@ -287,9 +229,6 @@ public class LineTrackBuilder {
         track.add(new MidiEvent(playNoteMessage, ticks));
     }
 
-    /**
-     * Adds note on/off messages to the track and returns the updated tick position.
-     */
     private int addNoteMessages(
         Track track,
         int lineIndex,
@@ -345,15 +284,11 @@ public class LineTrackBuilder {
         return trackTicks;
     }
 
-    /**
-     * The note event a slide's pitch bend and note-off messages are emitted for.
-     */
     private record SlideEvent(
         int trackTicks, int duration, int elementIndex, NoteElement element, Slide slide
     ) {}
 
     /**
-     * Adds slide pitch bend messages and note-off for a note with a slide.
      * For connecting glissandos, the note sustains for its full written duration (ignoring
      * staccato) and slides toward the next note's pitch. For a fall, the sounding
      * duration respects staccato/noteDurationPercent and the slide goes down.
@@ -430,11 +365,6 @@ public class LineTrackBuilder {
         }
     }
 
-    /**
-     * Adds slide-in pitch bend and expression messages for a grace note slide-in.
-     * The note starts at half velocity with expression at zero, then both pitch
-     * and volume ramp up over a fixed 16th-note duration.
-     */
     private void addGraceGlissandoSlideIn(
         Track track,
         int trackTicks,
@@ -472,9 +402,6 @@ public class LineTrackBuilder {
         SlideMidiHelper.createExpressionReset(track, trackTicks + slideTicks, 0);
     }
 
-    /**
-     * Adds a normal note-off (no slide) respecting staccato and articulation overrides.
-     */
     private void addNormalNoteOff(
         Track track,
         int trackTicks,
@@ -485,9 +412,6 @@ public class LineTrackBuilder {
         addNoteOff(track, trackTicks + calculateSoundingDuration(duration, element, settings), element);
     }
 
-    /**
-     * Returns the sounding duration in ticks, applying staccato/articulation overrides.
-     */
     int calculateSoundingDuration(
         int duration,
         NoteElement element,
@@ -496,20 +420,11 @@ public class LineTrackBuilder {
         return (int) ((duration * (long) calculateSoundingPercent(element, settings)) / PERCENT);
     }
 
-    /**
-     * Returns the sounding duration percentage for a note, considering articulation
-     * overrides and the global noteDurationPercent setting.
-     */
     static int calculateSoundingPercent(NoteElement element, PlaybackSettings settings) {
         var midiOverride = element.findMidiDurationOverride();
         return (midiOverride == null) ? settings.noteDurationPercent() : midiOverride;
     }
 
-    /**
-     * Returns the MIDI velocity for a note. When a {@link VelocityMap} is available
-     * (during normal playback), the pre-computed dynamic-aware velocity is used.
-     * Otherwise falls back to the legacy binary logic (accented or not).
-     */
     static int noteVelocity(
         NoteElement note,
         @Nullable VelocityMap velocityMap,
@@ -525,9 +440,6 @@ public class LineTrackBuilder {
             : PlaybackController.NOTE_VELOCITY;
     }
 
-    /**
-     * Adds a note-on MIDI message to the track with an explicit velocity.
-     */
     private void addNoteOn(Track track, int ticks, NoteElement note, int velocity)
         throws InvalidMidiDataException {
         var down = new ShortMessage();
@@ -535,9 +447,6 @@ public class LineTrackBuilder {
         track.add(new MidiEvent(down, ticks));
     }
 
-    /**
-     * Adds a note-off MIDI message to the track.
-     */
     private void addNoteOff(Track track, int ticks, NoteElement note) throws InvalidMidiDataException {
         var up = new ShortMessage();
         up.setMessage(ShortMessage.NOTE_OFF, 0, note.getPitch(), 0);

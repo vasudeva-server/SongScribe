@@ -27,21 +27,12 @@ import org.jspecify.annotations.Nullable;
 import songscribe.font.TextMeasurement;
 
 /**
- * Represents a text annotation attachment on a note.
- * <p>
- * Annotations display text above or below a note (e.g., "dolce", "cresc.", etc.).
- * They can be aligned left, center, or right relative to the note.
+ * A text annotation attached to a note.
  */
 public final class AnnotationAttachment extends Attachment {
 
-    /** The annotation data. */
     private Annotation annotation;
 
-    /**
-     * Creates an annotation attachment.
-     *
-     * @param annotation The annotation data
-     */
     public AnnotationAttachment(Annotation annotation) {
         this.annotation = annotation;
     }
@@ -51,36 +42,18 @@ public final class AnnotationAttachment extends Attachment {
         return new AnnotationAttachment(annotation);
     }
 
-    /**
-     * @return the annotation data
-     */
     public Annotation getAnnotation() {
         return annotation;
     }
 
-    /**
-     * @param annotation the annotation data this attachment carries from now on
-     */
     public void setAnnotation(Annotation annotation) {
         this.annotation = annotation;
     }
 
-    /**
-     * Computes the content width from the actual annotation text.
-     *
-     * @param font the annotation font
-     * @return width in staff-space units
-     */
     public double computeContentWidthSs(Font font) {
         return TextMeasurement.textWidthSs(font, annotation.text()).value();
     }
 
-    /**
-     * Computes the content height from the annotation font.
-     *
-     * @param font the annotation font
-     * @return height in staff-space units
-     */
     public double computeContentHeightSs(Font font) {
         return TextMeasurement.textHeightSs(font).value();
     }

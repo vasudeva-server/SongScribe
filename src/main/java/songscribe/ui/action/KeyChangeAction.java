@@ -36,20 +36,9 @@ import songscribe.ui.edit.InsertionPointMode;
 /**
  * Writes a key change into the middle of a line: the user picks the spot, then names the key.
  *
- * <p>Invoking the action does not open a dialog — it enters {@link InsertionPointMode}, the same
- * "click to place" interaction a paste with no selection uses, with this action as the client.
- * The mode raises the banner {@link #overlayText} names and tracks the marker; the index the
- * user settles on is one {@link #acceptsInsertionIndex} accepted. There is no position guard on
- * the action itself: every position rule this operation has lives in that predicate, where the
- * user sees it as a marker that appears and disappears rather than as a command that will not
- * run.
- *
- * <p>The two halves are strictly sequential, and the dialog is the second one: picking the point
- * only accepts it ({@link #insertionPointChosen}), and the dialog opens from
- * {@link #insertionPointModeDidEnd}, which hands the point back once the mode has taken its
- * banner and marker down. Opening it from the callback that chose the point would put a modal
- * dialog in front of a banner still reading "Click or Return to insert, Esc to cancel", telling
- * the user to do something the dialog no longer lets them do.
+ * <p>The dialog opens from {@link #insertionPointModeDidEnd}, not from
+ * {@link #insertionPointChosen}: opening it there would put a modal dialog in front of a banner
+ * still telling the user to click.
  *
  * <p>See {@code docs/key-changes.md} for what a mid-line key change means, and
  * {@link KeyChangeElement}'s position invariant for why some positions are refused.
@@ -83,9 +72,6 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
     // InsertionPointMode.Client
     // -------------------------------------------------------------------------
 
-    /**
-     * @return the key-change banner's wording
-     */
     @Override
     public InsertionPointOverlay.Text overlayText() {
         return new InsertionPointOverlay.Text(
@@ -93,29 +79,14 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
             Strings.get(Strings.INSERTION_MODE_KEY_CHANGE_HINT));
     }
 
-    /**
-     * Takes exactly the positions {@link Line#canInsertKeyChangeAt} accepts.
-     *
-     * @param line the line the pointer is over
-     * @param index the insertion index under the pointer, the element it would land before
-     * @return {@code true} when a key change may be written at {@code index}
-     */
     @Override
     public boolean acceptsInsertionIndex(Line line, int index) {
         return line.canInsertKeyChangeAt(index);
     }
 
     /**
-     * Accepts the position the user picked and ends the placement. The dialog opens from
-     * {@link #insertionPointModeDidEnd}, not here — see the class contract for why. Nothing is
-     * recorded: the mode hands the point back with the outcome.
-     *
-     * <p>Always completes the placement: every index that reaches this method is one the
-     * predicate accepted, and nothing else about a key change can refuse a position.
-     *
-     * @param line the line the user picked
-     * @param index the accepted insertion index within {@code line}
-     * @return {@link InsertionPointMode.Placement#COMPLETED}, always
+     * Always completes the placement: {@link #acceptsInsertionIndex} has already refused every
+     * position a key change cannot take.
      */
     @Override
     public InsertionPointMode.Placement insertionPointChosen(Line line, int index) {
@@ -123,15 +94,8 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
     }
 
     /**
-     * Opens the key dialog on the point the placement completed on, now that the mode's banner
-     * and marker are down. A cancelled placement opens nothing.
-     *
-     * <p>Cancelling the dialog is a decision about the key change, not about the position, so
-     * nothing reopens: a second key change starts from the action again.
-     *
-     * @param outcome the point the placement completed on, or
-     *     {@link InsertionPointMode.Outcome#CANCELLED}
-     * @effects opens the key dialog on a completed placement
+     * Cancelling the dialog does not reopen the position mode; a second key change starts from
+     * the action again.
      */
     @Override
     public void insertionPointModeDidEnd(InsertionPointMode.Outcome outcome) {

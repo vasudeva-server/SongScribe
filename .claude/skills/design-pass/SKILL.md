@@ -1,6 +1,6 @@
 ---
 name: design-pass
-description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, contract what fan-in earns, keep only the tests the design cannot enforce
+description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, state in Javadoc only what the code cannot, keep only the tests the design cannot enforce
 model: opus
 effort: medium
 disable-model-invocation: true
@@ -9,8 +9,8 @@ disable-model-invocation: true
 ## Design Pass
 
 Take one target from *whatever it is now* to *illegal states unrepresentable,
-contracts where fan-in earns them, tests only where the design cannot enforce the
-promise*. One stash snapshot per step, resumable across context clears.
+Javadoc only where the code cannot say it, tests only where the design cannot
+enforce the promise*. One stash snapshot per step, resumable across context clears.
 
 **A pass never commits.** It leaves its work in the tree and snapshots each step
 to the stash. Committing is the user's, whenever they choose.
@@ -25,8 +25,9 @@ Paths in this file are relative to `.claude/skills/design-pass/`.
 
 **The design is the completeness criterion, not the contract and not coverage.**
 A target is finished when the invariants it depends on are carried by types
-rather than checked at runtime, the contracts that exist are the ones fan-in
-earns, and every remaining test sits on the floor in `design.md`.
+rather than checked at runtime, every Javadoc clause is one the code cannot say,
+and every remaining test sits on the floor in `design.md` with a full contract
+it derives from.
 
 Steps run in the order of attack: what a type can carry never becomes a contract
 clause, and what a contract can state never becomes a test. **Work that arrives
@@ -64,7 +65,7 @@ decide. Step 12 is itself a review, and its marks come back on the code rather
 than on a document.
 
 **A findings document covers its own step's axis and nothing else.** Step 3 asks
-what types can carry; step 5 asks what fan-in earns a contract; step 6 asks what
+what types can carry; step 5 asks what the Javadoc must state; step 6 asks what
 each test is for. A finding that belongs to a later step's axis is recorded in
 the record's *Findings raised* and picked up by that step's document — never
 argued early, because the earlier step's answer changes what the later question
@@ -128,9 +129,10 @@ step 13 deletes them with it.
 
 - **`~/.claude/guides/design.md`** — the architecture gate and the order of
   attack, class design, types over tests, boundaries, guards, `@Nullable`,
-  scoped globals, extraction, contract depth, the testing floor and the gate
+  scoped globals, extraction, what Javadoc states, the testing floor and the gate
   that proposes tests before they are written. Everything here serves it.
-- **`.claude/guides/contracts.md`** — the Javadoc form of a contract.
+- **`.claude/guides/contracts.md`** — what a Javadoc may state, and the form of
+  a full contract.
 - **`.claude/guides/testing-common.md`** — where cases come from, triage,
   diagnostics.
 - **`.claude/guides/testing-unit.md`** — parameterized case tables and the

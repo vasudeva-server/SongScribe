@@ -21,22 +21,10 @@
 package songscribe.layout;
 
 /**
- * The typeset content of one above-staff decoration: every piece it draws, positioned and measured
- * once, by the layout pass that placed it.
+ * The typeset content of one above-staff decoration, positioned and measured once by the layout
+ * pass that placed it. The renderer resolves no font, measures no advance and computes no position
+ * of its own, so the drawn ink cannot disagree with the box layout measured.
  * <p>
- * A decoration's content rides on its layout — see
- * {@link LayoutResult.DecorationLayout.Typeset} — so that the drawn ink cannot disagree with the
- * box that layout, hit testing and vertical stacking measured. The renderer walks the content and
- * decides nothing: it resolves no font, measures no advance and computes no position of its own.
- * That is what makes the agreement structural rather than a matter of two passes staying in step,
- * and it keeps text measurement out of the paint loop, where it would run for every decoration on
- * screen on every scroll and every zoom step.
- * <p>
- * Every measurement a member carries is in staff spaces and therefore zoom-invariant, the document
- * scale being a compile-time constant. Content is rebuilt by every layout pass and holds no cache:
- * nothing has to invalidate it, because nothing outlives the layout that produced it.
- * <p>
- * The hierarchy is sealed so the one site that must know which kind it holds dispatches without a
- * {@code default} arm.
+ * Measurements are in staff spaces. Content is rebuilt by every layout pass and holds no cache.
  */
 public sealed interface DecorationContent permits AttributionContent, MetronomeContent {}

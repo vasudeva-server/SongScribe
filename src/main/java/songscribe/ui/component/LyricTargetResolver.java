@@ -27,12 +27,9 @@ import songscribe.ui.action.EditLyricAction;
 
 /**
  * Decides which staff element a lyric-editing gesture should open the editor on.
- * <p>
- * This is pure policy over a {@link Line} and an element index: it holds no state and
- * needs no editor instance. Every entry point to lyric editing — {@link EditLyricAction},
- * Return/Enter on a selection, and a double-click on an element — resolves its target
- * through {@link #resolveLyricTarget}, so all of them agree on what is editable and on
- * which element an ambiguous gesture lands.
+ *
+ * <p>Every entry point to lyric editing resolves its target through
+ * {@link #resolveLyricTarget}, so all agree on what is editable.
  */
 public final class LyricTargetResolver {
 
@@ -40,26 +37,17 @@ public final class LyricTargetResolver {
     }
 
     /**
-     * Returns the index the editor should open on for a gesture aimed at {@code index}.
      * A grace-host pair's lyric lives on the grace note, so a gesture on the host resolves
      * to the grace note.
      *
-     * @param line  the line the gesture landed on
-     * @param index the index of the element the gesture aimed at
-     * @return the index to open the editor on, or {@code null} when the element the gesture
-     *     resolves to can bear no syllable
+     * @return {@code null} when the element the gesture resolves to can bear no syllable
      */
     public static @Nullable Integer resolveLyricTarget(Line line, int index) {
         var targetIndex = line.isPairedGraceNoteTarget(index) ? index - 1 : index;
         return line.canBearSyllableAt(targetIndex) ? targetIndex : null;
     }
 
-    /**
-     * Returns the index Tab (and every other forward move) should carry the lyric editor to
-     * from {@code currentIndex}, or null when the line has no eligible element left. Eligibility
-     * is {@link Line#canBearSyllableAt}. The line's auto-maintained terminal barline is
-     * excluded via {@link Line#effectiveElementCount()}.
-     */
+    /** Null when the line has no eligible element left. */
     public static @Nullable Integer findNextEligibleIndex(Line line, int currentIndex) {
         var count = line.effectiveElementCount();
 
@@ -72,11 +60,7 @@ public final class LyricTargetResolver {
         return null;
     }
 
-    /**
-     * Returns the index Shift-Tab should carry the lyric editor back to from
-     * {@code currentIndex}, or null when there is no eligible element before it. Eligibility is
-     * the same test {@link #findNextEligibleIndex} applies.
-     */
+    /** Null when there is no eligible element before {@code currentIndex}. */
     public static @Nullable Integer findPreviousEligibleIndex(Line line, int currentIndex) {
         for (var i = currentIndex - 1; i >= 0; i--) {
             if (line.canBearSyllableAt(i)) {

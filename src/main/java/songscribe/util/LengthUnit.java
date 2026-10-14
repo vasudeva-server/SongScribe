@@ -27,19 +27,11 @@ import songscribe.prefs.PrefsValue;
  * A physical length unit the user types and reads lengths in, chosen by
  * {@code PrefsKey.UNITS}.
  *
- * <p>Inches are the pivot: every conversion here goes through them, because inches are what
- * the layout's own limits are expressed in ({@code PageModel.MIN_LINE_WIDTH_INCHES} and its
- * maximum) and what {@link DocumentScale#inchesToSs} takes. Converting a value
- * to a unit and back returns it unchanged up to floating-point rounding.
+ * <p>Inches are the pivot of every conversion. This is a display unit, not a layout unit; see
+ * {@code .claude/guides/spatial-units.md} for staff spaces and pixels.
  *
- * <p>This is a display unit, not a layout unit. Staff spaces and pixels — and the rules for
- * moving between them — are a separate matter, covered by
- * {@code .claude/guides/spatial-units.md}; nothing here is a suffix that guide governs.
- *
- * <p><b>Nothing reads the user's choice yet.</b> The Preferences dialog offers it and the
- * conversions below are unused, because the line-width field that displayed inches or
- * centimetres is gone. Page setup is where the choice is going, and the control stays in
- * Preferences until it lands there. Do not remove either as dead code.
+ * <p>Nothing reads the user's choice yet: the Preferences control and the conversions are kept
+ * for page setup. Do not remove either as dead code.
  */
 public enum LengthUnit implements PrefsValue {
 
@@ -59,31 +51,14 @@ public enum LengthUnit implements PrefsValue {
         this.labelKey = labelKey;
     }
 
-    /**
-     * Converts a length expressed in this unit to inches.
-     *
-     * @param value the length, in this unit
-     * @return the same length in inches, which for {@link #INCHES} is {@code value} itself
-     */
     public double toInches(double value) {
         return value / perInch;
     }
 
-    /**
-     * Converts a length expressed in inches to this unit.
-     *
-     * @param inches the length, in inches
-     * @return the same length in this unit, which for {@link #INCHES} is {@code inches} itself
-     */
     public double fromInches(double inches) {
         return inches * perInch;
     }
 
-    /**
-     * @return the {@link Strings} constant naming this unit as the user sees it abbreviated
-     *         beside a field ({@code cm}, {@code inches}) — a key rather than resolved text,
-     *         so that deciding which unit is in play stays free of locale
-     */
     public String labelKey() {
         return labelKey;
     }

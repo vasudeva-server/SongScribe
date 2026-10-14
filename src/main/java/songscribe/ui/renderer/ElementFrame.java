@@ -28,37 +28,23 @@ import songscribe.layout.DecorationLayouts;
 import songscribe.layout.stacking.NoteAttachedStacker;
 
 /**
- * Per-element rendering state, built fresh for each element a {@code LineRenderer}
- * visits (and shared for line-level passes via {@link #LINE_LEVEL}).
- * <p>
- * Together with {@code LineInvariants} this replaces the mutable per-element setters
- * that {@code ElementRenderContext} exposed: an immutable frame cannot carry stale
- * state from a previous element.
- * <p>
- * {@link #decorationLayoutsFor} memoizes its result: every renderer that draws a note's
- * decorations calls it against the same frame instance for the same element and
- * invariants, so the underlying table — a full preview stacking pass when an override X
- * is active — is computed at most once per frame.
+ * Per-element rendering state, built fresh for each element a {@code LineRenderer} visits
+ * (shared for line-level passes via {@link #LINE_LEVEL}). {@link #decorationLayoutsFor}
+ * memoizes its result, so the stacking pass runs at most once per frame.
  */
 public final class ElementFrame {
 
     /**
      * The grace-note insertion preview's displacement of the elements from {@code fromIndex}
-     * onward, by {@code shiftSs} staff spaces. Created once per paint at line level and shared
-     * by reference into every per-element frame of that paint.
-     *
-     * @param fromIndex first element index (inclusive) to displace
-     * @param shiftSs   displacement in staff spaces
+     * onward, by {@code shiftSs} staff spaces.
      */
     public record PreviewShift(int fromIndex, double shiftSs) {
 
-        /** Returns whether this shift displaces the element at {@code index}. */
         public boolean displaces(int index) {
             return index >= fromIndex;
         }
     }
 
-    /** Canonical frame for line-level passes: no element index, no override, no preview shift. */
     public static final ElementFrame LINE_LEVEL = new ElementFrame(null, Double.NaN, null);
 
     private final @Nullable Integer currentElementIndex;
@@ -77,14 +63,6 @@ public final class ElementFrame {
         this.previewShift = previewShift;
     }
 
-    /**
-     * Returns a line-level frame (no element index, no override) carrying the given
-     * grace-note insertion preview shift. {@code LineRenderer} threads this shift into
-     * every per-element frame it builds for the paint.
-     *
-     * @param fromIndex first element index (inclusive) to displace
-     * @param shiftSs   preview shift amount in staff spaces
-     */
     public static ElementFrame lineLevelWithPreviewShift(int fromIndex, double shiftSs) {
         return new ElementFrame(
             LINE_LEVEL.currentElementIndex(),
@@ -94,10 +72,6 @@ public final class ElementFrame {
     }
 
     /**
-     * Returns a per-element frame for {@code elementIndex} with the given X override,
-     * sharing this frame's preview shift. Pass {@link Double#NaN} for
-     * {@code overrideXSs} when the element uses its laid-out position.
-     *
      * @param elementIndex index of the element within the line, or {@code null} for a
      *                     line-level pass
      * @param overrideXSs  exact X in staff spaces, or {@link Double#NaN} for no override
@@ -107,43 +81,31 @@ public final class ElementFrame {
     }
 
     /**
-     * Index of the element being rendered within the line, or {@code null} during
-     * line-level passes.
+     * {@code null} during line-level passes.
      */
     public @Nullable Integer currentElementIndex() {
         return currentElementIndex;
     }
 
     /**
-     * Exact X coordinate in staff spaces to use instead of the laid-out position, or
      * {@link Double#NaN} when no override applies.
      */
     public double overrideElementXSs() {
         return overrideElementXSs;
     }
 
-    /** Returns the grace-note insert preview's displacement, or null when no shift applies. */
+    /** Null when no shift applies. */
     public @Nullable PreviewShift previewShift() {
         return previewShift;
     }
 
-    /** Returns whether an override element X is active (i.e. {@link #overrideElementXSs} is not NaN). */
     public boolean hasOverrideElementX() {
         return !Double.isNaN(overrideElementXSs);
     }
 
     /**
-     * Returns the X at which {@code element} is drawn, in staff spaces: this frame's override
-     * when it carries one — the position an insertion preview is being dragged through — and the
-     * element's solved position otherwise.
-     *
-     * <p>Every renderer that draws an element at a horizontal position asks this, so a preview
-     * moves all of them together. The value is returned exactly as laid out, with no
-     * device-pixel snapping.
-     *
-     * @param element    the element being drawn
-     * @param invariants the line invariants carrying the solved layout
-     * @return the element's X in staff spaces
+     * Every renderer that draws an element at a horizontal position asks this, so a preview
+     * moves all of them together. No device-pixel snapping.
      */
     public double resolveElementXSs(StaffElement element, LineInvariants invariants) {
         if (hasOverrideElementX()) {
@@ -154,21 +116,8 @@ public final class ElementFrame {
     }
 
     /**
-     * Returns the decoration layouts {@code element}'s note-attached decorations are drawn from
-     * in this frame: for a note carrying this frame's override — the position an insertion
-     * preview is being dragged through — the layouts the preview stacks for that note alone,
-     * and the line's solved table otherwise.
-     *
-     * <p>Every renderer of a note-attached decoration asks this, so a previewed note's
-     * articulations, fermata and dynamic stack where the committed note's would. A previewed
-     * element that is not a note has no such decorations to preview, so it reads the line's
-     * table like any other element. Those renderers all ask against the same frame instance
-     * for the same element and invariants, so the result is computed once per frame and
-     * cached rather than re-running the stacking pass for each renderer.
-     *
-     * @param element    the element whose decorations are being drawn
-     * @param invariants the line invariants carrying the solved layout
-     * @return the decoration layouts to draw from
+     * Every renderer of a note-attached decoration asks this, so a previewed note's
+     * decorations stack where the committed note's would.
      */
     public DecorationLayouts decorationLayoutsFor(StaffElement element, LineInvariants invariants) {
         if (decorationLayoutsCache == null

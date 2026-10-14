@@ -29,16 +29,8 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
 /**
- * The final double barline entry, at the foot of <b>Notation ▸ Barline</b> and in the barline
- * popup panel in {@code BarlineToolbar}. Unlike every other barline entry it applies to the song's
- * auto-maintained terminal alone: it arms no pen and retypes no ordinary barline, so
- * it is enabled only while the terminal is selected, and it is checked while that terminal is a
- * {@code FINAL_DOUBLE_BARLINE}.
- * <p>
- * Everything else comes from {@link ElementTypeAction}: {@code matchesElement} compares the
- * terminal against this entry's own type, and {@code performAction} routes through
- * {@code Song.replaceTerminal} because {@code Line.setElement} refuses any other path into the
- * terminal slot.
+ * The final double barline entry. Unlike every other barline entry it applies to the song's
+ * auto-maintained terminal alone.
  */
 public final class FinalDoubleBarlineAction extends ElementTypeAction {
 

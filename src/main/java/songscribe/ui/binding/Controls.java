@@ -53,185 +53,65 @@ import songscribe.error.RuntimeError;
 import songscribe.ui.component.TickSlider;
 
 /**
- * Property views over the Swing controls a user edits — the framework's
- * <i>sources</i>.
+ * Property views over the Swing controls a user edits — the framework's <i>sources</i>.
+ * Presentation state a dialog merely computes lives in {@link Widgets} as a
+ * {@link WritableValue} instead.
  *
- * <p>Everything here returns a {@link Property}: a control the user edits is read,
- * observed and written, so all three capabilities are real. Presentation state a
- * dialog merely computes has no notification behind it and lives in {@link Widgets}
- * as a {@link WritableValue} instead. The return types are the whole of that
- * boundary — a caller cannot accidentally use a sink as a source, and cannot
- * accidentally type a source so narrowly that the framework refuses to write it.
+ * <p>A view is not a copy: the control remains the storage and nothing is cached, so a control
+ * changed by code that knows nothing of this package is still read correctly — it just does not
+ * <i>notify</i> unless the route carries the write.
  *
- * <p>A view is not a copy. The control remains the storage; the property reads it on
- * every {@link ObservableValue#get} and writes straight through on
- * {@link WritableValue#set}. Nothing here caches, so a control changed by code that
- * knows nothing of this package is still read correctly — it simply does not
- * <i>notify</i> unless the route below carries the write.
- *
- * <h2>Notification routes</h2>
- *
- * <p>Every adapter names, in its own contract, the Swing route it observes and
- * whether that route fires on a programmatic write, because picking the wrong route
- * loses writes and nothing at all reports the loss. The routes this class uses:
- *
- * <table border="1">
- * <caption>Swing notification routes and programmatic writes</caption>
- * <tr><th>Route</th><th>Used by</th><th>Fires on a programmatic write?</th></tr>
- * <tr><td>{@code DocumentListener}</td><td>{@link #text} ({@link Timing#WHILE_TYPING})</td>
- *     <td>yes — {@code setText} goes through the Document</td></tr>
- * <tr><td>{@code FocusAdapter.focusLost}</td><td>{@link #text} ({@link Timing#ON_COMMIT})</td>
- *     <td><b>no</b> — which is why a write through that property notifies by itself,
- *     and why a stray write to a control this repo owns is routed into it</td></tr>
- * <tr><td>{@code ActionListener} on {@code JComboBox}</td><td>{@link #item}, {@link #itemIndex}</td>
- *     <td>yes — {@code setSelectedItem} and {@code setSelectedIndex} both fire it</td></tr>
- * <tr><td>{@code ItemListener} on {@code AbstractButton}</td><td>{@link #selected}, {@link #radioGroup}</td>
- *     <td>yes — {@code setSelected} fires it. {@link #radioGroup} passes on only the
- *     selection half, since Swing announces both halves of one group change</td></tr>
- * <tr><td>{@code ActionListener} on {@code AbstractButton}</td><td>nothing here</td>
- *     <td><b>no</b> — which is why the button adapters observe items instead</td></tr>
- * <tr><td>{@code ChangeListener} on a {@code SpinnerModel}</td><td>{@link #number}</td>
- *     <td>yes — {@code setValue} fires it</td></tr>
- * <tr><td>{@code ChangeListener} on a {@code JSlider}</td><td>{@link #value}</td>
- *     <td>yes — {@code setValue} fires it</td></tr>
- * <tr><td>{@code ListSelectionListener} on a {@code JList}</td><td>{@link #selectedIndex}</td>
- *     <td>yes — {@code setSelectedIndex} fires it</td></tr>
- * <tr><td>{@code TickSlider} tick listener</td><td>{@link #tick}</td>
- *     <td><b>no</b> — {@code setSnappedValue} suppresses its own report, which is why a
- *     write through that property notifies by itself</td></tr>
- * </table>
+ * <p>Every adapter names, in its own contract, the Swing route it observes and whether that
+ * route fires on a programmatic write, because the wrong route loses writes and nothing
+ * reports the loss.
  *
  * <h2>Lifecycle</h2>
  *
- * <p>Each factory registers a listener on the control and never removes it: the
- * property lives as long as the control does, and both die with the dialog that
- * built them. {@link Bindings#dispose} cancels the observations taken <i>on</i> a
- * property; it does not — and need not — unregister the property's own Swing
- * listener. Do not build a property over a control that outlives the dialog holding
- * the bindings.
+ * <p>Each factory registers a listener on the control and never removes it: the property lives
+ * as long as the control, and both die with the dialog that built them. Do not build a property
+ * over a control that outlives the dialog holding the bindings.
  *
  * <p><b>Threading:</b> EDT-only, like everything in this package.
  */
 public final class Controls {
 
-    /**
-     * What {@code JComboBox} and {@code JList} answer from {@code getSelectedIndex} when
-     * nothing is selected, and what {@code JComboBox.setSelectedIndex} takes to clear the
-     * selection. It is converted to and from {@code null} here and nowhere else, so
-     * nothing below a view holds it.
-     */
+    /** Converted to and from {@code null} here and nowhere else. */
     private static final int NO_SELECTED_INDEX = -1;
 
     private Controls() {}
 
-    /**
-     * Converts a control's selected-index answer to the value an index view hands out.
-     *
-     * @param swingIndex what {@code getSelectedIndex} answered
-     * @return {@code swingIndex}, or {@code null} when it is {@link #NO_SELECTED_INDEX}
-     */
     @Nullable
     private static Integer selectionOf(int swingIndex) {
         return (swingIndex == NO_SELECTED_INDEX) ? null : swingIndex;
     }
 
     /**
-     * Returns a property view of {@code field}'s text, notifying at {@code timing}.
-     *
-     * <p>{@link Timing#WHILE_TYPING} observes the field's {@code Document} and
-     * notifies on every keystroke — insertion, removal and attribute change all
-     * count as the same change, because from a value's point of view they are.
-     * {@link Timing#ON_COMMIT} observes {@code focusLost} instead and notifies once
-     * entry has finished.
-     *
-     * <p><b>{@code ON_COMMIT} is the one route in this class that a programmatic
-     * {@code setText} does not reach.</b> Swing fires no focus event for a write, so
-     * the field's own listener cannot report one. Two things close that, and neither
-     * is the focus route. A write made <i>through this property</i> notifies on its
-     * own for this timing — the write is the notification, since nothing else will
-     * announce it — so seeding a field from stored data propagates like a user's
-     * entry. And a write made <i>to the control</i> is routed into this property when
-     * the control is one this repository owns: the delegating {@code setText} on
-     * {@code MyJTextField} and {@code MyJTextArea} hands the text to the property
-     * associated with the field, which then writes the document and notifies. A plain
-     * {@code JTextComponent} this repo does not own — a {@code JSpinner}'s editor,
-     * for instance — has no such delegation, so a {@code setText} made straight to
-     * one is lost and nothing reports it. Bind such a field {@code WHILE_TYPING}, or
-     * write it through the property rather than through the control.
-     *
-     * @param field the text component to view; its text is the property's value, and
-     *     is never {@code null}
-     * @param timing when the property notifies
-     * @return the two-way view; {@code set} calls {@code setText}, which for either
-     *     timing leaves {@code get} answering the written text
-     * @effects registers a listener on {@code field} — a {@code DocumentListener} for
-     *     {@code WHILE_TYPING}, a focus listener for {@code ON_COMMIT} — which is
-     *     never unregistered. See the class documentation's <i>Lifecycle</i> section.
+     * <b>{@code ON_COMMIT} is the one route here that a programmatic {@code setText} does not
+     * reach.</b> A write made through this property notifies on its own, and a write to a
+     * control this repository owns ({@code MyJTextField}, {@code MyJTextArea}) is routed into
+     * it. A plain {@code JTextComponent} has no such delegation, so a {@code setText} made
+     * straight to one is lost and nothing reports it: bind such a field {@code WHILE_TYPING},
+     * or write it through the property.
      */
     public static Property<String> text(JTextComponent field, Timing timing) {
         return textProperty(field, timing, null);
     }
 
     /**
-     * Returns a property view of {@code field}'s text that normalizes the text on
-     * focus loss, notifying at {@code timing}.
+     * The normalizer always runs on focus loss, whichever {@code timing} was asked for. One
+     * focus listener normalizes, writes back, then notifies: two separate adapters would make
+     * the notified value depend on registration order. One focus loss notifies at most once.
      *
-     * <p>This overload replaces a hand-written focus adapter that tidies what the
-     * user typed — trimming it, collapsing runs of whitespace, supplying a default
-     * for an empty field.
-     *
-     * <p><b>The normalizer's timing is not {@code timing}.</b> {@code timing}
-     * governs when the property notifies; the normalizer always runs on focus loss,
-     * whichever timing was asked for, because focus loss is the only moment at which
-     * the user is finished with the text and rewriting it under the caret is not
-     * hostile. One focus listener does three things, in this order: normalize the
-     * field's text, write the normalized text back into the field, then notify.
-     * Registering the normalization and an {@code ON_COMMIT} notification as two
-     * separate focus adapters would make the notified value depend on registration
-     * order, and the losing order notifies un-normalized text and never notifies
-     * again.
-     *
-     * <p>The programmatic-write limitation of {@link #text(JTextComponent, Timing)}
-     * applies here unchanged.
-     *
-     * @param field the text component to view
-     * @param timing when the property notifies
-     * @param normalizer the tidying applied to the field's text on focus loss. It
-     *     must be idempotent — {@code normalizer.apply(normalizer.apply(s))} must
-     *     equal {@code normalizer.apply(s)} — because it is applied to text it has
-     *     already produced, every time the field regains and loses focus. It must
-     *     not return {@code null}.
-     * @return the two-way view; the value it answers after a focus loss is the
-     *     normalized text, which is also what the field then shows
-     * @effects registers listeners on {@code field}, never unregistered. On every
-     *     focus loss it may rewrite the field's text.
-     * @invariant one focus loss notifies at most once, whichever timing was asked
-     *     for and whether or not the normalizer changed the text. The rewrite is made
-     *     through the property's own write path, so a control this repository owns
-     *     does not also route it back as a second notification.
+     * @param normalizer must be idempotent, because it is applied to text it has already
+     *     produced, and must not return {@code null}
      */
     public static Property<String> text(JTextComponent field, Timing timing, UnaryOperator<String> normalizer) {
         return textProperty(field, timing, normalizer);
     }
 
     /**
-     * Returns a property view of {@code combo}'s selected item.
-     *
-     * <p>Observed with an {@code ActionListener}, which {@code setSelectedItem}
-     * fires, so a programmatic selection propagates like a user's and needs no
-     * delegation of the kind {@link #text} describes.
-     *
-     * @param <E> the combo box's item type
-     * @param combo the combo box to view. It must be uneditable and must always have
-     *     a selection. Uneditable is what makes the selected item the whole of the
-     *     control's value: an editable combo has editor text that can diverge from
-     *     the selection, and this view would not see it.
-     * @return the two-way view over {@code getSelectedItem} / {@code setSelectedItem}.
-     *     Its {@code get} throws {@link IllegalStateException} when the combo has no
-     *     selection, that being the precondition above rather than a value the view
-     *     can answer.
-     * @effects registers an {@code ActionListener} on {@code combo}, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
+     * @param combo must be uneditable, because an editable combo's editor text can diverge
+     *     from the selection, and must always have a selection
      */
     public static <E> Property<E> item(JComboBox<E> combo) {
         var property = new ViewProperty<E>(
@@ -245,32 +125,12 @@ public final class Controls {
     }
 
     /**
-     * Returns a property view of {@code combo}'s selected <i>position</i>.
+     * "Nothing selected" is {@code null}, so a binding over this property tests for null, never
+     * for a number.
      *
-     * <p>The same control and the same {@code ActionListener} route as {@link #item};
-     * the two differ only in what they call the selection. Use this one when the
-     * surrounding code speaks positions — a combo whose items are a list the caller
-     * built, where the stored form of the choice is its index — and {@link #item} when
-     * it speaks values. Viewing an index directly is what lets a derivation read the
-     * position without a list lookup standing between the property and the reader.
-     *
-     * <p>"Nothing selected" is {@code null}. Swing answers and takes a sentinel index
-     * for it, and this view is where the two are converted, so nothing below a view
-     * holds a Swing sentinel: a binding over this property tests for null, never for a
-     * number.
-     *
-     * @param combo the combo box to view. It must be uneditable, for the reason
-     *     {@link #item} gives.
-     * @return the two-way view over {@code getSelectedIndex} / {@code setSelectedIndex}.
-     *     Its {@code get} answers {@code null} when nothing is selected, so an empty
-     *     leading entry meaning "not chosen" is the caller's convention and not this
-     *     one's. Its {@code set} clears the selection when given {@code null}, and
-     *     throws {@link IllegalArgumentException} when given an index that is not a
-     *     position the combo holds.
-     * @invariant a written index is the index read back, for any position the combo
-     *     holds, and a written {@code null} reads back as {@code null}
-     * @effects registers an {@code ActionListener} on {@code combo}, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
+     * @param combo must be uneditable, for the reason {@link #item} gives
+     * @return Its {@code set} clears the selection when given {@code null}, and throws
+     *     {@link IllegalArgumentException} when given an index the combo does not hold.
      */
     public static Property<@Nullable Integer> itemIndex(JComboBox<?> combo) {
         var property = new ViewProperty<@Nullable Integer>(
@@ -283,18 +143,7 @@ public final class Controls {
         return property;
     }
 
-    /**
-     * Returns a property view of {@code button}'s selected state.
-     *
-     * <p>Observed with an {@code ItemListener}. An {@code ActionListener} here fires
-     * only on a user click and not on {@code setSelected}, so it would lose every
-     * programmatic write.
-     *
-     * @param button the checkbox, radio button or toggle to view
-     * @return the two-way view over {@code isSelected} / {@code setSelected}
-     * @effects registers an {@code ItemListener} on {@code button}, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
-     */
+    /** Observes items, not actions: an {@code ActionListener} would lose every programmatic write. */
     public static Property<Boolean> selected(AbstractButton button) {
         var property = new ViewProperty<Boolean>(
             button::isSelected,
@@ -306,27 +155,7 @@ public final class Controls {
         return property;
     }
 
-    /**
-     * Returns a property view of a spinner model's value.
-     *
-     * <p>Observed with a {@code ChangeListener}, which {@code setValue} fires, so a
-     * programmatic write propagates.
-     *
-     * <p>The model rather than the {@code JSpinner} is the subject, because the
-     * model is what holds the value and what a caller already has to build to
-     * constrain the spinner's range.
-     *
-     * @param model the spinner model to view. Its values must be {@link Number}s —
-     *     a {@code SpinnerNumberModel} or any model over numbers — and its value
-     *     must never be {@code null}.
-     * @return the two-way view over {@code getValue} / {@code setValue}. Its
-     *     {@code get} throws {@link ClassCastException} when the model holds
-     *     something that is not a {@code Number}, that being the precondition above.
-     *     {@code set} writes whatever {@code Number} it is given, so a caller writing
-     *     a type the model rejects gets the model's own complaint.
-     * @effects registers a {@code ChangeListener} on {@code model}, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
-     */
+    /** @param model its values must be {@link Number}s, and its value never {@code null} */
     public static Property<Number> number(SpinnerModel model) {
         var property = new ViewProperty<Number>(
             () -> (Number) model.getValue(),
@@ -339,20 +168,8 @@ public final class Controls {
     }
 
     /**
-     * Returns a property view of {@code slider}'s value.
-     *
-     * <p>Observed with a {@code ChangeListener}, which {@code setValue} fires, so a
-     * programmatic write propagates.
-     *
-     * <p><b>It notifies throughout a drag</b>, once per intermediate value, because
-     * {@code getValueIsAdjusting} is not consulted. That is the right default for a
-     * live preview and the wrong one for an expensive effect: a caller wanting
-     * drag-end only reads the slider directly rather than binding it.
-     *
-     * @param slider the slider to view
-     * @return the two-way view over {@code getValue} / {@code setValue}
-     * @effects registers a {@code ChangeListener} on {@code slider}, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
+     * Notifies throughout a drag, once per intermediate value. A caller wanting drag-end only
+     * reads the slider directly rather than binding it.
      */
     public static Property<Integer> value(JSlider slider) {
         var property = new ViewProperty<Integer>(
@@ -366,31 +183,9 @@ public final class Controls {
     }
 
     /**
-     * Returns a property view of {@code list}'s selected index.
-     *
-     * <p>Observed with a {@code ListSelectionListener}, which <b>does</b> fire on a
-     * programmatic {@code setSelectedIndex}, ignoring the events Swing sends while a
-     * selection is still being dragged out — a caller wants where the selection landed,
-     * not every row it passed over.
-     *
-     * <p>The value is an index into the list's current data, so a caller binding one is
-     * responsible for the data being in place first; a selection written into an empty
-     * list is silently nothing.
-     *
-     * <p>"Nothing selected" is {@code null}, converted to and from Swing's sentinel index
-     * here as {@link #itemIndex} describes. A {@code null} write goes through
-     * {@code clearSelection}, because {@code JList.setSelectedIndex} ignores the sentinel
-     * rather than clearing on it.
-     *
-     * @param list the list to view
-     * @return the two-way view over the selected index. Its {@code get} answers
-     *     {@code null} when nothing is selected, and its {@code set} clears the selection
-     *     when given {@code null}; a transform binding it to a domain value accounts for
-     *     both.
-     * @invariant a written index the list holds is the index read back, and a written
-     *     {@code null} reads back as {@code null}
-     * @effects registers a {@code ListSelectionListener} on {@code list}, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
+     * The value is an index into the list's current data, so the caller has the data in place
+     * first; a selection written into an empty list is silently nothing. "Nothing selected" is
+     * {@code null}.
      */
     public static Property<@Nullable Integer> selectedIndex(JList<?> list) {
         var property = new ViewProperty<@Nullable Integer>(
@@ -414,28 +209,12 @@ public final class Controls {
     }
 
     /**
-     * Returns a property view of {@code slider}'s tick stop.
+     * Reports a landing on a stop and nothing else, not every pixel of a drag. A value that is
+     * not exactly a stop lands on the nearest one.
      *
-     * <p>Observed with a tick listener, which reports a landing on a stop and nothing
-     * else — not every pixel of a drag. That is the slider's answer to the question
-     * {@link Timing} answers for text controls, and it is not a choice a caller makes
-     * here: a slider that reported continuously would write its target on the way past
-     * every stop between where the drag began and where it ended.
-     *
-     * <p>Writing goes through {@link TickSlider#setSnappedValue}, so a value that is not
-     * exactly a stop lands on the nearest one rather than being refused.
-     *
-     * <p><b>The tick route does not fire on a programmatic write</b>, because
-     * {@code setSnappedValue} suppresses its own report — the value is arriving from
-     * wherever the slider's value is kept, so reporting it back there is the write nobody
-     * asked for. The write through this property is therefore the only notification a
-     * programmatic change produces. A change to {@code setSnappedValue} that started
+     * <p><b>The tick route does not fire on a programmatic write</b>, so the write through this
+     * property is the only notification; a change to {@code setSnappedValue} that started
      * reporting would announce every such change twice.
-     *
-     * @param slider the slider to view
-     * @return the two-way view over the slider's tick stop
-     * @effects registers a tick listener on {@code slider}, never unregistered. See the
-     *     class documentation's <i>Lifecycle</i> section.
      */
     public static Property<Integer> tick(TickSlider slider) {
         var property = new ViewProperty<Integer>(
@@ -449,47 +228,13 @@ public final class Controls {
     }
 
     /**
-     * Groups {@code buttons} into a {@link ButtonGroup} and returns a property view of
-     * which constant that group has chosen.
-     *
-     * <p>This is what turns a set of buttons into the one choice they stand for. The
-     * group is created here rather than accepted from the caller, because the chosen
-     * constant is read from the group itself: a view over buttons that were never
-     * grouped would have no choice to report, and making the group here is what stops
-     * one being built.
-     *
-     * <p><b>The value is read from the group, never by polling the buttons.</b> Swing
-     * changes a radio group in two steps — it turns the outgoing button off, then turns
-     * the incoming one on — and it announces the first step before performing the
-     * second. Between those two moments no button reports itself selected, while the
-     * group already names the incoming one. Asking the buttons therefore has a window in
-     * which the group appears to have no value at all; asking the group has none. Do not
+     * <b>The value is read from the group, never by polling the buttons.</b> Swing turns the
+     * outgoing button off and announces that before turning the incoming one on, so in between
+     * no button reports itself selected while the group already names the incoming one. Do not
      * change this to a scan of {@code isSelected()}.
      *
-     * <p>Each button is observed with an {@code ItemListener}, so both a user's click
-     * and a programmatic {@code set} propagate. Only the selection half of the
-     * notification is passed on, because Swing announces both halves of one change and
-     * a deselection is the first half of a change rather than a change of its own.
-     *
-     * <p>{@code buttons} is copied, so a later change to the caller's map does not
-     * reach the view and cannot break the totality established here.
-     *
-     * @param <E> the enum whose constants the group offers
-     * @param buttons the button standing for each constant. It must contain an entry
-     *     for every constant of {@code E}: a partial map is a real thing a caller can
-     *     hand over, and rejecting it here is what lets the view's {@code get} be
-     *     total. Naming each constant beside its button is what makes a transposed
-     *     pairing impossible to write; the compiler places them.
-     * @return the two-way view. Its {@code get} answers the constant the group has
-     *     chosen and throws {@link IllegalStateException} when it has chosen none — a
-     *     group with no selection has no value, and a caller binding one must select a
-     *     button before the first read. Its {@code set} selects the given constant's
-     *     button, which the group deselects the others for.
-     * @throws IllegalArgumentException if {@code buttons} is empty, or does not cover
-     *     every constant of {@code E}; the message names the missing constants
-     * @effects adds every button to a new {@code ButtonGroup} and registers an
-     *     {@code ItemListener} on each, never unregistered. See the class
-     *     documentation's <i>Lifecycle</i> section.
+     * <p>A group with no selection has no value, and a caller binding one must select a button
+     * before the first read.
      */
     public static <E extends Enum<E>> Property<E> radioGroup(EnumMap<E, AbstractButton> buttons) {
         if (buttons.isEmpty()) {
@@ -537,19 +282,7 @@ public final class Controls {
         return property;
     }
 
-    /**
-     * Builds the text view both {@link #text} overloads return.
-     *
-     * <p>The two overloads exist so that a caller without a normalizer does not pass
-     * a null, not because the two cases differ: this is the single implementation,
-     * and it installs at most one focus listener in either case.
-     *
-     * @param field the text component to view
-     * @param timing when the property notifies
-     * @param normalizer the tidying to apply on focus loss, or {@code null} to leave
-     *     the text exactly as typed
-     * @return the two-way view
-     */
+    /** @param normalizer {@code null} to leave the text exactly as typed */
     private static Property<String> textProperty(JTextComponent field, Timing timing, @Nullable UnaryOperator<String> normalizer) {
         // ON_COMMIT observes focusLost, which no write reaches, so for that timing the
         // write itself is the only notification there is.
@@ -622,14 +355,6 @@ public final class Controls {
         return property;
     }
 
-    /**
-     * Returns {@code combo}'s selected item.
-     *
-     * @param <E> the combo box's item type
-     * @param combo the combo box to read
-     * @return the selected item
-     * @throws IllegalStateException if nothing is selected
-     */
     private static <E> E selectedItem(JComboBox<E> combo) {
         var index = combo.getSelectedIndex();
 
@@ -640,18 +365,6 @@ public final class Controls {
         return combo.getItemAt(index);
     }
 
-    /**
-     * Returns the constant {@code group} has chosen.
-     *
-     * <p>Reads the group's own selection rather than scanning the buttons, which is
-     * correct throughout a change and not only after one — see {@link #radioGroup}.
-     *
-     * @param <E> the enum the group offers
-     * @param group the button group
-     * @param constants the constant each button model stands for
-     * @return the chosen constant
-     * @throws IllegalStateException if the group has chosen nothing
-     */
     private static <E extends Enum<E>> E chosenConstant(ButtonGroup group, Map<ButtonModel, E> constants) {
         var selection = group.getSelection();
         var constant = selection == null ? null : constants.get(selection);
@@ -663,15 +376,6 @@ public final class Controls {
         return constant;
     }
 
-    /**
-     * Selects {@code constant}'s button.
-     *
-     * @param <E> the enum the group offers
-     * @param buttons the button for every constant of {@code E}
-     * @param constant the constant to select
-     * @effects selects that constant's button, which the enclosing
-     *     {@code ButtonGroup} deselects the others for
-     */
     private static <E extends Enum<E>> void select(EnumMap<E, AbstractButton> buttons, E constant) {
         var button = buttons.get(constant);
 

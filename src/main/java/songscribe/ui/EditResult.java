@@ -21,34 +21,24 @@
 package songscribe.ui;
 
 /**
- * What an edit operation did, which is what tells its caller whether the user still owes an
- * explanation and whether anything was committed.
+ * What an edit operation did, which tells its caller whether the user still owes an explanation
+ * and whether anything was committed.
  *
  * <p>Three-way rather than a boolean because a refusal for want of horizontal room already puts
- * an error dialog on screen — a caller that beeped on every falsy outcome would sound the beep
- * the moment the user dismisses that dialog.
+ * an error dialog on screen; a caller that beeped on every falsy outcome would beep the moment
+ * the user dismisses that dialog.
  */
 public enum EditResult {
 
     /** The line was modified, in exactly one undo step. */
     MODIFIED,
 
-    /**
-     * Nothing was modified and nothing was said: the selection or the last insertion is not
-     * eligible. Silent, so the caller owes the user feedback — a beep, on the key paths.
-     */
+    /** Nothing was modified and nothing was said, so the caller owes the user feedback. */
     REFUSED,
 
-    /**
-     * Nothing was modified and the user has already been told why with an error dialog. The
-     * caller must add no further feedback.
-     */
+    /** Nothing was modified and an error dialog already told the user why; the caller adds no feedback. */
     REPORTED;
 
-    /**
-     * The result of an operation that can only modify or silently refuse, and so reports itself
-     * as a boolean.
-     */
     public static EditResult of(boolean modified) {
         return modified ? MODIFIED : REFUSED;
     }

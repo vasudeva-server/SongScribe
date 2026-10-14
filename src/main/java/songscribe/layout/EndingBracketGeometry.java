@@ -40,38 +40,25 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Layout geometry for {@link Ending} volta brackets.
- * <p>
- * {@code Ending} is a DOM type and may not depend on {@code songscribe.layout}; everything
- * about an ending's geometry lives here instead — the tick and label dimensions, the bracket X
- * ranges (which need {@link ElementColumn} and {@link NoteGeometry}), the label font and its
- * cached glyph bounds, and the collision decomposition.
+ * Layout geometry for {@link Ending} volta brackets. {@code Ending} is a DOM type and may not
+ * depend on {@code songscribe.layout}, so its geometry lives here.
  */
 public final class EndingBracketGeometry {
 
-    /**
-     * Height of volta bracket tick marks in staff-space units.
-     */
     public static final double VOLTA_TICK_HEIGHT_SS = 2.0;
 
-    /** Horizontal inset of label from left arm of bracket. */
     public static final double LABEL_X_INSET_SS = 0.9;
 
-    /** Vertical gap between the bracket's horizontal line and the top of the label. */
     public static final double LABEL_Y_OFFSET_SS = 0.5;
 
-    /** Scale of volta label font relative to standard music font size. */
     private static final float LABEL_FONT_SCALE = 0.6f;
 
-    /** Font for volta bracket labels. */
     public static final Font ENDING_FONT = LocalFonts.load(
         "emmentaler-16.otf", NoteGeometry.MUSIC_FONT_SIZE_SS * LABEL_FONT_SCALE);
 
-    /** Cached visual bounds for the "1." label. */
     private static final Rectangle2D LABEL_1_BOUNDS_SS =
         TextMeasurement.requireVisualBounds("1.", ENDING_FONT);
 
-    /** Cached visual bounds for the "2." label. */
     private static final Rectangle2D LABEL_2_BOUNDS_SS =
         TextMeasurement.requireVisualBounds("2.", ENDING_FONT);
 
@@ -127,14 +114,6 @@ public final class EndingBracketGeometry {
         return new BracketRange.Pair(firstBracket, secondBracket);
     }
 
-    /**
-     * The first bracket: from the element the ending opens on to the split repeat.
-     *
-     * @param startElement the element the bracket opens on
-     * @param split        the bar splitting the two brackets
-     * @param columnFn     supplies an element's column
-     * @return the bracket's range
-     */
     private static BracketRange firstBracketRange(
         StaffElement startElement,
         BarElement split,
@@ -157,16 +136,6 @@ public final class EndingBracketGeometry {
         return new BracketRange(x1, x2, true);
     }
 
-    /**
-     * The second bracket: from the split repeat to the ending's end bar, or past its end note
-     * when it has none.
-     *
-     * @param ending     the ending the bracket belongs to
-     * @param endElement the ending's end element
-     * @param split      the bar splitting the two brackets
-     * @param columnFn   supplies an element's column
-     * @return the bracket's range
-     */
     private static BracketRange secondBracketRange(
         Ending ending,
         StaffElement endElement,
@@ -262,12 +231,6 @@ public final class EndingBracketGeometry {
         return regions;
     }
 
-    /**
-     * Returns the cached visual bounds of an ending label in staff-space units.
-     *
-     * @param slot which of an ending's two brackets the label names
-     * @return the label's visual bounds, relative to its glyph origin
-     */
     static Rectangle2D labelBoundsSs(BracketRange.Bracket slot) {
         return switch (slot) {
             case FIRST -> LABEL_1_BOUNDS_SS;

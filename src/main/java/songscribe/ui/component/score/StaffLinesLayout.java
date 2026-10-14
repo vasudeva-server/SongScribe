@@ -34,35 +34,15 @@ import songscribe.layout.LineSpacing;
 /**
  * Lays out the {@link LinePanel} children of a {@link StaffPanel} so that the distance
  * between adjacent staff midlines is uniform down the whole song, while each line is
- * sized to its own content.
+ * sized to its own content. The distance is the worst adjacent pair, so adjacent lines'
+ * <em>content</em> is always at least the inter-line gap apart, and content above the first
+ * line's staff translates the whole block without widening the spacing.
  * <p>
- * Each line reports how far it reaches above and below its staff midline. The uniform
- * midline-to-midline distance is the worst adjacent pair:
- * <pre>
- * S = max over N in [0, count-2] of
- *         ( belowMidline[N] + gap + aboveMidline[N+1] )
- *
- * midlineY[0] = aboveMidline[0]
- * midlineY[N] = midlineY[0] + N * S
- * </pre>
- * Two consequences follow, and both are intentional:
- * <ul>
- *   <li>{@code aboveMidline[0]} appears only in {@code midlineY[0]}, never in a pair, so
- *       content above the <em>first</em> line's staff translates the whole block downward
- *       without widening the spacing. Content below it does enter pair (0,1) and widens it.</li>
- *   <li>Because {@code S >= belowMidline[N] + gap + aboveMidline[N+1]} for every pair, adjacent
- *       lines' <em>content</em> is always at least {@code gap} apart, where {@code gap} is
- *       {@link LineSpacing#DEFAULT_INTER_LINE_GAP_SS} clamped by
- *       {@link LineSpacing#interLineGapSs(double)}.</li>
- * </ul>
- * Component <em>bounds</em>, however, are floored at the minimum staff surround
- * ({@link LineSpacing#MIN_ABOVE_MIDLINE_SS} / {@link LineSpacing#MIN_BELOW_MIDLINE_SS}) so a
- * line always contains its own staff, and those floors are excluded from {@code S}. Two sparse
- * neighbours
- * can therefore have overlapping bounds even though their ink does not overlap — which is why
+ * Component <em>bounds</em> are floored at the minimum staff surround
+ * ({@link LineSpacing#MIN_ABOVE_MIDLINE_SS} / {@link LineSpacing#MIN_BELOW_MIDLINE_SS}) and
+ * those floors are excluded from the spacing. Two sparse neighbours can therefore have
+ * overlapping bounds though their ink does not overlap, which is why
  * {@link StaffPanel#isOptimizedDrawingEnabled} reports {@code false}.
- * This class converts between staff spaces and view pixels: everything above is computed
- * in {@code Ss}, then converted once per child through the view zoom.
  */
 public class StaffLinesLayout implements LayoutManager2 {
 
@@ -73,20 +53,10 @@ public class StaffLinesLayout implements LayoutManager2 {
     }
 
     /**
-     * The midline geometry of every child, in staff spaces, plus the uniform
-     * midline-to-midline distance derived from it.
-     * <p>
-     * Two extents are kept per line, and the split is the whole point:
-     * <ul>
-     *   <li>{@code aboveMidlineSs} / {@code belowMidlineSs} — the line's <em>measured content</em>,
-     *       and the only inputs to {@code spacingSs}. Spacing therefore follows content
-     *       exactly.</li>
-     *   <li>{@code paintAboveMidlineSs} / {@code paintBelowMidlineSs} — the same values floored
-     *       at the minimum staff surround, used only for component <em>bounds</em>. Without the
-     *       floor a line whose ink stops at the staff top gets bounds that start there, and
-     *       Swing clips the top staff line, its ledger lines, and anything else drawn above.</li>
-     * </ul>
-     * The floors never reach {@code spacingSs}, so adding them cannot widen the gaps.
+     * {@code aboveMidlineSs} / {@code belowMidlineSs} are the measured content and the only
+     * inputs to {@code spacingSs}; {@code paintAboveMidlineSs} / {@code paintBelowMidlineSs} are
+     * the same values floored at the minimum staff surround, used only for component bounds, so
+     * Swing does not clip the top staff line. The floors never reach {@code spacingSs}.
      */
     private record Geometry(
         double[] aboveMidlineSs,
@@ -121,11 +91,8 @@ public class StaffLinesLayout implements LayoutManager2 {
     }
 
     /**
-     * Measures every child, or returns null when there is nothing to lay out.
-     * <p>
-     * Always re-runs the line layouts first: a live drag moves elements without firing a
-     * mutation, so there is no dirty signal to key off here. It is cheap because each line's
-     * own {@code ensureLayout()} is a no-op when that line is clean.
+     * Null when there is nothing to lay out. Always re-runs the line layouts first: a live drag
+     * moves elements without firing a mutation, so there is no dirty signal.
      */
     private @Nullable Geometry computeGeometry(Container parent) {
         var count = parent.getComponentCount();

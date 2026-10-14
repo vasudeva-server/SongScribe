@@ -25,18 +25,11 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * A run of elements within a staff line, named by index.
- * <p>
- * What every question about a run of elements is asked in terms of — {@link RangeQueries} and
- * the edit operations take this rather than {@link Selection.Range}, because none of them reads
- * the anchor a {@code Range} additionally carries. An operation reached from a key press has no
- * anchor to give: nothing was clicked.
  *
- * @param line  The staff line containing the selection
- * @param range The selected elements, as the user chose them — not widened over paired elements
+ * @param range the selected elements as the user chose them, not widened over paired elements
  */
 public record ElementSelection(Line line, ElementRange range) {
 
-    /** The single element at {@code elementIndex}. */
     public static ElementSelection single(Line line, int elementIndex) {
         return new ElementSelection(line, ElementRange.single(elementIndex));
     }

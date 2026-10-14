@@ -30,19 +30,13 @@ import songscribe.dom.Song;
  * Pre-computed MIDI velocity map for a song. Velocities are derived
  * from point dynamic markings ({@link DynamicAttachment}) on notes, with
  * forward propagation within and across lines.
- * <p>
- * The map is built in a single O(n) forward pass before playback starts
- * and looked up per-note during MIDI sequence generation.
  */
 public final class VelocityMap {
 
-    /** Maximum MIDI velocity (the ceiling for ff at full master volume). */
     public static final int MAX_VELOCITY = 127;
 
-    /** Default velocity fraction when no dynamic marking is present (mf). */
     static final double DEFAULT_VELOCITY_FRACTION = DynamicType.MEZZO_FORTE.getVelocityFraction();
 
-    /** Accent boost (fixed velocity addition). */
     static final int ACCENT_BOOST = 30;
 
     private final int[][] velocities;
@@ -51,13 +45,6 @@ public final class VelocityMap {
         this.velocities = velocities;
     }
 
-    /**
-     * Builds a velocity map for the given song.
-     *
-     * @param song     the song to map
-     * @param masterVelocity  the ceiling velocity (typically {@link #MAX_VELOCITY})
-     * @return a fully computed velocity map
-     */
     public static VelocityMap build(Song song, int masterVelocity) {
         var lines = song.getLines();
         var velocities = new int[lines.size()][];
@@ -92,13 +79,6 @@ public final class VelocityMap {
         return new VelocityMap(velocities);
     }
 
-    /**
-     * Returns the pre-computed MIDI velocity for a note.
-     *
-     * @param lineIndex  the line index in the song
-     * @param noteIndex  the element index within the line
-     * @return MIDI velocity (1–127)
-     */
     public int getVelocity(int lineIndex, int noteIndex) {
         return velocities[lineIndex][noteIndex];
     }

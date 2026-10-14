@@ -53,16 +53,13 @@ import songscribe.util.DateUtils;
 public final class SongIO {
 
     /**
-     * The first legacy revision. A document that claims exactly this one is parsed by a
-     * different set of readers from every later revision.
+     * Revision 1 is parsed by different readers from every later revision.
      */
     private static final int ORIGINAL_MAJOR_VERSION = 1;
     private static final int ORIGINAL_MINOR_VERSION = 0;
 
     /**
-     * The newest legacy revision this reader understands. A document that claims a newer one
-     * is refused with a {@link NewerVersionException}. Raise these when the reader learns a
-     * new revision.
+     * Raise these when the reader learns a new revision.
      */
     private static final int MAX_READABLE_MAJOR_VERSION = 2;
     private static final int MAX_READABLE_MINOR_VERSION = 10;
@@ -189,31 +186,12 @@ public final class SongIO {
         private final List<Line> parsedLines = new ArrayList<>();
         private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
 
-        /**
-         * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
-         *
-         * <p>{@link LegacyKeyType#keyFor} judges the pair, for this reader and the per-line one
-         * alike — including which unrepresentable combinations mean C major and which are corrupt.
-         * This reader normalizes a pair that {@code LineIO} refuses to load.
-         *
-         * @return the document-level key
-         * @throws SAXException if the pair is not a key at all
-         */
         private Key documentKey() throws SAXException {
             return documentKeyType.keyFor(LOG, documentKeyAccidentalCount);
         }
 
         /**
-         * Establishes the document-level key on the first parsed line when that line established
-         * none of its own.
-         *
-         * <p>{@code .mssw} writes a line's key only where it differs from the document-level one,
-         * so a line with no key tags means "the key already in effect". Line 0 has nothing to
-         * inherit from, which is why it — and only it — needs the document-level value; every
-         * later keyless line genuinely inherits.
-         *
-         * @param lines the parsed lines, in document order
-         * @throws SAXException if the document-level key tags are not a key
+         * Line 0 has nothing to inherit from, so it alone needs the document-level key.
          */
         private void applyDocumentKeyToFirstLine(List<Line> lines) throws SAXException {
             if (lines.isEmpty()) {
@@ -228,23 +206,6 @@ public final class SongIO {
         }
 
         /**
-         * Re-collapses each line's own key against its now-settled inherited key.
-         *
-         * <p>{@code .mssw}'s writer decided whether to write a line's {@code <keys>}/
-         * {@code <keytype>} tags by comparing to the file's single song-level default, not to the
-         * key the line actually inherits from the line before it. A file whose song ran in one
-         * non-default key across several consecutive lines therefore restates that same key on
-         * every one of them, and {@link LineIO.LineReader#applyParsedKey} — which runs before any
-         * line's inherited key is known, since that is settled only once every line has been
-         * parsed — establishes each restated value verbatim rather than collapsing it.
-         *
-         * <p>{@link Song#loadFrom} settles every line's inherited key in one forward pass before
-         * this runs, so calling {@link Line#setKey} again here, with the value the line already
-         * holds, lets {@code setKey}'s own normalization rule collapse what {@code
-         * applyParsedKey} had no way to know to collapse. Every line is safe to pass through this
-         * way: one whose key already differs from what it inherits is unaffected, by
-         * {@code setKey}'s own no-op check, and one that already inherits (key null) stays null.
-         *
          * @param song the song {@link Song#loadFrom} has just populated, with mutation tracking
          *             still suspended
          */
@@ -255,10 +216,7 @@ public final class SongIO {
         }
 
         /**
-         * Refuses to fetch anything a {@code DOCTYPE} names, handing the parser an
-         * empty stand-in instead. {@code SAXParser.parse} installs this handler as
-         * the entity resolver, so this override is all it takes — see
-         * {@link SafeXmlParser#emptyEntitySource()}.
+         * Never fetches anything a {@code DOCTYPE} names.
          */
         @Override
         public InputSource resolveEntity(String publicId, String systemId) {
@@ -618,29 +576,14 @@ public final class SongIO {
             }
         }
 
-        /**
-         * Returns true if this document named a retired accidental anywhere, which was
-         * converted to the accidental that sounds the same. Only one of the two note
-         * readers exists for a given file — {@code noteReader} for v1.0, {@code lineReader}
-         * for later versions — so both are consulted.
-         */
         private boolean accidentalsConverted() {
             return (noteReader != null && noteReader.sawLegacyAccidental())
                 || (lineReader != null && lineReader.sawLegacyAccidental());
         }
 
         /**
-         * Assembles and migrates the song this document holds. Call it once, after parsing
-         * completes.
-         *
-         * @return the assembled song, in staff-space units and migrated to the current format,
-         *     with the tuplets, endings and hairpins the reader found pending — none for a v1.0
-         *     document, which predates them — and the reader entries: the accidentals-converted
-         *     entry when the document named a retired accidental, then one
-         *     {@link ParsedSong#lyricDroppedEntry lyric-dropped entry} for each line that lost a
-         *     lyric whose number names no script, in line order. Such a lyric is dropped rather
-         *     than refusing the document. The load passes have not run
-         * @throws SAXException if the document's song-level key tags name no key
+         * Call it once, after parsing completes. A lyric whose number names no script is dropped
+         * rather than refusing the document.
          */
         public ParsedSong getSong() throws SAXException {
             // For legacy files that predate the discrete attribution tags, derive
@@ -748,14 +691,7 @@ public final class SongIO {
         }
 
         /**
-         * Returns the document fonts parsed from the file's {@code <view>} block.
-         * For v1.0 files (which have no {@code <view>} section) and v1.1+ files
-         * whose block omits a role, the missing roles fall through to
-         * {@link DocumentFonts#defaultFonts()}.
-         * <p>
-         * Must be called after parsing completes; the result is independent of
-         * {@link #getSong()} and is the authoritative font source for the
-         * load path.
+         * Must be called after parsing completes.
          */
         public DocumentFonts getDocumentFonts() {
             return viewReader != null
@@ -764,9 +700,7 @@ public final class SongIO {
         }
 
         /**
-         * Returns the raw {@code lyricsDate} string from the file when it was
-         * present but could not be parsed, or {@code null} when the tag was
-         * absent or valid.  The load path uses this to show a warning to the user.
+         * Returns {@code null} when the tag was absent or valid.
          */
         @Nullable
         public String getInvalidLyricsDate() {
@@ -774,9 +708,7 @@ public final class SongIO {
         }
 
         /**
-         * Creates the stub Song that gets attached to every parsed Line and
-         * suspends its mutation tracking. Suspension is released in {@link #getSong()}
-         * after the final {@link Song#loadFrom(SongData)} call.
+         * Suspension is released in {@link #getSong()} after the final {@code loadFrom}.
          */
         private static Song newSuspendedStubSong() {
             var stub = Song.newParsingStub();
@@ -800,18 +732,6 @@ public final class SongIO {
             return majorVersion == 1 && minorVersion == 0;
         }
 
-        /**
-         * Parses the legacy {@code XML_INFO} blob to populate {@code composer},
-         * {@code lyricist}, and (for v1.0 only) {@code month}/{@code day}/{@code year}/{@code place}.
-         *
-         * <p>The blob format is:
-         * <pre>
-         * Words and Music
-         * [bB]y &lt;person&gt;
-         * [optional date: "Month Day, Year" / "Month, Year" / "Year"]
-         * [optional place]
-         * </pre>
-         */
         private void parseLegacyAttributionBlob() {
             if (attribution.isBlank()) {
                 return;
@@ -869,10 +789,6 @@ public final class SongIO {
             "July", "August", "September", "October", "November", "December"
         };
 
-        /**
-         * Parses a date string of the form "Month Day, Year", "Month, Year", or "Year"
-         * into the {@code month}, {@code day}, and {@code year} fields.
-         */
         private void parseLegacyDateLine(String dateLine) {
             // Try "Month Day, Year" or "Month, Year"
             for (var i = 0; i < MONTH_NAMES.length; i++) {
@@ -912,15 +828,7 @@ public final class SongIO {
         }
 
         /**
-         * Parses a reduced-precision ISO 8601 lyrics date string into {@code wordsDate}.
-         *
-         * <p>Accepts the forms {@code YYYY}, {@code YYYY-MM}, and {@code YYYY-MM-DD}.
-         * On any parse or range failure, logs a warning and leaves the field empty;
-         * also sets {@link #invalidLyricsDate} to the raw string so the load can
-         * surface it to the user.
-         *
-         * <p>This method deliberately does not throw — a bad {@code lyricsDate}
-         * must not abort the whole document load.
+         * Does not throw: a bad {@code lyricsDate} must not abort the document load.
          */
         private void parseLyricsDate(String str) {
             var parsed = DateUtils.parseIsoDate(str);

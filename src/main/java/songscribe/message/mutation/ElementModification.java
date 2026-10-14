@@ -26,14 +26,9 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 
 /**
- * Mutation recording field changes on an existing element.
- * {@code fields} identifies which fields changed; it lets subscribers filter
- * without inspecting {@code beforeElement} field-by-field.
- * {@code beforeElement} is a clone of the element captured before the mutation runs
- * and is the source of truth for undo to revert; {@code afterElement} is a clone
- * captured after it runs and is the source of truth for redo to re-apply.
- * Replay restores either snapshot in place via
- * {@code StaffElement.copyStateFrom}, preserving element identity.
+ * Mutation recording field changes on an existing element. {@code beforeElement} and
+ * {@code afterElement} are clones, the source of truth for undo and redo; replay restores them
+ * in place, preserving element identity.
  */
 public record ElementModification(Line line, int index, EnumSet<ElementField> fields,
                                   StaffElement beforeElement, StaffElement afterElement)

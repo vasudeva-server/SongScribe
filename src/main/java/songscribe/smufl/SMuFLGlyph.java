@@ -118,22 +118,16 @@ public enum SMuFLGlyph {
         this.codepoint = codepoint;
     }
 
-    /** @return The canonical SMuFL name (camelCase), which is the key its metadata is under. */
     public String smuflName() {
         return smuflName;
     }
 
-    /** @return The codepoint, in the Private Use Area every SMuFL glyph is assigned within. */
     public char codepoint() {
         return codepoint;
     }
 
     /**
-     * The glyph as text to draw. Every glyph is one BMP codepoint, so this is always a
-     * single character and needs no surrogate handling.
-     *
-     * @return a one-character string, which renders as this glyph in a SMuFL font and as
-     *     nothing recognizable in any other
+     * Every glyph is one BMP codepoint, so this is always a single character.
      */
     public String asString() {
         return String.valueOf(codepoint);

@@ -21,21 +21,9 @@ package songscribe.ui.binding;
 
 /**
  * When a text-bearing control's property notifies.
- *
- * <p>Swing offers text controls several unrelated notification routes with
- * different semantics, and the choice is not a detail a caller can be spared: the
- * dialogs this framework serves deliberately use more than one, because a preview
- * that has to track what is being typed and a field whose value is only meaningful
- * once entry has finished are different requirements.
- *
- * <p>This is a parameter of the text-control factories only. It means nothing for a
- * checkbox, a combo box or a spinner, and it never appears on a binding — a
- * binding's timing is the timing of whatever source it was given.
  */
 public enum Timing {
-    /** Notifies on every keystroke, as the text changes. */
     WHILE_TYPING,
 
-    /** Notifies once entry has finished, when the control loses focus. */
     ON_COMMIT
 }

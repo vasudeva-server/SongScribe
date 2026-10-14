@@ -23,16 +23,12 @@ import songscribe.dom.DocumentScale;
 
 /**
  * Load-time carrier for the three line-level Y position fields that exist only in format v1
- * documents. Populated by {@link LineIO.LineReader} during XML parsing and consumed
- * by {@link FormatMigrator#migrateLineLevelOffsets} to redistribute the offsets onto per-instance
- * attachment and span objects. Discarded after migration completes.
+ * documents. Discarded after migration completes.
  */
 record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int trillYPosPx) {
 
-    /** Default beat change Y position (-3 staff spaces above middle). */
     private static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;
 
-    /** Default trill Y position (above staff). */
     private static final double TRILL_DEFAULT_Y_SS = -3.375;
 
     // Matches the field initializers that were on Line before this carrier was introduced.

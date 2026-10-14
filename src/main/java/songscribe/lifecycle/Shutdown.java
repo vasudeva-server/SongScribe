@@ -28,22 +28,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Process-global shutdown registry. Funnels every user-invoked quit path
- * through one ordered, vetoable sequence; owns the JVM shutdown hook so
- * thread-safe cleanup runs even on emergency exits.
+ * Process-global shutdown registry. Every user-invoked quit path calls {@link #now()}: confirm
+ * tasks run in registration order and any may veto, then EDT tasks and JVM tasks run LIFO. The
+ * emergency paths skip straight to JVM exit, where the shutdown hook runs the JVM tasks; each
+ * runs at most once across both paths.
  *
- * <p>The user-invoked paths — {@code QuitAction}, {@code MainFrame.windowClosing},
- * {@code CloseWindowAction}, and the macOS Desktop quit — all
- * call {@link #now()}. That runs the confirm phase on the EDT in registration order, where any
- * handler may veto; if none does, the EDT cleanup tasks run LIFO, then the JVM cleanup tasks run
- * LIFO, then {@code System.exit(0)}.
- *
- * <p>The emergency paths — {@code RuntimeError.exit()}, SIGTERM, and the last non-daemon thread
- * ending — skip straight to JVM exit. Either way the registry-owned shutdown hook runs the JVM
- * tasks LIFO on the hook thread, and the {@code CleanupTask} wrapper guarantees each runs at most
- * once across both paths.
- *
- * <p>See {@code docs/lifecycle.md} for how this fits the surrounding lifecycle.
+ * <p>See {@code docs/lifecycle.md}.
  */
 public final class Shutdown {
 
@@ -58,10 +48,9 @@ public final class Shutdown {
     private volatile boolean inProgress = false;
     private volatile boolean completed = false;
 
-    /** Confirm tasks run first. Any task returning false aborts the shutdown. */
     @FunctionalInterface
     public interface ConfirmTask {
-        /** @return true to continue shutdown, false to abort. */
+        /** @return true to continue shutdown, false to abort */
         boolean confirm();
     }
 
@@ -75,12 +64,6 @@ public final class Shutdown {
         Runtime.getRuntime().addShutdownHook(jvmHook);
     }
 
-    /**
-     * Sole quit entry point. Runs the registry; on success, calls {@code System.exit(0)}.
-     * Returns (without exiting) if a confirm task vetoed.
-     *
-     * <p>Must be called on the EDT.
-     */
     public static void now() {
         if (!SwingUtilities.isEventDispatchThread()) {
             throw new IllegalStateException("Shutdown.now() must be called on the EDT");
@@ -92,36 +75,19 @@ public final class Shutdown {
         }
     }
 
-    /**
-     * Register a confirm task (e.g. dirty-document prompt).
-     * Runs on the EDT; may show modal dialogs.
-     *
-     * @throws IllegalArgumentException if {@code tag} duplicates an existing confirm tag.
-     */
+    /** Runs on the EDT; may show modal dialogs. */
     public static void registerConfirmTask(String tag, ConfirmTask task) {
         checkUniqueTag(INSTANCE.confirmEntries, tag, "Duplicate confirm tag: " + tag);
         LOG.info("Registered confirm task: {}", tag);
         INSTANCE.confirmEntries.add(new ConfirmEntry(tag, task));
     }
 
-    /**
-     * Register a cleanup task that requires the EDT (e.g. {@code mainFrame.setEnabled(false)}).
-     * Runs only on the user-invoked quit path. Not invoked from the JVM hook.
-     *
-     * @throws IllegalArgumentException if {@code tag} duplicates an existing EDT-task tag.
-     */
+    /** Runs only on the user-invoked quit path. Not invoked from the JVM hook. */
     public static void registerEDTTask(String tag, Runnable task) {
         registerCleanup(INSTANCE.edtTasks, tag, task, "EDT");
     }
 
-    /**
-     * Register a thread-safe cleanup task (e.g. close MIDI).
-     * Runs on the user-invoked quit path AND on emergency JVM exit.
-     * MUST be thread-safe and EDT-independent — the JVM hook fires on a JVM-managed thread.
-     * The registry guarantees at-most-once execution across both paths.
-     *
-     * @throws IllegalArgumentException if {@code tag} duplicates an existing JVM-task tag.
-     */
+    /** Runs on emergency JVM exit too, so the task MUST be thread-safe and EDT-independent. */
     public static void registerJVMTask(String tag, Runnable task) {
         registerCleanup(INSTANCE.jvmTasks, tag, task, "JVM");
     }
@@ -138,11 +104,6 @@ public final class Shutdown {
         }
     }
 
-    /**
-     * Run the shutdown sequence. Callers use {@link #now()}, which schedules this on the EDT.
-     *
-     * @return true if shutdown ran to completion, false if aborted or already completed.
-     */
     private static boolean shutdown() {
         if (INSTANCE.completed || INSTANCE.inProgress) {
             return false;
@@ -181,7 +142,6 @@ public final class Shutdown {
         }
     }
 
-    /** Entry point for the registry-owned JVM shutdown hook. */
     private static void runJVMTasksFromHook() {
         try {
             runCleanupTasksLIFO(INSTANCE.jvmTasks, "JVM (hook)");

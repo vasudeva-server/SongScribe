@@ -23,11 +23,8 @@ package songscribe.dom;
 import songscribe.smufl.SMuFLGlyph;
 
 /**
- * A glyph that stands alone, with nothing an editor can add to it — the breath mark. An
- * element of this appearance is a {@link BreathMarkElement}, which has no dot count to hold.
+ * A glyph that stands alone, with nothing an editor can add to it — the breath mark.
  *
- * @param glyph  the glyph the element is drawn with
- * @param seatSp the staff position the glyph is drawn at and hit-tested at, in staff-position
- *               units from the middle line
+ * @param seatSp in staff-position units from the middle line
  */
 public record PlainGlyphAppearance(SMuFLGlyph glyph, int seatSp) implements GlyphAppearance {}

@@ -33,20 +33,9 @@ import org.slf4j.LoggerFactory;
 import songscribe.ui.platform.mac.ObjC;
 
 /**
- * Detects whether the operating system is using a dark appearance, and notifies
- * registered listeners when that changes.
- * <p>
- * On macOS the value comes from
- * {@code [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleInterfaceStyle"]}
- * — dark iff its value contains "dark". On other platforms detection is not yet
- * implemented and {@link #isDark()} returns {@code false} (the app simply does
- * not follow the system theme).
- * <p>
- * macOS publishes no cheap change callback for this key without an AppKit
- * notification observer (which would require an FFM upcall used as an Obj-C IMP),
- * so a lightweight daemon thread polls instead. Theme changes are rare, so the
- * poll latency is immaterial. The thread runs only while at least one listener is
- * registered.
+ * Detects whether the operating system is using a dark appearance, and notifies registered
+ * listeners when that changes. Only macOS is implemented; elsewhere {@link #isDark()} returns
+ * {@code false}.
  */
 public final class SystemThemeDetector {
 
@@ -67,27 +56,16 @@ public final class SystemThemeDetector {
     private SystemThemeDetector() {
     }
 
-    /**
-     * Returns whether the OS is currently using a dark appearance. Safe to call
-     * from any thread; on non-macOS platforms always returns {@code false}.
-     */
+    /** Safe to call from any thread. */
     public static boolean isDark() {
         return INSTANCE.readIsDark();
     }
 
-    /**
-     * Registers a listener notified whenever the system appearance changes. The
-     * listener receives the new dark/light state and is invoked on the polling
-     * thread, so it must marshal back to the EDT itself if it touches Swing.
-     */
+    /** The listener runs on the polling thread; it must marshal to the EDT itself if it touches Swing. */
     public static void registerListener(Consumer<Boolean> listener) {
         INSTANCE.addListener(listener);
     }
 
-    /**
-     * Removes a previously registered listener. Polling stops once the last
-     * listener is removed.
-     */
     public static void removeListener(Consumer<Boolean> listener) {
         INSTANCE.dropListener(listener);
     }

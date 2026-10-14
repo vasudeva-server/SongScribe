@@ -27,8 +27,7 @@ import songscribe.message.MessageSubscription;
 import songscribe.message.notification.BarWasSelectedNotification;
 
 /**
- * An action group that manages the duration actions.
- * Duration actions are mutually exclusive with any of the bar actions.
+ * The duration actions, mutually exclusive with the bar actions.
  */
 public class DurationActionGroup extends ActionGroup<ElementTypeAction> {
 

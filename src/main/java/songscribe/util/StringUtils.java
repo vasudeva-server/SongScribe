@@ -29,10 +29,7 @@ import java.util.regex.Pattern;
 
 public final class StringUtils {
 
-    /**
-     * What {@link String#indexOf} and {@link String#lastIndexOf} answer when the needle is
-     * absent. Compare a search result against this rather than against the raw literal.
-     */
+    /** What {@link String#indexOf} and {@link String#lastIndexOf} answer when the needle is absent. */
     public static final int INDEX_NOT_FOUND = -1;
 
     // Finds all diacritics
@@ -191,16 +188,6 @@ public final class StringUtils {
         return String.join("\n", kept);
     }
 
-    /**
-     * Returns {@code text} with a CRLF pair and a lone carriage return alike folded to a
-     * single line feed, so text pasted from another platform breaks where natively typed
-     * text does.
-     *
-     * @param text the text to normalize
-     * @return the text with only line feeds as line endings
-     * @invariant no carriage return survives
-     * @invariant idempotent
-     */
     public static String normalizeLineEndings(String text) {
         return FOREIGN_LINE_ENDING_PATTERN.matcher(text).replaceAll("\n");
     }
@@ -213,12 +200,7 @@ public final class StringUtils {
         return MULTIPLE_SPACES_PATTERN.matcher(str).replaceAll(" ");
     }
 
-    /**
-     * Applies typographic substitution: straight quotes → curly, {@code --} runs →
-     * em dash, {@code ...} runs → ellipsis. Pure substitution only — does not trim.
-     * Idempotent: only straight quotes and runs of straight {@code -}/{@code .} are
-     * matched, so already-curly text and existing em dashes/ellipses pass through.
-     */
+    /** Does not trim. Idempotent. */
     public static String toTypographic(String text) {
         if (text.isEmpty()) {
             return text;
@@ -302,11 +284,6 @@ public final class StringUtils {
         return lines;
     }
 
-    /**
-     * Balance-wraps one hard-break-free segment.
-     *
-     * @return the segment's lines, or no lines at all when it holds no words
-     */
     private static List<String> wrapSegment(
         String segment,
         FontMetrics metrics,
@@ -332,12 +309,8 @@ public final class StringUtils {
     }
 
     /**
-     * One wrapping run's words and their measured widths.
-     *
-     * <p>{@code widthUpTo[i]} is the width of the first {@code i} words set on one line,
-     * each followed by a space, so any candidate line's width is a subtraction rather than
-     * a re-measure — which is what lets the balancing pass consider every possible set of
-     * breaks without measuring text more than once.
+     * {@code widthUpTo[i]} is the width of the first {@code i} words on one line, each followed
+     * by a space.
      */
     private record WordWidths(List<String> words, int[] widthUpTo, int spaceWidth, int maxWidth) {
 
@@ -357,35 +330,20 @@ public final class StringUtils {
             return words.size();
         }
 
-        /**
-         * The width of {@code words[from..to)} set on one line, with single spaces between
-         * them and none trailing.
-         */
         private int lineWidth(int from, int to) {
             return widthUpTo[to] - widthUpTo[from] - spaceWidth;
         }
 
-        /**
-         * Whether {@code words[from..to)} may occupy one line. A single word too wide to
-         * fit still may, since the alternative is not setting it at all.
-         */
+        /** A single word too wide to fit still occupies one line. */
         private boolean fits(int from, int to) {
             return to - from == 1 || lineWidth(from, to) <= maxWidth;
         }
 
-        /**
-         * The width this line leaves unused, floored at zero so an over-wide single word
-         * counts as a full line rather than as a huge cost the balance would try to avoid.
-         */
+        /** Floored at zero so an over-wide single word counts as a full line. */
         private long slack(int from, int to) {
             return Math.max(0, maxWidth - lineWidth(from, to));
         }
 
-        /**
-         * The fewest lines these words fit in, found by filling each line as far as it
-         * goes. Greedy is optimal for line <em>count</em> — it is only the distribution
-         * across those lines that it gets wrong.
-         */
         private int greedyLineCount() {
             var lineCount = 0;
             var from = 0;
@@ -405,22 +363,6 @@ public final class StringUtils {
         }
     }
 
-    /**
-     * The word index each line ends at, for the way of setting every word in exactly
-     * {@code lineCount} lines with the least total squared slack.
-     *
-     * <p>Works backwards: the best way to set the words from {@code i} onward in {@code k}
-     * lines is the cheapest first line {@code words[i..j)} followed by the already-known
-     * best way to set the rest in {@code k - 1}. Each (start, lines-left) pair is solved
-     * once and reused, so the whole search costs no more than trying every break position
-     * against every line count.
-     *
-     * @param widths    the run's measured words
-     * @param lineCount the exact number of lines to use, which the caller takes from
-     *                  {@link WordWidths#greedyLineCount()} so that balancing cannot add a
-     *                  line
-     * @return each line's exclusive end index, ascending, the last being the word count
-     */
     private static List<Integer> balancedBreaks(WordWidths widths, int lineCount) {
         var wordCount = widths.count();
 
@@ -475,21 +417,9 @@ public final class StringUtils {
     }
 
     /**
-     * Normalizes text through a fixed pipeline: trim, then typographic
-     * substitution (smart quotes, em dash, ellipsis), then collapse runs of two
-     * or more spaces to a single space, and — when {@code stripShortA} is
-     * {@code true} — replace {@code ă}/{@code Ă} with {@code a}/{@code A}.
-     * <p>
-     * {@code stripShortA} is the sole gate for short-A stripping; the caller
-     * decides whether to apply it (pass {@code true} for title/subtitle/
-     * underlyrics; {@code false} for translation/footnotes and for the
-     * place/composer/lyricist fields).
-     * <p>
-     * Idempotent, so song-model construction and the song settings dialog's
-     * focus-lost field normalization can share this single copy.
-     *
-     * @param text       the raw text to normalize
-     * @param stripShortA whether to replace {@code ă}/{@code Ă} with {@code a}/{@code A}
+     * {@code stripShortA} is the sole gate for short-A stripping: true for title, subtitle and
+     * underlyrics; false for translation, footnotes, place, composer and lyricist.
+     * Idempotent: the song model and the song settings dialog both apply it.
      */
     public static String processText(String text, boolean stripShortA) {
         var trimmed = text.trim();

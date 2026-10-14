@@ -29,11 +29,8 @@ import songscribe.message.mutation.ElementField;
  * clipboard {@link songscribe.ui.clipboard.Fragment} takes, and the reason the lyric chain
  * rules live on an interface rather than on {@code Line}.
  *
- * <p>The list is used live, not copied: every repair is applied to the caller's elements,
- * which is the point of handing them over. Nothing here inserts or removes an element, so the
- * list may be immutable.
- *
- * @param elements The run's elements, in order
+ * <p>The list is used live, not copied: every repair is applied to the caller's elements.
+ * Nothing here inserts or removes an element, so the list may be immutable.
  */
 public record DetachedLyricRun(List<StaffElement> elements) implements LyricRun {
 
@@ -48,8 +45,7 @@ public record DetachedLyricRun(List<StaffElement> elements) implements LyricRun 
     }
 
     /**
-     * The same as {@link #elementCount()}. A terminal barline is a line's to maintain; a
-     * detached run holds only what it was given.
+     * A terminal barline is a line's to maintain.
      */
     @Override
     public int effectiveElementCount() {
@@ -57,8 +53,7 @@ public record DetachedLyricRun(List<StaffElement> elements) implements LyricRun 
     }
 
     /**
-     * Always {@code false}. A detached run is in no song, so no element of it can stand first in
-     * one; where a fragment lands in a song is the destination line's question.
+     * A detached run is in no song; where a fragment lands is the destination line's question.
      */
     @Override
     public boolean isSongStartAt(int index) {
@@ -66,9 +61,8 @@ public record DetachedLyricRun(List<StaffElement> elements) implements LyricRun 
     }
 
     /**
-     * Runs {@code mutator} and records nothing. A detached run belongs to no document: there
-     * is no open modification bracket to record into, and nothing an undo entry could point
-     * at — these elements are clones no line holds.
+     * Records nothing: there is no modification bracket, and no undo entry could point at these
+     * clones.
      */
     @Override
     public void modifyElement(int index, ElementField field, Runnable mutator) {
