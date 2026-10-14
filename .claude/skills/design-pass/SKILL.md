@@ -230,7 +230,7 @@ See [reference/step-12-close-out.md](reference/step-12-close-out.md).
   `.claude/rules/serena.md`.
 - **Never commit.** The pass leaves everything in the working tree; when to
   commit, and in what shape, is the user's. Do not stage, do not amend, and do
-  not invoke `/commit-commands:commit`.
+  not invoke `/commit`.
 - **Snapshot per step**, each with the record's status change. One Bash call,
   which leaves the working tree untouched:
 
