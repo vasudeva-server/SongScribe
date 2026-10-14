@@ -346,7 +346,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        var accidental = note.drawnAccidental();
+        var accidental = note.accidentalState().drawn();
 
         if (accidental == null) {
             return;

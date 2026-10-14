@@ -158,7 +158,7 @@ public class ElementColumnBuilder {
         // Element head left edge is at xSs (the glyph origin), so the extent starts at 0
         var extentSs = 0.0;
 
-        if (element instanceof NoteElement note && note.drawnAccidental() != null) {
+        if (element instanceof NoteElement note && note.accidentalState().drawn() != null) {
             var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(note);
             extentSs -= (accidentalWidthSs + NoteGeometry.ACCIDENTAL_PADDING_SS);
         }

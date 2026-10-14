@@ -135,7 +135,7 @@ public final class Tie {
      */
     boolean holds() {
         return anchor.getStaffPosition().equals(end.getStaffPosition())
-            && anchor.soundingAccidental() == end.soundingAccidental();
+            && anchor.accidentalState().sounding() == end.accidentalState().sounding();
     }
 
     record Reached(Line line, int index) {

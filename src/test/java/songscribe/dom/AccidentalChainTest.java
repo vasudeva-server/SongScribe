@@ -21,7 +21,6 @@
 package songscribe.dom;
 
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -383,7 +382,7 @@ class AccidentalChainTest extends UnitTest {
         List<Restamp> restamps, Tuple... expected) {
 
         assertThat(restamps)
-            .extracting(Restamp::note, restamp -> restamp.state().accidental(), restamp -> restamp.state().type())
+            .extracting(Restamp::note, restamp -> restamp.state().sounding(), restamp -> restamp.state().type())
             .containsExactly(expected);
     }
 }

@@ -19,6 +19,8 @@
  */
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * What a note knows about its own accidental: decided by the chain walk, a sounding alteration
  * the walk has yet to place, or no pitch of its own yet.
@@ -33,12 +35,54 @@ package songscribe.dom;
  */
 public sealed interface AccidentalState permits ChainedAccidental, AccidentalState.Chosen, AccidentalState.Adopting {
 
-    record Chosen(Accidental sounding) implements AccidentalState {}
+    /**
+     * Ask it only of a state that is not {@link Adopting}, which has no pitch of its own.
+     */
+    Accidental sounding();
+
+    /**
+     * @return {@code null} when the note draws no accidental
+     */
+    @Nullable Accidental drawn();
+
+    /**
+     * Returns the intent under which the next chain walk gives a note this same pitch.
+     */
+    AccidentalState intent();
+
+    record Chosen(Accidental sounding) implements AccidentalState {
+
+        @Override
+        public Accidental drawn() {
+            return sounding;
+        }
+
+        @Override
+        public AccidentalState intent() {
+            return this;
+        }
+    }
 
     /**
      * A note with no pitch of its own, such as a fresh note or one moved to another staff
      * position, sounds the alteration in force where it lands. A pasted note keeps the pitch it
      * was copied with instead.
      */
-    record Adopting() implements AccidentalState {}
+    record Adopting() implements AccidentalState {
+
+        @Override
+        public Accidental sounding() {
+            throw new IllegalStateException("An adopting note has no sounding accidental");
+        }
+
+        @Override
+        public @Nullable Accidental drawn() {
+            return null;
+        }
+
+        @Override
+        public AccidentalState intent() {
+            return this;
+        }
+    }
 }

@@ -367,36 +367,12 @@ public final class NoteElement extends StaffElement implements Dottable {
         throw new IllegalStateException("Note is not stamped: " + accidentalState);
     }
 
-    public Accidental soundingAccidental() {
-        return switch (accidentalState) {
-            case ChainedAccidental chained -> chained.accidental();
-            case AccidentalState.Chosen(var sounding) -> sounding;
-            case AccidentalState.Adopting _ -> throw new IllegalStateException(
-                "An adopting note has no sounding accidental: " + this);
-        };
-    }
-
-    /**
-     * @return {@code null} for a stamped note that is not written and for an adopting note
-     */
-    public @Nullable Accidental drawnAccidental() {
-        return switch (accidentalState) {
-            case ChainedAccidental chained -> chained.isWritten() ? chained.accidental() : null;
-            case AccidentalState.Chosen(var sounding) -> sounding;
-            case AccidentalState.Adopting _ -> null;
-        };
-    }
-
     public void choose(Accidental sounding) {
         accidentalState = new AccidentalState.Chosen(sounding);
     }
 
     public void pitchAs(NoteElement source) {
-        accidentalState = switch (source.accidentalState) {
-            case ChainedAccidental chained -> new AccidentalState.Chosen(chained.accidental());
-            case AccidentalState.Chosen chosen -> chosen;
-            case AccidentalState.Adopting adopting -> adopting;
-        };
+        accidentalState = source.accidentalState.intent();
     }
 
     public void adopt() {
@@ -441,7 +417,7 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     public int getPitch() {
-        return DiatonicPitch.at(staffPosition.value()).midi(soundingAccidental());
+        return DiatonicPitch.at(staffPosition.value()).midi(accidentalState.sounding());
     }
 
     @Override

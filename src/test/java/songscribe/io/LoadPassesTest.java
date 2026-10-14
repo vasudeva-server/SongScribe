@@ -189,9 +189,9 @@ class LoadPassesTest extends UnitTest {
         var afterBarline = accidentalNotes.get(AFTER_BARLINE_INDEX);
 
         assertThat(leadingFlat.chainedAccidental().type()).isEqualTo(ChainType.ANCHOR);
-        assertThat(afterBarline.chainedAccidental().accidental())
+        assertThat(afterBarline.chainedAccidental().sounding())
             .as("the barline written between the two notes does not reset what is in force")
-            .isEqualTo(leadingFlat.chainedAccidental().accidental());
+            .isEqualTo(leadingFlat.chainedAccidental().sounding());
         assertThat(afterBarline.chainedAccidental().type()).isEqualTo(ChainType.REPETITION);
     }
 
@@ -200,7 +200,7 @@ class LoadPassesTest extends UnitTest {
         var plainFlat = accidentalNotes.get(PLAIN_FLAT_INDEX);
         var parenthesizedFlat = accidentalNotes.get(PARENTHESIZED_FLAT_INDEX);
 
-        assertThat(parenthesizedFlat.chainedAccidental().accidental()).isEqualTo(Accidental.FLAT);
+        assertThat(parenthesizedFlat.chainedAccidental().sounding()).isEqualTo(Accidental.FLAT);
         assertThat(parenthesizedFlat.chainedAccidental().type())
             .as("sounding the same flat right after the plain one, with nothing between them, it is implicit — "
                 + "exactly as a plain repeated accidental would be")

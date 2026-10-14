@@ -220,7 +220,7 @@ public final class NoteGeometry {
     private NoteGeometry() {}
 
     public static float getAccidentalWidthSs(NoteElement note) {
-        var accidental = note.drawnAccidental();
+        var accidental = note.accidentalState().drawn();
 
         if (accidental == null) {
             return 0;
@@ -245,7 +245,7 @@ public final class NoteGeometry {
      * grace-note accidentals are deliberately not reserved into the structural stacking layer.
      */
     public static @Nullable BBox getAccidentalBoundsSs(NoteElement note) {
-        var accidental = note.drawnAccidental();
+        var accidental = note.accidentalState().drawn();
 
         if (accidental == null) {
             return null;

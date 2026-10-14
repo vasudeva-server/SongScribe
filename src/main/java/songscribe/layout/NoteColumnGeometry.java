@@ -48,7 +48,7 @@ public final class NoteColumnGeometry {
         var rightSs = NoteGeometry.dotsRightExtentSs(
             note, beaming, direction, noteType.getElementWidthSs());
 
-        if (note.drawnAccidental() != null) {
+        if (note.accidentalState().drawn() != null) {
             var accidentalStartXSs = NoteGeometry.getAccidentalStartXSs(note);
 
             if (accidentalStartXSs < leftSs) {

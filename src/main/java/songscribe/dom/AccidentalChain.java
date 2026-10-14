@@ -210,11 +210,7 @@ public final class AccidentalChain {
             var position = note.getStaffPosition();
             var state = note.accidentalState();
             var current = inForceAt(position);
-            var sounding = switch (state) {
-                case ChainedAccidental chained -> chained.accidental();
-                case AccidentalState.Chosen chosen -> chosen.sounding();
-                case AccidentalState.Adopting _ -> current;
-            };
+            var sounding = (state instanceof AccidentalState.Adopting) ? current : state.sounding();
             var stamped = (state instanceof ChainedAccidental);
             var decided = !stamped || open.contains(position) || reachesNextKeyChange || inSpan(cursor);
 
@@ -299,7 +295,7 @@ public final class AccidentalChain {
                     }
 
                     if ((element instanceof NoteElement note) && note.getStaffPosition().equals(position)) {
-                        return note.soundingAccidental();
+                        return note.accidentalState().sounding();
                     }
                 }
 

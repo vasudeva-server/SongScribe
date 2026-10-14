@@ -323,7 +323,7 @@ final class NoteBuilder {
      * Returns {@code null} when {@code element} draws no accidental.
      */
     private static @Nullable Accidental buildAccidental(BuildContext ctx, NoteElement element) {
-        var accidental = element.drawnAccidental();
+        var accidental = element.accidentalState().drawn();
 
         if (accidental == null) {
             return null;

@@ -51,10 +51,10 @@ public final class PitchSpelling {
     }
 
     /**
-     * Derived from {@link NoteElement#soundingAccidental()} alone, so the pitch sounds correct
+     * Derived from {@link songscribe.dom.AccidentalState#sounding()} alone, so the pitch sounds correct
      * whether or not the note shows an accidental.
      */
     public static int soundingAlterFor(NoteElement note) {
-        return note.soundingAccidental().semitones();
+        return note.accidentalState().sounding().semitones();
     }
 }

@@ -208,7 +208,7 @@ class TieRuleTest extends UnitTest {
         var line = song.getLine(FIRST_LINE);
         var anchor = (NoteElement) line.getElement(ANCHOR);
         var end = (NoteElement) line.getElement(END);
-        var soundedBefore = end.soundingAccidental();
+        var soundedBefore = end.accidentalState().sounding();
         var recorder = new BatchRecorder();
 
         try {
@@ -218,7 +218,7 @@ class TieRuleTest extends UnitTest {
 
             MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst());
 
-            assertThat(end.soundingAccidental()).isEqualTo(soundedBefore);
+            assertThat(end.accidentalState().sounding()).isEqualTo(soundedBefore);
             assertThat(anchor.isTiedTo(end)).isTrue();
         } finally {
             recorder.dispose();

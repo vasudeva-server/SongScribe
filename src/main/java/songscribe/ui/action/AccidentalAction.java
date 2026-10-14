@@ -27,11 +27,9 @@ import java.util.EnumSet;
 
 import songscribe.Strings;
 import songscribe.dom.Accidental;
-import songscribe.dom.AccidentalState;
 import songscribe.dom.ChainedAccidental;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
-import songscribe.dom.PitchClass;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.mutation.ElementField;
@@ -188,7 +186,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
 
         return switch (chained.type()) {
             case IN_KEY -> false;
-            case ANCHOR, REPETITION, IMPLICIT, CANCEL -> accidental == chained.accidental();
+            case ANCHOR, REPETITION, IMPLICIT, CANCEL -> accidental == chained.sounding();
         };
     }
 
@@ -209,7 +207,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
 
         return switch (chained.type()) {
             case IN_KEY, ANCHOR -> accidental != keyAlterationAt(line, index, note);
-            case REPETITION, IMPLICIT, CANCEL -> accidental != chained.accidental();
+            case REPETITION, IMPLICIT, CANCEL -> accidental != chained.sounding();
         };
     }
 

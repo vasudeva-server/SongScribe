@@ -21,6 +21,8 @@ package songscribe.dom;
 
 import java.util.Objects;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * A note's accidental as the chain walk decided it: the alteration the note sounds, and the
  * place that note holds in the accidental chain at its staff position. The chain walk decides
@@ -49,7 +51,7 @@ import java.util.Objects;
  * which makes every instance a decision of the rule. That is why this is a final class rather
  * than a record: a public record's canonical constructor cannot be restricted (JLS §8.10.4).
  *
- * <p>Immutable; two instances are equal when their accidentals and types are.
+ * <p>Immutable; two instances are equal when their sounding alterations and types are.
  */
 public final class ChainedAccidental implements AccidentalState {
 
@@ -94,16 +96,27 @@ public final class ChainedAccidental implements AccidentalState {
         }
     }
 
-    private final Accidental accidental;
+    private final Accidental sounding;
     private final ChainType type;
 
-    ChainedAccidental(Accidental accidental, ChainType type) {
-        this.accidental = accidental;
+    ChainedAccidental(Accidental sounding, ChainType type) {
+        this.sounding = sounding;
         this.type = type;
     }
 
-    public Accidental accidental() {
-        return accidental;
+    @Override
+    public Accidental sounding() {
+        return sounding;
+    }
+
+    @Override
+    public @Nullable Accidental drawn() {
+        return isWritten() ? sounding : null;
+    }
+
+    @Override
+    public AccidentalState intent() {
+        return new Chosen(sounding);
     }
 
     public ChainType type() {
@@ -124,16 +137,16 @@ public final class ChainedAccidental implements AccidentalState {
             return false;
         }
 
-        return accidental == that.accidental && type == that.type;
+        return sounding == that.sounding && type == that.type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(accidental, type);
+        return Objects.hash(sounding, type);
     }
 
     @Override
     public String toString() {
-        return "ChainedAccidental{accidental=" + accidental + ", type=" + type + '}';
+        return "ChainedAccidental{sounding=" + sounding + ", type=" + type + '}';
     }
 }
