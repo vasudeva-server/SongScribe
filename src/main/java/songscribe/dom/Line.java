@@ -61,7 +61,7 @@ import songscribe.message.mutation.TieRemoval;
  * at the end of the previous line. Line 0 of a song is always non-null, and {@link Song}
  * maintains that, both when a mutation promotes a different line to index 0 and when a document
  * is loaded. A line that belongs to no song is subject to the same rule. What a line
- * <em>inherits</em> is held by {@link Song} ({@link Song#inheritedKeyOf}), so a line cannot carry
+ * <em>inherits</em> is held by {@link KeyInheritance} ({@link KeyInheritance#inheritedKeyOf}), so a line cannot carry
  * a stale inherited key out of the song it was removed from.
  */
 public final class Line implements EditableRun {
@@ -162,7 +162,7 @@ public final class Line implements EditableRun {
      *     {@link Song#applyChange}'s bracket rule
      */
     public void setKey(@Nullable Key key) {
-        var normalized = key != null && key.equals(song.inheritedKeyOf(this)) ? null : key;
+        var normalized = key != null && key.equals(song.keyInheritance().inheritedKeyOf(this)) ? null : key;
 
         if (Objects.equals(this.key, normalized)) {
             return;
@@ -187,7 +187,7 @@ public final class Line implements EditableRun {
             return ownKey;
         }
 
-        var inheritedKey = song.inheritedKeyOf(this);
+        var inheritedKey = song.keyInheritance().inheritedKeyOf(this);
         return (inheritedKey != null) ? inheritedKey : Key.DEFAULT;
     }
 

@@ -8,6 +8,7 @@ Read `KeyChangeElement` first.
 - `KeyChangeElement`
 - `KeyChangeSite`
 - `KeyChangeStranding`
+- `KeyInheritance`
 - `KeySignatureExtent`
 - `KeySignatureAppearance`
 - `KeySignatureRenderer`

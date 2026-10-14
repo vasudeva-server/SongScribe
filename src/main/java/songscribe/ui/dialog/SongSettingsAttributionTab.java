@@ -64,7 +64,6 @@ import songscribe.ui.component.MyJTextField;
 import songscribe.ui.renderer.AttributionRenderer;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
-import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
 final class SongSettingsAttributionTab extends BaseDialog.Tab {
@@ -109,9 +108,9 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     // re-packs the dialog when its height changes, and a preview following each keystroke
     // would resize the window under the user mid-word.
     private final Property<String> place =
-        Controls.text(placeField, Timing.ON_COMMIT, SongSettingsAttributionTab::normalizePlace);
+        Controls.text(placeField, Timing.ON_COMMIT, SongAttribution::normalizePlace);
     private final Property<String> composer =
-        Controls.text(composerField, Timing.ON_COMMIT, SongSettingsAttributionTab::normalizeComposer);
+        Controls.text(composerField, Timing.ON_COMMIT, SongAttribution::normalizePerson);
     private final Property<String> lyricist =
         Controls.text(lyricistField, Timing.ON_COMMIT, this::normalizeLyricist);
     private final Property<Song.LyricsSource> lyricsSource = Controls.item(sourceCombo);
@@ -381,34 +380,16 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         }
     }
 
-    private static String normalizePlace(String text) {
-        return StringUtils.processText(text, false);
-    }
-
-    /** An empty composer is coerced to Sri Chinmoy. */
-    private static String normalizeComposer(String text) {
-        return Song.coercePerson(StringUtils.processText(text, false));
+    private String normalizeLyricist(String text) {
+        return SongAttribution.resolveLyricist(text, composer.get());
     }
 
     /**
-     * An empty lyricist inherits the composer credit — Sri Chinmoy when the composer is itself
-     * empty; otherwise the typed name with typographic substitution applied.
+     * A lyricist that is not blank already holds what {@link SongAttribution#resolveLyricist}
+     * answers for it, so the write is equal and silent.
      */
-    private String normalizeLyricist(String text) {
-        return text.trim().isEmpty()
-            ? normalizeComposer(composer.get())
-            : Song.coercePerson(StringUtils.processText(text, false));
-    }
-
     private void inheritComposerIntoEmptyLyricist() {
-        if (lyricist.get().trim().isEmpty()) {
-            lyricist.set(composer.get());
-        }
-    }
-
-    private String resolveLyricistText(String composerText) {
-        var lyricistText = lyricist.get().trim();
-        return lyricistText.isEmpty() ? composerText : lyricistText;
+        lyricist.set(normalizeLyricist(lyricist.get()));
     }
 
     /**
@@ -417,16 +398,14 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      * to the framework and the preview would answer stale.
      */
     private AttributionPreviewWidget.PreviewState buildPreviewState() {
-        // The SongAttribution constructor normalizes each field, so the raw property text
-        // is passed through directly.
-        var composerText = composer.get();
-        var lyricistText = resolveLyricistText(composerText);
+        // The SongAttribution constructor normalizes each field and resolves a blank lyricist,
+        // so the raw property text is passed through directly.
         var translation = unofficialTranslation.get();
         var credits = new SongAttribution(
             place.get(),
             getDate(),
-            composerText,
-            lyricistText,
+            composer.get(),
+            lyricist.get(),
             lyricsSource.get(),
             arrangement.get(),
             getWordsDate()
@@ -449,11 +428,11 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     String getComposerText() {
-        return Song.coercePerson(composer.get());
+        return composer.get();
     }
 
     String getLyricistText() {
-        return resolveLyricistText(getComposerText());
+        return lyricist.get();
     }
 
     Song.LyricsSource getLyricsSource() {

@@ -23,6 +23,7 @@ package songscribe.dom;
 import java.util.stream.Collectors;
 
 import songscribe.util.StringUtils;
+import songscribe.util.StringUtils.ShortA;
 
 /**
  * Immutable record holding the song's editable descriptive metadata.
@@ -74,7 +75,7 @@ public record SongMetadata(
     }
 
     private static String normalizeLine(String text) {
-        return StringUtils.processText(text, true);
+        return StringUtils.processText(text, ShortA.STRIP);
     }
 
     /**

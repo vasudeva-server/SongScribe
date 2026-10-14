@@ -42,8 +42,8 @@ import static songscribe.dom.StaffElementFactory.keyChange;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
- * Which lines a key reaches: {@link Song#inheritanceFrom}, the one statement of the rule that a
- * key runs forward to the first line with a key of its own, and {@link Song#keyMoveReach}, which
+ * Which lines a key reaches: {@link KeyInheritance#inheritanceFrom}, the one statement of the rule that a
+ * key runs forward to the first line with a key of its own, and {@link KeyInheritance#keyMoveReach}, which
  * a view reads to learn which lines to re-solve after a key move.
  *
  * <p>Every case runs against the same shape of song, so each answer can be told from its
@@ -210,17 +210,17 @@ class InheritanceChainTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("chainCases")
     void testTheChainRunsFromTheLineAfterTheOriginThroughTheFirstLineWithAKeyOfItsOwn(ChainCase testCase) {
-        var chain = chainSong.inheritanceFrom(
+        var chain = chainSong.keyInheritance().inheritanceFrom(
             chainSong.getLine(testCase.originIndex()), testCase.originEndKey());
 
         var expectedStop = testCase.expectedStop();
-        var expected = new Song.InheritanceChain(
+        var expected = new KeyInheritance.InheritanceChain(
             testCase.expectedInheriting().stream()
-                .map(link -> new Song.Inheritance(chainSong.getLine(link.lineIndex()), link.inheritedKey()))
+                .map(link -> new KeyInheritance.Inheritance(chainSong.getLine(link.lineIndex()), link.inheritedKey()))
                 .toList(),
             (expectedStop == null)
                 ? null
-                : new Song.InheritanceChain.Stop(
+                : new KeyInheritance.InheritanceChain.Stop(
                     chainSong.getLine(expectedStop.lineIndex()), expectedStop.inheritedKey(), expectedStop.ownKey()));
 
         assertThat(chain).isEqualTo(expected);
@@ -232,7 +232,7 @@ class InheritanceChainTest extends UnitTest {
         var song = fiveLineSong();
         var mutation = testCase.edit().apply(song);
 
-        assertThat(song.keyMoveReach(mutation))
+        assertThat(song.keyInheritance().keyMoveReach(mutation))
             .containsExactlyElementsOf(testCase.expected().stream().map(song::getLine).toList());
     }
 }

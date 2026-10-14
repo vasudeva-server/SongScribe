@@ -178,7 +178,7 @@ public record KeyChangeStranding(List<Stranded> lines) {
     }
 
     private static List<Stranded> inheritingLinesAfter(Line line, Key keyAtEndOfLine) {
-        return line.getSong().inheritanceFrom(line, keyAtEndOfLine).inheriting().stream()
+        return line.getSong().keyInheritance().inheritanceFrom(line, keyAtEndOfLine).inheriting().stream()
             .map(inheritance -> Stranded.under(inheritance.line(), inheritance.inheritedKey()))
             .toList();
     }

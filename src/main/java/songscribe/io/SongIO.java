@@ -504,8 +504,8 @@ public final class SongIO {
                         case XML_TRANSLATED_LYRICS -> translatedLyrics = str;
                         case XML_UNOFFICIAL_TRANSLATION -> unofficialTranslation =
                             Boolean.parseBoolean(str);
-                        case XML_COMPOSER -> composer = Song.coercePerson(str);
-                        case XML_LYRICIST -> lyricist = Song.coercePerson(str);
+                        case XML_COMPOSER -> composer = str;
+                        case XML_LYRICIST -> lyricist = str;
                         case XML_LYRICS_SOURCE -> {
                             try {
                                 lyricsSource = LyricsSource.valueOf(str);

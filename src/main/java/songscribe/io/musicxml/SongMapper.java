@@ -71,7 +71,7 @@ final class SongMapper {
             // Likewise for the key invariant: the mappers set line keys under suspended tracking,
             // so the per-mutation propagation never ran for any of them, and the file can hold a
             // key change that draws nothing.
-            song.settleKeysAfterParsing();
+            song.keyInheritance().settleAfterParsing();
 
             // Grace-host pairing is only settled once every <slide> has been resolved, so
             // the melisma repair runs over the finished song rather than per note.

@@ -79,7 +79,7 @@ public final class SongFactory {
      * runs with its line as the song's last, and the terminal-slot auto-maintenance does not
      * reorder elements during construction.
      *
-     * <p>Only the inheritance chain is settled, not the whole of {@code settleKeysAfterParsing} —
+     * <p>Only the inheritance chain is settled, not the whole of {@link KeyInheritance#settleAfterParsing()} —
      * a caller may deliberately build a line whose key change a later edit is meant to strand, and
      * the load-time repair would take it away before the test could use it. A builder that sets no
      * key leaves its line in the key the line before it ends in.
@@ -104,7 +104,7 @@ public final class SongFactory {
                 song.addLine(line);
             }
 
-            song.rebuildInheritedKeysAfterParsing();
+            song.keyInheritance().rebuildAfterParsing();
         });
 
         song.stampAccidentalsAfterParsing();

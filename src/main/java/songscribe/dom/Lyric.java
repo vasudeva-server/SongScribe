@@ -25,6 +25,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.util.StringUtils;
+import songscribe.util.StringUtils.ShortA;
 
 /**
  * A per-note lyric syllable, one of the four MusicXML 4.0 {@code <lyric>} forms named by its
@@ -55,7 +56,7 @@ public record Lyric(Song.Script script, String text, Extend extend,
         // Apply typographic substitution + short-A (idempotent; Line.java reconstructions
         // re-run harmlessly; carrier lyrics with text="" are unaffected since processText
         // returns "" unchanged).
-        text = StringUtils.processText(text, true);
+        text = StringUtils.processText(text, ShortA.STRIP);
 
         if (isCarrier(extend)) {
             if (!text.isBlank()) {

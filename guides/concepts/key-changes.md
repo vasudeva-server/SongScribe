@@ -19,7 +19,7 @@ inherit. Modeled by `Line`.
 ## Inherited key
 
 The key in effect at the end of the line before, which a line without an own key runs in. The first
-line always has an own key. Modeled by `Song`.
+line always has an own key. Modeled by `KeyInheritance`.
 
 ## Running key
 

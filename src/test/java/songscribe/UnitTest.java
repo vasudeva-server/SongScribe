@@ -46,6 +46,7 @@ import org.xml.sax.SAXException;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Key;
+import songscribe.dom.KeyInheritance;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -250,9 +251,12 @@ public abstract class UnitTest {
      * <p>Every one of these is a chokepoint that wraps the caller's real work, so an
      * unstubbed mock would swallow the runnable entirely and the edit under test would
      * simply never happen — a silent no-op rather than a failure that names itself.
-     * {@code maintainKeyInvariant} is deliberately not among them: a mock has no line list to
-     * propagate keys across, so its default no-op is the correct behavior, and a test that
-     * cares about propagation builds a real Song.
+     *
+     * <p>{@link Song#keyInheritance()} answers a mock, because an unstubbed accessor answers
+     * null and every {@link Line#setKey} and {@link Line#getRunningKey()} on a fixture line
+     * would throw. The mock answers no inherited key and propagates nothing: a mock song has no
+     * line list to propagate keys across, and a test that cares about propagation builds a real
+     * Song.
      */
     @SuppressWarnings("ReturnOfNull")
     public static Song minimalSongMock() {
@@ -263,6 +267,7 @@ public abstract class UnitTest {
         // An unstubbed mock reports script 0, which no lyric ever carries, so every lyric on
         // every fixture element would read as absent to layout and to the editor.
         when(songMock.getActiveScript()).thenReturn(Song.Script.LATIN);
+        when(songMock.keyInheritance()).thenReturn(mock(KeyInheritance.class));
         doAnswer(answerVoid(Runnable::run))
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(answerVoid((String label, Runnable body) -> body.run()))
@@ -275,9 +280,9 @@ public abstract class UnitTest {
     }
 
     /**
-     * Asserts {@link Song}'s key invariant over every line of {@code song}: line 0 establishes a
-     * key of its own, and every line that establishes none is in the key in effect at the end of
-     * the line before it.
+     * Asserts the {@link KeyInheritance key invariant} over every line of {@code song}: line 0
+     * establishes a key of its own, and every line that establishes none is in the key in effect
+     * at the end of the line before it.
      *
      * <p>Shared rather than local to one test class on purpose. The failure a missed propagation
      * produces is wrong pitches on every line downstream, with no error and nothing visible to
@@ -293,14 +298,14 @@ public abstract class UnitTest {
     }
 
     /**
-     * Asserts the inheritance half of {@link Song}'s key invariant only: every line that
-     * establishes no key of its own is in the key in effect at the end of the line before it.
-     * Says nothing about line 0.
+     * Asserts the inheritance half of the {@link KeyInheritance key invariant} only: every line
+     * that establishes no key of its own is in the key in effect at the end of the line before
+     * it. Says nothing about line 0.
      *
      * <p>This half is what holds under {@link Song#withoutMutationTracking(Runnable)}, where the
      * line-0 clause is deliberately deferred: a reader adds lines one at a time, so line 0 is
      * briefly the only line and the key the document ends up in is not yet known. The reader
-     * settles it with {@link Song#rebuildInheritedKeysAfterParsing()} at the end of the load, and
+     * settles it with {@link KeyInheritance#rebuildAfterParsing()} at the end of the load, and
      * only then does the full invariant hold. Use {@link #assertKeyPropagationInvariant} anywhere
      * a modification bracket was open — which is every edit the user can make.
      */

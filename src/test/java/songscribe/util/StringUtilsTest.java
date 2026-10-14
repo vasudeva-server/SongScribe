@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.util.StringUtils.ShortA;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -242,5 +243,74 @@ class StringUtilsTest extends UnitTest {
             .isEqualTo(testCase.expected());
         assertThat(StringUtils.foldSurplusLineBreaks(raw.replace("\n", "\r"), testCase.maxLines()))
             .isEqualTo(testCase.expected());
+    }
+
+    /**
+     * @param kept     what {@code raw} cleans to under {@link ShortA#KEEP}
+     * @param stripped what {@code raw} cleans to under {@link ShortA#STRIP}
+     */
+    private record ProcessTextCase(String description, String raw, String kept, String stripped) {
+
+        String expectedUnder(ShortA shortA) {
+            return switch (shortA) {
+                case KEEP -> kept;
+                case STRIP -> stripped;
+            };
+        }
+    }
+
+    static Stream<ProcessTextCase> processTextCases() {
+        return Stream.of(
+            new ProcessTextCase(
+                "the text is trimmed",
+                "  Brahmă  ",
+                "Brahmă",
+                "Brahma"
+            ),
+            new ProcessTextCase(
+                "a run of spaces between words collapses to one space",
+                "ĂRATI   song",
+                "ĂRATI song",
+                "ARATI song"
+            ),
+            new ProcessTextCase(
+                "a line break survives while the space runs on each line collapse",
+                "Hă  one\nline  two",
+                "Hă one\nline two",
+                "Ha one\nline two"
+            ),
+            new ProcessTextCase(
+                "quotes, double hyphens and runs of dots become typographic",
+                "\"Hă\" -- it's ă...",
+                "“Hă” — it’s ă…",
+                "“Ha” — it’s a…"
+            ),
+            new ProcessTextCase(
+                "text of only whitespace becomes empty",
+                "  \t  ",
+                "",
+                ""
+            )
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("processTextCases")
+    void testProcessTextCleansTheTextAndAppliesTheShortARule(ProcessTextCase testCase) {
+        for (var shortA : ShortA.values()) {
+            assertThat(StringUtils.processText(testCase.raw(), shortA))
+                .as(shortA.name())
+                .isEqualTo(testCase.expectedUnder(shortA));
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("processTextCases")
+    void testProcessTextIsIdempotentUnderEachShortARule(ProcessTextCase testCase) {
+        for (var shortA : ShortA.values()) {
+            var once = StringUtils.processText(testCase.raw(), shortA);
+
+            assertThat(StringUtils.processText(once, shortA)).as(shortA.name()).isEqualTo(once);
+        }
     }
 }

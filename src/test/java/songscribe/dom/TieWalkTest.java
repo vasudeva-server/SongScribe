@@ -55,7 +55,7 @@ import static songscribe.dom.StaffElementFactory.quaver;
  * Where a tie's derived end lies, and which lines a tie concerns: {@link NoteElement#tie()} and
  * {@link NoteElement#incomingTie()} walk over legal separators and across one line break,
  * {@link Line#ownedTies()} lists a tie once in each line that draws it, and
- * {@link Song#tieReach} names the neighboring lines an edit at a line's edge reaches.
+ * {@link Tie#reach} names the neighboring lines an edit at a line's edge reaches.
  */
 class TieWalkTest extends UnitTest {
 
@@ -188,7 +188,7 @@ class TieWalkTest extends UnitTest {
      * @param description the mutation, as the test's display name
      * @param lines       the song's lines in compact notation
      * @param mutation    builds the mutation against the song
-     * @param reached     the indices of the lines {@link Song#tieReach} names, in any order
+     * @param reached     the indices of the lines {@link Tie#reach} names, in any order
      */
     private record ReachCase(String description, String[] lines, Function<Song, Mutation> mutation, List<Integer> reached) {}
 
@@ -214,7 +214,7 @@ class TieWalkTest extends UnitTest {
     void testAnEditAtALinesEdgeReachesTheLineBesideIt(ReachCase testCase) {
         var song = compactSong(Key.NO_ACCIDENTALS, testCase.lines());
 
-        assertThat(song.tieReach(testCase.mutation().apply(song)))
+        assertThat(Tie.reach(testCase.mutation().apply(song)))
             .containsExactlyInAnyOrderElementsOf(testCase.reached().stream().map(song::getLine).toList());
     }
 

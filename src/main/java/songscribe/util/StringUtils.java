@@ -405,11 +405,26 @@ public final class StringUtils {
     }
 
     /**
-     * {@code stripShortA} is the sole gate for short-A stripping: true for title, subtitle and
-     * underlyrics; false for translation, footnotes, place, composer and lyricist.
-     * Idempotent: the song model and the song settings dialog both apply it.
+     * What {@link #processText} does with a short A ({@code ă}, {@code Ă}).
      */
-    public static String processText(String text, boolean stripShortA) {
+    public enum ShortA {
+        STRIP,
+        KEEP
+    }
+
+    /**
+     * Cleans the text of one field: trims it, collapses each run of spaces after a character
+     * that is not whitespace to one space, makes it typographic as {@link #toTypographic} does,
+     * and under {@link ShortA#STRIP} replaces each {@code ă} with {@code a} and each {@code Ă}
+     * with {@code A}.
+     *
+     * <p>Idempotent because the song model and the song settings dialog both apply it.
+     *
+     * @invariant idempotent: {@code processText(processText(text, shortA), shortA)} equals
+     *     {@code processText(text, shortA)}
+     * @invariant under {@link ShortA#STRIP} the result holds no {@code ă} and no {@code Ă}
+     */
+    public static String processText(String text, ShortA shortA) {
         var trimmed = text.trim();
 
         if (trimmed.isEmpty()) {
@@ -418,7 +433,7 @@ public final class StringUtils {
 
         var result = collapseMultipleSpaces(toTypographic(trimmed));
 
-        if (stripShortA && SHORT_A_PATTERN.matcher(result).find()) {
+        if (shortA == ShortA.STRIP && SHORT_A_PATTERN.matcher(result).find()) {
             result = result.replace("ă", "a").replace("Ă", "A");
         }
 

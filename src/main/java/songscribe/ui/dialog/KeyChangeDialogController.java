@@ -217,7 +217,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
 
             if (!strandsItself) {
                 // ElementField.KEY is what carries the change past this line:
-                // Song.maintainKeyInvariant re-derives every following line's inherited key off the
+                // KeyInheritance.maintainInvariant re-derives every following line's inherited key off the
                 // resulting mutation, on undo and redo as well as forward.
                 line.modifyElement(elementIndex, ElementField.KEY, () -> keyChange.setKey(key));
             }

@@ -216,7 +216,7 @@ final class MeasureMapper {
     // The measure index at which the current line started, or null before any line has. A <key>
     // in that measure establishes the line's own key; a <key> in any other measure is a mid-line
     // change. No running key is carried: a line the file gave no <key> establishes none, so it
-    // inherits, which is what Song.rebuildInheritedKeysAfterParsing settles once the walk is over.
+    // inherits, which is what KeyInheritance.rebuildAfterParsing settles once the walk is over.
     @Nullable
     private Integer lineStartMeasureIndex = null;
 

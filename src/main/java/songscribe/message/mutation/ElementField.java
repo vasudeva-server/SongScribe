@@ -38,7 +38,7 @@ public enum ElementField {
     LYRIC,
 
     /**
-     * {@code Song.maintainKeyInvariant} re-derives what every following line inherits off the
+     * {@code KeyInheritance.maintainInvariant} re-derives what every following line inherits off the
      * resulting {@link ElementModification}, so a key edit propagates through undo and redo too.
      */
     KEY;

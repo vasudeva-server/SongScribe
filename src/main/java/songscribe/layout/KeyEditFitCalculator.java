@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
+import songscribe.dom.KeyInheritance;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 
@@ -36,7 +37,7 @@ import songscribe.dom.Song;
  * drawn is refused <em>before</em> it is written to the model.
  * <p>
  * There is one query per edit, and each answers for the whole edit rather than for one line of it:
- * every line the key change re-keys, as {@link Song#inheritanceFrom} reports. Each line is measured
+ * every line the key change re-keys, as {@link KeyInheritance#inheritanceFrom} reports. Each line is measured
  * by the same solve the committed layout runs, so a change these queries accept is one the layout
  * can always place.
  *
@@ -177,7 +178,7 @@ public final class KeyEditFitCalculator {
             return false;
         }
 
-        var chain = song.inheritanceFrom(editedLine, endKey);
+        var chain = song.keyInheritance().inheritanceFrom(editedLine, endKey);
         var inheriting = chain.inheriting();
         var currentLine = editedLine;
         var currentColumns = editedColumns;
@@ -208,7 +209,7 @@ public final class KeyEditFitCalculator {
     }
 
     /** Null when the inheriting lines run to the end of the song and no line follows. */
-    private static @Nullable Key runningKeyAt(Song.InheritanceChain chain, int position) {
+    private static @Nullable Key runningKeyAt(KeyInheritance.InheritanceChain chain, int position) {
         var inheriting = chain.inheriting();
 
         if (position < inheriting.size()) {

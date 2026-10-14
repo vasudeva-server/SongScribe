@@ -19,7 +19,10 @@
  */
 package songscribe.dom;
 
+import java.util.regex.Pattern;
+
 import songscribe.util.StringUtils;
+import songscribe.util.StringUtils.ShortA;
 
 /**
  * Who a song is credited to, where it was composed and when — exactly the input
@@ -38,19 +41,66 @@ public record SongAttribution(
     PartialDate wordsDate
 ) {
 
+    private static final Pattern BLANK_LINE_RUN = Pattern.compile("(\\s*\\n){2,}");
+
     /**
      * A words-date equal to the composition date collapses to absent here: the model must never
      * hold that state, because a credit block built from it would name the same date twice.
+     *
+     * <p>A blank lyricist takes the composer credit, as {@link #resolveLyricist} states.
      */
     public SongAttribution {
-        // No short-A stripping: that is reserved for title/subtitle/lyrics.
-        place = StringUtils.processText(place, false);
-        composer = Song.coercePerson(StringUtils.processText(composer, false));
-        lyricist = Song.coercePerson(StringUtils.processText(lyricist, false));
+        place = normalizePlace(place);
+        lyricist = resolveLyricist(lyricist, composer);
+        composer = normalizePerson(composer);
 
         if (wordsDate.equals(date)) {
             wordsDate = PartialDate.EmptyDate.INSTANCE;
         }
+    }
+
+    /**
+     * Public because the song settings dialog shows a field's normalized text when the field is
+     * committed, before any record exists, and must show what this record will hold.
+     *
+     * @param text the raw place, as typed or read from storage
+     * @return {@code text} as {@link StringUtils#processText} returns it under {@link ShortA#KEEP}
+     * @invariant idempotent: {@code normalizePlace(normalizePlace(text))} equals
+     *     {@code normalizePlace(text)}, so the dialog shows what the record stores
+     */
+    public static String normalizePlace(String text) {
+        return StringUtils.processText(text, ShortA.KEEP);
+    }
+
+    /**
+     * Public for the same reason as {@link #normalizePlace}.
+     *
+     * @param text the raw name, as typed or read from storage
+     * @return {@code text} as {@link StringUtils#processText} returns it under {@link ShortA#KEEP},
+     *     with every run of blank lines collapsed to a single line break;
+     *     {@link Song#SRI_CHINMOY} when {@code text} carries no other content
+     * @invariant idempotent: {@code normalizePerson(normalizePerson(text))} equals
+     *     {@code normalizePerson(text)}, so the dialog shows what the record stores
+     */
+    public static String normalizePerson(String text) {
+        var cleaned = StringUtils.processText(text, ShortA.KEEP);
+        var collapsed = BLANK_LINE_RUN.matcher(cleaned).replaceAll("\n");
+        return collapsed.isEmpty() ? Song.SRI_CHINMOY : collapsed;
+    }
+
+    /**
+     * Whoever wrote the music is credited with the words too, unless the entry names someone
+     * else. Public for the same reason as {@link #normalizePlace}.
+     *
+     * @param lyricist the raw lyricist, as typed or read from storage
+     * @param composer the raw composer, as typed or read from storage
+     * @return {@code normalizePerson(composer)} when {@code lyricist} is empty or only
+     *     whitespace; {@code normalizePerson(lyricist)} otherwise
+     * @invariant idempotent in {@code lyricist}: {@code resolveLyricist(resolveLyricist(lyricist,
+     *     composer), composer)} equals {@code resolveLyricist(lyricist, composer)}
+     */
+    public static String resolveLyricist(String lyricist, String composer) {
+        return normalizePerson(lyricist.trim().isEmpty() ? composer : lyricist);
     }
 
     /**

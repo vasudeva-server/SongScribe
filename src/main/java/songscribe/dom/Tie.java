@@ -20,12 +20,22 @@
 
 package songscribe.dom;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.ElementModification;
+import songscribe.message.mutation.ElementReplacement;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
 
 /**
  * A tie from a note to the next note, as {@link NoteElement#tie()} and
@@ -187,6 +197,116 @@ public final class Tie {
      */
     public static @Nullable Integer lastNonSeparatorIndexBefore(List<? extends StaffElement> elements, int before) {
         return StaffElementRun.lastIndexBefore(elements, before, type -> !isLegalSeparator(type));
+    }
+
+    /**
+     * Returns the lines, other than the one {@code mutation} names, whose drawn ties it can
+     * change.
+     *
+     * <p>A line draws the half of a tie that crosses into it from the line before it, so an edit
+     * near one edge of a line can change what the line beside it draws while the mutation's own
+     * record names only its own line. Deleting a tied last note, inserting a same-pitch note
+     * after an anchor, and flipping the stem of a note a crossing tie ends on are each felt this
+     * way.
+     *
+     * <p>A mutation names an origin in its line L: a run of positions from {@code first} to
+     * {@code last}. An insertion's, a replacement's or a modification's index, or a deletion's
+     * first index, is the origin when no beam of L contains it; when one does, the origin is
+     * that beam's whole range, because a beamed note's stem follows its beam, so a change to
+     * one member can turn the stem of the member at L's edge. A {@link TieAddition}'s or
+     * {@link TieRemoval}'s anchor index is the origin of a tie record, and a {@link Beam}'s range
+     * is the origin of a {@link SpanAddition} or {@link SpanRemoval} of that beam. It reaches:
+     * <ul>
+     *   <li>L's next line, when there is one and {@code last} is at or after L's last element
+     *       that is not a legal separator ({@link #isLegalSeparator}), or L has no such
+     *       element;</li>
+     *   <li>L's previous line, when there is one and {@code first} is at or before L's first
+     *       such element, or L has none.</li>
+     * </ul>
+     *
+     * @param mutation the mutation to ask about
+     * @return the lines, in no promised order, or empty when {@code mutation} names no origin —
+     *     any other kind of mutation, a span record of a span that is not a beam, a beam record
+     *     whose endpoints are no longer both in the line it names, or a tie record whose anchor
+     *     is no longer in that line — or names one too far from either edge to reach a
+     *     neighboring line
+     */
+    public static List<Line> reach(Mutation mutation) {
+        var origin = reachOrigin(mutation);
+
+        if (origin == null) {
+            return List.of();
+        }
+
+        var line = origin.line();
+        var elements = line.getElements();
+        var firstNonSeparator = firstNonSeparatorIndexFrom(elements, 0);
+        var lastNonSeparator = lastNonSeparatorIndexBefore(elements, elements.size());
+        var reach = new ArrayList<Line>();
+
+        if (!line.isLast() && (lastNonSeparator == null || origin.last() >= lastNonSeparator)) {
+            reach.add(line.nextLine());
+        }
+
+        if (!line.isFirst() && (firstNonSeparator == null || origin.first() <= firstNonSeparator)) {
+            reach.add(line.previousLine());
+        }
+
+        return List.copyOf(reach);
+    }
+
+    private static @Nullable ReachOrigin reachOrigin(Mutation mutation) {
+        return switch (mutation) {
+            case ElementInsertion insertion -> elementOrigin(insertion.line(), insertion.index());
+            case ElementReplacement replacement -> elementOrigin(replacement.line(), replacement.index());
+            case ElementDeletion deletion -> elementOrigin(deletion.line(), deletion.range().begin());
+            case ElementModification modification -> elementOrigin(modification.line(), modification.index());
+            case TieAddition(var line, var anchor) -> tieAnchorOrigin(line, anchor);
+            case TieRemoval(var line, var anchor) -> tieAnchorOrigin(line, anchor);
+            case SpanAddition(var line, var span) -> beamOrigin(line, span);
+            case SpanRemoval(var line, var span) -> beamOrigin(line, span);
+            default -> null;
+        };
+    }
+
+    private static ReachOrigin elementOrigin(Line line, int position) {
+        var beam = line.spanRegistry().findBeamAt(position);
+
+        if (beam == null) {
+            return new ReachOrigin(line, position, position);
+        }
+
+        var range = beam.range();
+
+        return new ReachOrigin(line, range.begin(), range.end());
+    }
+
+    private static @Nullable ReachOrigin tieAnchorOrigin(Line line, NoteElement tieAnchor) {
+        if (!line.contains(tieAnchor)) {
+            return null;
+        }
+
+        var index = line.getElementIndex(tieAnchor);
+
+        return new ReachOrigin(line, index, index);
+    }
+
+    private static @Nullable ReachOrigin beamOrigin(Line line, Span<?> span) {
+        if (!(span instanceof Beam beam)) {
+            return null;
+        }
+
+        var beamAnchor = beam.getAnchorElement();
+        var beamEnd = beam.getEndElement();
+
+        if (!line.contains(beamAnchor) || !line.contains(beamEnd)) {
+            return null;
+        }
+
+        return new ReachOrigin(line, line.getElementIndex(beamAnchor), line.getElementIndex(beamEnd));
+    }
+
+    private record ReachOrigin(Line line, int first, int last) {
     }
 
     public boolean isAbove() {

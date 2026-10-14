@@ -69,8 +69,9 @@ final class HeaderMapper {
     private String headNumber = "";
     private String headPlace = "";
 
-    // Composer/lyricist default to empty; SongMetadata coerces empty to
-    // SRI_CHINMOY, matching the value a document with no <creator> would carry.
+    // Composer/lyricist default to empty; SongMetadata turns an empty composer into
+    // SRI_CHINMOY and an empty lyricist into the composer, matching the value a document
+    // with no <creator> would carry.
     private String headComposer = "";
     private String headLyricist = "";
 
