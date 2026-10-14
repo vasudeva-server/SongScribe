@@ -65,10 +65,6 @@ import songscribe.ui.playback.PlaybackController;
 @Listener(references = References.Strong)
 public final class PreviewElementManager {
 
-    // ==========================================================================
-    // Static State
-    // ==========================================================================
-
     /**
      * Where the preview element is hovering.
      */
@@ -233,10 +229,6 @@ public final class PreviewElementManager {
         }
     }
 
-    // ==========================================================================
-    // Overlay
-    // ==========================================================================
-
     public static void installOverlay(OverlayHost host) {
         PreviewCursorHider.discard();
         PreviewOverlayRegistry.install(host);
@@ -304,10 +296,6 @@ public final class PreviewElementManager {
         return lc.getPreviewElement();
     }
 
-    // ==========================================================================
-    // Public Static API
-    // ==========================================================================
-
     public static void hidePreviewElement(boolean clear) {
         if (clear) {
             clearPreviewElement();
@@ -338,7 +326,6 @@ public final class PreviewElementManager {
     }
 
     static void setAltPressed(boolean pressed) {
-        // When Alt is released, re-trigger preview element from current mouse position
         if (!pressed) {
             restorePreviewElement(currentMouseLine);
         }
@@ -400,14 +387,6 @@ public final class PreviewElementManager {
         return getCurrentInsertionLine() == lc;
     }
 
-    // ==========================================================================
-    // Private Helpers
-    // ==========================================================================
-
-    // ==========================================================================
-    // Delegation Entry Points (called from LineComponent mouse handlers)
-    // ==========================================================================
-
     static void trackMouse(LineComponent lc, MouseEvent e) {
         if (e.isAltDown()) {
             clearPreviewElement();
@@ -427,7 +406,6 @@ public final class PreviewElementManager {
         var viewScale = lc.getViewScale();
         var mouseYSs = viewScale.toSs(new ViewPx(e.getY())).value();
 
-        // In grace mode, lock the x-position to the host note slot
         var graceModeManager = EditModeManager.getGraceModeManager();
         var inGraceMode = graceModeManager.isInProgress();
         double mouseXSs;
@@ -446,7 +424,6 @@ public final class PreviewElementManager {
         var resolvedPosition = StaffPosition.atSs(mouseOffsetSs);
 
         if (resolvedPosition == null) {
-            // Mouse is outside valid range, clear insertion note if on this line
             if (hasPreviewElement(lc)) {
                 clearPreviewElement();
             }
@@ -456,7 +433,6 @@ public final class PreviewElementManager {
 
         var staffPosition = resolvedPosition;
 
-        // Calculate X index and element-head match from mouse using layout result
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
 
@@ -532,7 +508,7 @@ public final class PreviewElementManager {
         var previous = hover;
 
         if (candidate.equals(previous)) {
-            return;  // No change, no repaint
+            return;
         }
 
         // Split the hover's components by what they affect. The insertion index alone is
@@ -557,7 +533,6 @@ public final class PreviewElementManager {
         var previewElementVisible = !breathMarkBlocked && !replacementBlocked;
         EditModeManager.setPreviewElementVisible(previewElementVisible);
 
-        // Rests snap to their default staff position; pitched notes follow the mouse Y
         if (previewElement != null) {
             applyStaffPosition(previewElement, staffPosition);
 
@@ -599,7 +574,6 @@ public final class PreviewElementManager {
     static void mouseExitedLine(LineComponent lc) {
         currentMouseLine = null;
 
-        // Clear preview element when mouse leaves this line
         if (hasPreviewElement(lc)) {
             clearPreviewElement();
         }
@@ -607,10 +581,6 @@ public final class PreviewElementManager {
         EditModeManager.setPreviewElementVisible(false);
         PreviewOverlayRegistry.previewDidChange();
     }
-
-    // ==========================================================================
-    // Internal Helpers
-    // ==========================================================================
 
     static boolean isPositionBlockedByTerminal(
         Song song, Line line, int xIndex, boolean xMatchesElement) {
@@ -692,7 +662,6 @@ public final class PreviewElementManager {
             previousPreviewLine.repaint();
         }
 
-        // Synthesize a MouseEvent and delegate to trackMouse
         var syntheticEvent = new MouseEvent(
             lc, MouseEvent.MOUSE_MOVED,
             System.currentTimeMillis(), 0,

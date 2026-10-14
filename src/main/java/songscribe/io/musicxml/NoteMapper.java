@@ -186,10 +186,6 @@ final class NoteMapper {
         return new MappedNote(element, usedLegacyAccidental, droppedLyric, notations.hasBreathMark());
     }
 
-    // -------------------------------------------------------------------------
-    // Note body
-    // -------------------------------------------------------------------------
-
     /**
      * The accidental state comes from {@code <accidental>} and never from {@code <alter>}.
      */
@@ -215,10 +211,6 @@ final class NoteMapper {
 
         return usedLegacyAccidental;
     }
-
-    // -------------------------------------------------------------------------
-    // <notations>
-    // -------------------------------------------------------------------------
 
     private record NoteNotations(
         boolean hasAccent,
@@ -352,10 +344,6 @@ final class NoteMapper {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Range-span markers — read by MeasureMapper's span passes, one reader each
-    // -------------------------------------------------------------------------
-
     /** {@code null} when the note carries none. */
     static @Nullable String slideType(Note pmNote) {
         for (var child : notationChildren(pmNote)) {
@@ -470,10 +458,6 @@ final class NoteMapper {
 
         return new TrillMarker(start, stop, yOffsetSs);
     }
-
-    // -------------------------------------------------------------------------
-    // Lyrics
-    // -------------------------------------------------------------------------
 
     /**
      * A blank text-bearing syllable is dropped, not the document. A {@code <lyric>} whose number

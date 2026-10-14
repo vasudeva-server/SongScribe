@@ -49,10 +49,6 @@ public final class RenderingUtils {
     private RenderingUtils() {
     }
 
-    // ==========================================================================
-    // Font Constants
-    // ==========================================================================
-
     public static final float FONT_SIZE = BravuraFont.SIZE_SS;
 
     public static final Font MUSIC_FONT;
@@ -78,10 +74,6 @@ public final class RenderingUtils {
     public static Font getGlyphFont(StaffElement note) {
         return note.getType().isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT;
     }
-
-    // ==========================================================================
-    // Colors
-    // ==========================================================================
 
     public static final Color STAFF_LINE_COLOR = Color.BLACK;
     static final Color ELEMENT_COLOR = Color.BLACK;
@@ -151,10 +143,6 @@ public final class RenderingUtils {
         g2.setColor(decorationColor(target, owner, invariants, frame));
     }
 
-    // ==========================================================================
-    // Coordinate Transformation Utilities
-    // ==========================================================================
-
     static double layoutYToComponentYSs(double layoutYSs, LineInvariants invariants) {
         return layoutYToComponentYSs(layoutYSs, invariants.getMiddleLineYSs());
     }
@@ -162,10 +150,6 @@ public final class RenderingUtils {
     static double layoutYToComponentYSs(double layoutYSs, double middleLineYSs) {
         return middleLineYSs + layoutYSs;
     }
-
-    // ==========================================================================
-    // Shared Drawing Utilities
-    // ==========================================================================
 
     static void drawLedgerLine(Graphics2D g2, double leftXSs, double rightXSs, double ySs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes

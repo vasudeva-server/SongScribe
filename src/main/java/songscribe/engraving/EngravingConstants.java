@@ -25,7 +25,6 @@ package songscribe.engraving;
  * shared by more than one class. A width read by exactly one class lives in that class.
  */
 public final class EngravingConstants {
-    // LilyPond multipliers relative to base staff-line thickness
     private static final double STAFF_LINE_MULTIPLIER = 1.0;
     private static final double VOLTA_BRACKET_MULTIPLIER = 1.61;
 

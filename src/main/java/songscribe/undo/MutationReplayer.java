@@ -130,9 +130,9 @@ public final class MutationReplayer {
             case ElementReplacement(var line, var index, var oldElement, var _) -> line.setElement(index, oldElement);
             case ElementModification modification -> {
                 var line = modification.line();
-                // Record into the replay's edit (via applyChange) so its close posts a
-                // SongDidChangeNotification and the view repaints; copyStateFrom keeps
-                // element identity (never setElement).
+                // Recorded via applyChange so the replay's close posts a
+                // SongDidChangeNotification and the view repaints. copyStateFrom keeps
+                // element identity; never use setElement here.
                 line.applyChange(modification, () ->
                     line.getElement(modification.index()).copyStateFrom(modification.beforeElement()));
             }
@@ -159,7 +159,7 @@ public final class MutationReplayer {
             case ElementReplacement(var line, var index, var _, var newElement) -> line.setElement(index, newElement);
             case ElementModification modification -> {
                 var line = modification.line();
-                // See applyUndo: record so the notification fires and the view repaints.
+                // Recorded via applyChange for the same reason as in applyUndo.
                 line.applyChange(modification, () ->
                     line.getElement(modification.index()).copyStateFrom(modification.afterElement()));
             }

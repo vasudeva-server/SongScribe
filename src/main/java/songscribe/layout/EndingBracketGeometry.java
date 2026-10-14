@@ -202,7 +202,6 @@ public final class EndingBracketGeometry {
         var rightLegInkXSs = xBaseSs + bracket.x2Ss() - bracket.x1Ss() - halfThicknessSs;
         var regions = new ArrayList<CollisionRegion>(4);
 
-        // Top arm
         regions.add(new CollisionRegion(
             leftLegInkXSs, inkTopSs,
             rightLegInkXSs + bracketThicknessSs - leftLegInkXSs, bracketThicknessSs));
@@ -211,11 +210,9 @@ public final class EndingBracketGeometry {
         // drawPath insets so that the ink stops on the endpoint rather than bulging past it.
         var legHeightSs = VOLTA_TICK_HEIGHT_SS + halfThicknessSs;
 
-        // Left leg
         regions.add(new CollisionRegion(
             leftLegInkXSs, inkTopSs, bracketThicknessSs, legHeightSs));
 
-        // Right leg
         if (bracket.hasClosingStroke()) {
             regions.add(new CollisionRegion(
                 rightLegInkXSs, inkTopSs, bracketThicknessSs, legHeightSs));

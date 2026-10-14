@@ -60,18 +60,10 @@ public interface LyricRun extends StaffElementRun {
 
     Logger LOG = LoggerFactory.getLogger(LyricRun.class);
 
-    // -------------------------------------------------------------------------
-    // What a run must answer for itself
-    // -------------------------------------------------------------------------
-
     /**
      * Makes the change recoverable if the run requires it.
      */
     void modifyElement(int index, ElementField field, Runnable mutator);
-
-    // -------------------------------------------------------------------------
-    // Chain repair
-    // -------------------------------------------------------------------------
 
     /**
      * A chain may cross the gap only where the caller says so. An element that holds no lyric for
@@ -319,7 +311,7 @@ public interface LyricRun extends StaffElementRun {
         var prevLyric = prevIndex == null ? null : getElement(prevIndex).getLyricForScript(script);
         var prevContinues = prevLyric != null && Lyric.syllabicContinues(prevLyric.syllabic());
 
-        // BEGIN was assigned by best-guess load to signal "this syllable continues to the next".
+        // A best-guess load assigns BEGIN to mean "this syllable continues to the next".
         var derived = deriveSyllabic(prevContinues, Lyric.syllabicContinues(lyric.syllabic()));
 
         if (derived == lyric.syllabic()) {
@@ -387,7 +379,7 @@ public interface LyricRun extends StaffElementRun {
 
         // isBlank, not isEmpty: whitespace-only text erases the syllable exactly as an empty
         // string does. Decided before any Lyric is derived or constructed, since Lyric's
-        // constructor now rejects blank text on a non-carrier outright.
+        // constructor rejects blank text on a non-carrier outright.
         if (!isCarrier && text.isBlank()) {
             trace("writeLyricForScript({}, '{}', {}): blank, erasing", index, text, extend);
             removeLyricForScript(index, script);
@@ -580,10 +572,6 @@ public interface LyricRun extends StaffElementRun {
         return textBearingIndexAtOrAfter(fromIndex + 1, script) != null;
     }
 
-    // -------------------------------------------------------------------------
-    // Lyric spans
-    // -------------------------------------------------------------------------
-
     /**
      * The elements a span covers are sung on the syllable that opened it, so they hold no
      * syllable of their own.
@@ -713,7 +701,6 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        // No predecessor — fix the successor if it now lacks a continuing predecessor.
         fixSuccessorSyllabic(null, script, false);
     }
 
@@ -731,7 +718,6 @@ public interface LyricRun extends StaffElementRun {
 
         trace("endDanglingWord({}): ending dangling word", index);
 
-        // setSyllableBoundary also adjusts the next syllable.
         setSyllableBoundary(index, script, true, false);
     }
 
@@ -949,10 +935,6 @@ public interface LyricRun extends StaffElementRun {
 
         return thisContinues ? Lyric.Syllabic.BEGIN : Lyric.Syllabic.SINGLE;
     }
-
-    // -------------------------------------------------------------------------
-    // Runs lifted out of a longer one
-    // -------------------------------------------------------------------------
 
     /**
      * Ends every lyric chain that runs off either end of this run, so no syllable and no melisma

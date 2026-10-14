@@ -77,10 +77,8 @@ public final class GraceModeManager {
     @Nullable
     private static GraceModeManager instance = null;
 
-    // Dependencies
     private final SelectionCoordinator selectionCoordinator;
 
-    // State
     private State state = State.INACTIVE;
 
     /** Present whenever {@link #state} is not {@link State#INACTIVE}. */
@@ -89,9 +87,8 @@ public final class GraceModeManager {
     @Nullable
     private ActiveGrace activeGrace = null;
 
-    // Cached host-note insertion preview. Computed once on entry to GRACE_NOTE_INSERT
-    // (the locked x, grace index, preview element and layout are all fixed until the
-    // user clicks or cancels, so recomputing per paint frame would be wasted work).
+    // The locked x, grace index, preview element and layout are all fixed from entry to
+    // GRACE_NOTE_INSERT until the user clicks or cancels, so this is not recomputed per paint frame.
     private InsertionSpacingCalculator.@Nullable InsertionResult cachedHostInsertion;
 
     @Nullable
@@ -99,26 +96,16 @@ public final class GraceModeManager {
 
     private long mouseDownTime;
 
-    // Set on entry to GRACE_NOTE_INSERT to suppress the mouseClicked event that
-    // fires as part of the same click cycle that triggered the transition.
     private boolean justEnteredInsert = false;
 
-    // True when a drag-left exceeds GRACE_SLOP_PX, indicating the grace note
-    // will be cancelled on mouse-up. Used by LineRenderer to draw the note in red.
     private boolean pendingCancel = false;
 
-    // True when a drag-right exceeds GRACE_SLOP_PX past the grace note's right
-    // edge and an eligible host note exists. A preview glissando is drawn while true.
     private boolean pendingConnect = false;
 
-    // True when the untracked grace-note insertion left its neighbors unrepaired, so the
-    // pairing owes the repairs. An append has no neighbor after it and owes none.
     private boolean insertionRepairsOwed = false;
 
     private record SavedAccidentalState(Line line, NoteElement.SavedAccidental saved) {}
 
-    // The notes the untracked insertion's walk restamped, in walk order, until the pairing
-    // records them or the abort drops them.
     private final List<SavedAccidentalState> savedAccidentalStates = new ArrayList<>();
 
     public GraceModeManager(SelectionCoordinator selectionCoordinator) {
@@ -242,13 +229,9 @@ public final class GraceModeManager {
         return result;
     }
 
-    // -------------------------------------------------------------------------
-    // Public event methods
-    // -------------------------------------------------------------------------
-
     public boolean mousePressed(LineComponent lineComponent, MouseEvent e) {
         if (state == State.GRACE_NOTE_INSERT) {
-            return true;  // Consume — prevent selection/drag handling during insert phase
+            return true;
         }
 
         if (state != State.INACTIVE) {
@@ -301,7 +284,7 @@ public final class GraceModeManager {
 
     public boolean mouseReleased(LineComponent lineComponent, MouseEvent e) {
         if (state == State.GRACE_NOTE_INSERT) {
-            return true;  // Consume — actual click logic is in mouseClicked
+            return true;
         }
 
         if (state != State.GRACE_NOTE) {
@@ -317,26 +300,23 @@ public final class GraceModeManager {
         var dy = e.getYOnScreen() - mouseDownPoint.y;
         var isDrag = System.currentTimeMillis() - mouseDownTime >= MIN_DRAG_MILLIS;
 
-        // Click (< slop in both axes, or too fast to be a drag): transition to GRACE_NOTE_INSERT.
-        // Suppress the mouseClicked that Swing fires as part of the same click cycle.
+        // Swing fires mouseClicked in the same click cycle, so the transition suppresses it.
         if (!isDrag || (Math.abs(dx) < GRACE_SLOP_PX && Math.abs(dy) < GRACE_SLOP_PX)) {
             enterGraceNoteInsert(true);
             return true;
         }
 
-        // Drag left past notehead: cancel
         if (pendingCancel) {
             abort();
             return true;
         }
 
-        // Drag right past right edge with eligible host note: connect
         if (pendingConnect) {
             enterGraceNotePaired(true, lineComponent);
             return true;
         }
 
-        // Drag without connecting — treat as click (no mouseClicked follows a drag)
+        // No mouseClicked follows a drag, so there is none to suppress.
         enterGraceNoteInsert(false);
         return true;
     }
@@ -352,7 +332,7 @@ public final class GraceModeManager {
 
     public boolean mouseDragged(LineComponent lineComponent, MouseEvent e) {
         if (state == State.GRACE_NOTE_INSERT) {
-            return true;  // No drag behavior in insert phase
+            return true;
         }
 
         if (state != State.GRACE_NOTE) {
@@ -385,7 +365,6 @@ public final class GraceModeManager {
         }
 
         if (state != State.GRACE_NOTE_INSERT) {
-            // Active in another state — consume to prevent normal insertion
             return true;
         }
 
@@ -400,21 +379,16 @@ public final class GraceModeManager {
             return true;
         }
 
-        // Cancel if click is on a different line
         if (lineComponent != getGraceLineComponent()) {
             abort();
             return true;
         }
 
-        // Cancel if click is >= GRACE_SLOP_PX to the left of the grace note's left edge
         if (isMouseLeftOfGraceNote(e)) {
             abort();
             return true;
         }
 
-        // enterGraceNotePaired validates the pitch, records the retroactive grace-note
-        // insertion, inserts the host note, and connects the glissando inside a single
-        // modification bracket — one undoable step for the whole pairing.
         enterGraceNotePaired(false, lineComponent);
         return true;
     }
@@ -427,19 +401,12 @@ public final class GraceModeManager {
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             abort();
         }
-
-        // Duration/embellishment keys pass through to normal handling
     }
-
-    // -------------------------------------------------------------------------
-    // Private transition methods
-    // -------------------------------------------------------------------------
 
     private void enterGraceNote(
         LineComponent lineComponent,
         MouseEvent e
     ) {
-        // Save action states before modifying anything
         selectionCoordinator.getActionReflector().saveActionStates();
 
         var line = lineComponent.getLine();
@@ -469,7 +436,6 @@ public final class GraceModeManager {
         // the line's layout directly to lay out and render the new grace note.
         lineComponent.invalidateLayout();
 
-        // The insertion placed the grace quaver the preview held, which is a note.
         if (!(inserted instanceof NoteElement insertedGraceNote)) {
             throw new IllegalStateException("grace insertion landed a non-note: " + inserted);
         }
@@ -507,7 +473,6 @@ public final class GraceModeManager {
         // sees the correct state when disabling the actions lacking ENABLED_IN_GRACE_MODE.
         state = State.GRACE_NOTE;
 
-        // Post message to disable every action not declared safe in grace mode
         post(new GraceModeStateDidChangeNotification(true));
 
         // Hide the preview element that was shown by the DurationSelectedMessage
@@ -515,7 +480,6 @@ public final class GraceModeManager {
         // locked x-position when entering GRACE_NOTE_INSERT.
         PreviewElementManager.hidePreviewElement(false);
 
-        // Record mouse down point and time for drag detection (screen coords for slop)
         mouseDownPoint = new Point(e.getXOnScreen(), e.getYOnScreen());
         mouseDownTime = System.currentTimeMillis();
     }
@@ -524,8 +488,6 @@ public final class GraceModeManager {
         state = State.GRACE_NOTE_INSERT;
         justEnteredInsert = suppressNextClick;
 
-        // Compute the locked x-position. Returns 0 if the grace note's layout is
-        // unavailable (e.g., layout in progress), which signals that we should abort.
         var lockedXSs = getLockedInsertionXSs();
 
         if (lockedXSs == 0) {
@@ -535,8 +497,6 @@ public final class GraceModeManager {
 
         var grace = requireActiveGrace();
 
-        // Check whether the host note will fit before locking into insert mode, and
-        // cache the result so per-frame preview rendering does not repeat the math.
         var hostInsertion = computeHostInsertion(grace);
 
         if (hostInsertion == null) {
@@ -584,7 +544,6 @@ public final class GraceModeManager {
             hostStaffPosition = previewNote.getStaffPosition();
         }
 
-        // Grace note and host note must have different pitches.
         if (note.getStaffPosition().equals(hostStaffPosition)) {
             // abort() removes the grace note before showErrorMessage pumps the EDT, so no
             // intervening repaint renders its (never-added) connecting slide.
@@ -609,9 +568,6 @@ public final class GraceModeManager {
             return;
         }
 
-        // A single modification bracket coalesces the whole pairing into one undoable
-        // SongDidChangeNotification: the retroactive grace-note insertion, the optional
-        // host-note insertion, and the connecting glissando.
         line.getSong().withModification(() -> {
             // The grace note was inserted without tracking; record its insertion now so
             // undo removes it too. The element is already on the line, so the mutator is
@@ -645,13 +601,11 @@ public final class GraceModeManager {
                 line.repairNeighborsAfterUntrackedInsertion(graceNoteIndex);
             }
 
-            // Insert the host note at the locked x position. The preview element was built
-            // undecorated on entry to grace mode (see enterGraceNote), so the host arrives
-            // carrying only the duration, dots, accidental and articulations the user chose
-            // while the mode was in progress. A drag-right connection's host is already there.
+            // The preview element was built undecorated on entry to grace mode (see
+            // enterGraceNote), so the host carries only what the user chose while the mode
+            // was in progress. A drag-right connection's host is already there.
             var hostNote = hostInsertion != null ? hostInsertion.land() : line.getElement(hostNoteIndex);
 
-            // Connect the grace note to the host note with a connecting glissando.
             line.modifyElement(graceNoteIndex, ElementField.SLIDE, () -> note.setSlide(Slide.GLISSANDO));
 
             if (connectNext) {
@@ -665,7 +619,6 @@ public final class GraceModeManager {
             // to a melisma running from the grace across its host.
             line.syncGraceHostMelisma(graceNoteIndex);
 
-            // Mirror the host note's attributes onto the toolbar.
             selectionCoordinator.getActionReflector().reflectElement(hostNote);
         });
 
@@ -734,10 +687,6 @@ public final class GraceModeManager {
         // one running to a grace note that has already been removed.
         PreviewElementManager.previewElementDidChange();
     }
-
-    // -------------------------------------------------------------------------
-    // Private helper methods
-    // -------------------------------------------------------------------------
 
     private boolean isMouseLeftOfGraceNote(MouseEvent e) {
         var grace = requireActiveGrace();

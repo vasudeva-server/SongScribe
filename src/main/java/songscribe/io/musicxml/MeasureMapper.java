@@ -136,10 +136,6 @@ final class MeasureMapper {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // What the walk records
-    // -------------------------------------------------------------------------
-
     private record NoteSite(Note pmNote, StaffElement element, Line line) {}
 
     /**
@@ -212,10 +208,6 @@ final class MeasureMapper {
      */
     private record OpenEnding(@Nullable StaffElement anchor, double yOffsetSs) {}
 
-    // -------------------------------------------------------------------------
-    // Walk state — the whole of it
-    // -------------------------------------------------------------------------
-
     private final Song song;
 
     @Nullable
@@ -264,10 +256,6 @@ final class MeasureMapper {
         this.song = song;
         this.features = features;
     }
-
-    // -------------------------------------------------------------------------
-    // Package API
-    // -------------------------------------------------------------------------
 
     /**
      * A damaged span mark does not refuse the document: it is dropped and reported. Nor does a
@@ -322,10 +310,6 @@ final class MeasureMapper {
         resolveTrills(notes);
     }
 
-    // -------------------------------------------------------------------------
-    // Structural walk
-    // -------------------------------------------------------------------------
-
     private static List<ChildSite> flatten(ScorePartwise.Part part) {
         var sites = new ArrayList<ChildSite>();
         var measures = part.getMeasure();
@@ -360,10 +344,6 @@ final class MeasureMapper {
 
         commitCurrentLine();
     }
-
-    // -------------------------------------------------------------------------
-    // Lines and keys
-    // -------------------------------------------------------------------------
 
     /**
      * The new line establishes no key of its own: keying it to a carried-forward value would
@@ -456,10 +436,6 @@ final class MeasureMapper {
                 previousType);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Barlines
-    // -------------------------------------------------------------------------
 
     private static void pairMergedRepeats(List<ChildSite> sites) {
         for (var index = 0; index < sites.size(); index++) {
@@ -570,10 +546,6 @@ final class MeasureMapper {
         return line;
     }
 
-    // -------------------------------------------------------------------------
-    // Notes
-    // -------------------------------------------------------------------------
-
     private void walkNote(ChildSite site, Note pmNote) throws SAXException {
         var line = requireCurrentLine("<note>");
         var mapped = NoteMapper.map(pmNote, line, features);
@@ -591,16 +563,10 @@ final class MeasureMapper {
         site.annotationHost = element;
         site.lastElement = element;
 
-        // A breath mark attached to this note's <notations> becomes a standalone
-        // BREATH_MARK element immediately after the note.
         if (mapped.hasBreathMark()) {
             site.lastElement = appendToCurrentLine(ElementType.BREATH_MARK);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Pass: endings (voltas)
-    // -------------------------------------------------------------------------
 
     /**
      * An ending is an intra-line span built on its {@code number="2"} stop, so a start still open
@@ -681,10 +647,6 @@ final class MeasureMapper {
             dropDamaged(Strings.REPORT_ENDINGS_REMOVED, Damage.NO_END, at(open.anchor()));
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Pass: annotation directions
-    // -------------------------------------------------------------------------
 
     /**
      * A second annotation arriving before the element it binds to replaces the first, and the
@@ -783,10 +745,6 @@ final class MeasureMapper {
         return words == null ? null : words.getValue();
     }
 
-    // -------------------------------------------------------------------------
-    // Pass: metronome directions — tempo marks and metric modulations
-    // -------------------------------------------------------------------------
-
     /**
      * The first tempo mark of the first measure is the score's own tempo, wherever in the measure
      * it sits: it binds to no note. A second tempo or metric modulation arriving before the note
@@ -797,8 +755,7 @@ final class MeasureMapper {
             return;
         }
 
-        // Which measure is "the first" is taken from document order rather than from the
-        // number attribute, which a foreign file is not obliged to start at 1.
+        // "The first" measure is taken from document order, not from the number attribute.
         var firstMeasureIndex = sites.getFirst().measureIndex;
         var songTempoTaken = false;
         Tempo pendingTempo = null;
@@ -956,10 +913,6 @@ final class MeasureMapper {
         return new BeatChange(duration, beat);
     }
 
-    // -------------------------------------------------------------------------
-    // Pass: hairpin wedges
-    // -------------------------------------------------------------------------
-
     /**
      * Every wedge binds to the next note after it. A hairpin is an intra-line span, so a start
      * still open when a new line starts or the part ends is a damaged mark, as is a stop with no
@@ -1091,14 +1044,9 @@ final class MeasureMapper {
             start.kind(), open.opener().element(), end, start.xOffsetSs(), start.yOffsetSs()));
     }
 
-    // -------------------------------------------------------------------------
-    // Passes: per-note range spans
-    // -------------------------------------------------------------------------
-    //
-    // Each runs over the part's whole note list in document order rather than line by
-    // line, which is what lets a tie or a glissando cross a line boundary, and what lets
-    // a beam, tuplet or trill pair split across one be seen as one damaged mark.
-    // -------------------------------------------------------------------------
+    // The per-note range-span passes each run over the part's whole note list in document order
+    // rather than line by line, which is what lets a tie or a glissando cross a line boundary,
+    // and what lets a beam, tuplet or trill pair split across one be seen as one damaged mark.
 
     private void resolveSlides(List<NoteSite> notes) {
         OpenSlide open = null;
@@ -1320,10 +1268,6 @@ final class MeasureMapper {
 
         dropDangling(Strings.REPORT_TRILLS_REMOVED, open);
     }
-
-    // -------------------------------------------------------------------------
-    // Damaged marks
-    // -------------------------------------------------------------------------
 
     private boolean pairsOnOneLine(String headingKey, OpenMark open, NoteSite end) {
         if (end.line() == open.opener().line()) {

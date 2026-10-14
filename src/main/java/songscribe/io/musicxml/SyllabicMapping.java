@@ -36,27 +36,16 @@ import songscribe.dom.Lyric;
  */
 final class SyllabicMapping {
 
-    // -------------------------------------------------------------------------
-    // MusicXML <syllabic> token values
-    // -------------------------------------------------------------------------
-
     static final String SYLLABIC_SINGLE = "single";
     static final String SYLLABIC_BEGIN  = "begin";
     static final String SYLLABIC_MIDDLE = "middle";
     static final String SYLLABIC_END    = "end";
 
-    // -------------------------------------------------------------------------
-    // MusicXML <extend type> token values. NONE is intentionally absent: it
-    // represents the absence of an <extend> element, not a token.
-    // -------------------------------------------------------------------------
+    // NONE has no token: it represents the absence of an <extend> element.
 
     static final String EXTEND_START    = "start";
     static final String EXTEND_STOP     = "stop";
     static final String EXTEND_CONTINUE = "continue";
-
-    // -------------------------------------------------------------------------
-    // Forward map: Syllabic -> token
-    // -------------------------------------------------------------------------
 
     private static final Map<Lyric.Syllabic, String> SYLLABIC_FORWARD_MAP = Map.of(
         Lyric.Syllabic.SINGLE, SYLLABIC_SINGLE,
@@ -65,10 +54,7 @@ final class SyllabicMapping {
         Lyric.Syllabic.END,    SYLLABIC_END
     );
 
-    // -------------------------------------------------------------------------
-    // Reverse map: token -> Syllabic. An unrecognized token has no entry;
-    // forSyllabicToken() falls back to SINGLE for anything missing.
-    // -------------------------------------------------------------------------
+    // forSyllabicToken() falls back to SINGLE for a token with no entry.
 
     private static final Map<String, Lyric.Syllabic> SYLLABIC_REVERSE_MAP = Map.of(
         SYLLABIC_SINGLE, Lyric.Syllabic.SINGLE,
@@ -77,11 +63,7 @@ final class SyllabicMapping {
         SYLLABIC_END,    Lyric.Syllabic.END
     );
 
-    // -------------------------------------------------------------------------
-    // Forward map: Extend -> token. NONE has no entry -- forExtend() rejects it
-    // explicitly rather than silently returning null, mirroring
-    // StaffElementIO.extendTypeAttr (which throws on NONE).
-    // -------------------------------------------------------------------------
+    // NONE has no entry: forExtend() rejects it explicitly rather than returning null.
 
     private static final Map<Lyric.Extend, String> EXTEND_FORWARD_MAP = Map.of(
         Lyric.Extend.START,    EXTEND_START,
@@ -89,11 +71,8 @@ final class SyllabicMapping {
         Lyric.Extend.CONTINUE, EXTEND_CONTINUE
     );
 
-    // -------------------------------------------------------------------------
-    // Reverse map: token -> Extend. "start" is intentionally absent -- it is
-    // also the fallback for an absent/unrecognized token, so forExtendToken()
-    // folds it into the default rather than duplicating it here.
-    // -------------------------------------------------------------------------
+    // "start" has no entry: it is the fallback forExtendToken() returns for an absent token, so
+    // it is folded into the default rather than duplicated here.
 
     private static final Map<String, Lyric.Extend> EXTEND_REVERSE_MAP = Map.of(
         EXTEND_STOP,     Lyric.Extend.STOP,
@@ -101,10 +80,6 @@ final class SyllabicMapping {
     );
 
     private SyllabicMapping() {}
-
-    // -------------------------------------------------------------------------
-    // Package API
-    // -------------------------------------------------------------------------
 
     /**
      * A {@code null} syllabic defaults to {@link #SYLLABIC_SINGLE}.

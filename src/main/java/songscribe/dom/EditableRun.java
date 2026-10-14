@@ -35,10 +35,6 @@ import java.util.List;
  */
 public interface EditableRun extends LyricRun {
 
-    // -------------------------------------------------------------------------
-    // What a run must answer for itself
-    // -------------------------------------------------------------------------
-
     /**
      * Structural only: repairs nothing around the insertion.
      *
@@ -54,10 +50,6 @@ public interface EditableRun extends LyricRun {
     default void removeElement(int index) {
         removeRange(ElementRange.single(index));
     }
-
-    // -------------------------------------------------------------------------
-    // Edits
-    // -------------------------------------------------------------------------
 
     /**
      * Inserts {@code run} at {@code index} as one run: adds the elements in order and repairs

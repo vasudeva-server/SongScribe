@@ -52,8 +52,6 @@ public final class RevertToSavedAction extends UIAction {
         updateEnabledState();
     }
 
-    // Not flag-driven: enabled only when there is a saved file on disk to revert to
-    // and the document has unsaved changes to discard.
     @Override
     public boolean updateEnabledState() {
         var enabledState = super.updateEnabledState() &&

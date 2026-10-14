@@ -33,7 +33,6 @@ import songscribe.layout.AccidentalFitGate;
 public final class FitRefusals {
 
     private FitRefusals() {
-        // Prevent instantiation - utility class with static methods only
     }
 
     /** @param parent {@code null} for the default */

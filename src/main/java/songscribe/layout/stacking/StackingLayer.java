@@ -327,7 +327,6 @@ final class StackingLayer {
 
         var above = direction.isUp();
         var position = centerYSs / Staff.HALF_SPACE_SS;
-        // Round outward to the nearest integer staff position (above = toward smaller Y).
         var rounded = above ? Math.floor(position) : Math.ceil(position);
 
         // An even staff position is a staff line; push one more half-space outward to the space.

@@ -125,11 +125,9 @@ public class MainFrame extends JFrame {
 
     public static final int MIN_WINDOW_HEIGHT = 500;
 
-    // Splash timing constants
     static final long MIN_SPLASH_DURATION_MS = 2_000;
     static final long MIDI_INIT_TIMEOUT_MS = 5_000;
 
-    // State shared between main(), the startup gate, and reveal()
     private static long splashShownAtMs = 0;
     private static CountDownLatch midiReadyLatch = new CountDownLatch(0);
     private static Runnable pendingStartupAction = () -> {};
@@ -151,28 +149,22 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // Splash screen
     @Nullable
     private static SplashWindow splashWindow = null;
 
-    // This class is shared by several applications. This is the name of the application.
     public String appName;
 
-    // The music sheet that is displayed in the main window
     @Nullable
     protected ScoreView scoreView = null;
 
-    // The current open file
     @Nullable
     protected File currentFile = null;
 
     @Nullable
     private JLabel titleBarLabel = null;
 
-    // The Messages panel, to the right of the score in the content split
     private final ReportPanel reportPanel = new ReportPanel(this);
 
-    // The score on the left and the Messages panel on the right; holds the window's content area
     private final JSplitPane contentSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
 
     /**
@@ -227,7 +219,6 @@ public class MainFrame extends JFrame {
     }
 
     public MainFrame() {
-        // We would like the cool transparent title bar on macOS
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
             rootPane.putClientProperty("apple.awt.fullWindowContent", true);
             rootPane.putClientProperty("apple.awt.transparentTitleBar", true);
@@ -236,12 +227,10 @@ public class MainFrame extends JFrame {
 
         appName = Strings.get(Strings.APP_SONGWRITER);
 
-        // There are some tasks we need to perform the first time the app is run
         if (Prefs.getBoolean(PrefsKey.FIRST_RUN)) {
             firstRun();
         }
 
-        // Initialize SystemFileChooser state persistence
         SystemFileChooser.setStateStore(new PropertiesStateStore());
 
         setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
@@ -274,7 +263,6 @@ public class MainFrame extends JFrame {
                 Toolkit.getDefaultToolkit().sync();
             }
 
-            // Record when the splash became visible so the gate can enforce the floor.
             splashShownAtMs = System.currentTimeMillis();
 
             // Start MIDI init on a daemon thread so it runs in parallel with font
@@ -285,7 +273,6 @@ public class MainFrame extends JFrame {
             // show it — reveal() will show it after the gate fires on the EDT.
             var instance = SongScribe.buildMainWindow();
 
-            // Capture the startup action to run after the window is shown.
             var recents = RecentDocumentsManager.getRecents();
             var mostRecentPath = recents.isEmpty() ? null : recents.getFirst();
 
@@ -299,7 +286,6 @@ public class MainFrame extends JFrame {
                 }
             }
 
-            // All setup is done — start the gate, which will call reveal() on the EDT.
             startStartupGate();
         } catch (Exception e) {
             LOG.error("Application startup failed", e);
@@ -443,7 +429,6 @@ public class MainFrame extends JFrame {
 
     private static final class InstanceHolder {
 
-        // This class is a singleton
         private static final MainFrame instance = new MainFrame();
     }
 
@@ -465,8 +450,6 @@ public class MainFrame extends JFrame {
         splashWindow = null;
     }
 
-    // Reserve for future use, such as showing a welcome message
-    // or tutorial on the first run
     private void firstRun() {
         Prefs.put(PrefsKey.FIRST_RUN, false);
     }
@@ -483,7 +466,6 @@ public class MainFrame extends JFrame {
         setTitle(appName);
         setAppIcon();
 
-        // A lot of init code depends on this being set
         scoreView = new ScoreView(this::setCurrentFile);
         PlaybackController.register(scoreView);
 
@@ -498,7 +480,7 @@ public class MainFrame extends JFrame {
         // the glass pane so the reactivation click is consumed. ActivationGate.activate() posts
         // ApplicationDidEnterBackgroundNotification, which is what hides the insertion note —
         // see PreviewElementManager.applicationDidEnterBackground.
-        // Use the Desktop API on macOS, fall back to WindowListener elsewhere.
+        // The Desktop API reports backgrounding on macOS; elsewhere a WindowListener does.
         var usingDesktopApi = false;
 
         if (Desktop.isDesktopSupported()) {
@@ -539,9 +521,11 @@ public class MainFrame extends JFrame {
         setFrameSize();
     }
 
-    // Backgrounding the app cancels a pending insertion-point placement, whatever was
-    // going to be placed — both background paths (Desktop appMovedToBackground and the
-    // windowDeactivated fallback) call here.
+    /**
+     * Cancels a pending insertion-point placement, whatever was going to be placed. Both
+     * background paths (Desktop {@code appMovedToBackground} and the {@code windowDeactivated}
+     * fallback) call here.
+     */
     private void cancelPendingPlacement() {
         EditModeManager.getInsertionPointMode().cancel();
     }
@@ -608,8 +592,6 @@ public class MainFrame extends JFrame {
     }
 
     private void initContent() {
-        // We lay out the content in a border layout: the toolbar in NORTH, the split of the
-        // ScoreView over the Messages panel in CENTER, and the status bar in SOUTH.
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 
@@ -617,8 +599,6 @@ public class MainFrame extends JFrame {
         var toolbarPanel = new MainToolbarPanel();
 
 
-        // On macOS with full window content, draw a custom title in the
-        // title bar area and place it above the toolbar.
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
 
             var titleBar = new TitlePanel();
@@ -632,7 +612,7 @@ public class MainFrame extends JFrame {
                 @Override
                 public void updateUI() {
                     super.updateUI();
-                    updateTitle();   // re-render with fresh UIManager colors
+                    updateTitle();
                 }
             };
             // macOS private system UI font for native title bar appearance
@@ -1069,7 +1049,6 @@ public class MainFrame extends JFrame {
         openFileAndUpdateRecents(currentFile);
     }
 
-    // Loads the file into the score and records the result in the recent-documents list.
     private void openFileAndUpdateRecents(File file) {
         if (scoreView == null) {
             return;

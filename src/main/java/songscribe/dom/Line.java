@@ -282,25 +282,17 @@ public final class Line implements EditableRun {
         return song.getLine(lineIndex - 1);
     }
 
-    // ========================================================================
-    // Line element parentage
-    //
-    // For the staff elements held in `elements`, attach/detach are the only writers of
-    // parentLine. Every mutation of `elements` funnels through one of them from inside
-    // the applyChange mutator lambda, so parentage moves with the recorded change:
-    //
-    // Both addElement overloads attach; removeElement and removeRange detach; replace does
-    // both, detaching each outgoing element and attaching its incoming one.
-    //
-    // A span has no line pointer: its line is derived from where its endpoints sit. What hangs on a staff element — attachments, articulations — has none
-    // either: its line is its host's, read through the host, so attaching or detaching the
-    // host carries them along with nothing to push down.
-    //
-    // Invariant:
-    //   staff element — element.getParentLine() == L ⟺ L.elements contains the element,
-    //   and null ⟺ the element is in no line at all.
-    // ========================================================================
-
+    /**
+     * With {@link #detach}, the only writers of {@code parentLine} for the staff elements in
+     * {@code elements}. Every mutation of {@code elements} calls one of them from inside its
+     * {@code applyChange} mutator, so parentage moves with the recorded change. An element's
+     * parent line is this line exactly when {@code elements} contains it, and null when the
+     * element is in no line.
+     *
+     * <p>A span has no line pointer: its line is derived from where its endpoints sit. What hangs
+     * on a staff element, such as an attachment or an articulation, has none either: its line is
+     * its host's.
+     */
     private void attach(StaffElement element) {
         elementIndexMap = null;
         element.setParentLine(this);
@@ -472,7 +464,6 @@ public final class Line implements EditableRun {
      * {@link java.util.ConcurrentModificationException}.
      */
     public List<StaffElement> getElements(ElementRange range) {
-        // subList is exclusive of the end index, so we add 1.
         // Wrapped per call because the bounds vary: a caller that could reorder or
         // clear the sublist would move element positions behind the index's back.
         return Collections.unmodifiableList(elements.subList(range.begin(), range.end() + 1));
@@ -517,10 +508,6 @@ public final class Line implements EditableRun {
             }
         );
     }
-
-    // ========================================================================
-    // Ties
-    // ========================================================================
 
     /**
      * Nothing here judges the tie: the tie rule ({@link TieRule}) does.
@@ -772,7 +759,6 @@ public final class Line implements EditableRun {
                 rebuilt.putIfAbsent(elements.get(i), i);
             }
 
-            // Publish only the fully-built map — never a partially-filled one.
             map = rebuilt;
             elementIndexMap = rebuilt;
         }

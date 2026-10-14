@@ -49,10 +49,6 @@ import static songscribe.util.GraphicsState.Property.COLOR;
  */
 public final class SlideRenderer {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     private static final double LAYOUT_MIDLINE_Y_SS = 0.0;
 
     private static final double NO_SHIFT_SS = 0.0;
@@ -62,10 +58,6 @@ public final class SlideRenderer {
 
     private static final double GLISSANDO_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * GLISSANDO_MULTIPLIER;
 
-    // ==========================================================================
-    // Singleton
-    // ==========================================================================
-
     private static final SlideRenderer INSTANCE = new SlideRenderer();
 
     private SlideRenderer() {
@@ -74,10 +66,6 @@ public final class SlideRenderer {
     public static SlideRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     public void renderSlidesFromLine(
         Graphics2D g2,
@@ -223,10 +211,6 @@ public final class SlideRenderer {
         drawGlissandoIfDrawable(g2, src, tgt, invariants.getMiddleLineYSs());
     }
 
-    // ==========================================================================
-    // Geometry Lookup
-    // ==========================================================================
-
     /**
      * Null when the layout holds none for this note.
      */
@@ -315,10 +299,6 @@ public final class SlideRenderer {
 
         return noteContextSs(target, targetIndex, line, layoutResult, shiftSs);
     }
-
-    // ==========================================================================
-    // Drawing
-    // ==========================================================================
 
     private void drawGlissandoIfDrawable(
         Graphics2D g2,

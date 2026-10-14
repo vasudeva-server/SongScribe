@@ -44,8 +44,7 @@ public final class SongScribe {
 
     private SongScribe() {}
 
-    // Look up a platform-specific log directory, creating it if it does not already
-    // exist, and return its path. Returns null if the directory could not be created.
+    /** Null if the platform's log directory could not be created. */
     private static @Nullable String resolveLogDir() {
         var userHome = System.getProperty("user.home");
         String dir;
@@ -191,8 +190,7 @@ public final class SongScribe {
 
         warmMusicXmlSerializer();
 
-        // macOS system properties are already set above on the main thread.
-        // Bootstrap the UI on the EDT so the splash can appear immediately.
+        // The UI bootstraps on the EDT so the splash can appear immediately.
         SwingUtilities.invokeLater(() -> MainFrame.main(args));
     }
 

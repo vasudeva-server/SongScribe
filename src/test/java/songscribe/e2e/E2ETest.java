@@ -191,8 +191,6 @@ public abstract class E2ETest {
         window.cleanUp();
     }
 
-    // -- Status overlay --
-
     public static void createStatusOverlay() {
         statusOverlay = new JWindow(MainFrame.getInstance());
         statusOverlay.setBackground(new Color(0, 0, 0, 0));
@@ -244,8 +242,6 @@ public abstract class E2ETest {
         overlay.setSize(overlaySize);
     }
 
-    // -- Accessors --
-
     protected ScoreView scoreView() {
         var scoreView = MainFrame.getInstance().getScoreView();
         assertThat(scoreView).isNotNull();
@@ -256,8 +252,6 @@ public abstract class E2ETest {
     protected Song song() {
         return scoreView().getSong();
     }
-
-    // -- Toolbar button helpers --
 
     /**
      * Finds a toolbar button by its component name (set from the action command).
@@ -410,16 +404,12 @@ public abstract class E2ETest {
         }
     }
 
-    // -- Accidental helpers --
-
     protected UIAction[] accidentalActions() {
         return new UIAction[]{
             Actions.FLAT_ACTION, Actions.DOUBLE_FLAT_ACTION,
             Actions.NATURAL_ACTION, Actions.SHARP_ACTION, Actions.DOUBLE_SHARP_ACTION
         };
     }
-
-    // -- Menu helpers --
 
     /**
      * Triggers a menu-only action by finding its {@link JMenuItem} and calling
@@ -476,8 +466,6 @@ public abstract class E2ETest {
 
         return (JMenu) ((JPopupMenu) item.getParent()).getInvoker();
     }
-
-    // -- Coordinate helpers --
 
     /**
      * Converts a distance in staff spaces to a position in view pixels, the regime a robot
@@ -616,8 +604,6 @@ public abstract class E2ETest {
         pause();
     }
 
-    // -- Click helpers --
-
     /**
      * Clicks at an absolute screen position using press/release.
      */
@@ -683,7 +669,6 @@ public abstract class E2ETest {
                 return;
             }
 
-            // Press at start
             var startLocal = SwingUtilities.convertPoint(frame,
                 startPoint.x - frameLocation.x, startPoint.y - frameLocation.y,
                 component);
@@ -692,7 +677,6 @@ public abstract class E2ETest {
                 startLocal.x, startLocal.y, 1, false,
                 MouseEvent.BUTTON1));
 
-            // Drag to end
             var endLocal = SwingUtilities.convertPoint(frame,
                 endPoint.x - frameLocation.x, endPoint.y - frameLocation.y,
                 component);
@@ -701,7 +685,6 @@ public abstract class E2ETest {
                 endLocal.x, endLocal.y, 0, false,
                 MouseEvent.BUTTON1));
 
-            // Release at end
             component.dispatchEvent(new MouseEvent(
                 component, MouseEvent.MOUSE_RELEASED, now, modifiers,
                 endLocal.x, endLocal.y, 1, false,
@@ -744,8 +727,6 @@ public abstract class E2ETest {
     }
 
 
-    // -- Key event helpers --
-
     /**
      * Dispatches a key press+release directly to the focused component on the EDT.
      * <p>
@@ -769,8 +750,6 @@ public abstract class E2ETest {
         });
         pause();
     }
-
-    // -- Layout synchronization --
 
     /**
      * Forces layout computation for a line by painting it immediately.
@@ -810,16 +789,12 @@ public abstract class E2ETest {
         }
     }
 
-    // -- Model query helpers --
-
     protected boolean isBeamed(int lineIndex, int noteIndex) {
         return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
             var line = song().getLine(lineIndex);
             return line.spanRegistry().findBeamAt(noteIndex) != null;
         }));
     }
-
-    // -- Coordinate helpers --
 
     /**
      * Returns the screen midpoint between two elements on a line,
@@ -830,8 +805,6 @@ public abstract class E2ETest {
         var p2 = noteScreenPosition(lineIndex, index2);
         return new Point((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
     }
-
-    // -- Fixture loading --
 
     /**
      * Loads a fixture file and replaces the current song.
@@ -849,8 +822,6 @@ public abstract class E2ETest {
 
         performLayout(0);
     }
-
-    // -- Test result tracking --
 
     @SuppressWarnings({"AssignmentToStaticFieldFromInstanceMethod", "PackageVisibleInnerClass"})
     static class ResultTracker implements TestWatcher, ExecutionCondition, BeforeTestExecutionCallback {
@@ -914,7 +885,6 @@ public abstract class E2ETest {
                     break;
                 }
 
-                // Strip trailing "()" from method display names
                 if (displayName.endsWith("()")) {
                     displayName = displayName.substring(0, displayName.length() - 2);
                 }

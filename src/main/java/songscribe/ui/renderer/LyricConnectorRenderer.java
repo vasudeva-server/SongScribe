@@ -43,10 +43,6 @@ import static songscribe.util.GraphicsState.Property.STROKE;
  */
 public final class LyricConnectorRenderer {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     private static final double EXTENDER_STROKE_WIDTH_SS = 0.1045;
 
     private static final BasicStroke EXTENDER_STROKE = new BasicStroke(
@@ -61,20 +57,12 @@ public final class LyricConnectorRenderer {
     // practice and trades a few-byte map for repeated drawString shaping.
     private final Map<Font, GlyphVector> hyphenGlyphVectors = new ConcurrentHashMap<>();
 
-    // ==========================================================================
-    // Construction
-    // ==========================================================================
-
     private LyricConnectorRenderer() {
     }
 
     public static LyricConnectorRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     public void render(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var layoutResult = invariants.getLayoutResult();

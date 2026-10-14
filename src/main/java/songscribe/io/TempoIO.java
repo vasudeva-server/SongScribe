@@ -97,10 +97,7 @@ public final class TempoIO {
             value.delete(0, value.length());
         }
 
-        // Resolves a tempo-type token to a Duration, accepting both the
-        // canonical enum names and the underscore-less legacy tokens (e.g.
-        // CROTCHETDOTTED). Shared by the v1.0 and v1.1 read paths so an unknown
-        // token is rejected identically on both.
+        // Shared by the v1.0 and v1.1 read paths so an unknown token is rejected identically on both.
         private static BeatUnit resolveTempoDuration(String str) throws SAXException {
             var upper = str.toUpperCase();
             var duration = LEGACY_TEMPO_DURATION_NAMES.get(upper);

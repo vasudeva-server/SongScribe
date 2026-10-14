@@ -57,8 +57,10 @@ public class StickyUIAction extends SelectableUIAction {
         );
     }
 
-    // Subclasses should call this method in their actionPerformed() method,
-    // and only process the action if it returns true.
+    /**
+     * Subclasses call this from {@code actionPerformed} and process the action only if it
+     * returns true.
+     */
     protected boolean doActionPerformed(ActionEvent e) {
         if ((e.getSource() instanceof JRootPane) && isSelected()) {
             // If the action was triggered by a keystroke, we don't want to

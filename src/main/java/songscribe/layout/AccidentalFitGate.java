@@ -59,9 +59,7 @@ public final class AccidentalFitGate {
         OTHER_LINE_FULL
     }
 
-    private AccidentalFitGate() {
-        // Prevent instantiation - utility class with static methods only
-    }
+    private AccidentalFitGate() {}
 
     /**
      * Judges whether the edit whose chain walk produced {@code restamps} fits: {@code editedLine}

@@ -81,10 +81,6 @@ public class LineComponent extends ScoreComponent
 
     private static final int LINT_MARK_MARGIN = 10;
 
-    // ==========================================================================
-    // Functional Interface for Selection State
-    // ==========================================================================
-
     /**
      * Allows LineComponent to check selection without coupling to ScoreView.
      */
@@ -98,10 +94,6 @@ public class LineComponent extends ScoreComponent
          */
         boolean isElementRangeSelected(int elementIndex, int lineIndex);
     }
-
-    // ==========================================================================
-    // Instance Fields
-    // ==========================================================================
 
     @Nullable
     private Line line;
@@ -346,7 +338,6 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // Perform layout if dirty
         if (needsLayout()) {
             performLayout();
         }
@@ -411,8 +402,8 @@ public class LineComponent extends ScoreComponent
 
         // A line always spans the full document width, never just the extent of its last
         // element: LineRenderer draws the staff lines out to song.getLineWidthSs(), and
-        // sizing the component any narrower clipped them there — an element-less line
-        // collapsed to zero width and vanished entirely.
+        // a narrower component would clip them, and an element-less line would collapse to zero
+        // width and vanish.
         //
         // The width is the staff width even for a line whose content overflows it: the overflow
         // is meant to be clipped at the end of the staff, and these bounds are what clip it.
@@ -438,8 +429,8 @@ public class LineComponent extends ScoreComponent
         }
 
         // The painted extent: the staff must sit where StaffLinesLayout reserved room for it,
-        // and that reservation is floored. Using the measured content here drew the staff above
-        // the component's own top on any line whose ink stops at the staff, clipping it and
+        // and that reservation is floored. Using the measured content here would draw the staff
+        // above the component's own top on any line whose ink stops at the staff, clipping it and
         // overlapping the line above.
         return result.paintAboveMidlineSs();
     }
@@ -447,10 +438,6 @@ public class LineComponent extends ScoreComponent
     private RuntimeException unexpectedNullLayout() {
         return RuntimeError.exit("layout result is null after layout for line " + lineIndex);
     }
-
-    // ==========================================================================
-    // Insertion Note Delegation
-    // ==========================================================================
 
     public static void clearPreviewElement() {
         PreviewElementManager.clearPreviewElement();
@@ -463,10 +450,6 @@ public class LineComponent extends ScoreComponent
     public boolean hasPreviewElement() {
         return PreviewElementManager.hasPreviewElement(this);
     }
-
-    // ==========================================================================
-    // Mouse Event Handlers
-    // ==========================================================================
 
     @Override
     public void mouseMoved(MouseEvent e) {
@@ -553,7 +536,7 @@ public class LineComponent extends ScoreComponent
         // Read from PlaybackController rather than the sequencer, for the reason pressed
         // gives. The only playback check below is the selection handler's, which asks whether
         // the sequencer object is currently running — a different question during the window
-        // between a playback transition and the sequencer following it, and one that now gates
+        // between a playback transition and the sequencer following it, and one that gates
         // a modal dialog rather than just a selection change.
         //
         // This guard is the one that protects the lyric branch, handleClick, isWithinHeaderX
@@ -775,15 +758,13 @@ public class LineComponent extends ScoreComponent
 
         // A press does nothing at all while the song is playing.
         //
-        // This is a guard, not only an optimization: the mode switch below was reached during
-        // playback and really did switch modes. Invoking an action programmatically does not
+        // This is a guard, not only an optimization: invoking an action programmatically does not
         // consult its enabled state, so DISABLE_WHEN_PLAYING on the mode actions — which stops the
-        // menu item, the keyboard shortcut and the toolbar button — did not stop this call. A
-        // staff-line press in the header, or any alt+click, therefore flipped EDIT to SELECT
-        // mid-playback. Nothing was selected, because isSelectionActive refuses while playing, so
-        // the only symptom was the mode changing on its own.
+        // menu item, the keyboard shortcut and the toolbar button — does not stop the mode
+        // switch below. Without this guard a staff-line press in the header, or any alt+click,
+        // would flip EDIT to SELECT mid-playback.
         //
-        // Everything else below already refused: the EDIT-mode selection path, the pitch-drag
+        // Everything else below already refuses: the EDIT-mode selection path, the pitch-drag
         // handler and the selection handler each check playback themselves. Returning here also
         // keeps the cascade — which walks every element in the line — from running for an answer
         // none of them will read.
@@ -859,10 +840,6 @@ public class LineComponent extends ScoreComponent
         getInsertionPointMode().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
     }
-
-    // ==========================================================================
-    // Lint Tooltip
-    // ==========================================================================
 
     /**
      * @return {@code null} when the pointer is on no mark, so no tooltip shows
@@ -982,10 +959,6 @@ public class LineComponent extends ScoreComponent
 
         return UIUtils.toolTipHtml(sections);
     }
-
-    // ==========================================================================
-    // Package-Private Accessors for LineRenderer
-    // ==========================================================================
 
     /** A live line component always has one. */
     @Override

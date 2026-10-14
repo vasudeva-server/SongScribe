@@ -32,7 +32,6 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 public final class DynamicMarkingRenderer implements ElementRenderer<StaffElement> {
 
-    // Singleton instance
     private static final DynamicMarkingRenderer INSTANCE = new DynamicMarkingRenderer();
 
     private DynamicMarkingRenderer() {
@@ -41,10 +40,6 @@ public final class DynamicMarkingRenderer implements ElementRenderer<StaffElemen
     public static DynamicMarkingRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     public void render(

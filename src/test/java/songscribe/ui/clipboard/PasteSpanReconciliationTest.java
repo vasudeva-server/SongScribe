@@ -108,8 +108,6 @@ class PasteSpanReconciliationTest extends UnitTest {
 
     private static final int FIRST_LINE = 0;
 
-    // ---- The straddle rule ----
-
     /**
      * A destination span that a paste lands inside of, and a span of the fragment pasted into it.
      *
@@ -244,8 +242,6 @@ class PasteSpanReconciliationTest extends UnitTest {
                 line -> endingOver(line, wholeRangeOf(line)))),
             sameHairpins);
     }
-
-    // ---- The target rule ----
 
     /**
      * A span the target rule accepts, copied from a source line and pasted onto an empty line.
@@ -470,8 +466,6 @@ class PasteSpanReconciliationTest extends UnitTest {
         assertThat(pasted.reports()).containsExactly(beatBarrierReport());
     }
 
-    // ---- A span with an endpoint on a removed key-change barline ----
-
     private static final Key RUNNING_KEY = Key.TWO_SHARPS;
 
     /** The index of the barline in front of the key change, where the stranded span ends. */
@@ -518,8 +512,6 @@ class PasteSpanReconciliationTest extends UnitTest {
                 line -> tripletOver(line, range, NoteValue.EIGHTH), Strings.REPORT_TUPLETS_REMOVED)
         );
     }
-
-    // ---- Fixtures ----
 
     private static Line lineOfNotation(String notation) {
         return compactSong(Key.NO_ACCIDENTALS, notation, EMPTY_LINE, EMPTY_LINE).getLine(FIRST_LINE);

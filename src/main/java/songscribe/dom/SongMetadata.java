@@ -53,7 +53,6 @@ public record SongMetadata(
         title = normalizeTitle(title);
         number = number.trim();
         subtitle = normalizeSubtitle(subtitle);
-        // lyricsSource, unofficialTranslation: as-is
 
         // The credit fields normalize themselves, including the collapse of a words-date
         // that merely repeats the composition date. Built here rather than repeated, so
@@ -73,10 +72,6 @@ public record SongMetadata(
             place, date, composer, lyricist, lyricsSource, arrangement, wordsDate
         );
     }
-
-    // -------------------------------------------------------------------------
-    // Normalization helpers
-    // -------------------------------------------------------------------------
 
     private static String normalizeLine(String text) {
         return StringUtils.processText(text, true);

@@ -127,7 +127,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
 
         // A lyric chain says "the syllable next to me continues this word" by position, so a
         // chain crossing either end of the capture would, once pasted, say it about whatever
-        // element now sits there. The clones are a run of their own now, and this ends every
+        // element sits there. The clones are a run of their own, and this ends every
         // chain inside it — the same repair an edit runs, applied to the same lyrics.
         new DetachedLyricRun(elements).endDanglingChains();
 

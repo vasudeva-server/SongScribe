@@ -154,15 +154,10 @@ public class ElementColumnBuilder {
         return new ElementColumn(element, extents, null, null);
     }
 
-    // ==========================================================================
-    // Horizontal Extent Calculations
-    // ==========================================================================
-
     public static double calculateLeftExtentSs(StaffElement element) {
         // Element head left edge is at xSs (the glyph origin), so the extent starts at 0
         var extentSs = 0.0;
 
-        // Subtract accidental width if present
         if (element instanceof NoteElement note && note.drawnAccidental() != null) {
             var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(note);
             extentSs -= (accidentalWidthSs + NoteGeometry.ACCIDENTAL_PADDING_SS);
@@ -199,8 +194,6 @@ public class ElementColumnBuilder {
 
         var includeAugmentation = augmentation == Augmentation.INCLUDED;
 
-        // Non-note elements (rests, barlines, breath marks, repeats) use their
-        // actual visual width — they have no dots or flags.
         if (!(element instanceof NoteElement note)) {
             return element.getGlyphWidthSs();
         }
@@ -218,7 +211,6 @@ public class ElementColumnBuilder {
             ? NoteGeometry.dotsRightExtentSs(note, beaming, direction, noteheadRightExtentSs)
             : noteheadRightExtentSs;
 
-        // Flag extent: only for unbeamed elements that have a flag
         var flagBBox = NoteGeometry.flagBBoxLocalSs(note, direction, beaming);
         var flagRightExtentSs = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
@@ -243,10 +235,6 @@ public class ElementColumnBuilder {
         return rightExtentSs;
     }
 
-    // ==========================================================================
-    // Stem Calculations
-    // ==========================================================================
-
     /**
      * The direction and the length are the <em>drawn</em> ones
      * ({@link NoteGeometry#effectiveDirection}, {@link NoteGeometry#stemLengthSs}), so
@@ -255,19 +243,16 @@ public class ElementColumnBuilder {
     double calculateStemTopSs(StaffElement element) {
         var elementType = element.getType();
 
-        // Rests and stemless elements: use the element's own glyph bbox top
         if (!(element instanceof NoteElement note) || !elementType.isNoteWithStem()) {
             return elementType.getNoteheadTopOffsetSs();
         }
 
         var direction = NoteGeometry.effectiveDirection(note);
 
-        // Stem up: stem extends upward, so the top is the stem tip (shortened if forced)
         if (direction.isUp()) {
             return -(NoteGeometry.stemLengthSs(elementType) - NoteGeometry.forcedShorteningSs(note));
         }
 
-        // Stem down: top is the notehead top
         return elementType.getNoteheadTopOffsetSs();
     }
 
@@ -277,25 +262,18 @@ public class ElementColumnBuilder {
     double calculateStemBottomSs(StaffElement element) {
         var elementType = element.getType();
 
-        // Rests and stemless elements: use the element's own glyph bbox bottom
         if (!(element instanceof NoteElement note) || !elementType.isNoteWithStem()) {
             return elementType.getNoteheadBottomOffsetSs();
         }
 
         var direction = NoteGeometry.effectiveDirection(note);
 
-        // Stem down: stem extends downward, so the bottom is the stem tip (shortened if forced)
         if (direction.isDown()) {
             return NoteGeometry.stemLengthSs(elementType) - NoteGeometry.forcedShorteningSs(note);
         }
 
-        // Stem up: bottom is the notehead bottom
         return elementType.getNoteheadBottomOffsetSs();
     }
-
-    // ==========================================================================
-    // Syllable Handling
-    // ==========================================================================
 
     private double measureSyllableWidthSs(String syllable) {
         if (syllable.isEmpty()) {

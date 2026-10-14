@@ -96,10 +96,6 @@ public final class MusicXmlSerializer {
 
     private MusicXmlSerializer() {}
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
     /**
      * Called ahead of time because saving runs on the event dispatch thread, where the first
      * save would otherwise build the binding model.
@@ -181,12 +177,11 @@ public final class MusicXmlSerializer {
         // at its default, so a non-numeric <octave> would load as a valid song.
         //
         // Only conversion failures abort. Everything else a document can surprise JAXB
-        // with — chiefly an element the schema does not allow there — stays tolerated,
-        // matching the lenience the SAX reader was written for: a file may carry
-        // constructs this program does not model, and refusing to open it over one of
-        // them is worse than ignoring it. A value that is not the kind of thing it
-        // claims to be is different in kind: there is nothing to ignore, only a number
-        // that would silently become a default.
+        // with — chiefly an element the schema does not allow there — stays tolerated:
+        // refusing to open a file over a construct this program does not model is worse
+        // than ignoring it. A value that is not the kind of thing it claims to be is
+        // different in kind: there is nothing to ignore, only a number that would silently
+        // become a default.
         unmarshaller.setEventHandler(event -> {
             if (!(event.getLinkedException() instanceof NumberFormatException)) {
                 return true;
@@ -272,10 +267,6 @@ public final class MusicXmlSerializer {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Marshalling
-    // -------------------------------------------------------------------------
-
     private static String marshalToString(ScorePartwise score) throws JAXBException, XMLStreamException {
         var buffer = new StringWriter();
 
@@ -329,8 +320,6 @@ public final class MusicXmlSerializer {
             super(parent);
         }
 
-        // --- namespaces: dropped, see the class doc ---------------------------
-
         @Override
         public void writeNamespace(String prefix, String namespaceURI) {
             // Intentionally empty.
@@ -350,8 +339,6 @@ public final class MusicXmlSerializer {
         public void setDefaultNamespace(String uri) {
             // Intentionally empty.
         }
-
-        // --- elements ---------------------------------------------------------
 
         @Override
         public void writeStartElement(String localName) throws XMLStreamException {
@@ -417,8 +404,6 @@ public final class MusicXmlSerializer {
             super.writeEndElement();
         }
 
-        // --- attributes and text ----------------------------------------------
-
         @Override
         public void writeAttribute(String localName, String value) throws XMLStreamException {
             if (pendingElement == null) {
@@ -478,8 +463,6 @@ public final class MusicXmlSerializer {
         public void writeCharacters(char[] text, int start, int len) throws XMLStreamException {
             writeCharacters(new String(text, start, len));
         }
-
-        // --- helpers ------------------------------------------------------------
 
         private void openPendingElement() throws XMLStreamException {
             var pending = pendingElement;
@@ -550,8 +533,6 @@ public final class MusicXmlSerializer {
             super(formatter);
             this.formatter = formatter;
         }
-
-        // --- elements ---------------------------------------------------------
 
         @Override
         public void writeStartElement(String localName) throws XMLStreamException {
@@ -639,8 +620,6 @@ public final class MusicXmlSerializer {
             super.writeEndElement();
         }
 
-        // --- attributes and text ----------------------------------------------
-
         @Override
         public void writeAttribute(String localName, String value) throws XMLStreamException {
             if (!record(writer -> writer.writeAttribute(localName, value))) {
@@ -682,8 +661,6 @@ public final class MusicXmlSerializer {
         public void writeCharacters(char[] text, int start, int len) throws XMLStreamException {
             writeCharacters(new String(text, start, len));
         }
-
-        // --- helpers ------------------------------------------------------------
 
         private boolean record(BufferedCall call) {
             var recorded = children;
@@ -728,10 +705,6 @@ public final class MusicXmlSerializer {
             return null;
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Unmarshalling
-    // -------------------------------------------------------------------------
 
     /**
      * The StAX equivalent of {@link SafeXmlParser#newHardenedFactory()}: a {@code DOCTYPE} is
@@ -779,12 +752,12 @@ public final class MusicXmlSerializer {
         // An empty stream, not an empty Reader. XMLResolver is specified to return an
         // InputStream, XMLStreamReader or Source; anything else is discarded silently and
         // the parser then resolves the system id ITSELF — which means a real HTTP request
-        // to whatever the document names, from whatever machine opened the file. Measured,
-        // not theorized: a Reader here fetches http://www.musicxml.org/dtds/partwise.dtd
-        // for any export carrying the standard MusicXML DOCTYPE. The visible symptom is a
-        // parse failure reading "The markup declarations contained or pointed to by the
-        // document type declaration must be well-formed" — that message means content came
-        // back, so treat it as evidence of a fetch, not as a malformed fixture.
+        // to whatever the document names, from whatever machine opened the file. A Reader
+        // here fetches http://www.musicxml.org/dtds/partwise.dtd for any export carrying
+        // the standard MusicXML DOCTYPE. The visible symptom is a parse failure reading
+        // "The markup declarations contained or pointed to by the document type declaration
+        // must be well-formed" — that message means content came back, so treat it as
+        // evidence of a fetch, not as a malformed fixture.
         factory.setXMLResolver(
             (publicID, systemID, baseURI, namespace) -> new ByteArrayInputStream(new byte[0]));
 

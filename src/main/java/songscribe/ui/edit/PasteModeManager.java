@@ -34,7 +34,6 @@ import songscribe.undo.UndoController;
  */
 public final class PasteModeManager implements InsertionPointMode.Client {
 
-    // Dependencies
     private final ScoreView scoreView;
     private final InsertionPointMode insertionPointMode;
 
@@ -49,10 +48,6 @@ public final class PasteModeManager implements InsertionPointMode.Client {
     public void enter() {
         insertionPointMode.enter(this);
     }
-
-    // -------------------------------------------------------------------------
-    // InsertionPointMode.Client
-    // -------------------------------------------------------------------------
 
     @Override
     public InsertionPointOverlay.Text overlayText() {

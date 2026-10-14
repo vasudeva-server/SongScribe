@@ -40,10 +40,9 @@ public final class RuntimeError {
     private static final String MISSING_RESOURCE_USER_MESSAGE =
         "A required resource is missing. Please reinstall the application.";
 
-    // The process status a fatal error exits with.
     private static final int EXIT_STATUS = -1;
 
-    // Guards against showing the alert more than once if exit() is called re-entrantly.
+    // Guards against showing the alert twice when exit() is called re-entrantly.
     private static final AtomicBoolean ALERT_SHOWN = new AtomicBoolean(false);
 
     // Replaceable in tests so System.exit(-1) doesn't kill the test JVM.
@@ -100,12 +99,10 @@ public final class RuntimeError {
         throw new AssertionError("unreachable");
     }
 
-    // Package-private — for use only by RuntimeErrorTestHelper in tests.
     static void setExitHandlerForTesting(IntConsumer handler) {
         exitHandler = handler;
     }
 
-    // Package-private — for use only by RuntimeErrorTestHelper in tests.
     static void resetAlertShownForTesting() {
         ALERT_SHOWN.set(false);
     }

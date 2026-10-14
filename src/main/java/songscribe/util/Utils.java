@@ -120,8 +120,7 @@ public final class Utils {
     public static void sleep(long ms) {
         try {
             Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            // Ignore
+        } catch (InterruptedException ignored) {
         }
     }
 
@@ -187,7 +186,6 @@ public final class Utils {
     }
 
     public static String getResourcePath(String resourcePath) {
-        // Strip a leading "/" from the resource path
         var path = resourcePath;
 
         if (path.startsWith("/")) {
@@ -204,7 +202,6 @@ public final class Utils {
             return Paths.get(URI.create(resource.toExternalForm())).toString();
         }
 
-        // Fall back to constructing from the classpath root
         var root = classLoader.getResource("");
 
         if (root == null) {

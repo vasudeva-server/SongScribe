@@ -119,8 +119,6 @@ final class MusicXmlRoundTripSupport {
     private static final String NOTE_INDENT = "      ";
     private static final String NOTE_CHILD_INDENT = "        ";
 
-    // -- helpers --
-
     /**
      * Wraps {@code measureBody} in a minimal {@code <score-partwise>} document with a
      * SongScribe provenance tag, a new-system {@code <print>} (so the reader starts a

@@ -50,8 +50,6 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
     private static final Font FONT = MusescoreIconFont.font()
         .deriveFont(FONT_SIZE_PT);
 
-    // MusescoreIcon font glyph per key.
-    //
     // Written as escapes, not as the characters themselves: these are Private Use Area
     // codepoints that render as tofu or nothing outside the MusescoreIcon font, so an editor,
     // terminal or diff shows a literal here as an invisible or broken glyph. The escape is the
@@ -62,12 +60,10 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
         var glyphs = new EnumMap<Key, String>(Key.class);
         glyphs.put(Key.NO_ACCIDENTALS, "\uF377");
 
-        // 1..7 flats
         var flatGlyphs = new String[]{
             "\uF37F", "\uF380", "\uF381", "\uF382", "\uF383", "\uF384", "\uF385"
         };
 
-        // 1..7 sharps
         var sharpGlyphs = new String[]{
             "\uF378", "\uF379", "\uF37A", "\uF37B", "\uF37C", "\uF37D", "\uF37E"
         };

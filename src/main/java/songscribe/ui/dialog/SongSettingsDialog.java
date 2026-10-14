@@ -56,8 +56,6 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     private final SongSettingsTitleTab textTab = new SongSettingsTitleTab(this);
     private final SongSettingsAttributionTab attributionTab = new SongSettingsAttributionTab(this);
 
-    // Built in the constructor rather than here, so its construction order relative to the
-    // tabbed container is unchanged.
     private final SongSettingsMusicTab musicTab;
 
     // What this opening is showing, kept because the commit needs the two font roles no tab

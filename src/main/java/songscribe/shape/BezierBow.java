@@ -62,12 +62,10 @@ public final class BezierBow {
     ) {
         var path = new GeneralPath(Path2D.WIND_NON_ZERO, 4);
 
-        // Outer cubic Bezier: start → end
         path.moveTo(startX, startY);
         path.curveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
 
-        // Inner cubic Bezier (reversed): end → start, forming the lens shape.
-        // Both curves share start/end points, creating natural tapering.
+        // The reversed inner curve closes the lens; sharing both end points makes the tips taper.
         path.curveTo(innerCp2X, innerCp2Y, innerCp1X, innerCp1Y, startX, startY);
 
         path.closePath();

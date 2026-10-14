@@ -187,10 +187,6 @@ class BeamTest extends UnitTest {
             Strings.REPORT_REASON_BEAM_INSERTION_NOT_BEAMABLE);
     }
 
-    // -------------------------------------------------------------------------
-    // The tie rule of Beam.spanning
-    // -------------------------------------------------------------------------
-
     /**
      * A line of quavers with one tied, and the range a beam is asked over.
      *
@@ -240,10 +236,6 @@ class BeamTest extends UnitTest {
 
         return song.getLine(FIRST_LINE);
     }
-
-    // -------------------------------------------------------------------------
-    // What a beam derives from the beams its members carry
-    // -------------------------------------------------------------------------
 
     /**
      * A beamed group, how many beams it stacks, and how far each stem is shortened.

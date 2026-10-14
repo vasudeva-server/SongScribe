@@ -55,7 +55,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TEMPO)
         );
 
-        // Don't let the section grow vertically
         section.add(tempoSection);
         UIUtils.setFlexibleWidth(section);
         return section;

@@ -63,11 +63,10 @@ import songscribe.ui.selection.ElementSelection;
 })
 public final class PlaybackController {
 
-    // The MIDI velocity values for normal and accented notes
     public static final int NOTE_VELOCITY = 100;
     public static final int ACCENTED_NOTE_VELOCITY = 127;
 
-    // Fraction of NOTE_VELOCITY used when previewing a selected note — the "Soft" stop (75%) on the Prefs volume slider
+    // Matches the "Soft" stop on the Prefs volume slider.
     private static final double SELECTED_NOTE_VOLUME_FRACTION = 0.75;
     public static final int SELECTED_NOTE_VELOCITY =
         (int) Math.round(NOTE_VELOCITY * SELECTED_NOTE_VOLUME_FRACTION);
@@ -179,7 +178,6 @@ public final class PlaybackController {
             return;
         }
 
-        // Clear previous line if different
         if (previousPlayingLine != null && previousPlayingLine != lineIndex) {
             var prevLineComponent = score.getLineComponent(previousPlayingLine);
             if (prevLineComponent != null) {
@@ -187,7 +185,6 @@ public final class PlaybackController {
             }
         }
 
-        // Set new playing note and its preceding grace note (if any)
         var lineComponent = score.getLineComponent(lineIndex);
         if (lineComponent != null) {
             var line = score.getSong().getLine(lineIndex);
@@ -440,8 +437,6 @@ public final class PlaybackController {
             ((noteSelection == null) ||
                 (noteSelection.range().size() > 1)) &&
                 Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK);
-
-        // If a single note is selected, do not loop playback
 
         sequencer.setLoopCount(loopPlayback ? Sequencer.LOOP_CONTINUOUSLY : 0);
     }

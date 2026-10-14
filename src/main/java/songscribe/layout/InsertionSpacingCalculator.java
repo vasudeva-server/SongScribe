@@ -119,9 +119,7 @@ public final class InsertionSpacingCalculator {
         }
     }
 
-    private InsertionSpacingCalculator() {
-        // Prevent instantiation - utility class with static methods only
-    }
+    private InsertionSpacingCalculator() {}
 
     /**
      * Must be called before the element is added to the line, since it examines the line's
@@ -176,13 +174,10 @@ public final class InsertionSpacingCalculator {
         if (splicedIndex + 1 < columns.size()) {
             var nextElement = columns.get(splicedIndex + 1).getElement();
             var requiredNextXSs = insertedElementXSs + springs.get(splicedIndex).naturalLengthSs();
-            // Shift = (where next needs to be) - (where it currently is), never negative:
-            // a gap that is already wide enough stays as it is.
+            // Never negative: a gap that is already wide enough stays as it is.
             shiftSs = Math.max(0, requiredNextXSs - layout.getElementXSs(nextElement));
         }
 
-        // Projected line width: max of the inserted element's right edge and the last real
-        // element's right edge shifted by the insertion shift.
         var newLineWidthSs = projectedWidthWithLastShiftSs(line, insertedColumn.getRightEdgeXSs(), shiftSs, layout);
 
         // The fit gate must solve the SAME chain LayoutEngine will after the commit — including the
@@ -284,13 +279,9 @@ public final class InsertionSpacingCalculator {
                     + " elements runs past the effective end " + effectiveCount);
         }
 
-        // The projected chain: surviving predecessors, the fragment's clones, then the surviving
-        // successors — the line as it will read after delete+insert.
         var columns = new ArrayList<ElementColumn>();
         var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
 
-        // The key in effect at each projected element, starting from the key the edit leaves the
-        // line starting in.
         var runningKey = edit.startKey();
 
         for (var i = 0; i < insertIndex; i++) {

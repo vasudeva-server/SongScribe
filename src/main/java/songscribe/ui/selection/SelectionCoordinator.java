@@ -83,13 +83,11 @@ public final class SelectionCoordinator implements Disposable {
 
     private final ActionReflector actionReflector = new ActionReflector(this);
 
-    // Content cache: lazily computed flags about what the current selection contains.
     @Nullable
     private ElementSelection contentCacheSelection = null;
     private boolean hasDurations;
     private boolean hasRests;
 
-    // Applicability cache: maps action to whether it applies to any element in the selection.
     @Nullable
     private ElementSelection applicabilityCacheSelection = null;
     private final Map<UIAction.Reflectable<?>, Boolean> applicabilityCache = new IdentityHashMap<>();
@@ -107,10 +105,6 @@ public final class SelectionCoordinator implements Disposable {
         subscription.dispose();
         actionReflector.dispose();
     }
-
-    // -------------------------------------------------------------------------
-    // Line registry
-    // -------------------------------------------------------------------------
 
     public void registerLine(int lineIndex, Line line) {
         lines.put(lineIndex, line);
@@ -130,10 +124,6 @@ public final class SelectionCoordinator implements Disposable {
     public Line getLine(int lineIndex) {
         return lines.get(lineIndex);
     }
-
-    // -------------------------------------------------------------------------
-    // Active line management
-    // -------------------------------------------------------------------------
 
     /** Null if no line has the selection. */
     public @Nullable Integer getActiveLineIndex() {
@@ -249,17 +239,9 @@ public final class SelectionCoordinator implements Disposable {
         select(new HitTarget.Lyric(element, script));
     }
 
-    // -------------------------------------------------------------------------
-    // Select mode
-    // -------------------------------------------------------------------------
-
     public boolean isInSelectMode() {
         return scoreView.getMode() == Mode.SELECT;
     }
-
-    // -------------------------------------------------------------------------
-    // Cross-line queries (needed for rendering and ScoreView API)
-    // -------------------------------------------------------------------------
 
     public boolean isElementSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex == null || activeLineIndex != lineIndex || elementIndex < 0) {
@@ -410,10 +392,6 @@ public final class SelectionCoordinator implements Disposable {
         return null;
     }
 
-    // -------------------------------------------------------------------------
-    // Cross-line query methods
-    // -------------------------------------------------------------------------
-
     /** Deleting the sole remaining line is allowed. */
     public boolean canDeleteLine() {
         return getSelectedLine() != null;
@@ -429,10 +407,6 @@ public final class SelectionCoordinator implements Disposable {
 
         return selectedElement != scoreView.getSong().firstElement();
     }
-
-    // -------------------------------------------------------------------------
-    // Selection shape queries
-    // -------------------------------------------------------------------------
 
     public int getSelectionSize() {
         var range = getRange();
@@ -491,10 +465,6 @@ public final class SelectionCoordinator implements Disposable {
         return new ArrayList<>(selection.line().getElements(selection.range()));
     }
 
-    // -------------------------------------------------------------------------
-    // Selection content queries
-    // -------------------------------------------------------------------------
-
     public boolean hasActiveSelection() {
         return getSelection() != null;
     }
@@ -545,7 +515,6 @@ public final class SelectionCoordinator implements Disposable {
             return false;
         }
 
-        // Invalidate cache if selection changed
         if (!selection.equals(applicabilityCacheSelection)) {
             applicabilityCacheSelection = selection;
             applicabilityCache.clear();
@@ -605,25 +574,13 @@ public final class SelectionCoordinator implements Disposable {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Toolbar reflection
-    // -------------------------------------------------------------------------
-
     public ActionReflector getActionReflector() {
         return actionReflector;
     }
 
-    // -------------------------------------------------------------------------
-    // Rubber-band drag tracking
-    // -------------------------------------------------------------------------
-
     public SelectionDragTracker getDragTracker() {
         return dragTracker;
     }
-
-    // -------------------------------------------------------------------------
-    // Cache invalidation
-    // -------------------------------------------------------------------------
 
     /**
      * The caches are keyed by line and index range, and an index names a different element

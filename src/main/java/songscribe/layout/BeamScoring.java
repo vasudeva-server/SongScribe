@@ -48,110 +48,130 @@ final class BeamScoring {
 
     private static final Logger LOG = LoggerFactory.getLogger(BeamScoring.class);
 
-    // ---------------------------------------------------------------------
-    // Grob defaults (scm/define-grobs.scm), indexed by beamCount - 1 with
-    // LilyPond's robust_list_ref clamp-to-last behavior.
-    // ---------------------------------------------------------------------
-
-    /** {@code beamed-lengths}. */
-    static final double[] BEAMED_LENGTHS_SS = { 3.26, 3.5, 3.6 };
-
-    /** {@code beamed-minimum-free-lengths}. */
-    static final double[] BEAMED_MINIMUM_FREE_LENGTHS_SS = { 1.83, 1.5, 1.25 };
-
-    /** {@code beamed-extreme-minimum-free-lengths}: LilyPond defines only two entries. */
-    static final double[] BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS = { 2.0, 1.25 };
-
-    /** {@code beamed-stem-shorten}. */
-    static final double[] BEAMED_STEM_SHORTEN_SS = { 1.0, 0.5, 0.25 };
-
-    // ---------------------------------------------------------------------
-    // Quant scoring parameters (Beam_quant_parameters::fill, beam-quanting.cc).
-    // ---------------------------------------------------------------------
-
-    static final int REGION_SIZE = 2;
-
-    static final double BEAM_EPS = 1e-3;
-
-    static final double SECONDARY_BEAM_DEMERIT = 10.0;
-    static final double STEM_LENGTH_DEMERIT_FACTOR = 5.0;
-    static final double HORIZONTAL_INTER_QUANT_PENALTY = 500.0;
-    static final double STEM_LENGTH_LIMIT_PENALTY = 5000.0;
-    static final double DAMPING_DIRECTION_PENALTY = 800.0;
-    static final double HINT_DIRECTION_PENALTY = 20.0;
-    static final double MUSICAL_DIRECTION_FACTOR = 400.0;
-    static final double IDEAL_SLOPE_FACTOR = 10.0;
-    static final double ROUND_TO_ZERO_SLOPE = 0.02;
-
-    // ---------------------------------------------------------------------
-    // Tuning values that LilyPond writes as bare literals inside the scorers.
-    // ---------------------------------------------------------------------
-
-    private static final double SHRINK_EXTRA_WEIGHT_FACTOR = 1.5;
-
-    private static final double INITIAL_DEMERIT_SCALE = 1000.0;
-
-    private static final double QUANT_RANGE_PADDING_SS = 0.5;
-
-    private static final double FORBIDDEN_QUANT_FUDGE_FACTOR = 2.2;
-
-    private static final double FORBIDDEN_QUANT_FIXED_DEMERIT = 0.39;
-
-    private static final double ROUND_HALF_UP_OFFSET = 0.5;
-
-    private static final double HORIZONTAL_INTER_QUANT_TOLERANCE_SS = 0.01;
-
-    static final double STAFF_LINE_STEP_SS = 1.0;
-
     private static final String LOG_NUMBER_FORMAT = "%.3f";
 
-    // ---------------------------------------------------------------------
-    // Slope damping (beam-quanting.cc slope_damping / concaveness).
-    // ---------------------------------------------------------------------
+    /**
+     * LilyPond's grob defaults ({@code scm/define-grobs.scm}). Each array is indexed by
+     * {@code beamCount - 1} with LilyPond's {@code robust_list_ref} clamp-to-last behavior.
+     */
+    static final class GrobDefaults {
 
-    static final double SLOPE_DAMPING_COEFFICIENT = 0.6;
-    static final double DAMPING = 1.0;
+        /** {@code beamed-lengths}. */
+        static final double[] BEAMED_LENGTHS_SS = { 3.26, 3.5, 3.6 };
 
-    static final double CONCAVE_FORCE_FLAT = 10000.0;
+        /** {@code beamed-minimum-free-lengths}. */
+        static final double[] BEAMED_MINIMUM_FREE_LENGTHS_SS = { 1.83, 1.5, 1.25 };
+
+        /** {@code beamed-extreme-minimum-free-lengths}: LilyPond defines only two entries. */
+        static final double[] BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS = { 2.0, 1.25 };
+
+        /** {@code beamed-stem-shorten}. */
+        static final double[] BEAMED_STEM_SHORTEN_SS = { 1.0, 0.5, 0.25 };
+
+        private GrobDefaults() {
+        }
+    }
+
+    /** LilyPond's quant scoring parameters ({@code Beam_quant_parameters::fill}, {@code beam-quanting.cc}). */
+    static final class QuantParameters {
+
+        static final int REGION_SIZE = 2;
+
+        static final double BEAM_EPS = 1e-3;
+
+        static final double SECONDARY_BEAM_DEMERIT = 10.0;
+        static final double STEM_LENGTH_DEMERIT_FACTOR = 5.0;
+        static final double HORIZONTAL_INTER_QUANT_PENALTY = 500.0;
+        static final double STEM_LENGTH_LIMIT_PENALTY = 5000.0;
+        static final double DAMPING_DIRECTION_PENALTY = 800.0;
+        static final double HINT_DIRECTION_PENALTY = 20.0;
+        static final double MUSICAL_DIRECTION_FACTOR = 400.0;
+        static final double IDEAL_SLOPE_FACTOR = 10.0;
+        static final double ROUND_TO_ZERO_SLOPE = 0.02;
+
+        private QuantParameters() {
+        }
+    }
+
+    /** Tuning values that LilyPond writes as bare literals inside its scorers. */
+    static final class ScorerLiterals {
+
+        private static final double SHRINK_EXTRA_WEIGHT_FACTOR = 1.5;
+
+        private static final double INITIAL_DEMERIT_SCALE = 1000.0;
+
+        private static final double QUANT_RANGE_PADDING_SS = 0.5;
+
+        private static final double FORBIDDEN_QUANT_FUDGE_FACTOR = 2.2;
+
+        private static final double FORBIDDEN_QUANT_FIXED_DEMERIT = 0.39;
+
+        private static final double ROUND_HALF_UP_OFFSET = 0.5;
+
+        private static final double HORIZONTAL_INTER_QUANT_TOLERANCE_SS = 0.01;
+
+        static final double STAFF_LINE_STEP_SS = 1.0;
+
+        private ScorerLiterals() {
+        }
+    }
+
+    /** LilyPond's slope damping and concaveness ({@code beam-quanting.cc} {@code slope_damping}). */
+    static final class SlopeDamping {
+
+        static final double SLOPE_DAMPING_COEFFICIENT = 0.6;
+        static final double DAMPING = 1.0;
+
+        static final double CONCAVE_FORCE_FLAT = 10000.0;
+
+        /**
+         * How far past the stem-length feasibility bound the beam is placed when the unquanted
+         * position violates it (LilyPond's {@code point_in_interval}).
+         */
+        static final double FEASIBLE_POINT_INSET_SS = 2.0;
+
+        private SlopeDamping() {
+        }
+    }
+
+    /** Geometry that matches the renderer, not LilyPond's raw numbers. */
+    static final class RendererGeometry {
+
+        static final double STAFF_RADIUS_SS = Staff.STAFF_HALF_SS;
+
+        static final double BEAM_THICKNESS_SS = BeamMetrics.BEAM_THICKNESS_SS;
+
+        static final double BEAM_TRANSLATION_SS = BeamMetrics.BEAM_TRANSLATION_SS;
+
+        static final double STAFF_LINE_THICKNESS_SS = EngravingConstants.STAFF_LINE_THICKNESS_SS;
+
+        private RendererGeometry() {
+        }
+    }
 
     /**
-     * How far past the stem-length feasibility bound the beam is placed when the unquanted position
-     * violates it (LilyPond's {@code point_in_interval}).
+     * The quant offsets: where a beam may sit relative to a staff line. They are not compile-time
+     * constants, because they depend on font metrics loaded at run time.
      */
-    static final double FEASIBLE_POINT_INSET_SS = 2.0;
+    static final class QuantOffsets {
 
-    // ---------------------------------------------------------------------
-    // Geometry — matches the renderer, NOT LilyPond's raw numbers.
-    // ---------------------------------------------------------------------
+        /** Beam center sits on a staff line. */
+        static final double STRADDLE_SS = 0.0;
 
-    static final double STAFF_RADIUS_SS = Staff.STAFF_HALF_SS;
+        /** Beam sits on top of a staff line. */
+        static final double SIT_SS =
+            (RendererGeometry.BEAM_THICKNESS_SS - RendererGeometry.STAFF_LINE_THICKNESS_SS) / 2.0;
 
-    static final double BEAM_THICKNESS_SS = BeamMetrics.BEAM_THICKNESS_SS;
+        /** Beam center sits between two staff lines. */
+        static final double INTER_SS = 0.5;
 
-    static final double BEAM_TRANSLATION_SS = BeamMetrics.BEAM_TRANSLATION_SS;
+        /** Beam hangs below a staff line. */
+        static final double HANG_SS =
+            1.0 - (RendererGeometry.BEAM_THICKNESS_SS - RendererGeometry.STAFF_LINE_THICKNESS_SS) / 2.0;
 
-    static final double STAFF_LINE_THICKNESS_SS = EngravingConstants.STAFF_LINE_THICKNESS_SS;
-
-    // ---------------------------------------------------------------------
-    // Quant offsets — the single source of truth for straddle/sit/inter/hang.
-    // Not compile-time constants: they depend on runtime-loaded font metrics.
-    // ---------------------------------------------------------------------
-
-    /** Beam center sits on a staff line. */
-    static final double STRADDLE_SS = 0.0;
-
-    /** Beam sits on top of a staff line. */
-    static final double SIT_SS = (BEAM_THICKNESS_SS - STAFF_LINE_THICKNESS_SS) / 2.0;
-
-    /** Beam center sits between two staff lines. */
-    static final double INTER_SS = 0.5;
-
-    /** Beam hangs below a staff line. */
-    static final double HANG_SS = 1.0 - (BEAM_THICKNESS_SS - STAFF_LINE_THICKNESS_SS) / 2.0;
-
-    // ---------------------------------------------------------------------
-    // Inputs
-    // ---------------------------------------------------------------------
+        private QuantOffsets() {
+        }
+    }
 
     /**
      * One stem of the beam group, in scoring space.
@@ -203,10 +223,6 @@ final class BeamScoring {
     private final double idealFloorSs;
     private final double stemShortenSs;
 
-    // ---------------------------------------------------------------------
-    // Pipeline state
-    // ---------------------------------------------------------------------
-
     private final double[] stemIdealYs;
     private final double[] stemShortestYs;
     private double unquantedLeftY;
@@ -238,7 +254,7 @@ final class BeamScoring {
         xSpan = stemCount == 0 ? 0.0 : stemXs[stemCount - 1] - stemXs[0];
         edgeBeamCountLeft = stemCount == 0 ? 1 : stems.getFirst().beamCount();
         edgeBeamCountRight = stemCount == 0 ? 1 : stems.get(stemCount - 1).beamCount();
-        extraDemerit = SECONDARY_BEAM_DEMERIT / Math.max(edgeBeamCountLeft, edgeBeamCountRight);
+        extraDemerit = QuantParameters.SECONDARY_BEAM_DEMERIT / Math.max(edgeBeamCountLeft, edgeBeamCountRight);
 
         // Not the stem's own beam count: LilyPond feeds calc_stem_info
         // Beam::get_direction_beam_count, the group's maximum for this direction.
@@ -246,27 +262,25 @@ final class BeamScoring {
         // — and only that shared count makes the ideal ends of equal-pitch edge
         // stems agree, which is what lets least_squares_positions see dy == 0.
         var heightOfBeams = BeamMetrics.beamStackHeightSs(maxBeamCount);
-        var halfBeamThickness = BEAM_THICKNESS_SS / 2.0;
+        var halfBeamThickness = RendererGeometry.BEAM_THICKNESS_SS / 2.0;
 
         // Stems only extend to the center of the beam, hence the half-thickness terms.
         idealLengthSs = Math.max(
-            listRef(BEAMED_LENGTHS_SS, maxBeamCount - 1) - halfBeamThickness,
-            listRef(BEAMED_MINIMUM_FREE_LENGTHS_SS, maxBeamCount - 1) + heightOfBeams - halfBeamThickness
+            listRef(GrobDefaults.BEAMED_LENGTHS_SS, maxBeamCount - 1) - halfBeamThickness,
+            listRef(GrobDefaults.BEAMED_MINIMUM_FREE_LENGTHS_SS, maxBeamCount - 1) + heightOfBeams - halfBeamThickness
         );
-        minimumLengthSs = listRef(BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS, maxBeamCount - 1)
+        minimumLengthSs = listRef(GrobDefaults.BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS, maxBeamCount - 1)
             + heightOfBeams
             - halfBeamThickness;
 
         // The lowest beam of an (UP) beam must never be lower than the second staff line.
-        idealFloorSs = -STAFF_LINE_STEP_SS - BEAM_THICKNESS_SS + heightOfBeams;
+        idealFloorSs = -ScorerLiterals.STAFF_LINE_STEP_SS - RendererGeometry.BEAM_THICKNESS_SS + heightOfBeams;
 
         // Port of Beam::calc_stem_shorten.
-        stemShortenSs = listRef(BEAMED_STEM_SHORTEN_SS, maxBeamCount - 1) * forcedFraction;
+        stemShortenSs = listRef(GrobDefaults.BEAMED_STEM_SHORTEN_SS, maxBeamCount - 1) * forcedFraction;
     }
 
-    // ---------------------------------------------------------------------
-    // Stem info (port of Stem::calc_stem_info, lily/stem.cc)
-    // ---------------------------------------------------------------------
+    // Port of Stem::calc_stem_info, lily/stem.cc.
 
     void computeStemInfos() {
         for (var i = 0; i < stemCount; i++) {
@@ -304,10 +318,8 @@ final class BeamScoring {
         return values[Math.clamp(index, 0, values.length - 1)];
     }
 
-    // ---------------------------------------------------------------------
-    // Unquanted (ideal) positions — ports of Beam_scoring_problem's
-    // least_squares_positions / slope_damping / shift_region_to_valid.
-    // ---------------------------------------------------------------------
+    // Ports of Beam_scoring_problem's least_squares_positions / slope_damping /
+    // shift_region_to_valid.
 
     /**
      * Requires {@link #computeStemInfos()} to have run, and a non-degenerate group
@@ -357,7 +369,7 @@ final class BeamScoring {
             // Simple two-stem beams whose stems both reach the middle line get an
             // artificial slope, since the ideal positions cannot express one.
             if (idealLeft == 0.0 && stemCount == 2 && chordDy != 0.0) {
-                var half = BEAM_THICKNESS_SS / 2.0;
+                var half = RendererGeometry.BEAM_THICKNESS_SS / 2.0;
                 var towardHigherHead = chordDy > 0.0;
                 unquantedLeftY = towardHigherHead ? -half : half;
                 unquantedRightY = towardHigherHead ? half : -half;
@@ -412,7 +424,7 @@ final class BeamScoring {
             return 0.0;
         }
 
-        var smallestQuant = Math.min(Math.min(SIT_SS, INTER_SS), HANG_SS);
+        var smallestQuant = Math.min(Math.min(QuantOffsets.SIT_SS, QuantOffsets.INTER_SS), QuantOffsets.HANG_SS);
         return Math.signum(dy) * Math.max(Math.abs(dy), smallestQuant);
     }
 
@@ -421,9 +433,9 @@ final class BeamScoring {
             return;
         }
 
-        var damping = DAMPING;
+        var damping = SlopeDamping.DAMPING;
         var concaveness = calcConcaveness();
-        var forcedFlat = concaveness >= CONCAVE_FORCE_FLAT;
+        var forcedFlat = concaveness >= SlopeDamping.CONCAVE_FORCE_FLAT;
 
         if (forcedFlat) {
             unquantedLeftY = unquantedRightY;
@@ -436,13 +448,13 @@ final class BeamScoring {
                 "  concaveness={} forcedFlat={} (>= {} forces flat)",
                 fmt(concaveness),
                 forcedFlat,
-                fmt(CONCAVE_FORCE_FLAT)
+                fmt(SlopeDamping.CONCAVE_FORCE_FLAT)
             );
         }
 
         if (damping != 0.0 && damping + concaveness != 0.0) {
             var dy = unquantedRightY - unquantedLeftY;
-            var slope = SLOPE_DAMPING_COEFFICIENT * Math.tanh(dy / xSpan) / (damping + concaveness);
+            var slope = SlopeDamping.SLOPE_DAMPING_COEFFICIENT * Math.tanh(dy / xSpan) / (damping + concaveness);
             var dampedDy = setMinimumDy(slope * xSpan);
 
             unquantedLeftY += (dy - dampedDy) / 2.0;
@@ -470,7 +482,7 @@ final class BeamScoring {
         }
 
         if (singleNotesConcave) {
-            return CONCAVE_FORCE_FLAT;
+            return SlopeDamping.CONCAVE_FORCE_FLAT;
         }
 
         return calcPositionsConcaveness(stemHeadHalfPositions, dirSign);
@@ -566,16 +578,14 @@ final class BeamScoring {
 
         if (violates) {
             // Not the bound itself: LilyPond's point_in_interval steps
-            // FEASIBLE_POINT_INSET_SS into the feasible half-line, away from the
+            // SlopeDamping.FEASIBLE_POINT_INSET_SS into the feasible half-line, away from the
             // noteheads (which is the +dirSign side).
-            unquantedLeftY = feasibleBound + dirSign * FEASIBLE_POINT_INSET_SS;
+            unquantedLeftY = feasibleBound + dirSign * SlopeDamping.FEASIBLE_POINT_INSET_SS;
             unquantedRightY = unquantedLeftY + beamDy;
         }
     }
 
-    // ---------------------------------------------------------------------
-    // Quant candidates (port of Beam_configuration + generate_quants)
-    // ---------------------------------------------------------------------
+    // Port of Beam_configuration + generate_quants.
 
     private record Demerits(
         double initial,
@@ -632,9 +642,9 @@ final class BeamScoring {
      *         for stems down
      */
     double quantBound(double headYUpSs, int beamCount) {
-        var widen = QUANT_RANGE_PADDING_SS
-            + (beamCount - 1) * BEAM_TRANSLATION_SS
-            + BEAM_THICKNESS_SS / 2.0;
+        var widen = ScorerLiterals.QUANT_RANGE_PADDING_SS
+            + (beamCount - 1) * RendererGeometry.BEAM_TRANSLATION_SS
+            + RendererGeometry.BEAM_THICKNESS_SS / 2.0;
         return headYUpSs + dirSign * widen;
     }
 
@@ -644,12 +654,12 @@ final class BeamScoring {
 
     /** Without the knee and collision region widening, and without {@code grid_shift} (more than four beams only; SongScribe caps at three). */
     private static double[] quantOffsets() {
-        var baseQuants = new double[] { STRADDLE_SS, SIT_SS, INTER_SS, HANG_SS };
-        var offsets = new double[REGION_SIZE * 2 * baseQuants.length];
+        var baseQuants = new double[] { QuantOffsets.STRADDLE_SS, QuantOffsets.SIT_SS, QuantOffsets.INTER_SS, QuantOffsets.HANG_SS };
+        var offsets = new double[QuantParameters.REGION_SIZE * 2 * baseQuants.length];
         var next = 0;
 
         // Asymmetric on purpose: LilyPond's loop runs i < region_size.
-        for (var i = -REGION_SIZE; i < REGION_SIZE; i++) {
+        for (var i = -QuantParameters.REGION_SIZE; i < QuantParameters.REGION_SIZE; i++) {
             for (var quant : baseQuants) {
                 offsets[next] = i + quant;
                 next++;
@@ -696,7 +706,7 @@ final class BeamScoring {
                 considered++;
 
                 // Favors the offsets closest to the unquanted position.
-                var initial = (Math.abs(offsetLeft) + Math.abs(offsetRight)) / INITIAL_DEMERIT_SCALE;
+                var initial = (Math.abs(offsetLeft) + Math.abs(offsetRight)) / ScorerLiterals.INITIAL_DEMERIT_SCALE;
                 var demerits = score(leftY, rightY, initial);
 
                 if (best == null || demerits < best.demerits()) {
@@ -704,7 +714,7 @@ final class BeamScoring {
                 }
 
                 if (debug
-                    && Math.abs(rightY - leftY) < BEAM_EPS
+                    && Math.abs(rightY - leftY) < QuantParameters.BEAM_EPS
                     && (bestFlat == null || demerits < bestFlat.demerits())) {
                     bestFlat = new Candidate(leftY, rightY, initial, demerits);
                 }
@@ -718,10 +728,8 @@ final class BeamScoring {
         return best;
     }
 
-    // ---------------------------------------------------------------------
-    // Demerit scorers (ports of Beam_scoring_problem::score_*). LilyPond's
-    // score_collisions is dropped: beams here only score against staff lines.
-    // ---------------------------------------------------------------------
+    // Ports of Beam_scoring_problem::score_*. LilyPond's score_collisions is dropped: beams here
+    // only score against staff lines.
 
     private static double shrinkExtraWeight(double x, double factor) {
         return Math.abs(x) * (x < 0.0 ? factor : 1.0);
@@ -767,9 +775,9 @@ final class BeamScoring {
             var stemX = stemXs[i];
             var currentY = rightY * stemX / xSpan + leftY * (xSpan - stemX) / xSpan;
 
-            total += STEM_LENGTH_LIMIT_PENALTY * Math.max(0.0, dirSign * (stemShortestYs[i] - currentY));
-            total += STEM_LENGTH_DEMERIT_FACTOR
-                * shrinkExtraWeight(dirSign * (currentY - stemIdealYs[i]), SHRINK_EXTRA_WEIGHT_FACTOR);
+            total += QuantParameters.STEM_LENGTH_LIMIT_PENALTY * Math.max(0.0, dirSign * (stemShortestYs[i] - currentY));
+            total += QuantParameters.STEM_LENGTH_DEMERIT_FACTOR
+                * shrinkExtraWeight(dirSign * (currentY - stemIdealYs[i]), ScorerLiterals.SHRINK_EXTRA_WEIGHT_FACTOR);
         }
 
         return total / stemCount;
@@ -784,35 +792,35 @@ final class BeamScoring {
             return 0.0;
         }
 
-        if (dy == 0.0 && Math.abs(dampedDy / xSpan) <= ROUND_TO_ZERO_SLOPE) {
-            return HINT_DIRECTION_PENALTY;
+        if (dy == 0.0 && Math.abs(dampedDy / xSpan) <= QuantParameters.ROUND_TO_ZERO_SLOPE) {
+            return QuantParameters.HINT_DIRECTION_PENALTY;
         }
 
-        return DAMPING_DIRECTION_PENALTY;
+        return QuantParameters.DAMPING_DIRECTION_PENALTY;
     }
 
     double scoreSlopeMusical(double leftY, double rightY) {
-        return MUSICAL_DIRECTION_FACTOR
+        return QuantParameters.MUSICAL_DIRECTION_FACTOR
             * Math.max(0.0, Math.abs(rightY - leftY) - Math.abs(musicalDy));
     }
 
     double scoreSlopeIdeal(double leftY, double rightY) {
         var dampedDy = unquantedRightY - unquantedLeftY;
         var deviation = Math.abs(dampedDy) - Math.abs(rightY - leftY);
-        return shrinkExtraWeight(deviation, SHRINK_EXTRA_WEIGHT_FACTOR) * IDEAL_SLOPE_FACTOR;
+        return shrinkExtraWeight(deviation, ScorerLiterals.SHRINK_EXTRA_WEIGHT_FACTOR) * QuantParameters.IDEAL_SLOPE_FACTOR;
     }
 
     /** For a horizontal beam inside the staff, an inter quant is worse than the generic forbidden-quant case. */
     double scoreHorizontalInterQuants(double leftY, double rightY) {
-        if (rightY - leftY != 0.0 || Math.abs(leftY) >= STAFF_RADIUS_SS) {
+        if (rightY - leftY != 0.0 || Math.abs(leftY) >= RendererGeometry.STAFF_RADIUS_SS) {
             return 0.0;
         }
 
-        var yshift = leftY - ROUND_HALF_UP_OFFSET;
-        var rounded = Math.floor(yshift + ROUND_HALF_UP_OFFSET);
+        var yshift = leftY - ScorerLiterals.ROUND_HALF_UP_OFFSET;
+        var rounded = Math.floor(yshift + ScorerLiterals.ROUND_HALF_UP_OFFSET);
 
-        if (Math.abs(rounded - yshift) < HORIZONTAL_INTER_QUANT_TOLERANCE_SS) {
-            return HORIZONTAL_INTER_QUANT_PENALTY;
+        if (Math.abs(rounded - yshift) < ScorerLiterals.HORIZONTAL_INTER_QUANT_TOLERANCE_SS) {
+            return QuantParameters.HORIZONTAL_INTER_QUANT_PENALTY;
         }
 
         return 0.0;
@@ -835,24 +843,24 @@ final class BeamScoring {
         var demerits = 0.0;
 
         for (var j = 1; j <= edgeBeamCount; j++) {
-            var gap1 = edgeY - dirSign * ((j - 1) * BEAM_TRANSLATION_SS
-                + BEAM_THICKNESS_SS / 2.0
-                - STAFF_LINE_THICKNESS_SS / FORBIDDEN_QUANT_FUDGE_FACTOR);
-            var gap2 = edgeY - dirSign * (j * BEAM_TRANSLATION_SS
-                - BEAM_THICKNESS_SS / 2.0
-                + STAFF_LINE_THICKNESS_SS / FORBIDDEN_QUANT_FUDGE_FACTOR);
+            var gap1 = edgeY - dirSign * ((j - 1) * RendererGeometry.BEAM_TRANSLATION_SS
+                + RendererGeometry.BEAM_THICKNESS_SS / 2.0
+                - RendererGeometry.STAFF_LINE_THICKNESS_SS / ScorerLiterals.FORBIDDEN_QUANT_FUDGE_FACTOR);
+            var gap2 = edgeY - dirSign * (j * RendererGeometry.BEAM_TRANSLATION_SS
+                - RendererGeometry.BEAM_THICKNESS_SS / 2.0
+                + RendererGeometry.STAFF_LINE_THICKNESS_SS / ScorerLiterals.FORBIDDEN_QUANT_FUDGE_FACTOR);
             var gapBottom = Math.min(gap1, gap2);
             var gapTop = Math.max(gap1, gap2);
             var gapLength = gapTop - gapBottom;
 
-            for (var k = -STAFF_RADIUS_SS; k <= STAFF_RADIUS_SS + BEAM_EPS; k += STAFF_LINE_STEP_SS) {
+            for (var k = -RendererGeometry.STAFF_RADIUS_SS; k <= RendererGeometry.STAFF_RADIUS_SS + QuantParameters.BEAM_EPS; k += ScorerLiterals.STAFF_LINE_STEP_SS) {
                 if (k < gapBottom || k > gapTop) {
                     continue;
                 }
 
                 var distance = Math.min(Math.abs(gapTop - k), Math.abs(gapBottom - k));
-                demerits += extraDemerit * (FORBIDDEN_QUANT_FIXED_DEMERIT
-                    + (1.0 - FORBIDDEN_QUANT_FIXED_DEMERIT) * (distance / gapLength) * 2.0);
+                demerits += extraDemerit * (ScorerLiterals.FORBIDDEN_QUANT_FIXED_DEMERIT
+                    + (1.0 - ScorerLiterals.FORBIDDEN_QUANT_FIXED_DEMERIT) * (distance / gapLength) * 2.0);
             }
         }
 
@@ -861,30 +869,26 @@ final class BeamScoring {
 
     double badSecondaryQuant(double edgeY, int edgeBeamCount, double dy) {
         var fraction = myModf(edgeY);
-        var wrongWay = dirSign > 0 ? dy <= BEAM_EPS : dy >= BEAM_EPS;
-        var badQuant = dirSign > 0 ? SIT_SS : HANG_SS;
+        var wrongWay = dirSign > 0 ? dy <= QuantParameters.BEAM_EPS : dy >= QuantParameters.BEAM_EPS;
+        var badQuant = dirSign > 0 ? QuantOffsets.SIT_SS : QuantOffsets.HANG_SS;
         var demerits = 0.0;
 
         if (edgeBeamCount >= 2
-            && Math.abs(edgeY - dirSign * BEAM_TRANSLATION_SS) < STAFF_RADIUS_SS + INTER_SS
+            && Math.abs(edgeY - dirSign * RendererGeometry.BEAM_TRANSLATION_SS) < RendererGeometry.STAFF_RADIUS_SS + QuantOffsets.INTER_SS
             && wrongWay
-            && Math.abs(fraction - badQuant) < BEAM_EPS) {
+            && Math.abs(fraction - badQuant) < QuantParameters.BEAM_EPS) {
             demerits += extraDemerit;
         }
 
         if (edgeBeamCount >= 3
-            && Math.abs(edgeY - 2.0 * dirSign * BEAM_TRANSLATION_SS) < STAFF_RADIUS_SS + INTER_SS
+            && Math.abs(edgeY - 2.0 * dirSign * RendererGeometry.BEAM_TRANSLATION_SS) < RendererGeometry.STAFF_RADIUS_SS + QuantOffsets.INTER_SS
             && wrongWay
-            && Math.abs(fraction - STRADDLE_SS) < BEAM_EPS) {
+            && Math.abs(fraction - QuantOffsets.STRADDLE_SS) < QuantParameters.BEAM_EPS) {
             demerits += extraDemerit;
         }
 
         return demerits;
     }
-
-    // ---------------------------------------------------------------------
-    // Entry point
-    // ---------------------------------------------------------------------
 
     /**
      * @param stems          in element order, in scoring space
@@ -926,10 +930,6 @@ final class BeamScoring {
 
         return new BeamPosition(best.leftY(), best.rightY());
     }
-
-    // ---------------------------------------------------------------------
-    // Debug output
-    // ---------------------------------------------------------------------
 
     private void logInputs() {
         if (!LogUtils.isTracingBeams(LOG)) {

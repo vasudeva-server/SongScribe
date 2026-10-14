@@ -97,10 +97,6 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
         return line;
     }
 
-    // ========================================================================
-    // Entering and leaving a line's span registry
-    // ========================================================================
-
     /**
      * Adds this span to its line's span registry, first displacing whatever same-kind spans
      * this kind's {@link #displacement()} says it may not coexist with.

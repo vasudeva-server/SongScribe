@@ -43,7 +43,6 @@ class PackageDependencyTest extends UnitTest {
         return findForbiddenImports(SRC_ROOT.resolve(sourceDir), null, forbiddenPrefix);
     }
 
-    // The same over the whole source tree, leaving out the files under exemptDir.
     private List<String> findForbiddenImportsOutside(String exemptDir, String forbiddenPrefix)
         throws IOException {
         return findForbiddenImports(SRC_ROOT, SRC_ROOT.resolve(exemptDir), forbiddenPrefix);

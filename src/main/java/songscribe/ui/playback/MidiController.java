@@ -51,7 +51,6 @@ public final class MidiController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MidiController.class);
 
-    // MIDI
     public static volatile @Nullable Sequencer sequencer = null;
     public static volatile @Nullable Receiver midiReceiver = null;
     public static volatile @Nullable Synthesizer synthesizer = null;
@@ -63,7 +62,6 @@ public final class MidiController {
 
     private static final String SOUNDFONT_RESOURCE = "/soundfonts/FluidR3_GM.sf2";
 
-    // Set up MIDI to play back music
     public static void openMidi() {
         var soundbank = loadBundledSoundbank();
 
@@ -218,7 +216,6 @@ public final class MidiController {
 
     private static void initChannels(Receiver receiver) {
         try {
-            // GM System On reset
             var gmOn = new SysexMessage();
             gmOn.setMessage(
                     new byte[]{(byte) 0xF0, 0x7E, 0x7F, 0x09, 0x01, (byte) 0xF7},
@@ -300,7 +297,6 @@ public final class MidiController {
         }
     }
 
-    // Close MIDI resources so other applications can use them
     static void closeMidi() {
         if (closed) {
             return;

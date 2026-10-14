@@ -105,9 +105,7 @@ public final class StaffElementIO {
     private static final String XML_EXTEND_TAG = "extend";
 
     // Maps every legacy element-type spelling — the underscore-less aliases and the retired
-    // names the v1.0/v1.1 formats used — to the canonical ElementType constant. Shared by startElement10 and
-    // startElement11 via resolveElementType so an unknown token is rejected identically
-    // on both.
+    // names the v1.0/v1.1 formats used — to the canonical ElementType constant.
     private static final Map<String, ElementType> LEGACY_ELEMENT_TYPE_NAMES = Map.ofEntries(
         Map.entry("SEMIBREVEREST", ElementType.SEMIBREVE_REST),
         Map.entry("MINIMREST", ElementType.MINIM_REST),
@@ -180,9 +178,8 @@ public final class StaffElementIO {
     private StaffElementIO() {
     }
 
-    // Resolves an element-type token to an ElementType, accepting both the canonical
-    // enum names and the legacy tokens LEGACY_ELEMENT_TYPE_NAMES maps. Shared by the
-    // v1.0 and v1.1 read paths so an unknown token is rejected identically on both.
+    // Shared by startElement10 and startElement11 so an unknown token is rejected identically on
+    // both.
     private static ElementType resolveElementType(String name) throws SAXException {
         var elementType = LEGACY_ELEMENT_TYPE_NAMES.get(name);
 
@@ -507,7 +504,7 @@ public final class StaffElementIO {
                     } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
                         stemForced = true;
                     } else if (lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)) {
-                        // Silently ignored — partial beam stub direction is now automatic.
+                        // Ignored: the partial beam stub direction is automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
                         DocumentValidation.attachUnique(LOG, element, new BeatChangeAttachment(
                             BeatChange.fromLegacyName(str)));
@@ -543,8 +540,8 @@ public final class StaffElementIO {
 
                 note.choose(accidental);
             } else if (tag.equals(XML_PREFIX_IN_PARENTHESIS)) {
-                // Read and ignored: parentheses are no longer tracked.
-            } else if (tag.equals(XML_VOLUME) && str.equals("LOUDER")) { //old
+                // Read and ignored: parentheses are not tracked.
+            } else if (tag.equals(XML_VOLUME) && str.equals("LOUDER")) {
                 note.addArticulation(new Articulation(ArticulationType.ACCENT));
             } else if (tag.equals(XML_FORCE_ARTICULATION)) {
                 note.addArticulation(new Articulation(ArticulationType.ACCENT));

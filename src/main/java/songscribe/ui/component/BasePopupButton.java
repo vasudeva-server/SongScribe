@@ -50,7 +50,6 @@ public class BasePopupButton
 
     private final List<UIAction> actions;
 
-    // We need to know if the popup menu was canceled by clicking the button
     private boolean popupWasCanceledByButton = false;
 
     protected BasePopupButton(List<? extends UIAction> actions) {
@@ -143,7 +142,6 @@ public class BasePopupButton
     public void actionPerformed(ActionEvent e) {
         var popupMenu = requirePopup();
 
-        // If the popup was canceled by clicking the button, we don't want to show it again
         if (popupWasCanceledByButton) {
             popupWasCanceledByButton = false;
             setSelected(false);

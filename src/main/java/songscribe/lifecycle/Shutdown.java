@@ -108,7 +108,6 @@ public final class Shutdown {
         }
         INSTANCE.inProgress = true;
         try {
-            // Confirm phase — registration order, exceptions propagate.
             for (var entry : INSTANCE.confirmEntries) {
                 if (!entry.task.confirm()) {
                     LOG.info("Shutdown vetoed by confirm task: {}", entry.tag);

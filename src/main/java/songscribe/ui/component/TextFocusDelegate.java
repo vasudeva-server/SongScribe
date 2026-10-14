@@ -58,7 +58,6 @@ public class TextFocusDelegate implements FocusListener {
     }
 
     public boolean processKeyEvent(KeyEvent e) {
-        // JTextFields don't need special tab handling
         if (host instanceof JTextField) {
             ignoreTabKey = false;
             return false;
@@ -66,7 +65,6 @@ public class TextFocusDelegate implements FocusListener {
 
         var handled = false;
 
-        // Prevent tabs from being entered into the text area
         if (e.getKeyCode() == KeyEvent.VK_TAB) {
             e.consume();
             handled = true;

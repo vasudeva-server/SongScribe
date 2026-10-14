@@ -83,7 +83,6 @@ public final class GraphicUtils {
 
     private static final double MILLIMETERS_PER_INCH = 25.4;
 
-    // Standard non-HiDPI resolution; used in headless environments where the screen device is unavailable
     private static final int HEADLESS_DPI = 96;
 
     private static final int dpi;

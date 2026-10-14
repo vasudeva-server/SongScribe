@@ -60,13 +60,10 @@ final class HeaderMapper {
     // instance and hands it to SongLoadResult.Success; this class only writes into it.
     private final DocumentFonts documentFonts;
 
-    // -------------------------------------------------------------------------
-    // Head-metadata scratch — accumulated from <movement-*>, <identification> and
-    // the subtitle credit, then assembled into a single SongMetadata record at the
-    // end of the mapping (see applyHeadMetadata). Defaults mirror the SongMetadata
-    // defaults so an absent element leaves its field at the value a blank document
-    // would carry.
-    // -------------------------------------------------------------------------
+    // The head-metadata fields below are accumulated from <movement-*>, <identification> and the
+    // subtitle credit, then assembled into one SongMetadata at the end of the mapping (see
+    // applyHeadMetadata). Their defaults mirror the SongMetadata defaults so an absent element
+    // leaves a field at the value a blank document would carry.
 
     private String headTitle = "";
     private String headNumber = "";
@@ -77,8 +74,7 @@ final class HeaderMapper {
     private String headComposer = "";
     private String headLyricist = "";
 
-    // Set true when a <creator type="arranger"> is seen; the flag is the only
-    // information the arranger creator carries (its text is always SRI_CHINMOY).
+    // The arranger <creator>'s text is always SRI_CHINMOY, so its presence is the only information.
     private boolean headArrangement = false;
 
     private boolean headUnofficialTranslation = false;
@@ -113,10 +109,6 @@ final class HeaderMapper {
         this.documentFonts = documentFonts;
     }
 
-    // -------------------------------------------------------------------------
-    // Package API
-    // -------------------------------------------------------------------------
-
     static void map(ScorePartwise score, Song song, DocumentFonts documentFonts) throws SAXException {
         new HeaderMapper(song, documentFonts).mapScore(score);
     }
@@ -129,10 +121,6 @@ final class HeaderMapper {
         throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedVersionException {
         SoftwareProvenance.check(ProxyMusicAccess.software(score));
     }
-
-    // -------------------------------------------------------------------------
-    // Mapping
-    // -------------------------------------------------------------------------
 
     private void mapScore(ScorePartwise score) throws SAXException {
         mapMovement(score);
@@ -215,13 +203,11 @@ final class HeaderMapper {
         var creditWordsList = ProxyMusicAccess.jaxbValues(parts, MusicXmlTags.CREDIT_WORDS, FormattedText.class);
 
         if (creditTypes.isEmpty()) {
-            // No <credit-type> to route on — a display-only credit from another
-            // program; nothing to read.
+            // No <credit-type> to route on, so nothing to read.
             return;
         }
 
-        // The last of each wins, matching the SAX reader's overwrite-per-child
-        // accumulation. The writer emits exactly one of each.
+        // The writer emits exactly one of each.
         var creditType = creditTypes.getLast();
         var creditWords = lastCreditWords(creditWordsList);
         var text = creditWords == null ? "" : orEmpty(creditWords.getValue());
@@ -257,9 +243,7 @@ final class HeaderMapper {
             // <movement-*>, but the credit is still the font's source of truth.
             case MusicXmlTags.CREDIT_TITLE -> applyCreditFont(FontKey.TITLE, creditWords);
 
-            // Display-only — unknown credit-types are skipped.
             default -> {
-                // no read state
             }
         }
     }
@@ -370,8 +354,6 @@ final class HeaderMapper {
      * Builds the record once, so the subtitle credit's following the head cannot matter.
      */
     private void applyHeadMetadata() {
-        // The SongMetadata compact constructor normalizes/coerces every field, so
-        // the scratch values need no pre-normalization here.
         song.setMetadata(new SongMetadata(
             headTitle, headNumber, headPlace, headDate,
             headComposer, headLyricist, headLyricsSource,
@@ -388,9 +370,9 @@ final class HeaderMapper {
         try {
             return Song.LyricsSource.valueOf(token);
         } catch (IllegalArgumentException e) {
-            // The IllegalArgumentException is dropped rather than chained, as it is in
-            // DocumentValidation's own parseXxxOrThrow methods: it says only that the constant
-            // does not exist, which is what the message below already reports, with the field.
+            // The IllegalArgumentException is not chained, as in DocumentValidation's own
+            // parseXxxOrThrow methods: it says only that the constant does not exist, which the
+            // message below already reports, with the field.
             throw DocumentValidation.corrupt(
                 LOG, "Corrupt document: malformed <{}> value: '{}'", MusicXmlTags.MISC_LYRICS_SOURCE, token);
         }

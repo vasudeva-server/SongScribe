@@ -61,10 +61,6 @@ class AccidentalChainTest extends UnitTest {
     /** A staff position at the pitch class {@link PitchClass#B}, which {@link Key#ONE_FLAT} alters. */
     private static final int B = 0;
 
-    // -------------------------------------------------------------------
-    // walkSong: whole songs
-    // -------------------------------------------------------------------
-
     private record SongCase(String description, Song song, List<ChainType> expectedTypes) {
         @Override
         public String toString() {
@@ -175,10 +171,6 @@ class AccidentalChainTest extends UnitTest {
             .map(note -> note.chainedAccidental().type())
             .toList();
     }
-
-    // -------------------------------------------------------------------
-    // walk: a single edit, against the worked example
-    // -------------------------------------------------------------------
 
     @Test
     void testPressingNaturalOnTheFifthNoteMakesItACancelAndTheSixthAnAnchor() {

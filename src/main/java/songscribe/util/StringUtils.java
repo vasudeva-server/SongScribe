@@ -32,29 +32,22 @@ public final class StringUtils {
     /** What {@link String#indexOf} and {@link String#lastIndexOf} answer when the needle is absent. */
     public static final int INDEX_NOT_FOUND = -1;
 
-    // Finds all diacritics
     public static final Pattern DIACRITICS_PATTERN = Pattern.compile(
         "\\p{InCombiningDiacriticalMarks}+"
     );
 
-    // Finds all non-alphanumeric characters, including characters with combining diacritics.
-    // Used to convert to kebab case.
     private static final Pattern NOT_ALPHA_NUM_PATTERN = Pattern.compile(
         "[^\\p{L}\\p{M}\\p{N}]+"
     );
 
-    // When converting to kebab case, "-+" is replaced with "-"
     private static final Pattern PLUS_MINUS_PATTERN = Pattern.compile("-+");
 
-    // Finds multiple spaces not at the beginning of a line
     public static final Pattern MULTIPLE_SPACES_PATTERN = Pattern.compile(
         "(?<=\\S) +"
     );
 
     public static final Pattern LF_PATTERN = Pattern.compile("\n");
 
-    // Folds foreign line endings to "\n": a CRLF pair and a lone CR alike, so text
-    // pasted from another platform breaks where a natively typed line does.
     private static final Pattern FOREIGN_LINE_ENDING_PATTERN = Pattern.compile("\r\n?");
 
     public static final Pattern TRIM_END_PATTERN = Pattern.compile("\\s+$");
@@ -66,8 +59,6 @@ public final class StringUtils {
     // Stands for "no way to set these words in this many lines" while balancing. Never
     // added to, only compared against, so it needs no headroom.
     private static final long UNREACHABLE = Long.MAX_VALUE;
-
-    // -- Typographic substitution --
 
     // Smart double quotes. Opening after whitespace / line start / a quote;
     // closing before whitespace / line end / closing punctuation; fallback = closing.
@@ -100,7 +91,6 @@ public final class StringUtils {
     private static final String CLOSING_SINGLE_QUOTE = "’";  // U+2019
     private static final String EM_DASH = "—";               // U+2014
     private static final String ELLIPSIS = "…";              // U+2026
-    // Matches the short-A characters that are stripped when stripShortA is true.
     private static final Pattern SHORT_A_PATTERN = Pattern.compile("[ăĂ]");
 
     private StringUtils() {}
@@ -181,7 +171,6 @@ public final class StringUtils {
             return String.join("\n", lines);
         }
 
-        // Everything past the budget joins the last line it fits on.
         var kept = new ArrayList<>(lines.subList(0, maxLines - 1));
         kept.add(String.join(" ", lines.subList(maxLines - 1, lines.size())));
 
@@ -206,16 +195,15 @@ public final class StringUtils {
             return text;
         }
 
-        // No leading-apostrophe (elision) disambiguation: a corpus check found no
-        // 'tis / '90s / rock 'n' roll, so the contextual rules below are exact for
-        // this corpus; GIGO accepted for malformed input. (see plan §"Why no disambiguation")
+        // Leading-apostrophe elisions ('tis, '90s) are not disambiguated: the contextual rules
+        // below are exact for well-formed input, and malformed input gets whatever they produce.
         var result = OPENING_DOUBLE_QUOTE_PATTERN.matcher(text).replaceAll(OPENING_DOUBLE_QUOTE);
         result = CLOSING_DOUBLE_QUOTE_PATTERN.matcher(result).replaceAll(CLOSING_DOUBLE_QUOTE);
-        result = result.replace("\"", CLOSING_DOUBLE_QUOTE);  // fallback
+        result = result.replace("\"", CLOSING_DOUBLE_QUOTE);
 
         result = OPENING_SINGLE_QUOTE_PATTERN.matcher(result).replaceAll(OPENING_SINGLE_QUOTE);
         result = CLOSING_SINGLE_QUOTE_PATTERN.matcher(result).replaceAll(CLOSING_SINGLE_QUOTE);
-        result = result.replace("'", CLOSING_SINGLE_QUOTE);   // fallback
+        result = result.replace("'", CLOSING_SINGLE_QUOTE);
 
         result = EM_DASH_PATTERN.matcher(result).replaceAll(EM_DASH);
         result = ELLIPSIS_PATTERN.matcher(result).replaceAll(ELLIPSIS);

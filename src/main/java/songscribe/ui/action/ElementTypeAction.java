@@ -254,7 +254,6 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             return element.getType().isDuration() ? element : null;
         }
 
-        // Breath marks and barlines/repeats are distinct non-duration subcategories
         if (type == ElementType.BREATH_MARK) {
             return element.getType() == ElementType.BREATH_MARK ? element : null;
         }

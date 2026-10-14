@@ -211,27 +211,22 @@ public final class ElementBoundsSs {
         var b = Math.abs((int) Math.round(bottom));
         var l = Math.abs((int) Math.round(left));
 
-        // All zero
         if (t == 0 && r == 0 && b == 0 && l == 0) {
             return "0";
         }
 
-        // All same
         if (t == r && r == b && b == l) {
             return t + "ss";
         }
 
-        // Top/bottom same, left/right same
         if (t == b && l == r) {
             return t + "ss " + r + "ss";
         }
 
-        // Top different, left/right same, bottom different
         if (l == r) {
             return t + "ss " + r + "ss " + b + "ss";
         }
 
-        // All different
         return t + "ss " + r + "ss " + b + "ss " + l + "ss";
     }
 

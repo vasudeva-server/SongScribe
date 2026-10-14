@@ -68,8 +68,6 @@ public final class MusicEditOperations {
         return (range != null) ? range.toElementSelection() : null;
     }
 
-    // ========== Beaming Operations ==========
-
     public boolean canToggleBeaming() {
         var range = selectedRange();
         return (range != null) && RangeQueries.canToggleBeaming(range);
@@ -147,8 +145,6 @@ public final class MusicEditOperations {
         }
     }
 
-    // ========== Tie Operations ==========
-
     public boolean canToggleTie() {
         var range = selectedRange();
         return (range != null) && RangeQueries.canToggleTie(range);
@@ -179,9 +175,6 @@ public final class MusicEditOperations {
                 return toggleBoundaryTie(line, beginIndex);
             }
 
-            // canToggleTie has admitted the range, so both endpoints are pitched notes with at
-            // most a legal separator between them, and the tie added to the first ends on the
-            // second.
             toggleTieBetween(line.noteAt(beginIndex), line.noteAt(endIndex));
 
             return true;
@@ -218,8 +211,6 @@ public final class MusicEditOperations {
         return true;
     }
 
-    // ========== Slide Operations ==========
-
     public boolean canToggleGlissando() {
         var range = selectedRange();
         return (range != null) && RangeQueries.canToggleGlissando(range);
@@ -250,8 +241,6 @@ public final class MusicEditOperations {
 
         SlideOperations.toggleFall(range, lyricRenderMetrics);
     }
-
-    // ========== Tuplet Operations ==========
 
     public TupletToggleInfo canToggleTuplet() {
         var selection = selectedRange();
@@ -296,8 +285,6 @@ public final class MusicEditOperations {
             tuplet.addTo();
         });
     }
-
-    // ========== Dynamics Operations ==========
 
     /** Adds the hairpin the resolution carries, so the menu item's wording and the edit cannot disagree. */
     public void addHairpinToSelection(Hairpin.Kind kind) {
@@ -353,8 +340,6 @@ public final class MusicEditOperations {
             : new RangeQueries.HairpinResolution.Ineligible(kind);
     }
 
-    // ========== First-Second Ending Operations ==========
-
     public boolean canMakeFirstSecondEnding() {
         var selection = selectedRange();
 
@@ -375,8 +360,6 @@ public final class MusicEditOperations {
         return true;
     }
 
-
-    // ========== Stem Direction Operations ==========
 
     private enum StemDirectionChange {
         FLIP,
@@ -436,7 +419,6 @@ public final class MusicEditOperations {
         var stemFields = EnumSet.of(ElementField.STEM);
 
         line.getSong().withModification(() -> {
-            // Track which beam groups have already been processed to avoid modifying one twice.
             var processedBeams = new HashSet<Beam>();
 
             for (var i = bounds.begin(); i <= bounds.end(); i++) {
@@ -451,8 +433,8 @@ public final class MusicEditOperations {
                 var beam = spans.findBeamJoining(i);
 
                 if (beam != null) {
-                    // Modify the whole beam group together, once per group. The group's new
-                    // direction is derived once from its anchor so every member agrees.
+                    // The group's new direction is derived once from its anchor so every
+                    // member agrees.
                     if (processedBeams.add(beam)) {
                         var newDirection = flippedDirection(beam.getAnchorElement(), change);
 
@@ -465,8 +447,6 @@ public final class MusicEditOperations {
                 }
             }
 
-            // Apply the same change to every note a tie chain joins to the selection, in
-            // whichever line each one sits.
             var selected = new LinkedHashSet<NoteElement>();
 
             for (var i = bounds.begin(); i <= bounds.end(); i++) {
@@ -503,8 +483,6 @@ public final class MusicEditOperations {
 
         return note.direction().opposite();
     }
-
-    // ========== Tempo Operations ==========
 
     public boolean canChangeTempo() {
         return coordinator.canChangeTempo();

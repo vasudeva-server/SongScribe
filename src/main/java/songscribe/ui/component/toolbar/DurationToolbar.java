@@ -39,7 +39,6 @@ public class DurationToolbar extends Toolbar {
             var button = new StickyToggleButton(action);
             add(button);
 
-            // Quarter note is the default
             if (
                 action
                     .getActionCommand()

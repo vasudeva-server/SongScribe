@@ -165,7 +165,6 @@ public final class ReportPanel extends JPanel {
         hideButton.setToolTipText(Strings.get(Strings.REPORT_HIDE));
         hideButton.addActionListener(_ -> mainFrame.hideMessagesPanel());
 
-        // The button never takes keyboard focus.
         hideButton.setFocusable(false);
 
         // Outside a JToolBar, FlatLaf draws a button with a filled background; this style draws

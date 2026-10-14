@@ -71,10 +71,8 @@ public final class FormatMigrator {
         for (var line : ctx.lines) {
             var spans = line.spanRegistry();
 
-            // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
-            // Per-instance attachment offsets
             for (var i = 0; i < line.elementCount(); i++) {
                 var note = line.getElement(i);
 
@@ -86,7 +84,6 @@ public final class FormatMigrator {
                 }
             }
 
-            // Convert per-instance Span offsets (Trill)
             for (var trill : spans.findSpans(Trill.class)) {
                 if (trill.getUserYOffsetSs() != 0) {
                     trill.setUserYOffsetSs(trill.getUserYOffsetSs() / pps);
@@ -113,9 +110,9 @@ public final class FormatMigrator {
     private static void migrateLineLevelOffsets(Line line, LegacyLineOffsets offsets) {
         var spans = line.spanRegistry();
 
-        // Migrate tempo change offset to per-instance. Tempo's default is 0, which also doubles as
-        // the "unset" sentinel, so the raw offset already equals the delta from default — unlike the
-        // three blocks below, no subtraction is needed.
+        // Tempo's default is 0, which also doubles as the "unset" sentinel, so the raw offset
+        // already equals the delta from default. The beat change and trill blocks below subtract
+        // their non-zero defaults.
         var tempoOffset = offsets.tempoChangeYPosPx();
 
         if (tempoOffset != LegacyLineOffsets.DEFAULTS.tempoChangeYPosPx()) {
@@ -129,7 +126,6 @@ public final class FormatMigrator {
             }
         }
 
-        // Migrate beat change offset to per-instance; BeatChange has a non-zero default
         var beatChangeOffset = offsets.beatChangeYPosPx();
         var beatChangeDefault = LegacyLineOffsets.DEFAULTS.beatChangeYPosPx();
 
@@ -147,7 +143,6 @@ public final class FormatMigrator {
             }
         }
 
-        // Migrate trill offset to per-instance
         var trillOffset = offsets.trillYPosPx();
         var trillDefault = LegacyLineOffsets.DEFAULTS.trillYPosPx();
 
@@ -199,10 +194,8 @@ public final class FormatMigrator {
             return;
         }
 
-        // Remove the AnnotationAttachment since it is being promoted to a DynamicAttachment.
         note.removeAttachment(annotationAttachment);
 
-        // Only add a DynamicAttachment if one does not already exist.
         if (note.findAttachment(DynamicAttachment.class) == null) {
             note.addAttachment(new DynamicAttachment(dynamicType));
         }

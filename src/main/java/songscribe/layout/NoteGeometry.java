@@ -27,10 +27,6 @@ import songscribe.smufl.StemmedNotehead;
  */
 public final class NoteGeometry {
 
-    // ==========================================================================
-    // Stem Constants
-    // ==========================================================================
-
     /** LilyPond's {@code shortening_step}, halved to ss. */
     public static final double FORCED_SHORTEN_PER_STEP_SS = 1.0 / 6.0;
 
@@ -40,15 +36,7 @@ public final class NoteGeometry {
     /** A forced stem never falls below this; for defensive flooring at the renderer. */
     public static final double FORCED_STEM_FLOOR_SS = StemMetrics.STEM_LENGTH_SS - MAX_FORCED_SHORTEN_SS;
 
-    // ==========================================================================
-    // Font Constants
-    // ==========================================================================
-
     public static final float MUSIC_FONT_SIZE_SS = 4.0f;
-
-    // ==========================================================================
-    // Glissando Constants
-    // ==========================================================================
 
     public static final double GLISSANDO_DRAWN_GAP_SS = 0.4;
 
@@ -70,12 +58,6 @@ public final class NoteGeometry {
             * ElementType.GRACE_NOTE_SCALE
     );
 
-    // ==========================================================================
-    // Augmentation Dot Geometry
-    // ==========================================================================
-
-    // Augmentation dot Y shift (in ss) when the note sits on a staff line —
-    // moves the dot into the space above the line.
     public static final double DOT_ON_LINE_Y_SHIFT_SS = -0.5;
 
     // Center-to-center spacing between consecutive augmentation dots (in ss): one dot glyph
@@ -108,7 +90,6 @@ public final class NoteGeometry {
             return;
         }
 
-        // Dots shift up when note is on a line (even staff position)
         var yOffset = note.getStaffPosition().isOnLine() ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
         var dotX = firstDotXSs(note, beaming, direction);
@@ -135,10 +116,6 @@ public final class NoteGeometry {
 
         return maxRightSs[0];
     }
-
-    // ==========================================================================
-    // Stem Geometry
-    // ==========================================================================
 
     /** The <em>drawn</em> stem direction: a grace note is always drawn stem up, whatever it answers. */
     public static Direction effectiveDirection(NoteElement note) {
@@ -204,10 +181,6 @@ public final class NoteGeometry {
         }
     }
 
-    // ==========================================================================
-    // Accidental Constants
-    // ==========================================================================
-
     /**
      * The accidental-to-notehead gap, shared by the renderer and the layout's reserved left extent
      * ({@code ElementColumnBuilder.calculateLeftExtentSs}).
@@ -245,10 +218,6 @@ public final class NoteGeometry {
     }
 
     private NoteGeometry() {}
-
-    // ==========================================================================
-    // Accidental Geometry
-    // ==========================================================================
 
     public static float getAccidentalWidthSs(NoteElement note) {
         var accidental = note.drawnAccidental();
@@ -289,10 +258,6 @@ public final class NoteGeometry {
 
         return AccidentalTables.BOUNDS_SS[accidental.ordinal()];
     }
-
-    // ==========================================================================
-    // Notehead / Ledger Line Geometry
-    // ==========================================================================
 
     /**
      * Pass {@code middleLineYSs = 0} to get the midline-relative layout-space Y; pass the line's
@@ -437,10 +402,6 @@ public final class NoteGeometry {
             flagBBox.widthSs(),
             flagBBox.heightSs());
     }
-
-    // ==========================================================================
-    // Private Helpers
-    // ==========================================================================
 
     private static BBox computeAccidentalBounds(SMuFLGlyph accidentalGlyph, float totalWidthSs) {
         var startX = -ACCIDENTAL_PADDING_SS - totalWidthSs;

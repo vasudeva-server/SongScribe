@@ -54,13 +54,11 @@ public final class ElementHitGeometry {
         var naturalHeightSs = elementType.getFullElementHeightSs();
 
         // Layout space puts the staff midline at Y = 0, so the element's Y is the seat of its ink
-        // alone — the same quantity the UI hit test read from LineComponent.getMiddleLineYSs().
+        // alone.
         var elementYSs = NoteGeometry.noteStaffPositionToCoordinateSs(ElementSeat.seatSp(element).value(), 0);
         var topOffsetSs = elementType.getNoteheadTopOffsetSs();
         var minHitSizeSs = DocumentScale.pxToSs(MIN_HIT_SIZE_PX);
 
-        // Expand symmetrically: distribute the extra width and height evenly on both sides, so
-        // the rect stays centered on what is drawn.
         var xExpansionSs = Math.max(0, (minHitSizeSs - naturalWidthSs) / 2);
         var yExpansionSs = Math.max(0, (minHitSizeSs - naturalHeightSs) / 2);
 

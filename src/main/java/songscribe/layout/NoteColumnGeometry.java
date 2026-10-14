@@ -40,17 +40,14 @@ public final class NoteColumnGeometry {
         var noteType = note.getType();
         var direction = NoteGeometry.effectiveDirection(note);
 
-        // ---- notehead ----
         var glyph = note.notehead().glyph();
         var noteheadBBox = SMuFLMetadata.bboxSs(glyph);
         var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
         var leftSs = offsetX + noteheadBBox.leftSs();
 
-        // ---- augmentation dots (extend right) ----
         var rightSs = NoteGeometry.dotsRightExtentSs(
             note, beaming, direction, noteType.getElementWidthSs());
 
-        // ---- accidental (extend left only) ----
         if (note.drawnAccidental() != null) {
             var accidentalStartXSs = NoteGeometry.getAccidentalStartXSs(note);
 
@@ -78,14 +75,12 @@ public final class NoteColumnGeometry {
             var stemLeftXSs = stemGeom.stemLeftXSs();
 
             if (direction.isUp()) {
-                // Stem-up: stem is to the right of the notehead.
                 var stemRightXSs = stemLeftXSs + StemMetrics.thicknessSs();
 
                 if (stemRightXSs > rightSs) {
                     rightSs = stemRightXSs;
                 }
             } else {
-                // Stem-down: stem is to the left of the notehead.
                 if (stemLeftXSs < leftSs) {
                     leftSs = stemLeftXSs;
                 }

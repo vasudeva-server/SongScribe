@@ -247,7 +247,6 @@ public class MenuController {
             }
         }
 
-        // Fallback: full absolute path with ~ substitution
         for (var idx : indices) {
             labels[idx] = tildeSubstitute(paths.get(idx).toString(), homePath);
         }

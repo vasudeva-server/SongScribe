@@ -94,7 +94,6 @@ public final class LegacyLyricsImporter {
             }
 
             if (c == '_') {
-                // Standalone underscore run (no preceding word in this token).
                 var runStart = i;
 
                 while (i < n && text.charAt(i) == '_') {
@@ -115,7 +114,6 @@ public final class LegacyLyricsImporter {
             }
 
             if (c == '-' || c == '=') {
-                // Stray relation marker without a preceding word; skip.
                 if (c == '-' && text.startsWith(COMPOUND_WORD_MARKER, i)) {
                     i += COMPOUND_WORD_MARKER.length();
                 } else {
@@ -125,7 +123,6 @@ public final class LegacyLyricsImporter {
                 continue;
             }
 
-            // Read word characters.
             var wordStart = i;
 
             while (i < n && isWordChar(text.charAt(i))) {
@@ -134,7 +131,6 @@ public final class LegacyLyricsImporter {
 
             var word = text.substring(wordStart, i);
 
-            // Read trailing underscore run.
             var extend = Lyric.Extend.NONE;
             var runStart = i;
 
@@ -155,7 +151,6 @@ public final class LegacyLyricsImporter {
                 continuations--;
             }
 
-            // Determine compound boundary and whether the word chain continues.
             var compound = false;
             var hasDelimiter = false;
 

@@ -34,12 +34,10 @@ import songscribe.util.Copyable;
 public record Tempo(int visibleTempo, BeatUnit tempoType, TempoMarking marking)
     implements Copyable<Tempo> {
 
-    // The default tempo produced by the no-arg constructor. Note that the default marking's
-    // description is persisted to MusicXML and read back verbatim, so it is deliberately not a
-    // localized string.
-
     public static final int DEFAULT_BPM = 120;
     public static final BeatUnit DEFAULT_TYPE = BeatUnit.CROTCHET;
+    // The description is persisted to MusicXML and read back verbatim, so it is deliberately
+    // not a localized string.
     public static final TempoMarking DEFAULT_MARKING = new TempoMarking.Metronome("Moderate");
 
     public Tempo() {

@@ -69,20 +69,26 @@ class EndingBracketGeometryTest extends UnitTest {
 
     private static final double TOLERANCE_SS = 1.0e-9;
 
-    // The standard fixture line: opening, anchor note, note, split, note, note, closing.
-    private static final int OPENING_INDEX = 0;
+    /** Opening, anchor note, note, split, note, note, closing. */
+    private static final class StandardLine {
+        static final int OPENING_INDEX = 0;
 
-    private static final int ANCHOR_INDEX = 1;
+        static final int ANCHOR_INDEX = 1;
 
-    private static final int SPLIT_INDEX = 3;
+        static final int SPLIT_INDEX = 3;
 
-    private static final int END_INDEX = 6;
+        static final int END_INDEX = 6;
+    }
 
-    // The run-on fixture: the same line again, but with the ending ending on the note before the
-    // last element, so the second bracket has a bar ahead of it to run on to.
-    private static final int RUN_ON_END_INDEX = END_INDEX - 1;
+    /**
+     * The standard line with the ending ending on the note before the last element, so the
+     * second bracket has a bar ahead of it to run on to.
+     */
+    private static final class RunOnLine {
+        static final int END_INDEX = StandardLine.END_INDEX - 1;
 
-    private static final int RUN_ON_BAR_INDEX = END_INDEX;
+        static final int BAR_INDEX = StandardLine.END_INDEX;
+    }
 
     /** What splits the two brackets: an ending's split is always a right repeat. */
     private static final ElementType SPLIT_TYPE = ElementType.REPEAT_RIGHT;
@@ -220,9 +226,9 @@ class EndingBracketGeometryTest extends UnitTest {
         var secondBracket = ranges.second();
 
         opening.rule().verify(firstBracket.x1Ss(), columns.get(opening.columnIndex()), opening.type());
-        CLOSES_ON_BAR.verify(firstBracket.x2Ss(), columns.get(SPLIT_INDEX), SPLIT_TYPE);
-        OPENS_ON_BAR.verify(secondBracket.x1Ss(), columns.get(SPLIT_INDEX), SPLIT_TYPE);
-        closing.rule().verify(secondBracket.x2Ss(), columns.get(END_INDEX), closing.type());
+        CLOSES_ON_BAR.verify(firstBracket.x2Ss(), columns.get(StandardLine.SPLIT_INDEX), SPLIT_TYPE);
+        OPENS_ON_BAR.verify(secondBracket.x1Ss(), columns.get(StandardLine.SPLIT_INDEX), SPLIT_TYPE);
+        closing.rule().verify(secondBracket.x2Ss(), columns.get(StandardLine.END_INDEX), closing.type());
 
         assertThat(secondBracket.hasClosingStroke())
             .as("a bracket ending on a bar other than a single barline is struck through there; "
@@ -254,10 +260,10 @@ class EndingBracketGeometryTest extends UnitTest {
 
         var secondBracket = ranges.second();
 
-        assertThat(secondBracket.x2Ss() - columns.get(RUN_ON_END_INDEX).getRightEdgeXSs())
+        assertThat(secondBracket.x2Ss() - columns.get(RunOnLine.END_INDEX).getRightEdgeXSs())
             .as("the second bracket passes over its end note")
             .isNotCloseTo(SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT), within(TOLERANCE_SS));
-        CLOSES_ON_BAR.verify(secondBracket.x2Ss(), columns.get(RUN_ON_BAR_INDEX), following);
+        CLOSES_ON_BAR.verify(secondBracket.x2Ss(), columns.get(RunOnLine.BAR_INDEX), following);
 
         assertThat(secondBracket.hasClosingStroke())
             .as("the bar run on to closes the bracket unless it is a single barline")
@@ -302,8 +308,8 @@ class EndingBracketGeometryTest extends UnitTest {
     /** Every opening paired with every closing: the cross product of the two axes. */
     static Stream<Alignment> reachableAlignments() {
         var openings = List.of(
-            new OpeningEnd(ElementType.SINGLE_BARLINE, OPENING_INDEX, OPENS_ON_BAR),
-            new OpeningEnd(ElementType.CROTCHET, ANCHOR_INDEX, OPENS_ON_NOTE));
+            new OpeningEnd(ElementType.SINGLE_BARLINE, StandardLine.OPENING_INDEX, OPENS_ON_BAR),
+            new OpeningEnd(ElementType.CROTCHET, StandardLine.ANCHOR_INDEX, OPENS_ON_NOTE));
         var closings = List.of(
             new ClosingEnd(ElementType.SINGLE_BARLINE, CLOSES_ON_BAR, false),
             new ClosingEnd(ElementType.DOUBLE_BARLINE, CLOSES_ON_BAR, true),
@@ -332,7 +338,7 @@ class EndingBracketGeometryTest extends UnitTest {
     private static Fixture standardFixture(
         ElementType opening, ElementType split, ElementType closing
     ) {
-        return fixtureOf(standardElements(opening, split, closing), ANCHOR_INDEX, END_INDEX);
+        return fixtureOf(standardElements(opening, split, closing), StandardLine.ANCHOR_INDEX, StandardLine.END_INDEX);
     }
 
     /**
@@ -344,8 +350,8 @@ class EndingBracketGeometryTest extends UnitTest {
     private static Fixture runOnFixture(ElementType split, ElementType following) {
         return fixtureOf(
             standardElements(RUN_ON_OPENING_TYPE, split, following),
-            ANCHOR_INDEX,
-            RUN_ON_END_INDEX);
+            StandardLine.ANCHOR_INDEX,
+            RunOnLine.END_INDEX);
     }
 
     /**

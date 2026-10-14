@@ -89,7 +89,6 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
         // The copy is born detached: only Line.attach parents a staff element, so a
         // copy reports null until a line actually takes it.
 
-        // Deep-copy attachments
         for (var attachment : source.attachments) {
             addAttachment(attachment.copy());
         }
@@ -132,14 +131,12 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
         // undo replay calls this on a *live* element using a detached snapshot as
         // the source — copying the snapshot's pointer would orphan the target.
 
-        // Deep-copy attachments
         clearAttachments();
 
         for (var attachment : source.attachments) {
             addAttachment(attachment.copy());
         }
 
-        // Deep-copy lyrics (Lyric is an immutable record)
         lyrics.clear();
         lyrics.addAll(source.lyrics);
 
@@ -215,10 +212,6 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
     public double getAdvanceWidthSs() {
         return getType().getFullElementWidthSs();
     }
-
-    // ========================================================================
-    // Attachments
-    // ========================================================================
 
     public List<Attachment> getAttachments() {
         return Collections.unmodifiableList(attachments);

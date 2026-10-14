@@ -145,13 +145,10 @@ public final class AnnotationIO {
                         }
                     }
                     case XML_YPOS -> {
-                        // Legacy int pixel field — fold the old migrator arithmetic at read time.
-                        // ypos > 0 was below staff: absorb the offset delta into userYOffsetSs.
-                        // ypos <= 0 was above staff: placement already defaults to ABOVE.
-                        // Note: ypos and LEGACY_ABOVE_PX are both pixels; the pixel delta is
-                        // intentionally stored into the staff-space userYOffsetSs field to
-                        // reproduce the old migrator's behavior exactly (changing the units here
-                        // would shift legacy documents that run through that migrator).
+                        // ypos is a legacy int pixel field. ypos <= 0 was above the staff, which is
+                        // the default placement. ypos and LEGACY_ABOVE_PX are both pixels, and the
+                        // pixel delta is deliberately stored into the staff-space userYOffsetSs:
+                        // converting the units would shift legacy documents.
                         try {
                             var ypos = Integer.parseInt(str);
 

@@ -30,7 +30,6 @@ import songscribe.dom.Song;
  */
 public final class LyricNumbers {
 
-    // The lyric number of the first script; each later script takes the next number.
     private static final int FIRST_LYRIC_NUMBER = 1;
 
     private LyricNumbers() {

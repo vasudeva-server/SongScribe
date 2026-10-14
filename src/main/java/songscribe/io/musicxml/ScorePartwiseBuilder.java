@@ -75,10 +75,6 @@ final class ScorePartwiseBuilder {
 
     private ScorePartwiseBuilder() {}
 
-    // -------------------------------------------------------------------------
-    // Entry point
-    // -------------------------------------------------------------------------
-
     /**
      * {@code clock} supplies the date for the write-forward {@code <rights>} year and
      * {@code <encoding-date>}, so both are deterministic under test.
@@ -180,10 +176,6 @@ final class ScorePartwiseBuilder {
             part.getMeasure().getFirst().getNoteOrBackupOrForward().add(0, tempo);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Adjustment passes
-    // -------------------------------------------------------------------------
 
     /**
      * Members of <em>equal</em> rank in {@code <notations>} keep their arrival order, so the two

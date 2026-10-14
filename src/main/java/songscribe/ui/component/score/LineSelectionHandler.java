@@ -82,10 +82,6 @@ class LineSelectionHandler {
         this.lc = lc;
     }
 
-    // ======================================================================
-    // Accessors
-    // ======================================================================
-
     boolean isDragging() {
         return dragging;
     }
@@ -115,10 +111,6 @@ class LineSelectionHandler {
         var sweepRange = sweepRange();
         return sweepRange == null ? null : bandWithin(sweepRange);
     }
-
-    // ======================================================================
-    // Hit testing
-    // ======================================================================
 
     /**
      * @return {@code null} when the point landed on nothing clickable or this component has no
@@ -316,10 +308,6 @@ class LineSelectionHandler {
         return isWithinHeaderXSs(layoutXSs(viewPoint));
     }
 
-    // ======================================================================
-    // Public delegation entry points
-    // ======================================================================
-
     void handlePress(MouseEvent e, @Nullable HitTarget hitTarget) {
         dragging = false;
         pressHandled = false;
@@ -356,9 +344,7 @@ class LineSelectionHandler {
 
         scoreView.clearSelection();
 
-        // Select the hit element immediately on press.
-        // This prevents rubber-band drag from starting on selectable elements.
-
+        // Selecting the hit element on press keeps a rubber-band drag from starting on it.
         // Every variant is spelled out rather than defaulted: what a click does to a newly
         // selectable kind of notation is a decision, and a default arm would make it silently.
         pressHandled = switch (hitTarget) {
@@ -391,8 +377,7 @@ class LineSelectionHandler {
 
             // A double-click target only, never selected: a press over the attribution does
             // exactly what a press over the empty space above the staff does. Yielding false is
-            // also what leaves the rubber band armed there, unchanged from before the block was
-            // registered.
+            // also what leaves the rubber band armed there.
             case HitTarget.Attribution _ -> false;
         };
 
@@ -475,12 +460,10 @@ class LineSelectionHandler {
             return false;
         }
 
-        // Element was already selected on press — nothing more to do
         if (pressHandled) {
             return true;
         }
 
-        // Shift+click on a note head: extend selection from anchor
         var scoreView = lc.getScoreView();
         var line = lc.getLine();
 
@@ -508,10 +491,6 @@ class LineSelectionHandler {
         }
     }
 
-    // ======================================================================
-    // Guard
-    // ======================================================================
-
     boolean isSelectionActive(MouseEvent e) {
         var scoreView = lc.getScoreView();
         var line = lc.getLine();
@@ -521,10 +500,6 @@ class LineSelectionHandler {
             (scoreView.getMode() == Mode.SELECT || e.isAltDown());
 
     }
-
-    // ======================================================================
-    // Selection helpers
-    // ======================================================================
 
     private void prepareSelection() {
         lc.getScoreView().clearSelection();
@@ -614,10 +589,6 @@ class LineSelectionHandler {
             new PlayThread(note.getPitch()).start();
         }
     }
-
-    // ======================================================================
-    // Private helpers
-    // ======================================================================
 
     private boolean isWithinHeaderXSs(double xSs) {
         return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, lc.getLine());

@@ -62,10 +62,6 @@ final class ProxyMusicAccess {
 
     private ProxyMusicAccess() {}
 
-    // -------------------------------------------------------------------------
-    // Generic primitives
-    // -------------------------------------------------------------------------
-
     static <T> T require(@Nullable T value, String detail) throws MusicXmlReader.InvalidFormatException {
         if (value == null) {
             throw new MusicXmlReader.InvalidFormatException(detail);
@@ -123,10 +119,6 @@ final class ProxyMusicAccess {
         return values.isEmpty() ? null : values.getFirst();
     }
 
-    // -------------------------------------------------------------------------
-    // Score / header
-    // -------------------------------------------------------------------------
-
     /**
      * {@code null} for a document with no part, which the reader maps to a song with no lines.
      */
@@ -157,10 +149,6 @@ final class ProxyMusicAccess {
 
         return firstJaxbValue(encoding.getEncodingDateOrEncoderOrSoftware(), MusicXmlTags.SOFTWARE, String.class);
     }
-
-    // -------------------------------------------------------------------------
-    // Measure children
-    // -------------------------------------------------------------------------
 
     /**
      * {@code null} when it states none. Absence takes no fallback: {@code 0} is C major, a key
@@ -211,10 +199,6 @@ final class ProxyMusicAccess {
      * compare with null-safe {@code equals}.
      */
     record EndingMarker(@Nullable String number, @Nullable String type, @Nullable BigDecimal relativeY) {}
-
-    // -------------------------------------------------------------------------
-    // Note
-    // -------------------------------------------------------------------------
 
     /** {@code null} when the note omits the element. */
     static @Nullable String noteTypeToken(Note note) {

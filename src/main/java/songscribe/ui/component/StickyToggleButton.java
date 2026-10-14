@@ -36,7 +36,6 @@ public class StickyToggleButton
     extends JToggleButton
     implements ActionListener {
 
-    // We have to keep track of the action because we don't want to bind to it
     private final SelectableUIAction action;
 
     public StickyToggleButton(SelectableUIAction action) {

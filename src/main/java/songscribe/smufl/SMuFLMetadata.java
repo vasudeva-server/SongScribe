@@ -85,8 +85,6 @@ public final class SMuFLMetadata {
         return Holder.INSTANCE.stemThicknessSs;
     }
 
-    // --- Parsing ---
-
     private static BBox[] parseBBoxes(JsonObject obj) {
         var glyphs = SMuFLGlyph.values();
         var boxesSs = new BBox[glyphs.length];

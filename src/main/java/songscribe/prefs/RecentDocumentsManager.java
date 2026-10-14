@@ -54,7 +54,6 @@ public final class RecentDocumentsManager {
             }
         }
 
-        // Remove paths that no longer exist on disk
         var sizeBefore = paths.size();
         paths.removeIf(path -> !Files.exists(path));
 

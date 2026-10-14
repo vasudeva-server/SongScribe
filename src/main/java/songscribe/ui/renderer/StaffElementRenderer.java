@@ -50,10 +50,6 @@ import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 public final class StaffElementRenderer implements ElementRenderer<StaffElement> {
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
     private static final double HALF_BEAM_THICKNESS_SS = BeamMetrics.BEAM_THICKNESS_SS / 2.0;
@@ -61,7 +57,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Stem end-cap arc diameter as a fraction of stem width (from LilyPond code analysis)
     private static final double STEM_ARC_RATIO = 0.615;
 
-    // Singleton instance
     private static final StaffElementRenderer INSTANCE = new StaffElementRenderer();
 
     private StaffElementRenderer() {
@@ -70,10 +65,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     public static StaffElementRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     public void render(
@@ -92,10 +83,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             case NoteElement note -> renderNote(note, g2, invariants, frame);
         }
     }
-
-    // ==========================================================================
-    // Note Rendering
-    // ==========================================================================
 
     private void renderNote(
         NoteElement element,
@@ -117,10 +104,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             renderAccidental(g2, element, invariants, frame);
         }
     }
-
-    // ==========================================================================
-    // Breath Mark Rendering
-    // ==========================================================================
 
     private void renderBreathMark(
         BreathMarkElement element,
@@ -145,10 +128,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         );
     }
 
-    // ==========================================================================
-    // Note Head Rendering
-    // ==========================================================================
-
     private void renderNoteHead(
         Graphics2D g2,
         NoteElement note,
@@ -161,7 +140,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
         // Note: Don't set color here - respect the color set by the caller
 
-        // Adjust x position for lower stem notes
         var noteHeadXPosSs = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
 
         try (var _ = GraphicsState.save(g2, FONT)) {
@@ -169,23 +147,17 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             g2.drawString(glyph.asString(), noteHeadXPosSs, 0f);
         }
 
-        // Draw stem (always for notes with stems - beamed notes need stems to connect to beams)
+        // Beamed notes need their stems to connect to the beams.
         var stemTip = renderStem(g2, note, beaming, invariants);
 
-        // Draw flags only for unbeamed notes (beamed notes get beams instead of flags)
         if (beaming == Beaming.UNBEAMED) {
             renderFlags(g2, note, stemTip);
         }
 
-        // Draw dots (grace notes don't have dots)
         if (!noteType.isGraceNote()) {
             renderDots(g2, note, beaming, direction);
         }
     }
-
-    // ==========================================================================
-    // Stem Rendering
-    // ==========================================================================
 
     /**
      * @param g2 the graphics, translated to the note's origin
@@ -290,10 +262,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         return new Point2D.Double(stemLeftXSs, stemTipY);
     }
 
-    // ==========================================================================
-    // Flag Rendering
-    // ==========================================================================
-
     /**
      * Called only for an unbeamed note: a beamed one carries its beams instead.
      *
@@ -313,8 +281,8 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             return;
         }
 
-        // Position flag at the stem tip. SMuFL flag glyphs have their origin
-        // at the left edge of the stem, so stemTip.x is already the left edge.
+        // SMuFL flag glyphs have their origin at the left edge of the stem, so stemTip.x is
+        // already the left edge.
         var flagX = (float) stemTip.x;
         var flagY = (float) stemTip.y;
 
@@ -332,10 +300,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             g2.drawString(flagGlyph.asString(), flagX, flagY);
         }
     }
-
-    // ==========================================================================
-    // Dot Rendering
-    // ==========================================================================
 
     private void renderDots(
         Graphics2D g2,
@@ -356,10 +320,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         }
     }
 
-    // ==========================================================================
-    // Ledger Line Rendering
-    // ==========================================================================
-
     private void renderLedgerLines(Graphics2D g2, NoteElement note, LineInvariants invariants) {
         if (!NoteGeometry.noteNeedsLedgerLines(note)) {
             return;
@@ -374,10 +334,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             RenderingUtils.drawLedgerLine(g2, extent.leftSs(), extent.rightSs(), yOffsetSs, invariants);
         });
     }
-
-    // ==========================================================================
-    // Accidental Rendering
-    // ==========================================================================
 
     /**
      * The ambient color the caller set is left alone unless the note's own color resolves to
@@ -413,10 +369,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             g2.drawString(accidental.glyph().asString(), startX, 0f);
         }
     }
-
-    // ==========================================================================
-    // Utility Methods
-    // ==========================================================================
 
     /**
      * The insertion preview is not an element of the line, so it belongs to no beam.

@@ -57,10 +57,6 @@ public final class AttributionFormatter {
 
     private AttributionFormatter() {}
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
     public static List<AttributionLine> lines(SongAttribution data, boolean showTranslation) {
         var credits = buildCredits(data, showTranslation);
         var lines = groupCreditsToLines(credits, sharedAuthor(data));
@@ -121,10 +117,6 @@ public final class AttributionFormatter {
     }
 
 
-
-    // -------------------------------------------------------------------------
-    // Private display algorithm
-    // -------------------------------------------------------------------------
 
     private static List<Credit> buildCredits(SongAttribution data, boolean showTranslation) {
         var credits = new ArrayList<Credit>();
@@ -248,10 +240,6 @@ public final class AttributionFormatter {
         sb.append(items.get(size - 1));
         return sb.toString();
     }
-
-    // -------------------------------------------------------------------------
-    // Private helper types
-    // -------------------------------------------------------------------------
 
     private record Credit(String role, String person, String connector) {}
 

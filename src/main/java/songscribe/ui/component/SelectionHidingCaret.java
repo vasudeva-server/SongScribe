@@ -31,18 +31,15 @@ import javax.swing.text.DefaultCaret;
 public class SelectionHidingCaret extends DefaultCaret {
 
     public SelectionHidingCaret() {
-        // You can adjust the blink rate if needed (default is usually 500ms)
         setBlinkRate(500);
     }
 
     @Override
     public void paint(Graphics g) {
-        // Hide caret completely when there is a selection
         if (isSelectionActive()) {
             return;
         }
 
-        // Otherwise, paint the caret normally (it will blink thanks to the timer)
         super.paint(g);
     }
 
@@ -53,7 +50,6 @@ public class SelectionHidingCaret extends DefaultCaret {
     @Override
     public void damage(Rectangle r) {
         if (isSelectionActive()) {
-            // Don't damage/repaint when hidden
             return;
         }
 

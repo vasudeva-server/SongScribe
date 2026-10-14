@@ -45,8 +45,6 @@ final class DocumentFontManager {
     // installFonts() and setFonts() are the only write entries.
     @Nullable private DocumentFonts documentFonts = null;
 
-    // Song-wide lyric render metrics shared across all line components.
-    // Rebuilt by StaffPanel.ensureAllLineLayouts before any layout/paint runs.
     @Nullable private LyricRenderMetrics lyricRenderMetrics = null;
 
     DocumentFontManager(ScoreView scoreView) {

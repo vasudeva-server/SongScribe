@@ -38,10 +38,6 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 public final class TupletRenderer {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     private static final double TUPLET_NUMBER_GAP_SS = 0.5;
 
     private static final double TUPLET_GAP_ITALIC_CORRECTION_SS = 0.1;
@@ -52,7 +48,6 @@ public final class TupletRenderer {
     private static final double TUPLET_BRACKET_SS =
         EngravingConstants.LILYPOND_BASE_THICKNESS_SS * TUPLET_BRACKET_MULTIPLIER;
 
-    // Singleton instance
     private static final TupletRenderer INSTANCE = new TupletRenderer();
 
     private TupletRenderer() {
@@ -61,10 +56,6 @@ public final class TupletRenderer {
     public static TupletRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     public void renderTupletsFromLine(
         Graphics2D g2,
@@ -176,7 +167,6 @@ public final class TupletRenderer {
                 numberBaselineYSs = numberYSs - inkBounds.getCenterY();
             }
 
-            // Center the number horizontally on the gap, then draw the shaped glyphs
             var numberXSs = (float) (gapCenterXSs - inkBounds.getWidth() / 2.0);
             g2.drawGlyphVector(glyphVector, numberXSs, (float) numberBaselineYSs);
         }

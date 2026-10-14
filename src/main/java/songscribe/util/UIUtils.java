@@ -97,7 +97,6 @@ public final class UIUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(UIUtils.class);
 
-    // Constants
     public static final int MENU_SHORTCUT_MASK = GraphicsEnvironment.isHeadless()
         ? InputEvent.CTRL_DOWN_MASK
         : Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
@@ -122,10 +121,6 @@ public final class UIUtils {
 
     private UIUtils() {
     }
-
-    //
-    // Tooltips
-    //
 
     /** @param action {@code null} for no tooltip */
     public static void setToolTipText(JComponent component, @Nullable Action action) {
@@ -198,17 +193,9 @@ public final class UIUtils {
             .replace("\n", "<br>");
     }
 
-    //
-    // Audio feedback
-    //
-
     public static void beep() {
         Toolkit.getDefaultToolkit().beep();
     }
-
-    //
-    // Mouse events
-    //
 
     /** Modifiers are deliberately not consulted; each caller adds its own policy. */
     public static boolean isLeftClick(MouseEvent e) {
@@ -219,10 +206,6 @@ public final class UIUtils {
     public static boolean isLeftDoubleClick(MouseEvent e) {
         return SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == DOUBLE_CLICK_COUNT;
     }
-
-    //
-    // Actions
-    //
 
     /*
      * This method configures the visual properties of a button
@@ -236,7 +219,6 @@ public final class UIUtils {
         setIcon(button, action);
         setToolTipText(button, action);
 
-        // If the action has a selected state, set the button's selected state accordingly
         var selected = (Boolean) action.getValue(Action.SELECTED_KEY);
 
         if (selected != null) {
@@ -268,7 +250,6 @@ public final class UIUtils {
         var fontIcon = action.getValue(UIAction.FONT_ICON_KEY);
 
         if (fontIcon != null) {
-            // If the action has a font icon, set it and remove any icon image
             var font = (Font) action.getValue(UIAction.FONT_KEY);
             button.setFont(font);
             button.setText((String) fontIcon);
@@ -277,7 +258,6 @@ public final class UIUtils {
             var icon = (Icon) action.getValue(Action.LARGE_ICON_KEY);
 
             if (icon != null) {
-                // If the action has a large icon, remove any text
                 button.setIcon(icon);
                 button.setText(null);
             }
@@ -301,10 +281,6 @@ public final class UIUtils {
             .put(keyStroke, actionCommand);
         rootPane.getActionMap().put(actionCommand, action);
     }
-
-    //
-    // Components
-    //
 
     public static JPanel padComponent(JComponent component, int padding) {
         return padComponent(component, padding, padding, padding, padding);
@@ -336,8 +312,6 @@ public final class UIUtils {
         return BorderFactory.createEmptyBorder(insets.top, insets.left, insets.bottom, insets.right);
     }
 
-    // FlatLaf's standard component border color, used to box or underline components
-    // so they match the look of the theme's default field borders.
     private static final String COMPONENT_BORDER_COLOR_KEY = "Component.borderColor";
 
     public static Color getComponentBorderColor() {
@@ -422,10 +396,8 @@ public final class UIUtils {
         // We don't want focus leaving the music sheet
         button.setFocusable(false);
 
-        // No margin around toolbar buttons
         button.setMargin(new Insets(0, 0, 0, 0));
 
-        // Make sure they are fixed size
         button.setPreferredSize(buttonSize);
         button.setMaximumSize(buttonSize);
         button.setMinimumSize(buttonSize);
@@ -439,7 +411,6 @@ public final class UIUtils {
         return SwingUtilities.getDeepestComponentAt(frame, relX, relY);
     }
 
-    // Returns the deepest component under the mouse
     @Nullable
     public static Component getComponentUnderMouse() {
         var frame = getApplicationFrame();
@@ -450,13 +421,8 @@ public final class UIUtils {
 
         var parent = frame.getRootPane();
 
-        // Retrieve mouse position on the screen
         var mousePosition = MouseInfo.getPointerInfo().getLocation();
-
-        // Convert screen coordinates to the coordinates relative to the parent component
         SwingUtilities.convertPointFromScreen(mousePosition, parent);
-
-        // Get the deepest component at the given coordinates
         return SwingUtilities.getDeepestComponentAt(parent, mousePosition.x, mousePosition.y);
     }
 
@@ -486,8 +452,6 @@ public final class UIUtils {
         return getParentFrame(focusOwner);
     }
 
-    // Position the dialog at 3/8 of the way down the parent window (or screen if no
-    // parent), centered horizontally, clamped to the usable screen area with a 20px margin.
     public static void positionDialog(JDialog dialog, @Nullable Component parent) {
         var window = getParentWindow(parent);
         var screen = getScreenBounds(window);
@@ -574,12 +538,11 @@ public final class UIUtils {
                 var ancestor = SwingUtilities.getWindowAncestor(parent);
 
                 if (!(ancestor instanceof Frame)) {
-                    return; // fallback if no suitable parent
+                    return;
                 }
 
                 var dummy = getJDialog((Frame) ancestor);
 
-                // Give the native window a tiny moment to settle (usually not needed, but safe)
                 SwingUtilities.invokeLater(dummy::dispose);
             } catch (Exception ignored) {
                 // Never let pre-warming break startup
@@ -598,7 +561,6 @@ public final class UIUtils {
         // Optional but helps on some platforms: pack first (forces some peer init without showing)
         dummy.pack();
 
-        // Make it visible very briefly on the EDT, then immediately hide/dispose
         dummy.setVisible(true);
         return dummy;
     }
@@ -615,14 +577,12 @@ public final class UIUtils {
 
         SourceSans3Font.installRegular();
 
-        // Set up the base font family for FlatLaf
         FlatLaf.setPreferredFontFamily(SourceSans3Font.FAMILY);
 
         FlatLaf.registerCustomDefaultsSource("songscribe");
 
         AppearanceManager.init();
 
-        // In DEBUG mode, install FlatLaf's inspectors
         if (System.getenv("DEBUG") != null) {
             FlatUIDefaultsInspector.install("ctrl shift alt Y");
             FlatInspector.install("ctrl shift alt X");
@@ -644,10 +604,6 @@ public final class UIUtils {
 
         return font;
     }
-
-    //
-    // Misc
-    //
 
     public static boolean isEditingTextIn(Window window) {
         var focusFrame = UIUtils.getFocusedFrame();
@@ -680,10 +636,11 @@ public final class UIUtils {
         return font.deriveFont(transform);
     }
 
+    /**
+     * A leading {@code @} selects the icon font and a leading {@code #} the note font. A
+     * trailing {@code /-?\d+} shifts the baseline by that many pixels.
+     */
     public static TaggedString getTaggedString(String taggedText) {
-        // If the text starts with "@", use the icon font.
-        // If the text starts with "#", use the note font.
-        // If the text ends with "/-?\d+", shift the baseline by that much.
         var text = taggedText;
         Font font = null;
 

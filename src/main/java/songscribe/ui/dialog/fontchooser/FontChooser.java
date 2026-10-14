@@ -158,25 +158,21 @@ public class FontChooser extends JPanel implements FontContainer {
         gbc.weighty = 1.0;
         gbc.insets = new Insets(0, 0, gap, 0);
 
-        // Family column — grows horizontally
         var familyColumn = createColumn();
         BaseDialog.addLabeledField(familyColumn, Strings.get(Strings.LABEL_FONT_FAMILY), familyPane, LabelPosition.TOP);
         gbc.weightx = 1.0;
         add(familyColumn, gbc);
 
-        // Style column
         var styleColumn = createColumn();
         BaseDialog.addLabeledField(styleColumn, Strings.get(Strings.LABEL_FONT_STYLE), stylePane, LabelPosition.TOP);
         gbc.weightx = 0;
         gbc.insets = new Insets(0, gap, gap, 0);
         add(styleColumn, gbc);
 
-        // Size column
         var sizeColumn = createColumn();
         BaseDialog.addLabeledField(sizeColumn, Strings.get(Strings.LABEL_FONT_SIZE), sizePane, LabelPosition.TOP);
         add(sizeColumn, gbc);
 
-        // Preview — spans full width below
         gbc.gridy = 1;
         gbc.gridwidth = 3;
         gbc.weightx = 1.0;

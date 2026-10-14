@@ -66,10 +66,6 @@ final class MeasureBuilder {
 
     private MeasureBuilder() {}
 
-    // -------------------------------------------------------------------------
-    // Running score state
-    // -------------------------------------------------------------------------
-
     /**
      * Measure numbers are continuous across lines. A MusicXML key persists until restated, so
      * lines that keep the running key emit nothing.
@@ -98,10 +94,6 @@ final class MeasureBuilder {
     static ScoreState newScoreState(Song song) {
         return new ScoreState(song.getStartingKey());
     }
-
-    // -------------------------------------------------------------------------
-    // Per-element graph handles
-    // -------------------------------------------------------------------------
 
     /**
      * The nodes one {@link StaffElement} contributed. One per element of the line, in element
@@ -136,10 +128,6 @@ final class MeasureBuilder {
             return annotation != null ? annotation : note;
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Entry points
-    // -------------------------------------------------------------------------
 
     /**
      * What one line contributed to the score. The emitted list holds only the elements that
@@ -304,10 +292,6 @@ final class MeasureBuilder {
         return attributes;
     }
 
-    // -------------------------------------------------------------------------
-    // Measure and attribute construction
-    // -------------------------------------------------------------------------
-
     private static Measure openMeasure(
         BuildContext context, ScoreState state, List<Measure> measures) {
         var measure = buildMeasure(context, state.takeNextMeasureNumber());
@@ -412,10 +396,6 @@ final class MeasureBuilder {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Barline construction
-    // -------------------------------------------------------------------------
-
     /**
      * MusicXML requires a forward-repeat barline to open its measure.
      */
@@ -461,10 +441,6 @@ final class MeasureBuilder {
 
         return barline;
     }
-
-    // -------------------------------------------------------------------------
-    // Endings
-    // -------------------------------------------------------------------------
 
     /**
      * One SongScribe {@link songscribe.dom.Ending} expands to two MusicXML voltas: the anchor

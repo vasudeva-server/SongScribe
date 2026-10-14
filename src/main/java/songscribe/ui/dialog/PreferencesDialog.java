@@ -145,7 +145,6 @@ public class PreferencesDialog extends BaseDialog {
             }
         }
 
-        // Sort instruments alphabetically by name, keeping programs in sync
         var nameCount = names.size();
         var pairs = new ArrayList<Map.Entry<String, Integer>>(nameCount);
 
@@ -198,10 +197,6 @@ public class PreferencesDialog extends BaseDialog {
         ensureInstrumentsLoaded();
         return instrumentPrograms;
     }
-
-    // -----------------------------------------------------------------------
-    // GeneralTab
-    // -----------------------------------------------------------------------
 
     private final class GeneralTab extends Tab {
 
@@ -371,10 +366,6 @@ public class PreferencesDialog extends BaseDialog {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // PlayTab
-    // -----------------------------------------------------------------------
-
     private final class PlayTab extends Tab {
 
         private static final int[] VALID_TEMPO_STOPS = { 50, 75, 100, 125, 150 };
@@ -484,10 +475,6 @@ public class PreferencesDialog extends BaseDialog {
         }
 
     }
-
-    // -----------------------------------------------------------------------
-    // InstrumentsTab
-    // -----------------------------------------------------------------------
 
     private final class InstrumentsTab extends Tab {
 
@@ -687,7 +674,6 @@ public class PreferencesDialog extends BaseDialog {
             private static final int SCALE_VELOCITY = 70;
             private static final int SCALE_TEMPO_BPM = 120;
 
-            // Db4, played when the user selects an instrument in the list
             static final int SINGLE_NOTE_PITCH = 61;
 
             // Db major scale: Db4, Eb4, F4, Gb4, Ab4, Bb4, C5, Db5
@@ -752,7 +738,6 @@ public class PreferencesDialog extends BaseDialog {
                     return;
                 }
 
-                // Apply the user's volume preference
                 PlaybackController.applyVolumeFromPrefs();
 
                 // Stop score playback if it's running. Waiting matters here: stopping a

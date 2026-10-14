@@ -33,18 +33,12 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 public final class FermataRenderer implements ElementRenderer<StaffElement> {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    // SMuFL bbox-derived fermata width in staff-space units
     private static final double FERMATA_BBOX_LEFT_SS =
         SMuFLMetadata.bboxSs(SMuFLGlyph.FERMATA_ABOVE).leftSs();
 
     private static final double FERMATA_WIDTH_SS =
         SMuFLMetadata.bboxSs(SMuFLGlyph.FERMATA_ABOVE).widthSs();
 
-    // Singleton instance
     private static final FermataRenderer INSTANCE = new FermataRenderer();
 
     private FermataRenderer() {
@@ -54,10 +48,6 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
         return INSTANCE;
     }
 
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
-
     @Override
     public void render(
         LineInvariants invariants,
@@ -65,7 +55,6 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
         StaffElement element,
         Graphics2D g2
     ) {
-        // Guard: only render if a fermata attachment is present
         var fermata = element.findAttachment(FermataAttachment.class);
 
         if (fermata == null) {

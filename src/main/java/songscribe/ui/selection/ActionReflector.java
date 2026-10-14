@@ -51,18 +51,14 @@ public final class ActionReflector implements Disposable {
     /** Read-only: nothing here changes what is selected. */
     private final SelectionCoordinator coordinator;
 
-    // Lazy-initialized list of all reflectable actions discovered from Actions.
     @Nullable
     private List<UIAction.Reflectable<?>> reflectableActions = null;
 
-    // Lazy-initialized list of all actions whose state is managed during selection.
     @Nullable
     private List<UIAction> managedActions = null;
 
-    // Saved action states (selected + enabled) before a selection becomes active.
     private final Map<UIAction, ActionState> savedActionStates = new IdentityHashMap<>();
 
-    // Last reflected selection range, used to skip redundant reflection.
     @Nullable
     private ElementSelection lastReflectedSelection = null;
 
@@ -80,10 +76,6 @@ public final class ActionReflector implements Disposable {
     public void dispose() {
         subscription.dispose();
     }
-
-    // -------------------------------------------------------------------------
-    // Action discovery
-    // -------------------------------------------------------------------------
 
     private <T> List<T> collectActions(Class<? extends T> type, Predicate<? super UIAction> filter) {
         var result = new ArrayList<T>();
@@ -155,10 +147,6 @@ public final class ActionReflector implements Disposable {
 
         return managedActions;
     }
-
-    // -------------------------------------------------------------------------
-    // Action state save/restore
-    // -------------------------------------------------------------------------
 
     public void saveActionStates() {
         if (!savedActionStates.isEmpty()) {
@@ -243,10 +231,6 @@ public final class ActionReflector implements Disposable {
         savedActionStates.clear();
     }
 
-    // -------------------------------------------------------------------------
-    // Selection reflection
-    // -------------------------------------------------------------------------
-
     @Handler(priority = Message.HIGH_PRIORITY)
     public void musicSelectionDidChangeSaveRestoreActionStates(MusicSelectionDidChangeNotification message) {
         var selection = coordinator.getSelection();
@@ -310,8 +294,7 @@ public final class ActionReflector implements Disposable {
         // state of the reflectable actions. Asked per mutation rather than through
         // getLine(), which reports no line at all for an edit spanning several — as a key
         // change's stranding sweep or the chain walk's restamps on later lines do — and would
-        // leave the toolbar stuck in its
-        // pre-undo state when such an edit is undone.
+        // leave the toolbar stuck in its pre-undo state when such an edit is undone.
         if (!message.touchesLine(selection.line())) {
             return;
         }
@@ -343,20 +326,17 @@ public final class ActionReflector implements Disposable {
 
         var selection = coordinator.getSelection();
 
-        // Selection cleared
         if (selection == null) {
             lastReflectedSelection = null;
             return;
         }
 
-        // Skip if the selection range is unchanged
         if (selection.equals(lastReflectedSelection)) {
             return;
         }
 
         lastReflectedSelection = selection;
 
-        // Reflect selection attributes onto toolbar actions
         var line = selection.line();
         var bounds = selection.range();
         var hasGraceNote = false;
@@ -418,9 +398,11 @@ public final class ActionReflector implements Disposable {
         return reflectable.matchesElement(admitted) ? Reflection.MATCHES : Reflection.DIFFERS;
     }
 
-    // Grace notes can only be inserted, not applied to existing notes.
-    // In select mode the action is unconditionally disabled.
-    // Package-private so tests for rows 93/94 can exercise the logic directly.
+    /**
+     * Grace notes can only be inserted, not applied to existing notes, so in select mode the
+     * action is disabled regardless of {@code hasGraceNote}. Package-private so tests can
+     * exercise the logic directly.
+     */
     void updateGraceNoteActionEnabled(boolean hasGraceNote) {
         Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(!coordinator.isInSelectMode() && hasGraceNote);
     }

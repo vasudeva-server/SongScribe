@@ -38,7 +38,7 @@ public final class FileUtils {
 
     private FileUtils() {}
 
-    // Returns the extension without the dot
+    /** The extension without the dot. */
     public static String getExtension(String filePath) {
         var path = Paths.get(filePath);
         var fileName = path.getFileName().toString();
@@ -76,8 +76,7 @@ public final class FileUtils {
         return (parent != null) ? parent.toString() : "";
     }
 
-    // Compares the file's extension (case-insensitive) against each candidate,
-    // which must already be lowercase.
+    /** Compares case-insensitively; each of {@code extensions} is already lowercase. */
     public static boolean hasExtension(File file, String... extensions) {
         var extension = getExtension(file.getName()).toLowerCase();
 
@@ -118,8 +117,7 @@ public final class FileUtils {
     public static void copyFile(File in, File out) {
         try {
             Files.copy(in.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            // Ignore
+        } catch (IOException ignored) {
         }
     }
 

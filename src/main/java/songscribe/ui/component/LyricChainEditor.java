@@ -139,7 +139,6 @@ final class LyricChainEditor {
             trace("terminatePrecedingChain: {} CONTINUE -> STOP", backIndex);
             rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.STOP);
         } else if (backExtend == Lyric.Extend.START) {
-            // START directly precedes the break point — the whole chain collapses.
             trace("terminatePrecedingChain: {} START -> NONE, the chain collapses", backIndex);
             rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.NONE);
         }
@@ -159,7 +158,6 @@ final class LyricChainEditor {
             var extend = forwardLyric.extend();
 
             if (extend != Lyric.Extend.CONTINUE && extend != Lyric.Extend.STOP) {
-                // Text-bearing (extend NONE or START): halt without modification.
                 trace("clearForwardCarriers: stopped at the syllable on {}", i);
                 return;
             }
@@ -195,11 +193,9 @@ final class LyricChainEditor {
             var backExtend = backLyric.extend();
 
             if (backExtend == Lyric.Extend.STOP) {
-                // STOP carrier: flip back to CONTINUE so the new chain extends through it.
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
                     backElement.putLyric(Lyric.carrier(script, Lyric.Extend.CONTINUE)));
             } else if (backExtend != Lyric.Extend.CONTINUE) {
-                // Text-bearing (NONE or START): rewrite extend to START, preserving the text.
                 // The syllable it hyphenated to is now a carrier, so the word ends here — and a
                 // syllable that opens a hyphen cannot also open a melisma, since the layout draws
                 // the hyphen and drops the extender. Compound follows: it requires a continuing
@@ -209,7 +205,6 @@ final class LyricChainEditor {
                     backElement.putLyric(
                         new Lyric(script, backLyric.text(), Lyric.Extend.START, backSyllabic, false)));
             }
-            // CONTINUE carrier: leave unchanged — the chain already extends through it.
 
             for (var i = backIndex + 1; i < currentIndex; i++) {
                 var midElement = line.getElement(i);

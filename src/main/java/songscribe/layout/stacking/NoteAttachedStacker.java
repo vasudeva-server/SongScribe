@@ -141,13 +141,12 @@ public class NoteAttachedStacker {
 
     // Fewest chords the tie arc is reserved as; a wide arc gets one per staff space instead. Each
     // chord joins two points that lie exactly on the curve, so the reservation departs from the arc
-    // only by the chord's sagitta — never by the arc's full rise across the segment, as flat steps
-    // did.
+    // only by the chord's sagitta.
     //
     // A chord lies *inside* a convex arc, so this under-reserves rather than over-reserves. The
-    // sagitta scales as 1/n^2: at 8 chords it is ~0.009 ss, at 16 ~0.002 ss. 16 is cheap (a chord
-    // costs one reservation, exactly as a step did) and puts the error a hundred times below the
-    // ~0.2 ss tip error that midpoint-sampled flat steps introduced.
+    // sagitta scales as 1/n^2: at 8 chords it is ~0.009 ss, at 16 ~0.002 ss. 16 costs one
+    // reservation per chord and keeps the error far below the ~0.2 ss a midpoint-sampled flat step
+    // would introduce.
     private static final int TIE_BOUND_MIN_SAMPLES = 16;
 
     // A trill's layout records no margin: each note's padding is already folded into the inner
@@ -171,7 +170,6 @@ public class NoteAttachedStacker {
     public void stackInner() {
         var columns = context.getColumns();
 
-        // Seed note bounding areas into the note-attached layer
         seedNoteBounds();
 
         // Seed the tie arc before the articulations. In LilyPond a script takes the tie as a
@@ -228,11 +226,9 @@ public class NoteAttachedStacker {
     public static DecorationLayouts computePreviewDecorationLayouts(NoteElement note, double xSs) {
         var noteheadWidthSs = note.getType().getElementWidthSs();
 
-        // Create minimal extents just wide enough to contain the note
         var lineWidthSs = xSs + noteheadWidthSs + 1.0;
         var extents = new StaffExtents(lineWidthSs);
 
-        // Seed note bounds using the non-beamed path
         var bounds = computeNoteBounds(note);
         var noteheadFootprint = new Footprint(xSs, noteheadWidthSs);
         extents.ySet(Direction.UP, noteheadFootprint, bounds.topSs());
@@ -242,7 +238,6 @@ public class NoteAttachedStacker {
         var layer = new StackingLayer(extents, decorationLayouts);
         var host = new ElementAtColumn<>(note, xSs);
 
-        // Tier 1: Articulations
         Articulation staccatoArticulation = null;
         Articulation accentArticulation = null;
 
@@ -258,14 +253,10 @@ public class NoteAttachedStacker {
         stackStaccatoOnly(staccatoArticulation, layer, host);
         stackAccentAboveExtents(accentArticulation, layer, host);
 
-        // Tier 2: Fermata
         stackFermataAt(note.findAttachment(FermataAttachment.class), layer, host);
 
         return decorationLayouts.build();
     }
-
-
-    // ---- Note bounds ----
 
     public record NoteBounds(double topSs, double botSs) {
     }
@@ -285,9 +276,6 @@ public class NoteAttachedStacker {
         var botSs = Math.max(topSs + type.getElementHeightSs(direction), noteheadBotSs);
         return new NoteBounds(topSs, botSs);
     }
-
-
-    // ---- Seeding ----
 
     private void seedNoteBounds() {
         var columns = context.getColumns();
@@ -319,12 +307,10 @@ public class NoteAttachedStacker {
             extents.ySet(Direction.UP, noteheadFootprint, topSs);
             extents.ySet(Direction.DOWN, noteheadFootprint, botSs);
 
-            // Track lowest notehead bottom for lyrics baseline calculation
             var noteheadCenterYSs = ElementSeat.seatSs(element);
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
 
-            // Track full element bottom (notehead + stem) as below-staff content for lyric placement
             context.updateBotContentExtentSs(botSs);
         }
     }
@@ -334,7 +320,6 @@ public class NoteAttachedStacker {
         for (var tieLayout : context.getBuilder().tieLayouts()) {
             var tie = tieLayout.placement().tie();
 
-            // Sample the outer Bezier curve to reserve tie vertical extent
             var sx = tieLayout.startXSs();
             var ex = tieLayout.endXSs();
             var spanWidthSs = ex - sx;
@@ -410,9 +395,6 @@ public class NoteAttachedStacker {
                 + t * t * t * p3;
         }
     }
-
-
-    // ---- Tier 1: Articulations ----
 
     private void stackStaccatoColumn(ElementColumn column) {
         if (!(column.getElement() instanceof NoteElement note)) {
@@ -526,9 +508,6 @@ public class NoteAttachedStacker {
     private static @Nullable Articulation findAccent(NoteElement note) {
         return note.findArticulation(ArticulationType.ACCENT);
     }
-
-
-    // ---- Tier 2: Fermata and Trill ----
 
     private void stackFermata(ElementColumn column, StackingLayer outerLayer) {
         var note = column.getElement();

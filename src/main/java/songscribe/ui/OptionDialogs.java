@@ -71,10 +71,6 @@ public final class OptionDialogs {
         suppressDialogs = suppress;
     }
 
-    // ------------------------------------------------------------------
-    // Core methods
-    // ------------------------------------------------------------------
-
     public static void showInfoMessage(
         @Nullable Component parent,
         String titleKey,
@@ -227,14 +223,6 @@ public final class OptionDialogs {
             return JOptionPane.CLOSED_OPTION;
         }
     }
-
-    // ------------------------------------------------------------------
-    // Convenience methods
-    // ------------------------------------------------------------------
-
-    // ------------------------------------------------------------------
-    // Private
-    // ------------------------------------------------------------------
 
     private static void showMessageDialog(
         @Nullable Component parent,

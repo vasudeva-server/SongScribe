@@ -74,17 +74,11 @@ public final class Actions {
 
     private static final Logger LOG = LoggerFactory.getLogger(Actions.class);
 
-    //
-    // Mode actions
-    //
     public static ModeAction SELECT_MODE_ACTION;
     public static ModeAction EDIT_MODE_ACTION;
     public static CycleModeAction CYCLE_MODE_ACTION;
     public static ActionGroup<ModeAction> MODE_ACTION_GROUP;
 
-    //
-    // Duration actions
-    //
     public static ElementTypeAction GRACE_EIGHTH_NOTE_ACTION;
     public static ElementTypeAction THIRTY_SECOND_NOTE_ACTION;
     public static ElementTypeAction SIXTEENTH_NOTE_ACTION;
@@ -176,16 +170,10 @@ public final class Actions {
     public static SelectAllElementsAction SELECT_ALL_ELEMENTS_ACTION;
     public static DeselectAction DESELECT_ACTION;
 
-    //
-    // Zoom actions
-    //
     public static ZoomAction ZOOM_IN_ACTION;
     public static ZoomAction ZOOM_OUT_ACTION;
     public static List<ZoomLevelAction> ZOOM_LEVEL_ACTIONS;
 
-    //
-    // Window actions
-    //
     public static MinimizeWindowAction MINIMIZE_WINDOW_ACTION;
     public static ZoomWindowAction ZOOM_WINDOW_ACTION;
     public static FocusScoreAction FOCUS_SCORE_ACTION;
@@ -202,17 +190,11 @@ public final class Actions {
 
         UndoController.initialize(mainFrame::getScoreView);
 
-        //
-        // Mode actions
-        //
         SELECT_MODE_ACTION = ModeAction.createSelectModeAction(mainFrame);
         EDIT_MODE_ACTION = ModeAction.createEditModeAction(mainFrame);
         CYCLE_MODE_ACTION = CycleModeAction.createAction(mainFrame);
         MODE_ACTION_GROUP = new ActionGroup<>(SELECT_MODE_ACTION, EDIT_MODE_ACTION);
 
-        //
-        // Duration actions
-        //
         GRACE_EIGHTH_NOTE_ACTION = ElementTypeAction.createGraceEighthNoteAction(mainFrame);
         THIRTY_SECOND_NOTE_ACTION = ElementTypeAction.createThirtySecondNoteAction(mainFrame);
         SIXTEENTH_NOTE_ACTION = ElementTypeAction.createSixteenthNoteAction(mainFrame);
@@ -345,9 +327,6 @@ public final class Actions {
         SELECT_ALL_ELEMENTS_ACTION = SelectAllElementsAction.createAction(mainFrame);
         DESELECT_ACTION = DeselectAction.createAction(mainFrame);
 
-        //
-        // Zoom actions
-        //
         ZOOM_IN_ACTION = ZoomAction.createZoomInAction(mainFrame);
         ZOOM_OUT_ACTION = ZoomAction.createZoomOutAction(mainFrame);
         ZOOM_LEVEL_ACTIONS = ZoomLevelAction.createActions(mainFrame);
@@ -365,7 +344,6 @@ public final class Actions {
             ZOOM_IN_ACTION
         );
 
-        // Invalidate the cached reflection list so it is rebuilt with the new instances.
         appMenuActions = null;
     }
 
@@ -383,12 +361,10 @@ public final class Actions {
         MODE_ACTION_GROUP.select(EDIT_MODE_ACTION, EDIT_MODE_ACTION);
         DURATION_ACTION_GROUP.select(QUARTER_NOTE_ACTION, QUARTER_NOTE_ACTION);
 
-        // Silent resets — no downstream state to update
         clearNoteDecorations();
         DYNAMIC_MARKING_ACTION_GROUP.reset();
         NON_DURATION_ACTION_GROUP.reset();
 
-        // Standalone toggles
         REST_ACTION.reset();
         FERMATA_ACTION.reset();
         TRILL_ACTION.reset();

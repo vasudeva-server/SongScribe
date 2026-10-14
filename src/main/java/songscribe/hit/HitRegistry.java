@@ -95,7 +95,6 @@ public final class HitRegistry {
         return regions;
     }
 
-    // Higher priority wins; equal priority is broken by smaller bounding-box area.
     private static boolean winsOver(HitRegion region, double area, HitRegion best, double bestArea) {
         var rank = region.priority().rank();
         var bestRank = best.priority().rank();

@@ -465,7 +465,6 @@ public class UIAction extends AbstractAction implements Disposable {
             var svgIcon = GraphicUtils.getScaledSVGIcon(icon, size, true);
             putValue(LARGE_ICON_KEY, svgIcon);
         } else {
-            // Should be a tagged Unicode icon
             var info = UIUtils.getTaggedString(icon);
             putValue(FONT_ICON_KEY, info.text());
             var font = info.font();

@@ -144,8 +144,7 @@ public final class ScoreView
 
     private static final String DISABLED_KEY_BINDING = "none";
 
-    // Colors used to draw the music score in various states — read from UIManager for theming.
-    // Callers should not cache these values; read at render time.
+    // Callers should not cache the colors; they are read from UIManager at render time.
     public static Color getPlayingNoteColor() {
         return FlatLafProps.getColor(FlatLafKey.SCORE_PLAYING_NOTE_COLOR);
     }
@@ -182,7 +181,6 @@ public final class ScoreView
     // for the process, so there is no retirement to release them at.
     private final Bindings bindings = new Bindings();
 
-    // Called when a file is successfully opened (e.g. to update the window title)
     private final Consumer<? super File> onFileOpened;
 
     private final ScoreViewState viewState;
@@ -190,43 +188,31 @@ public final class ScoreView
     // In some contexts (such as playback), we don't want to allow dragging
     private boolean dragDisabled = false;
 
-    // The model for the score
     @Nullable
     private Song song = null;
 
-    // The scroll pane that contains the score + margin
     @Nullable
     private JScrollPane scrollPane = null;
 
-    // The score itself
     @Nullable
     private JPanel scorePanel = null;
 
-    // TODO: Not sure why this is here. It really should be in the renderer, and should be based
-    //  on the advance of the clef.
     private int leadingKeysPosPx = 32;
 
-    // Coordinates selection state across lines
     private final SelectionCoordinator selectionCoordinator;
 
-    // Manages clipboard state for copy/paste operations
     private final ClipboardManager clipboardManager;
 
-    // JComponent-based score panel
     @Nullable
     private MainPanel mainPanel = null;
 
-    // Coordinates message handling
     @Nullable
     private ScoreViewController controller = null;
 
-    // Navigates the component hierarchy
     private final ComponentHierarchyNavigator hierarchyNavigator;
 
-    // Handles mouse and keyboard input
     private final ScoreInputHandler inputHandler;
 
-    // Owns the document fonts and the lyric render metrics derived from them.
     private final DocumentFontManager documentFontManager;
 
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
@@ -264,7 +250,6 @@ public final class ScoreView
 
         documentFontManager.installFonts(DocumentFonts.defaultFonts());
 
-        // Initialize UI components
         initScorePanel();
         initMainPanel();
         lintCalloutController = new LintCalloutController(this);
@@ -287,13 +272,11 @@ public final class ScoreView
         PreviewElementManager.installOverlay(this);
         EditModeManager.getInsertionPointMode().installOverlay();
 
-        // Initialize insertion note with default type
         setPreviewElement(EditModeManager.makePreviewElement());
 
         MessageSubscription.addProcessListener(this);
         syncPlaybackPrefs();
 
-        // Create operations and message coordinator (requires mainPanel to be set)
         var operations = new MusicEditOperations(selectionCoordinator);
         controller = new ScoreViewController(
             this,
@@ -511,10 +494,8 @@ public final class ScoreView
     @Override
     public void syncPlaybackPrefs() {
         EditModeManager.setPlayInsertedNote(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
-        // If true, the score is played with repeats
         var playWithRepeats = Prefs.getBoolean(PrefsKey.PLAY_WITH_REPEATS);
 
-        // Delegate playback settings to PlaybackController
         PlaybackController.setInstrument(Prefs.getInt(PrefsKey.INSTRUMENT));
         PlaybackController.setTempoChangePercent(Prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
         PlaybackController.setNoteDurationPercent(Prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
@@ -836,7 +817,6 @@ public final class ScoreView
         // once per document.
         LineComponent.resetOverflowWarning();
 
-        // Reset zoom to 100% for the new/opened song before laying out at the old zoom.
         ZoomController.resetZoom();
 
         // Passing the song's own width leaves the model untouched — setLineWidthSs early-returns
@@ -854,13 +834,10 @@ public final class ScoreView
 
         syncPlaybackPrefs();
 
-        // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
-        // that the song has been fully replaced. This must happen after all
-        // ScoreView state is consistent. Building the notification lints the song, so every
-        // subscriber to the load reads the new song's lint report.
+        // Posted last, once all ScoreView state is consistent. Building the notification lints
+        // the song, so every subscriber to the load reads the new song's lint report.
         MessageCenter.post(new DocumentDidLoadNotification(song, report));
 
-        // Reset scroll position to top-left for the new/opened song
         if (scrollPane != null) {
             scrollPane.getViewport().setViewPosition(new Point(0, 0));
         }
@@ -932,9 +909,8 @@ public final class ScoreView
      * changes re-fit the page through {@link #getPreferredSize}.
      */
     public void relayoutPage() {
-        // layoutPage expects view px, so fold in the current zoom. Skipping this left the page
-        // centered for the wrong width at any zoom other than 100% (content against the left
-        // edge when zoomed out, clipped on the right when zoomed in).
+        // layoutPage expects view px, so the width is folded with the current zoom; otherwise the
+        // page is centered for the wrong width at any zoom other than 100%.
         layoutPage(viewScale.toViewPx(getSong().getLineWidthSs()).positionPx());
     }
 
@@ -1166,8 +1142,6 @@ public final class ScoreView
         Point anchorContentPoint;
 
         if (anchorPoint == null) {
-            // Horizontally anchor at the viewport's center; vertically anchor at the
-            // current scroll position (the viewport's top edge).
             anchorViewportOffset = new Point(extentSize.width / 2, 0);
 
             // Convert the anchor to ScoreView-content coordinates using the pre-revalidate
@@ -1188,7 +1162,6 @@ public final class ScoreView
         var zoomRatio = newPercent / (double) oldPercent;
         var view = viewport.getView();
 
-        // ScoreView's origin within the scrolled view (ScorePanel), post-validate.
         var contentOrigin = SwingUtilities.convertPoint(this, 0, 0, view);
 
         var newViewPosition = computeAnchoredViewPosition(
@@ -1269,10 +1242,6 @@ public final class ScoreView
     public void setActiveLyricEditor(@Nullable LyricEditor editor) {
         activeLyricEditor = editor;
     }
-
-    // -------------------------------------------------------------------------
-    // Document fonts
-    // -------------------------------------------------------------------------
 
     public DocumentFonts getDocumentFonts() {
         return documentFontManager.getFonts();

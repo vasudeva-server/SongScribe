@@ -190,7 +190,6 @@ public class LineTrackBuilder {
                     track, ticks, ((KeyChangeElement) element).getKey());
             }
 
-            // Add tempo change if present
             var tempoAttachment = element.findAttachment(TempoChangeAttachment.class);
 
             if (tempoAttachment != null) {
@@ -198,10 +197,8 @@ public class LineTrackBuilder {
                 MidiEventFactory.addTempoEvent(track, ticks, currentTempo, settings.tempoChangePercent());
             }
 
-            // Always emit a colorize meta message for playback highlighting
             addColorizeMetaMessage(track, lineIndex, i, ticks);
 
-            // Add note on/off messages and update ticks
             ticks = addNoteMessages(track, lineIndex, i, ticks, settings,
                 slideHelper, velocityMap);
         }
@@ -309,7 +306,6 @@ public class LineTrackBuilder {
         int soundingDuration;
 
         if (connecting) {
-            // Need the next note's pitch; fall back to normal note-off if unavailable
             if (elementIndex + 1 >= line.elementCount()
                 || !(line.getElement(elementIndex + 1) instanceof NoteElement nextNote)
                 || !nextNote.getType().isPitchedNote()) {
@@ -335,7 +331,6 @@ public class LineTrackBuilder {
             track, slideStartTick, slideTicks, 0, sourcePitch, targetPitch, sensitivity, connecting
         );
 
-        // For a fall, fade expression along the same curve as the pitch
         if (!connecting) {
             SlideMidiHelper.createFallExpressionMessages(
                 track, slideStartTick, slideTicks, 0
@@ -383,21 +378,17 @@ public class LineTrackBuilder {
         var slideTicks = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, duration);
         var sensitivity = SlideMidiHelper.calculateSensitivity(gracePitch, notePitch);
 
-        // Set pitch bend sensitivity and initial bend before NOTE_ON
         slideHelper.createRpnMessagesIfNeeded(track, trackTicks, 0, sensitivity);
         SlideMidiHelper.createSlideInPitchBendMessages(
             track, trackTicks, slideTicks, 0, gracePitch, notePitch, sensitivity
         );
 
-        // Ramp expression up along the same curve as the pitch
         SlideMidiHelper.createSlideInExpressionMessages(
             track, trackTicks, slideTicks, 0
         );
 
-        // NOTE_ON at reduced velocity for a soft attack
         addNoteOn(track, trackTicks, element, (int) (velocity * GRACE_GLISSANDO_VELOCITY_RATIO));
 
-        // Reset pitch bend and expression at end of slide
         SlideMidiHelper.createPitchBendReset(track, trackTicks + slideTicks, 0);
         SlideMidiHelper.createExpressionReset(track, trackTicks + slideTicks, 0);
     }

@@ -95,7 +95,6 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     private final JButton takeButton = new JButton(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE));
     private final TitleComponent titlePreview = new TitleComponent();
 
-    // Subtitle section — field, font-description label, and preview component.
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> subtitle =
         Controls.text(subtitleField, Timing.WHILE_TYPING, SongMetadata::normalizeSubtitle);
@@ -199,8 +198,6 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         add(createSubtitleSection());
         BaseDialog.addSectionSeparator(this);
 
-        // Stack title and subtitle previews in a vertical panel so the preview
-        // section mirrors the actual score layout (title above subtitle with gap).
         // The background must match the page color so createPreviewSection's matte
         // border bleeds correctly into the section border.
         var stackedPreview = new JPanel();

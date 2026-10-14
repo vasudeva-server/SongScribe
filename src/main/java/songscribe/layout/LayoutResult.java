@@ -150,10 +150,6 @@ public final class LayoutResult {
         return new LayoutResult(this, hitRegistry);
     }
 
-    // ==========================================================================
-    // Note Column Access
-    // ==========================================================================
-
     /**
      * @return null if the element was not laid out
      */
@@ -189,10 +185,6 @@ public final class LayoutResult {
         return rectSs;
     }
 
-    // ==========================================================================
-    // Beam + Stem Layout Access
-    // ==========================================================================
-
     /**
      * @return null if not computed
      */
@@ -207,20 +199,12 @@ public final class LayoutResult {
         return allStemLayouts.get(element);
     }
 
-    // ==========================================================================
-    // Tie Layout Access
-    // ==========================================================================
-
     /**
      * @return the tie layouts, in {@link TieLayout#LINE_ORDER}; unmodifiable
      */
     public List<TieLayout> tieLayouts() {
         return tieLayouts;
     }
-
-    // ==========================================================================
-    // Slide Layout Access
-    // ==========================================================================
 
     /**
      * Null when the note owns no slide, or when the slide has no drawable geometry — a connecting
@@ -230,17 +214,9 @@ public final class LayoutResult {
         return slideLayouts.get(note);
     }
 
-    // ==========================================================================
-    // Decoration + Span Layout Access
-    // ==========================================================================
-
     public DecorationLayouts decorationLayouts() {
         return decorationLayouts;
     }
-
-    // ==========================================================================
-    // Hit Testing
-    // ==========================================================================
 
     /**
      * @return {@link HitRegistry#EMPTY} if nothing on the line is clickable
@@ -249,17 +225,9 @@ public final class LayoutResult {
         return hitRegistry;
     }
 
-    // ==========================================================================
-    // Staff Header Access
-    // ==========================================================================
-
     public StaffHeader staffHeader() {
         return staffHeader;
     }
-
-    // ==========================================================================
-    // Staff Geometry
-    // ==========================================================================
 
     /**
      * Unfloored: a line with nothing above its staff returns 0. A <em>spacing</em> value, not the
@@ -317,20 +285,17 @@ public final class LayoutResult {
         return aboveMidlineSs() + belowMidlineSs(lyricRenderMetrics);
     }
 
-    // ==========================================================================
-    // Painted extents
-    // ==========================================================================
-    //
-    // The measured extents above drive inter-line spacing; the floored ones below drive
-    // component bounds and the staff's placement within those bounds. Every consumer of a
-    // line's *geometry* must use the painted pair, and every consumer of its *spacing* the
-    // measured pair — mixing them puts the staff at a different offset than the layout
-    // manager reserved for it, which draws the line clear of its own bounds.
-
+    /**
+     * The floored counterpart of {@link #aboveMidlineSs}, which drives component bounds and the
+     * staff's placement within them. A consumer of a line's geometry uses the painted pair and a
+     * consumer of its spacing uses the measured pair; mixing them puts the staff at a different
+     * offset than the layout manager reserved for it, which draws the line clear of its own bounds.
+     */
     public double paintAboveMidlineSs() {
         return Math.max(aboveMidlineSs(), LineSpacing.MIN_ABOVE_MIDLINE_SS);
     }
 
+    /** The floored counterpart of {@link #belowMidlineSs}; see {@link #paintAboveMidlineSs}. */
     public double paintBelowMidlineSs(LyricRenderMetrics lyricRenderMetrics) {
         return Math.max(belowMidlineSs(lyricRenderMetrics), LineSpacing.MIN_BELOW_MIDLINE_SS);
     }
@@ -362,10 +327,6 @@ public final class LayoutResult {
             + lyricAnchorBelowStaffSs()
             + lyricRenderMetrics.staffToLyricsGapSs();
     }
-
-    // ==========================================================================
-    // Lyric Layout
-    // ==========================================================================
 
     /** At most one, for the script this layout pass was built for. */
     public List<LyricBoxLayout> getLyricBoxes(StaffElement element) {
@@ -422,11 +383,9 @@ public final class LayoutResult {
         return hitTester.hitTestMidLineKeyEdit(mouseXSs, line);
     }
 
-    // Package-private for direct unit testing of the formula.
-    //
     // Built on staffBottomYSsInLine() so the hit-test row rides the same painted frame as the
-    // baseline LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs instead put
-    // the clickable row above the visible text on any line short enough to hit the floor.
+    // baseline LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs would put the
+    // clickable row above the visible text on any line short enough to hit the floor.
     double lyricAreaBaseYSs() {
         return staffBottomYSsInLine() + lyricAnchorBelowStaffSs() + LineSpacing.LYRICS_ROW_MARGIN_SS;
     }
@@ -470,10 +429,6 @@ public final class LayoutResult {
         return overflowsStaffWidth;
     }
 
-    // ==========================================================================
-    // Preview Element Positioning (Edit Mode)
-    // ==========================================================================
-
     /**
      * @return {@code null} when no element's glyph body contains the X
      */
@@ -496,15 +451,6 @@ public final class LayoutResult {
             insertionIndex, mouseXSs, previewElement, line, betweenElementsOnly);
     }
 
-    // ==========================================================================
-    // Statistics
-    // ==========================================================================
-
-
-    // ==========================================================================
-    // Builder
-    // ==========================================================================
-
     public static LayoutResultBuilder builder(StaffHeader staffHeader) {
         return new LayoutResultBuilder(staffHeader);
     }
@@ -520,10 +466,6 @@ public final class LayoutResult {
             contentBelowStaffSs
         );
     }
-
-    // ==========================================================================
-    // Layout Records
-    // ==========================================================================
 
     /**
      * @param lengtheningSs Extra stem extension beyond the natural minimum length (≥ 0): for a beamed

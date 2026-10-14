@@ -135,8 +135,8 @@ class PrefsTest extends UnitTest {
 
     @Test
     void testStoredKeyReadsBackAsItsConstantWhateverItsCase() {
-        // Two of these enums were stored as name() before they had a key(), so a stored
-        // value in the wrong case is what every existing prefs.json holds.
+        // Two of these enums have a key() that differs from name(), and existing prefs.json
+        // files hold the name() form, so a stored value in the wrong case is what they hold.
         Prefs.put(PrefsKey.PAGE_SIZE, SHOUTED_A4);
 
         assertThat(Prefs.getChoice(PrefsKey.PAGE_SIZE, PageModel.Size.class))
@@ -148,8 +148,7 @@ class PrefsTest extends UnitTest {
         Prefs.put(PrefsKey.PAGE_SIZE, UNREADABLE);
 
         // A preference is a file a user can edit, so this is an expected input rather
-        // than a fault. One rule, in one place, replacing the three fallbacks each
-        // reader used to decide for itself.
+        // than a fault, handled by one rule in one place.
         assertThat(Prefs.getChoice(PrefsKey.PAGE_SIZE, PageModel.Size.class))
             .isEqualTo(PageModel.Size.LETTER);
     }

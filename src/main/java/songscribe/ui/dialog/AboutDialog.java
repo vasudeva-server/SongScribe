@@ -31,6 +31,7 @@ import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 import java.util.Set;
 import javax.swing.Box;
@@ -54,8 +55,6 @@ import songscribe.ui.component.SplashWindow;
 import songscribe.util.DesktopUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
-
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
  * The splash artwork shown on demand, with the web and acknowledgement links added below it.

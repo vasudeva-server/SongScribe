@@ -40,10 +40,6 @@ public final class PitchSpelling {
 
     private PitchSpelling() {}
 
-    // -------------------------------------------------------------------------
-    // Inverse: (<step>, <octave>) -> staffPosition, diatonic, accidental-free
-    // -------------------------------------------------------------------------
-
     /**
      * {@code step} is one of {@code A}..{@code G}, which the schema guarantees for a document.
      */
@@ -53,10 +49,6 @@ public final class PitchSpelling {
 
         return new StaffPosition(staffPositionSp);
     }
-
-    // -------------------------------------------------------------------------
-    // Sounding <alter> derivation (semitones)
-    // -------------------------------------------------------------------------
 
     /**
      * Derived from {@link NoteElement#soundingAccidental()} alone, so the pitch sounds correct

@@ -61,15 +61,15 @@ class HairpinEndpointsTest extends UnitTest {
 
     private static final int FIRST_LINE = 0;
 
-    // The line: a hairpin that meets the wedge on its anchor, the element before the anchor, the
-    // anchor, the end, the element after the end, and a hairpin that meets the wedge on its end.
-    private static final int MEETING_BEFORE_INDEX = 0;
-    private static final int BEFORE_ANCHOR_INDEX = 1;
-    private static final int ANCHOR_INDEX = 2;
-    private static final int END_INDEX = 3;
-    private static final int AFTER_END_INDEX = 4;
-    private static final int MEETING_AFTER_INDEX = 5;
-    private static final int LINE_LENGTH = MEETING_AFTER_INDEX + 1;
+    private static final class FixtureLine {
+        static final int MEETING_BEFORE_INDEX = 0;
+        static final int BEFORE_ANCHOR_INDEX = 1;
+        static final int ANCHOR_INDEX = 2;
+        static final int END_INDEX = 3;
+        static final int AFTER_END_INDEX = 4;
+        static final int MEETING_AFTER_INDEX = 5;
+        static final int LENGTH = MEETING_AFTER_INDEX + 1;
+    }
 
     private static final double COLUMN_LEFT_EXTENT_SS = -0.5;
 
@@ -112,26 +112,26 @@ class HairpinEndpointsTest extends UnitTest {
     }
 
     private static Fixture fixtureOf(Set<Neighbor> present, double pitchSs, double columnSs) {
-        var song = songOfQuavers(LINE_LENGTH);
+        var song = songOfQuavers(FixtureLine.LENGTH);
         var line = song.getLine(FIRST_LINE);
 
-        attachDynamic(present, Neighbor.DYNAMIC_ON_ANCHOR, line.getElement(ANCHOR_INDEX));
-        attachDynamic(present, Neighbor.DYNAMIC_BEFORE_ANCHOR, line.getElement(BEFORE_ANCHOR_INDEX));
-        attachDynamic(present, Neighbor.DYNAMIC_ON_END, line.getElement(END_INDEX));
-        attachDynamic(present, Neighbor.DYNAMIC_AFTER_END, line.getElement(AFTER_END_INDEX));
+        attachDynamic(present, Neighbor.DYNAMIC_ON_ANCHOR, line.getElement(FixtureLine.ANCHOR_INDEX));
+        attachDynamic(present, Neighbor.DYNAMIC_BEFORE_ANCHOR, line.getElement(FixtureLine.BEFORE_ANCHOR_INDEX));
+        attachDynamic(present, Neighbor.DYNAMIC_ON_END, line.getElement(FixtureLine.END_INDEX));
+        attachDynamic(present, Neighbor.DYNAMIC_AFTER_END, line.getElement(FixtureLine.AFTER_END_INDEX));
 
         var wedge = song.withoutMutationTrackingResult(() -> {
             if (present.contains(Neighbor.HAIRPIN_ENDING_ON_ANCHOR)) {
-                hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(MEETING_BEFORE_INDEX, ANCHOR_INDEX))
+                hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(FixtureLine.MEETING_BEFORE_INDEX, FixtureLine.ANCHOR_INDEX))
                     .addTo();
             }
 
             if (present.contains(Neighbor.HAIRPIN_ANCHORED_ON_END)) {
-                hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(END_INDEX, MEETING_AFTER_INDEX))
+                hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(FixtureLine.END_INDEX, FixtureLine.MEETING_AFTER_INDEX))
                     .addTo();
             }
 
-            var built = hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(ANCHOR_INDEX, END_INDEX));
+            var built = hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(FixtureLine.ANCHOR_INDEX, FixtureLine.END_INDEX));
             built.addTo();
 
             return built;
@@ -139,7 +139,7 @@ class HairpinEndpointsTest extends UnitTest {
 
         var columns = new HashMap<StaffElement, ElementColumn>();
 
-        for (var index = 0; index < LINE_LENGTH; index++) {
+        for (var index = 0; index < FixtureLine.LENGTH; index++) {
             var element = line.getElement(index);
             var extents = new ElementColumn.Extents(COLUMN_LEFT_EXTENT_SS, columnSs, columnSs, 0.0, 0.0);
             var column = new ElementColumn(element, extents, null, null);

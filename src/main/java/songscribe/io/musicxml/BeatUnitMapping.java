@@ -34,11 +34,8 @@ import songscribe.dom.BeatUnit;
  */
 final class BeatUnitMapping {
 
-    // -------------------------------------------------------------------------
-    // Reverse map: (token, dot count) → BeatUnit, derived from the same
-    // token/dot derivation entryFor uses, so the two directions cannot drift
-    // apart.
-    // -------------------------------------------------------------------------
+    // Derived from the same token/dot derivation entryFor uses, so the two directions cannot
+    // drift apart.
 
     private static final Map<BeatUnitKey, BeatUnit> REVERSE_MAP = buildReverseMap();
 
@@ -54,10 +51,6 @@ final class BeatUnitMapping {
 
         return Map.copyOf(reverse);
     }
-
-    // -------------------------------------------------------------------------
-    // Package API
-    // -------------------------------------------------------------------------
 
     /**
      * Returns the MusicXML beat-unit representation for the given {@link BeatUnit}.
@@ -83,10 +76,6 @@ final class BeatUnitMapping {
     static BeatUnit beatUnitFor(String token, int dotCount) {
         return REVERSE_MAP.get(new BeatUnitKey(token, dotCount));
     }
-
-    // -------------------------------------------------------------------------
-    // Value types
-    // -------------------------------------------------------------------------
 
     record BeatUnitEntry(String token, int dotCount) {}
 

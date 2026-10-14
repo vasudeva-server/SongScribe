@@ -123,7 +123,6 @@ public class SystemStacker {
         var widthSs = content.widthSs();
         var heightSs = content.heightSs();
 
-        // Right-align with a small inset from the staff right edge
         var xSs = lineWidthSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS;
 
         var placed = systemLayer.stackAboveWithRegions(

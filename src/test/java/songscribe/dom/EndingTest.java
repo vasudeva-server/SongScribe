@@ -111,8 +111,6 @@ class EndingTest extends UnitTest {
         return new ElementRange(anchorIndex, line.elementCount() - 1);
     }
 
-    // ===== Spanning =====
-
     /**
      * A freshly built line, and the candidate range {@code arrange} builds on it, which holds an
      * ending.
@@ -432,8 +430,6 @@ class EndingTest extends UnitTest {
                 nonTerminalEnds)
             .flatMap(stream -> stream);
     }
-
-    // ===== The sweep =====
 
     /**
      * A fixture and an edit to apply to it that leaves its ending well formed.

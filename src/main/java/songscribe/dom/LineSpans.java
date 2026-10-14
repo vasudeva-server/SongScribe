@@ -77,10 +77,6 @@ public final class LineSpans {
         return spansView;
     }
 
-    // ========================================================================
-    // List writes
-    // ========================================================================
-
     /**
      * Call from inside an applyChange mutator lambda,
      * so the list write moves with the recorded change.
@@ -137,10 +133,6 @@ public final class LineSpans {
 
         line.applyChange(new SpanRemoval(line, span), () -> removeChild(index));
     }
-
-    // ========================================================================
-    // The sweep behind every element change
-    // ========================================================================
 
     private record SpanAt<S extends Span<?>>(S span, ElementRange range) {
     }
@@ -339,10 +331,6 @@ public final class LineSpans {
         add(first.copy(anchorElement, endElement));
     }
 
-    // ========================================================================
-    // The displacements Span.addTo applies
-    // ========================================================================
-
     /**
      * The widened span covers every span it absorbs, so a merge loses nothing and reports
      * nothing. The tracked removals are emitted before the widened span's addition so undo
@@ -459,10 +447,6 @@ public final class LineSpans {
             span.removeFrom();
         }
     }
-
-    // ========================================================================
-    // Span queries
-    // ========================================================================
 
     public <T extends Span<?>> List<T> findSpans(Class<T> type, Span.RangePredicate matches) {
         var result = new ArrayList<T>();

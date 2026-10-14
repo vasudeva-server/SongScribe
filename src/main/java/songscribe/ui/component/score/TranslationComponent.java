@@ -66,14 +66,12 @@ public class TranslationComponent extends ScoreComponent {
             g2,
             GraphicsState.Property.FONT
         )) {
-            // Header width
             g2.setFont(headerFont);
             var headerText = song.isUnofficialTranslation()
                 ? TRANSLATION_HEADER_UNOFFICIAL
                 : TRANSLATION_HEADER_OFFICIAL;
             maxWidth = Math.max(maxWidth, textBlockWidth(headerText, g2));
 
-            // Translation text width
             g2.setFont(lyricsFont);
             maxWidth = Math.max(maxWidth, textBlockWidth(translation, g2));
 
@@ -101,7 +99,6 @@ public class TranslationComponent extends ScoreComponent {
             var lyricsFont = zoomedFont(getFont());
             var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
-            // Draw header
             g2.setFont(headerFont);
             g2.setColor(Color.BLACK);
 
@@ -121,7 +118,6 @@ public class TranslationComponent extends ScoreComponent {
             // Margin below header
             y += lyricsFont.getSize2D() / 4f;
 
-            // Draw translation text
             g2.setFont(lyricsFont);
 
             var lineHeight = g2.getFontMetrics().getHeight();
@@ -149,14 +145,12 @@ public class TranslationComponent extends ScoreComponent {
         var lyricsFont = zoomedFont(getFont());
         var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
-        // Calculate header height
         var headerMetrics = getFontMetrics(headerFont);
         var height = (float) getMarginTop() + headerMetrics.getHeight();
 
         // Margin below header
         height += lyricsFont.getSize2D() / 4f;
 
-        // Calculate translation text height
         var textMetrics = getFontMetrics(lyricsFont);
         var lines = translation.split("\n");
         height += textMetrics.getHeight() * lines.length;

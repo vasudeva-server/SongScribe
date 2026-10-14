@@ -35,18 +35,10 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public final class SlideGeometry {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     public static final double MIN_RECT_LENGTH_SS = 0.75;
 
     private SlideGeometry() {
     }
-
-    // ==========================================================================
-    // Records
-    // ==========================================================================
 
     public record NoteContext(
         NoteElement note,
@@ -72,10 +64,6 @@ public final class SlideGeometry {
         double angle, double length
     ) {}
 
-    // ==========================================================================
-    // Note Context
-    // ==========================================================================
-
     /**
      * @param middleLineYSs pass 0 for layout space
      */
@@ -84,8 +72,6 @@ public final class SlideGeometry {
     ) {
         var cy = NoteGeometry.noteStaffPositionToCoordinateSs(note.getStaffPosition().value(), middleLineYSs);
 
-        // Compute the stem-free attach extent once and widen it to the stem-full extent for the
-        // fall anchor, rather than recomputing the notehead/dots/accidental geometry twice.
         var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, beaming);
         var columnRightXSs = elementXSs + NoteColumnGeometry.extentSs(note, attachExtent).rightSs();
         var glissLeftXSs = elementXSs + attachExtent.leftSs();
@@ -93,10 +79,6 @@ public final class SlideGeometry {
 
         return new NoteContext(note, cy, columnRightXSs, glissLeftXSs, glissRightXSs);
     }
-
-    // ==========================================================================
-    // Endpoint Computation
-    // ==========================================================================
 
     /**
      * Null if the glissando is too short to render.
@@ -106,12 +88,10 @@ public final class SlideGeometry {
     public static @Nullable Endpoints computeEndpoints(
         NoteContext src, @Nullable NoteContext tgt
     ) {
-        // A connecting glissando requires a target note; without one there is nothing to draw.
         if (tgt == null) {
             return null;
         }
 
-        // Attachment points: stem-free extents, each at its own notehead-center Y.
         var attachStartX = src.glissRightXSs();
         var attachStartY = src.cySs();
         var attachEndX = tgt.glissLeftXSs();
@@ -121,8 +101,6 @@ public final class SlideGeometry {
         var dy = attachEndY - attachStartY;
         var attachLength = Math.hypot(dx, dy);
 
-        // Trim a constant gap off each end along the line direction; both gaps together must
-        // leave drawable length.
         var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
 
         if (attachLength <= 2 * gap) {

@@ -96,10 +96,6 @@ public final class HitRegionBuilder {
         return builder.build();
     }
 
-    // ==========================================================================
-    // Registration
-    // ==========================================================================
-
     /** Includes the song's auto-maintained terminal element, so an annotation can be attached to it. */
     private static void addElements(
         Line line,
@@ -272,10 +268,6 @@ public final class HitRegionBuilder {
         addRegion(builder, rectSs, new HitTarget.StaffLine());
     }
 
-    // ==========================================================================
-    // Shapes
-    // ==========================================================================
-
     /**
      * The margin is part of the clickable area for thin markings only. Attachments take the bare
      * box; see {@link #addAttachments}.
@@ -350,7 +342,7 @@ public final class HitRegionBuilder {
         var startYSs = endpoints.startYSs();
 
         // Walked out from the start along the angle rather than read from the record's end point,
-        // so the strip covers exactly the span the old local-frame test accepted: 0 ≤ localX ≤ length.
+        // so the strip covers exactly the span 0 ≤ localX ≤ length in the glissando's local frame.
         var endXSs = startXSs + cos * endpoints.length();
         var endYSs = startYSs + sin * endpoints.length();
 
@@ -436,7 +428,6 @@ public final class HitRegionBuilder {
             BeamMetrics.beamStackHeightSs(beam.beamStackCount(), beamLayout.thickeningSs());
         var innerOffsetSs = beamLayout.direction().isUp() ? totalDepthSs : -totalDepthSs;
 
-        // The four corners: each end of the outer edge, and each end of the deepest inner edge.
         return boundingBoxSs(
             minXSs, outerStartYSs,
             maxXSs, outerEndYSs,

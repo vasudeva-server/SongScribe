@@ -121,7 +121,6 @@ public class CompactTestReporter implements TestExecutionListener {
             System.err.println("  " + t.getClass().getName());
         }
 
-        // Print the first project frame so you can jump straight to the failure site
         for (var frame : t.getStackTrace()) {
             if (frame.getClassName().startsWith("songscribe.")) {
                 System.err.println("  at " + frame);
@@ -129,7 +128,6 @@ public class CompactTestReporter implements TestExecutionListener {
             }
         }
 
-        // Fallback when no project frame is present (e.g. pure framework assertion)
         if (t.getStackTrace().length > 0) {
             System.err.println("  at " + t.getStackTrace()[0]);
         }

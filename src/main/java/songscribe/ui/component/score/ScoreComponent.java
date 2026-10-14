@@ -318,7 +318,6 @@ public abstract class ScoreComponent extends JComponent {
      * {@code view} is the owning view, so attachment is a precondition carried by the signature.
      */
     protected void pressed(MouseEvent e, ScoreView view) {
-        // Nothing by default.
     }
 
     /**
@@ -326,21 +325,18 @@ public abstract class ScoreComponent extends JComponent {
      * filtered by button: a release of any button reaches it.
      */
     protected void released(MouseEvent e, ScoreView view) {
-        // Nothing by default.
     }
 
     /**
      * {@code view} as in {@link #pressed}. Not filtered by button.
      */
     protected void entered(MouseEvent e, ScoreView view) {
-        // Nothing by default.
     }
 
     /**
      * {@code view} as in {@link #pressed}. Not filtered by button.
      */
     protected void exited(MouseEvent e, ScoreView view) {
-        // Nothing by default.
     }
 
 }

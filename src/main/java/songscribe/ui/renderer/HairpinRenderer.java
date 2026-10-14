@@ -40,16 +40,11 @@ import static songscribe.util.GraphicsState.Property.STROKE;
 
 public final class HairpinRenderer {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     /** The hairpin stroke width as a multiple of the LilyPond base thickness. */
     private static final double HAIRPIN_MULTIPLIER = 1.0;
 
     private static final double HAIRPIN_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * HAIRPIN_MULTIPLIER;
 
-    // Singleton instance
     private static final HairpinRenderer INSTANCE = new HairpinRenderer();
 
     private HairpinRenderer() {
@@ -58,10 +53,6 @@ public final class HairpinRenderer {
     public static HairpinRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     /**
      * @param layout The pre-computed layout (with offsets already applied)

@@ -108,8 +108,6 @@ public final class FontDescription {
             }
 
             if (psFamily.startsWith(fontFamily)) {
-                // Check to see if the portion after the font family name is a style.
-                // If so, we will parse it. Otherwise, assume it's part of the family name.
                 var afterFamily = psFamily.substring(fontFamily.length());
 
                 if (STYLE_PATTERN.matcher(afterFamily).matches()) {
@@ -118,7 +116,6 @@ public final class FontDescription {
                     return "Regular";
                 }
             } else {
-                // There are no discernible styles
                 return "Regular";
             }
         }
@@ -137,11 +134,9 @@ public final class FontDescription {
                         styleWords[0]
                     )
             ) {
-                // If the style has only one word, change it to "Regular".
                 if (styleWords.length == 1) {
                     styles = "Regular";
                 } else {
-                    // If it has more than one word, remove the first word.
                     styles = String.join(
                         " ",
                         Arrays.copyOfRange(styleWords, 1, styleWords.length)
@@ -153,23 +148,18 @@ public final class FontDescription {
         return styles;
     }
 
-    // This method is used to parse the PostScript name of a font. The PostScript name is
-    // usually in the form "FamilyName-StyleName" or "FamilyName_StyleName". The method
-    // will return a pair of strings, the first being the family name and the second being
-    // the style name. If the style name contains hyphens, they will be removed.
-    // If no style name is found, the second string will be empty.
+    /**
+     * A PostScript name is usually {@code FamilyName-StyleName} or {@code FamilyName_StyleName}.
+     * Hyphens in the style name are removed, and the style is empty when none is found.
+     */
     static ParsedFontName parsePSName(String psName) {
-        // First split on "_". Everthing before the first "_" is the family name,
-        // and everything after is the style name.
         var parts = Arrays.asList(psName.split("_"));
 
         if (parts.size() > 1) {
-            // If there are hyphens in the style name, we need to remove them
             parts.set(1, parts.get(1).replace("-", ""));
             return new ParsedFontName(parts.getFirst(), parts.get(1));
         }
 
-        // Split on hyphen. The last part is the style name.
         parts = Arrays.asList(psName.split("-"));
 
         /*
@@ -195,7 +185,6 @@ public final class FontDescription {
     }
 
     static String parseStyle(String style) {
-        // Replace some camel case style names that should not be separated
         var result = OSF_PATTERN.matcher(style).replaceAll("Oldstyle Figures");
 
         // Normalize the capitalization of compond styles like "SemiBold" to "Semibold"
@@ -205,10 +194,8 @@ public final class FontDescription {
                 matchResult.group(1) + matchResult.group(2).toLowerCase()
         );
 
-        // Convert camel case to separate words
         result = CAMEL_CASE_PATTERN.matcher(result).replaceAll("$1 $2");
 
-        // Convert abbreviations to full words
         for (var abbr : ABBREVIATIONS) {
             result = abbr.pattern().matcher(result).replaceAll(abbr.expansion());
         }

@@ -60,7 +60,6 @@ final class LoadPasses {
         void run(Song song, List<P> pending, ChangeReport.Builder report);
     }
 
-    // List order is execution order; the class comment states why it is this one.
     private static final List<LoadStage<LoadRun>> STAGES = List.of(
         pending(ParsedSong::pendingTuplets, TupletLoadPass::run),
         pending(ParsedSong::pendingEndings, SpanLoadPass::run),

@@ -45,7 +45,6 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  */
 public final class TieRenderer {
 
-    // Singleton instance
     private static final TieRenderer INSTANCE = new TieRenderer();
 
     private static final BasicStroke TIE_OUTLINE_STROKE = new BasicStroke(
@@ -60,10 +59,6 @@ public final class TieRenderer {
     public static TieRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     /**
      * @param g2 Graphics context (staff-space coordinate system)

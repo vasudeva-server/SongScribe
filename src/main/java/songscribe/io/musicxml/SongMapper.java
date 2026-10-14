@@ -45,11 +45,10 @@ final class SongMapper {
 
         var score = document.score();
 
-        // Before any mapping: a document this program did not write is not an input it
-        // supports, so there is nothing to gain by building a Song out of one first. Both
-        // gates read what unmarshalling already produced, so a file too damaged to
-        // unmarshal has failed before either runs, and a SongScribe file whose content is
-        // corrupt still passes here and reports the corruption a mapper finds.
+        // Before any mapping, so no Song is built from a document this program did not write.
+        // Both gates read what unmarshalling already produced: a file too damaged to unmarshal
+        // has failed before either runs, and a SongScribe file whose content is corrupt still
+        // passes here and reports the corruption a mapper finds.
         HeaderMapper.checkProvenance(score);
 
         var song = Song.newParsingStub();
@@ -64,15 +63,14 @@ final class SongMapper {
             HeaderMapper.map(score, song, documentFonts);
             parsed = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
 
-            // Restore the terminal invariant while tracking is still suspended so the
-            // fix-ups are silent: the writer emits a line's closing barline only as a
-            // real terminal, but a hand-authored or partial file may leave the last line
-            // ending in a note or a non-terminal barline.
+            // Restore the terminal invariant while tracking is still suspended so the fix-ups
+            // are silent: a damaged or partial file may leave the last line ending in a note or
+            // a non-terminal barline.
             song.installTerminalAfterParsing();
 
             // Likewise for the key invariant: the mappers set line keys under suspended tracking,
-            // so the per-mutation propagation never ran for any of them, and a file written before
-            // the no-restating rule existed can hold a key change that draws nothing.
+            // so the per-mutation propagation never ran for any of them, and the file can hold a
+            // key change that draws nothing.
             song.settleKeysAfterParsing();
 
             // Grace-host pairing is only settled once every <slide> has been resolved, so

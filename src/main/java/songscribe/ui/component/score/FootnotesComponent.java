@@ -66,12 +66,10 @@ public class FootnotesComponent extends ScoreComponent {
             var metrics = TextMeasurement.fontMetrics(font);
             var lineHeight = metrics.getHeight();
 
-            // Calculate text width (capped at max width) and derive the centered x position
             var textWidth = textBlockWidth(footnotes, g2);
             var x = calculateRenderX(textWidth);
             var y = (float) (getMarginTop() + metrics.getAscent());
 
-            // Draw each line
             var lines = footnotes.split("\n");
 
             for (var line : lines) {

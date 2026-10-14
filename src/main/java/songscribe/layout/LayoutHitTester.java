@@ -41,10 +41,6 @@ public final class LayoutHitTester {
         this.layoutResult = layoutResult;
     }
 
-    // ==========================================================================
-    // Key Edit Hit Targets
-    // ==========================================================================
-
     /**
      * Every line's header is a target, whether or not the line holds a key of its own.
      *
@@ -98,10 +94,6 @@ public final class LayoutHitTester {
         return element instanceof KeyChangeElement keyChange ? keyChange : null;
     }
 
-    // ==========================================================================
-    // Preview Element Positioning (Edit Mode)
-    // ==========================================================================
-
     /**
      * Only X is checked. The hit zone is the glyph body, {@link ElementColumn#getXSs()} to
      * {@link ElementColumn#getRightEdgeXSs()}, so a leading accidental is not part of its element.
@@ -146,16 +138,12 @@ public final class LayoutHitTester {
             return 0;
         }
 
-        // Check each element to see if mouse is within its head bounds
         var elementAtX = findElementAtXSs(mouseXSs, line);
 
         if (elementAtX != null && elementAtX < elementCount) {
             return elementAtX;
         }
 
-        // Mouse is not over any element head - find insertion slot between elements
-
-        // Check if before first element
         var firstElement = line.getElement(0);
         var firstColumn = layoutResult.getElementColumn(firstElement);
 
@@ -167,7 +155,6 @@ public final class LayoutHitTester {
             return 0;
         }
 
-        // Check if after last element
         var lastElement = line.getElement(elementCount - 1);
         var lastColumn = layoutResult.getElementColumn(lastElement);
 
@@ -179,7 +166,6 @@ public final class LayoutHitTester {
             return elementCount;
         }
 
-        // Find the slot between elements (excluding element head bounds)
         for (var i = 0; i < elementCount - 1; i++) {
             var currentElement = line.getElement(i);
             var nextElement = line.getElement(i + 1);
@@ -194,13 +180,11 @@ public final class LayoutHitTester {
             var currentRight = currentColumn.getRightEdgeXSs();
             var nextLeft = nextColumn.getXSs();
 
-            // Check if mouseXSs is in the gap between element heads
             if (mouseXSs > currentRight && mouseXSs < nextLeft) {
                 return i + 1;
             }
         }
 
-        // Fallback: return position after last element
         return elementCount;
     }
 
@@ -221,13 +205,11 @@ public final class LayoutHitTester {
         // neighbour for spacing the preview.
         var elementCount = line.effectiveElementCount();
 
-        // Empty line - use first element position (clef + key signature + offset)
         if (elementCount == 0) {
             return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         }
 
-        // Check if mouse is over any element head - if so, snap to that element's position.
-        // Include the terminal so hovering over it snaps the preview to its position.
+        // The loop includes the terminal so hovering over it snaps the preview to its position.
         if (!betweenElementsOnly) {
             for (var i = 0; i < line.elementCount(); i++) {
                 var element = line.getElement(i);
@@ -240,7 +222,6 @@ public final class LayoutHitTester {
                 var elementX = column.getXSs();
 
                 if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
-                    // Mouse is over this element head - snap to its position.
                     // For the terminal, right-align the preview to the terminal's right edge
                     // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
                     // doesn't overflow the staff boundary.
@@ -262,9 +243,6 @@ public final class LayoutHitTester {
             }
         }
 
-        // Mouse is not over an element head - handle insertion
-
-        // Before first element - position to the left
         if (insertionIndex == 0) {
             var firstElement = line.getElement(0);
             var firstColumn = layoutResult.getElementColumn(firstElement);
@@ -276,7 +254,6 @@ public final class LayoutHitTester {
             return firstColumn.getXSs() - PREVIEW_BEFORE_FIRST_OFFSET_SS;
         }
 
-        // After last element - use same spacing logic as layout engine
         if (insertionIndex >= elementCount) {
             var lastElement = line.getElement(elementCount - 1);
             var lastColumn = layoutResult.getElementColumn(lastElement);
@@ -285,7 +262,6 @@ public final class LayoutHitTester {
                 return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             }
 
-            // Build a temporary column for the preview element to calculate proper spacing
             var insertionColumn = ElementColumnBuilder.buildLightweightColumn(previewElement);
 
             var song = line.getSong();
@@ -321,7 +297,6 @@ public final class LayoutHitTester {
             return naturalXSs;
         }
 
-        // Between elements - center the preview in the room the two neighbouring glyphs leave
         var prevElement = line.getElement(insertionIndex - 1);
         var currElement = line.getElement(insertionIndex);
 

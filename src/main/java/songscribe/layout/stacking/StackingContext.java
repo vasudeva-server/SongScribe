@@ -40,9 +40,8 @@ public class StackingContext {
     private final Line line;
     private final LayoutResultBuilder builder;
     private double lowestNoteBotSs = Staff.STAFF_HEIGHT_SS;
-    // True extent of staff-element content below the staff. Defaults to staff bottom
-    // (STAFF_HALF_SS in middle-relative coordinates) so an empty line contributes 0
-    // below-staff content. Used for lyric positioning.
+    // Starts at the staff bottom (STAFF_HALF_SS, middle-relative) so an empty line contributes no
+    // below-staff content.
     private double botContentExtentSs = Staff.STAFF_HALF_SS;
 
     public StackingContext(

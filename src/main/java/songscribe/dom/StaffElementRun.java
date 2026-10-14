@@ -44,10 +44,6 @@ public interface StaffElementRun {
 
     int FIRST_LEGAL_KEY_CHANGE_INDEX = 1;
 
-    // -------------------------------------------------------------------------
-    // What a run must answer for itself
-    // -------------------------------------------------------------------------
-
     StaffElement getElement(int index);
 
     int elementCount();
@@ -72,10 +68,6 @@ public interface StaffElementRun {
 
         throw new IllegalStateException("expected a note at index " + index + " but found " + element);
     }
-
-    // -------------------------------------------------------------------------
-    // Pairing
-    // -------------------------------------------------------------------------
 
     /**
      * Answers without checking that the following note is present, so that
@@ -421,10 +413,6 @@ public interface StaffElementRun {
             && canTrailRunAt(index, ElementType.KEY_CHANGE);
     }
 
-    // -------------------------------------------------------------------------
-    // Element queries
-    // -------------------------------------------------------------------------
-
     default boolean isEmpty() {
         return elementCount() == 0;
     }
@@ -507,10 +495,6 @@ public interface StaffElementRun {
 
         return null;
     }
-
-    // -------------------------------------------------------------------------
-    // Keys along the run
-    // -------------------------------------------------------------------------
 
     /**
      * Returns the {@link EffectiveRange} of every key change at or after {@code fromIndex} that

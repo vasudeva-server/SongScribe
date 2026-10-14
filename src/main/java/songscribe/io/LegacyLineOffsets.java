@@ -31,8 +31,7 @@ record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int trillY
 
     private static final double TRILL_DEFAULT_Y_SS = -3.375;
 
-    // Matches the field initializers that were on Line before this carrier was introduced.
-    // Note: tempo's default of 0 also serves as the "unset" sentinel — legacy files that omit the
+    // Tempo's default of 0 also serves as the "unset" sentinel: legacy files that omit the
     // tempo tag are treated as having no tempo offset to migrate (see FormatMigrator).
     static final LegacyLineOffsets DEFAULTS = new LegacyLineOffsets(
         0,

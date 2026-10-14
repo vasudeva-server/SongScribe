@@ -58,7 +58,6 @@ public final class VelocityMap {
             for (var noteIndex = 0; noteIndex < noteCount; noteIndex++) {
                 var element = line.getElement(noteIndex);
 
-                // Update fraction if this note has a dynamic marking
                 var dynamic = element.findAttachment(DynamicAttachment.class);
 
                 if (dynamic != null) {
@@ -67,7 +66,6 @@ public final class VelocityMap {
 
                 var baseVelocity = (int) Math.round(masterVelocity * lastFraction);
 
-                // Apply accent boost
                 if (element instanceof NoteElement note && note.hasArticulation(ArticulationType.ACCENT)) {
                     baseVelocity = Math.min(baseVelocity + ACCENT_BOOST, MAX_VELOCITY);
                 }

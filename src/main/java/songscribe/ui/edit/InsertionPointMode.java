@@ -109,10 +109,8 @@ public final class InsertionPointMode {
     @Nullable
     private static InsertionPointMode instance = null;
 
-    // Dependencies
     private final ScoreView scoreView;
 
-    // State
     private boolean active = false;
 
     @Nullable
@@ -176,10 +174,6 @@ public final class InsertionPointMode {
         this.active = active;
         MessageCenter.post(new InsertionPointModeDidChangeNotification(active));
     }
-
-    // -------------------------------------------------------------------------
-    // Lifecycle
-    // -------------------------------------------------------------------------
 
     /**
      * A second client asking while a placement is pending is refused (returns false) and gets no
@@ -276,10 +270,6 @@ public final class InsertionPointMode {
             endingClient.insertionPointModeDidEnd(outcome);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Mouse routing (consume-first from LineComponent)
-    // -------------------------------------------------------------------------
 
     /** Returns true (consuming the event) whenever a placement is pending. */
     public boolean mouseMoved(LineComponent lineComponent, MouseEvent e) {

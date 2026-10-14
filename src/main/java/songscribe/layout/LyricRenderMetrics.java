@@ -134,10 +134,6 @@ public record LyricRenderMetrics(
         );
     }
 
-    // ==========================================================================
-    // Lyric font extents
-    // ==========================================================================
-
     /**
      * Real ink is measured rather than the font's ascent/descent, whose font-wide slack would
      * read as excess space in every line's lyrics band.

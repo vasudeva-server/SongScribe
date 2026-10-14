@@ -44,12 +44,8 @@ import static songscribe.util.GraphicsState.Property.STROKE;
 
 public final class BeamGroupRenderer {
 
-    // ==========================================================================
-    // Constants from Renderer
-    // ==========================================================================
-
-    private static final double CLIP_SLOP_SS = 0.25;   // extra clipping margin (~2 px)
-    private static final double BEAM_STUB_SS = 1.0;  // 8px
+    private static final double CLIP_SLOP_SS = 0.25;
+    private static final double BEAM_STUB_SS = 1.0;
 
     /** The fewest unhighlighted notes that keep a beam in place once its highlighted notes go. */
     private static final int MIN_REMAINING_BEAMED_NOTES = 2;
@@ -64,7 +60,6 @@ public final class BeamGroupRenderer {
         BasicStroke.JOIN_ROUND
     );
 
-    // Singleton instance
     private static final BeamGroupRenderer INSTANCE = new BeamGroupRenderer();
 
     private BeamGroupRenderer() {
@@ -73,10 +68,6 @@ public final class BeamGroupRenderer {
     public static BeamGroupRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     public void renderBeams(Graphics2D g2, LineInvariants invariants, Beam beam) {
         var highlightColor = getBeamHighlightColor(invariants, beam);
@@ -133,7 +124,6 @@ public final class BeamGroupRenderer {
             return null;
         }
 
-        // Selection takes priority over hover
         if (anySelected) {
             return invariants.getSelectionColor();
         }
@@ -160,7 +150,6 @@ public final class BeamGroupRenderer {
             return direction.isUp() ? layout.topYSs() : layout.bottomYSs();
         }
 
-        // Fallback: approximate from staff position + standard stem length
         var elementYSs = element.getStaffPosition().toSs();
         return direction.isUp()
             ? elementYSs - StemMetrics.STEM_LENGTH_SS
@@ -231,7 +220,6 @@ public final class BeamGroupRenderer {
             var innerBeamOffsetSs =
                 BeamMetrics.beamTranslationSs(thickeningSs) * translationsFromTip * (isUpper ? 1 : -1);
 
-            // --- First note stem geometry ---
             var firstStemLayout = layoutResult.getStemLayout(beginNote);
             var firstNoteXSs = layoutResult.getElementXSs(beginNote);
             var firstStemCenterXSs = firstNoteXSs
@@ -241,7 +229,6 @@ public final class BeamGroupRenderer {
             var firstOuterYSs = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
             var firstInnerYSs = firstOuterYSs + beamDepthSs;
 
-            // --- Last note stem geometry ---
             var lastStemLayout = layoutResult.getStemLayout(endNote);
             var lastNoteXSs = layoutResult.getElementXSs(endNote);
             var lastStemCenterXSs = lastNoteXSs
@@ -251,7 +238,6 @@ public final class BeamGroupRenderer {
             var lastOuterYSs = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
             var lastInnerYSs = lastOuterYSs + beamDepthSs;
 
-            // --- Build parallelogram, inset for LilyPond-style rounded corners ---
             // LilyPond's Lookup::beam pulls every corner half a blot diameter toward
             // the beam's interior, then strokes the result with a round pen of one
             // full blot diameter. Fill plus stroke restores the original extent, so
@@ -290,8 +276,8 @@ public final class BeamGroupRenderer {
     }
 
     private enum BeamType {
-        FULL,           // Full beam connecting multiple notes
-        ATTACH_LEFT,    // Partial beam attached to left note
-        ATTACH_RIGHT    // Partial beam attached to right note
+        FULL,
+        ATTACH_LEFT,
+        ATTACH_RIGHT
     }
 }

@@ -44,8 +44,6 @@ public class PopupMenuButton extends BasePopupButton {
         RADIO
     }
 
-    // The action that is currently selected in the popup menu and is used
-    // to configure the button's appearance.
     private @Nullable UIAction currentAction;
 
     public PopupMenuButton(

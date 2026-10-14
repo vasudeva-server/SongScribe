@@ -89,8 +89,6 @@ public final class TextMeasurement {
 
     private TextMeasurement() {}
 
-    // ---- Laying text out under the instrument ----
-
     /**
      * A vector built under another context shifts glyph ink against everything measured through
      * this class.
@@ -108,8 +106,6 @@ public final class TextMeasurement {
         return new TextLayout(text.getIterator(), SCREEN_FRC);
     }
 
-    // ---- Advance: how far the pen moves ----
-
     /**
      * The advance, not the ink.
      *
@@ -126,8 +122,6 @@ public final class TextMeasurement {
     public static Ss textWidthSs(Font font, String text) {
         return new Ss(DocumentScale.pxToSs(textAdvancePx(font, text)));
     }
-
-    // ---- Ink: where the marks actually land ----
 
     /**
      * The three components come from one layout of one string.
@@ -213,8 +207,6 @@ public final class TextMeasurement {
         return Math.max(0, (int) Math.ceil(lineBounds.getMaxY()) - descent);
     }
 
-    // ---- The font's own vertical design: ascent, descent, leading ----
-
     /**
      * Measure through this rather than a component's own {@link JComponent#getFontMetrics(Font)},
      * which lacks the fractional-metrics hint and so can wrap at a different word than the paint
@@ -261,7 +253,5 @@ public final class TextMeasurement {
     public static Ss fontDescentSs(Font font) {
         return new Ss(DocumentScale.pxToSs(font.getLineMetrics("", SCREEN_FRC).getDescent()));
     }
-
-    // ---- Sizing a font for the coordinate space it will be drawn in ----
 
 }

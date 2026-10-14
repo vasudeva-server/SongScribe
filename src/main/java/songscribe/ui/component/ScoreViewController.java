@@ -130,7 +130,6 @@ public final class ScoreViewController {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScoreViewController.class);
 
-    // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
 
     // Runs before all HIGH_PRIORITY subscribers so the tuplet info cache is warm
@@ -148,7 +147,6 @@ public final class ScoreViewController {
     @Nullable
     private TupletToggleInfo cachedTupletToggleInfo = null;
 
-    // Debounces repaints when layout changes occur
     final Debounce repaintDebounce;
 
     public ScoreViewController(
@@ -522,7 +520,6 @@ public final class ScoreViewController {
         // would have to name every mutation that can change a line's height — which is all of
         // them, as a key change that lifts an ending above a new accidental showed.
 
-        // Debounce repaints to batch multiple rapid changes
         repaintDebounce.trigger();
     }
 
@@ -698,7 +695,6 @@ public final class ScoreViewController {
             return;
         }
 
-        // Make sure this component has focus
         if (!score.isFocusOwner()) {
             return;
         }
@@ -1091,7 +1087,6 @@ public final class ScoreViewController {
         // that survives.
         var rawDeleteRange = deleteRange == null ? null : deleteRange.range();
 
-        // The key the fragment's first element lands in.
         var keyAtInsertion = line.keyBefore(insertIndex);
 
         // Fresh clones every paste — the stored fragment is never itself inserted. The clones
@@ -1239,7 +1234,6 @@ public final class ScoreViewController {
     private void handlePaste() {
         var fragment = clipboardManager.getFragment();
 
-        // Empty clipboard — nothing to paste.
         if (fragment == null || fragment.elements().isEmpty()) {
             return;
         }
@@ -1257,9 +1251,8 @@ public final class ScoreViewController {
         var line = range.line();
 
         // The whole range the replace really removes, widened at both ends exactly as a plain
-        // deletion is. Using the raw begin here understated it: the deletion this authorizes also
-        // takes the barline in front of a key change at begin, so the spacing was measured for
-        // a smaller range than the one that goes.
+        // deletion is: the deletion this authorizes also takes the barline in front of a key
+        // change at begin, which the raw begin would leave out of the spacing measurement.
         var effective = line.effectiveRange(range.range());
 
         // One bracket for the whole replace — delete + insert is a single undo

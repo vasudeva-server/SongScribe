@@ -144,7 +144,6 @@ final class SongSettingsDateInputRow {
 
         bindings.onNotify(year, () -> {
             if (!YEAR_RANGE.containsValue(year.get())) {
-                // A year that names no date leaves no month or day standing.
                 month.set(MonthChoice.NONE);
                 day.set(NONE_INDEX);
             }

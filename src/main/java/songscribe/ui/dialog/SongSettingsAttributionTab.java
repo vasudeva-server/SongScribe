@@ -74,13 +74,11 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private static final int PLACE_FIELD_COLUMNS = 27;
     private static final int COMPOSER_FIELD_COLUMNS = 27;
 
-    // Place and date panel
     private final MyJTextField placeField = new MyJTextField(PLACE_FIELD_COLUMNS);
     // dialog.super(...) completes before any field initializer here runs, so the
     // inherited bindings() already answers.
     private final SongSettingsDateInputRow musicDate = new SongSettingsDateInputRow(bindings());
 
-    // Attribution panel
     private final MyJTextField composerField = new MyJTextField(COMPOSER_FIELD_COLUMNS);
     private final MyJTextArea lyricistField = new MyJTextArea(LYRICIST_ROWS, LYRICIST_COLUMNS);
     private final JComboBox<Song.LyricsSource> sourceCombo =
@@ -233,16 +231,13 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         var sourceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE));
         sourceLabel.setLabelFor(sourceCombo);
 
-        // Words label + lyricist field, with the field filling the full row.
         BaseDialog.addScrolledFieldRow(section, wordsLabel, lyricistField);
 
-        // Line up the lyricist field and the source dropdown in one column. After the row
-        // above, which writes the label's geometry as well.
+        // After the row above, which writes the label's geometry as well.
         alignLabelWidths(wordsLabel, sourceLabel);
 
         BaseDialog.addSeparator(section);
 
-        // Source row: source label + dropdown, different date checkbox.
         var sourceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, horizontalGap, 0));
         sourceRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         sourceRow.add(sourceLabel);
@@ -265,7 +260,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         wordsDatePanel.add(wordsDateRow);
         section.add(wordsDatePanel);
 
-        // Don't let the section grow vertically
         UIUtils.setFlexibleWidth(section);
         return section;
     }
@@ -277,8 +271,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
 
-        // Lay out the music row: the composer field fills the available space
-        // while the arrangement checkbox stays right-aligned.
         var composerRow = new JPanel(new BorderLayout(horizontalGap, 0));
         composerRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -311,8 +303,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         var yearLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR));
         var placeLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_PLACE));
 
-        // Line up the year field (first in the date row) and the place field
-        // in one column.
         alignLabelWidths(yearLabel, placeLabel);
 
         var datePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
@@ -325,7 +315,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         BaseDialog.addLabeledField(section, placeLabel, placeField);
 
-        // Don't let the section grow vertically
         UIUtils.setFlexibleWidth(section);
         return section;
     }

@@ -35,14 +35,11 @@ import songscribe.dom.NoteValue;
  */
 public final class NoteTypeMapping {
 
-    // -------------------------------------------------------------------------
-    // DIVISIONS: quarter-note tick resolution (global, not per-song, no
-    // per-song prescan — a single compile-time constant).
+    // DIVISIONS is the quarter-note tick resolution: one compile-time constant for every song.
     //
     // DIVISIONS must survive more than the plain note values: it must also
     // stay an exact integer once a tuplet scales a written duration by M/N,
-    // for every ratio N in {2..7} the validator accepts (see the Shared
-    // Reference of plans/604-invalid-tuplets.md for where M and N come from).
+    // for every ratio N in {2..7} the validator accepts.
     //
     // Every written value is base × dotFactor, and every base is an integer
     // multiple of the 32nd note, so it suffices that the 32nd works. With
@@ -68,28 +65,18 @@ public final class NoteTypeMapping {
     // 3360 (= 480 × 7) is NOT enough: u = 420, so a double-dotted 32nd is
     // 735, which is odd, and 735 × 3/2 = 1102.5 inside a duplet. The
     // required factor depends on the dot count as well as the ratio, which
-    // is why inspecting only the ratios present cannot find it. DIVISIONS = 480
-    // has this defect independently of septuplets.
+    // is why inspecting only the ratios present cannot find it.
     //
     // A whole note at DIVISIONS = 13440 is 53760 ticks, far inside int range.
-    // -------------------------------------------------------------------------
-
     public static final int DIVISIONS = 13440;
 
-    // -------------------------------------------------------------------------
-    // Base ticks per undotted note value (all exact divisors of DIVISIONS).
-    // -------------------------------------------------------------------------
-
+    // Base ticks per undotted note value; each is an exact divisor of DIVISIONS.
     private static final int WHOLE_TICKS         = 4 * DIVISIONS; // 53760
     private static final int HALF_TICKS          = 2 * DIVISIONS; // 26880
     private static final int QUARTER_TICKS       = DIVISIONS;     // 13440
     private static final int EIGHTH_TICKS        = DIVISIONS / 2; //  6720
     private static final int SIXTEENTH_TICKS     = DIVISIONS / 4; //  3360
     private static final int THIRTY_SECOND_TICKS = DIVISIONS / 8; //  1680
-
-    // -------------------------------------------------------------------------
-    // MusicXML <type> token values
-    // -------------------------------------------------------------------------
 
     public static final String TYPE_WHOLE   = "whole";
     public static final String TYPE_HALF    = "half";
@@ -98,13 +85,8 @@ public final class NoteTypeMapping {
     public static final String TYPE_16TH    = "16th";
     public static final String TYPE_32ND    = "32nd";
 
-    // -------------------------------------------------------------------------
-    // Reverse map for reading: token → NoteValue, which noteValueForTypeToken() answers
-    // from. forTypeToken() turns the value
-    // into the note or rest ElementType from the <rest/> flag, and recovers
-    // GRACE_QUAVER from the <grace> flag. The forward direction is an exhaustive
-    // switch in typeToken(), so it needs no map and no null branch.
-    // -------------------------------------------------------------------------
+    // The forward direction is an exhaustive switch in typeToken(), so it needs no map and no
+    // null branch.
 
     private static final Map<String, NoteValue> REVERSE_MAP = Map.of(
         TYPE_WHOLE,   NoteValue.WHOLE,
@@ -116,10 +98,6 @@ public final class NoteTypeMapping {
     );
 
     private NoteTypeMapping() {}
-
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
 
     public static String typeToken(NoteValue value) {
         return switch (value) {

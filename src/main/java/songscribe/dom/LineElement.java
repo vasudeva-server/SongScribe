@@ -37,10 +37,6 @@ public abstract class LineElement {
 
     private double userYOffsetSs = 0;
 
-    // ========================================================================
-    // User Offsets
-    // ========================================================================
-
     public double getUserXOffsetSs() {
         return userXOffsetSs;
     }
@@ -56,10 +52,6 @@ public abstract class LineElement {
     public void setUserYOffsetSs(double userYOffsetSs) {
         this.userYOffsetSs = userYOffsetSs;
     }
-
-    // ========================================================================
-    // State Copying
-    // ========================================================================
 
     /**
      * Every route that copies one element's state onto another ends up here, so a field added to

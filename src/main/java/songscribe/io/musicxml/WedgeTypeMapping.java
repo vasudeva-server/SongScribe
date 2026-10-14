@@ -35,10 +35,7 @@ import songscribe.dom.Hairpin.Kind;
  */
 final class WedgeTypeMapping {
 
-    // -------------------------------------------------------------------------
-    // Reverse map: wedge type token → Hairpin.Kind to open.
-    // "stop" is intentionally absent — it is a structural marker, not a kind.
-    // -------------------------------------------------------------------------
+    // "stop" has no entry: it is a structural marker, not a kind.
 
     private static final Map<String, Hairpin.Kind> KIND_BY_TOKEN = Map.of(
         MusicXmlTags.WEDGE_CRESCENDO,  Hairpin.Kind.CRESCENDO,
@@ -46,10 +43,6 @@ final class WedgeTypeMapping {
     );
 
     private WedgeTypeMapping() {}
-
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
 
     static String wedgeType(Hairpin hairpin) {
         return switch (hairpin.getKind()) {

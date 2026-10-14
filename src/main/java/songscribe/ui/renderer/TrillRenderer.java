@@ -39,14 +39,8 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 public final class TrillRenderer {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    // Trill glyph advance width in staff-space units, used to position the wavy line start
     private static final double TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ORNAMENT_TRILL);
 
-    // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
 
     private TrillRenderer() {
@@ -55,10 +49,6 @@ public final class TrillRenderer {
     public static TrillRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     /**
      * The layout's bounds are the trill's ink extent ({@link TrillGeometry#inkExtentSs}).

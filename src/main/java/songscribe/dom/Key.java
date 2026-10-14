@@ -72,14 +72,12 @@ public enum Key implements Copyable<Key> {
      */
     public static final Key DEFAULT = FIVE_FLATS;
 
-    // FLATS order: B E A D G C F; SHARPS order: F C G D A E B.
     private static final PitchClass[] FLAT_PITCH_CLASSES =
         {PitchClass.B, PitchClass.E, PitchClass.A, PitchClass.D, PitchClass.G, PitchClass.C, PitchClass.F};
     private static final PitchClass[] SHARP_PITCH_CLASSES =
         {PitchClass.F, PitchClass.C, PitchClass.G, PitchClass.D, PitchClass.A, PitchClass.E, PitchClass.B};
 
-    // Staff positions for accidentals, relative to the middle line (0 = B4), in accidental
-    // order. Flats: B E A D G C F. Sharps: F C G D A E B.
+    // Relative to the middle line (0 = B4), in accidental order.
     private static final int[] FLAT_STAFF_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
     private static final int[] SHARP_STAFF_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
 

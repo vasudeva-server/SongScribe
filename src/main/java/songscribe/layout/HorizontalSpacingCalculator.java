@@ -136,10 +136,6 @@ public final class HorizontalSpacingCalculator {
         return xSs <= calculateHeaderRightEdgeSs(line);
     }
 
-    // ==========================================================================
-    // Column-to-Column Spacing
-    // ==========================================================================
-
     /**
      * The result is an origin-to-origin delta that guarantees a constant amount of clear space
      * between the two columns' facing ink, whatever either holds — see {@link #minimumInkGapSs}.
@@ -153,8 +149,6 @@ public final class HorizontalSpacingCalculator {
         ElementColumn prevColumn,
         ElementColumn currColumn) {
 
-        // Distance from previous column's center to current column's center
-        // = previous column's right extent + minimum ink gap + abs(current column's left extent)
         return rightExtentFacingSs(prevColumn, currColumn)
             + GapKind.of(prevColumn, currColumn).minimumInkGapSs()
             + Math.abs(currColumn.getLeftExtentSs());
@@ -256,10 +250,6 @@ public final class HorizontalSpacingCalculator {
         return prev.getRightExtentFacingSs(curr.getLeftFacingTopYSs(), curr.getLeftFacingBottomYSs());
     }
 
-    // ==========================================================================
-    // Spring Construction
-    // ==========================================================================
-
     /**
      * The single source of truth for per-pair horizontal spacing, shared by full layout and
      * insertion: a delta-X (Ss) between the two columns' origins. Grace, key signature and
@@ -337,11 +327,6 @@ public final class HorizontalSpacingCalculator {
 
         return springs;
     }
-
-    // ==========================================================================
-    // Line solve — the shared anchor + fit, so full layout and the insertion
-    // pre-check always agree on whether a line fits.
-    // ==========================================================================
 
     /**
      * The horizontal solve for one line. Both {@link LayoutEngine} and the insertion pre-check
@@ -877,10 +862,6 @@ public final class HorizontalSpacingCalculator {
 
         return HairpinEndpoints.dynamicRightTipOffsetSs(endElement, dynamic);
     }
-
-    // ==========================================================================
-    // Beam Group Spacing
-    // ==========================================================================
 
     private static boolean bothShorterThanEighth(ElementColumn prev, ElementColumn curr) {
         return prev.getElement().getType().beamCount() > 1

@@ -314,10 +314,6 @@ class TupletTest extends UnitTest {
         return addWithoutTracking(song, () -> dupletOver(line, DUPLET_RANGE, NoteValue.EIGHTH));
     }
 
-    // -------------------------------------------------------------------------
-    // Performed ticks
-    // -------------------------------------------------------------------------
-
     /**
      * A tuplet, a written duration, and the duration it is performed in.
      *

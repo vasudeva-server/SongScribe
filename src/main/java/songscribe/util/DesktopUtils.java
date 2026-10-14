@@ -46,15 +46,13 @@ public final class DesktopUtils {
                 var method = desktopClass.getMethod("isDesktopSupported");
                 var isSupported = (Boolean) method.invoke(null);
 
-                // If we get this far without an exception, we're good to go
                 klass = desktopClass;
                 supported = isSupported;
             } catch (
                 ClassNotFoundException
                 | NoSuchMethodException
                 | SecurityException ignored
-            ) {} catch (Exception e) {
-                // Ignore
+            ) {} catch (Exception ignored) {
             }
         }
 

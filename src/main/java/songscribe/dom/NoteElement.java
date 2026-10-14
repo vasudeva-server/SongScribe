@@ -69,10 +69,6 @@ public final class NoteElement extends StaffElement implements Dottable {
         return (StemmedNotehead) notehead();
     }
 
-    // ========================================================================
-    // Staff position
-    // ========================================================================
-
     public StaffPosition getStaffPosition() {
         return staffPosition;
     }
@@ -84,10 +80,6 @@ public final class NoteElement extends StaffElement implements Dottable {
     public void setStaffPosition(StaffPosition staffPosition) {
         this.staffPosition = staffPosition;
     }
-
-    // ========================================================================
-    // Stem
-    // ========================================================================
 
     public Stem stem() {
         return stem;
@@ -134,10 +126,6 @@ public final class NoteElement extends StaffElement implements Dottable {
         return beam == null ? naturalDirection() : beam.direction();
     }
 
-    // ========================================================================
-    // Augmentation dots
-    // ========================================================================
-
     @Override
     public Dots dots() {
         return dots;
@@ -147,10 +135,6 @@ public final class NoteElement extends StaffElement implements Dottable {
     public void setDots(Dots dots) {
         this.dots = dots;
     }
-
-    // ========================================================================
-    // Slide
-    // ========================================================================
 
     public @Nullable Slide getSlide() {
         return slide;
@@ -179,10 +163,6 @@ public final class NoteElement extends StaffElement implements Dottable {
     public boolean isPairedGraceNote() {
         return getType().isGraceNote() && hasGlissando();
     }
-
-    // ========================================================================
-    // Tie
-    // ========================================================================
 
     /**
      * @invariant {@code true} only on a note that passes the pitched-note check
@@ -304,10 +284,6 @@ public final class NoteElement extends StaffElement implements Dottable {
         tiedToNext = false;
     }
 
-    // ========================================================================
-    // Articulations
-    // ========================================================================
-
     public List<Articulation> getArticulations() {
         return Collections.unmodifiableList(articulations);
     }
@@ -378,10 +354,6 @@ public final class NoteElement extends StaffElement implements Dottable {
             addArticulation(articulation.copy());
         }
     }
-
-    // ========================================================================
-    // Accidental
-    // ========================================================================
 
     public AccidentalState accidentalState() {
         return accidentalState;
@@ -467,10 +439,6 @@ public final class NoteElement extends StaffElement implements Dottable {
             note.accidentalState = state;
         }
     }
-
-    // ========================================================================
-    // Pitch
-    // ========================================================================
 
     public int getPitch() {
         return DiatonicPitch.at(staffPosition.value()).midi(soundingAccidental());

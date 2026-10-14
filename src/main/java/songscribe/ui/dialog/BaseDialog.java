@@ -95,7 +95,6 @@ import songscribe.util.UIUtils;
  */
 public abstract class BaseDialog implements Disposable {
 
-    // Used by addLabeledField to determine where to place the label
     public enum LabelPosition {
         LEFT,
         TOP,
@@ -426,7 +425,6 @@ public abstract class BaseDialog implements Disposable {
             var label = new JLabel(labelText);
             label.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            // Indent the title a bit to line up with the input field
             var indent = FlatLafProps.getInt(FlatLafKey.DIALOG_LABEL_INDENT);
             label.setBorder(BorderFactory.createEmptyBorder(0, indent, 0, 0));
             field.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -692,7 +690,6 @@ public abstract class BaseDialog implements Disposable {
         var size = geometry.size();
 
         if (isResizable() && size != null) {
-            // Floor semantics: max of packed size and restored size per dimension
             var packedSize = dialog.getSize();
             var width = Math.max(packedSize.width, size.width);
             var height = Math.max(packedSize.height, size.height);
@@ -800,12 +797,10 @@ public abstract class BaseDialog implements Disposable {
     }
 
     private static final class SidebarPanel extends JPanel {
-        // Full-height sidebar: opaque, theme-live background, 1px right divider.
         private SidebarPanel(JComponent tabList) {
             super(new BorderLayout());
             setOpaque(true);
 
-            // The divider sits on the sidebar panel, outside the list's internal padding.
             setBorder(new ThemeAwareMatteBorder(
                 0, 0, 0, 1, FlatLafKey.DIALOG_SIDEBAR_BORDER_COLOR.key()
             ));
@@ -852,10 +847,8 @@ public abstract class BaseDialog implements Disposable {
             this.title = title;
             setLayout(new GridBagLayout());
 
-            // Add inner padding to the panel
             setBorder(UIUtils.spacingBorder(paddingKey));
 
-            // Items in the tab should be top/left-aligned, grow horizontally, and not vertically
             constraints.gridx = 0;
             constraints.gridy = GridBagConstraints.RELATIVE;
             constraints.anchor = GridBagConstraints.NORTHWEST;
@@ -887,8 +880,6 @@ public abstract class BaseDialog implements Disposable {
         protected void build() {
             initContents();
 
-            // Add glue at the bottom that will force the contents to the top,
-            // unless a fill item was added (which already claims all extra space)
             if (!hasFillItem) {
                 constraints.gridx = 0;
                 constraints.weightx = 1.0;

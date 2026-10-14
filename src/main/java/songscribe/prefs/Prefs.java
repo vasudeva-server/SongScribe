@@ -463,8 +463,7 @@ public final class Prefs {
         }
     }
 
-    // Writes without posting a notification — used during construction
-    // before any subscribers exist.
+    /** Posts no notification, for construction before any subscribers exist. */
     private void saveQuietly() {
         writeToFile();
     }

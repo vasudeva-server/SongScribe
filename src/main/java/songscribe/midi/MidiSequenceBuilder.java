@@ -52,8 +52,6 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
  */
 public class MidiSequenceBuilder {
 
-    // The number of pulses per quarter note (ticks per beat), used to calculate the duration of notes
-    // when playing back the score or generating a MIDI file.
     public static final int PPQ = 96;
 
     private static final int BANK_SELECT_MSB_CC = 0;
@@ -93,17 +91,14 @@ public class MidiSequenceBuilder {
         addBankSelect(track, 0, 0, 0);
         addProgramChange(track, settings.instrument());
 
-        // Add initial tempo
         MidiEventFactory.addTempoEvent(track, 0, initialTempo, settings.tempoChangePercent());
 
-        // Pre-compute dynamic-aware velocities for all notes
         var velocityMap = VelocityMap.build(song, VelocityMap.MAX_VELOCITY);
 
         var ticks = 0;
         var currentTempo = initialTempo;
         var lines = song.getLines();
 
-        // If repeats are disabled, use simple linear processing
         if (!settings.playWithRepeats()) {
             for (var i = startLine; i < lines.size(); i++) {
                 var line = lines.get(i);
@@ -122,8 +117,6 @@ public class MidiSequenceBuilder {
                         : builder.addToTrack(track, i, ticks, currentTempo, settings,
                             velocityMap);
                 } else {
-                    // With repeats off, skip each first-ending span and play only the
-                    // common section plus the second ending.
                     result = addLineSkippingFirstEndings(
                         track, builder, i, lineStart, lineEnd,
                         new TrackPosition(ticks, currentTempo), endings, velocityMap);
@@ -133,7 +126,6 @@ public class MidiSequenceBuilder {
                 currentTempo = result.tempo();
             }
         } else {
-            // Handle repeats
             var result = buildSequenceWithRepeats(
                 track, startLine, startNote, initialTempo, velocityMap);
             ticks = result.ticks();
@@ -200,7 +192,6 @@ public class MidiSequenceBuilder {
             for (; noteIndex < noteCount; noteIndex++) {
                 var closesRepeat = line.getElement(noteIndex).getType().closesRepeat();
 
-                // Resolve the ending covering this element once; reused below.
                 var ending = endingCovering(endings, noteIndex);
 
                 // The closing REPEAT_RIGHT of a secondary (REPEAT_LEFT_RIGHT-split) ending
@@ -212,7 +203,6 @@ public class MidiSequenceBuilder {
 
                 if (!isEndingClosingMarker && closesRepeat) {
                     if (repeating) {
-                        // Second time through: exit the repeat and play on.
                         repeating = false;
                     } else {
                         var sectionStart = repeatSections.sectionStart(
@@ -241,8 +231,6 @@ public class MidiSequenceBuilder {
                     continue;
                 }
 
-                // Add the note to the track (one note at a time), sharing the
-                // slide helper so grace note state survives across calls.
                 var result = builder.addToTrack(
                     track, lineIndex, ticks, currentTempo, settings,
                     noteIndex, noteIndex, slideHelper, velocityMap
@@ -255,7 +243,6 @@ public class MidiSequenceBuilder {
             noteIndex = 0;
         }
 
-        // Flush any pending pitch bend/expression resets at the end
         slideHelper.createPendingResets(track, ticks, 0);
 
         return new TrackPosition(ticks, currentTempo);

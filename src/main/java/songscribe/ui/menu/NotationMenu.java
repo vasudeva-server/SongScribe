@@ -56,7 +56,6 @@ public class NotationMenu extends JMenu {
     public NotationMenu(MainFrame mainFrame) {
         super(NAME);
 
-        // Group 1: Pitch & Rhythm
         add(new DurationMenu());
         add(new JCheckBoxMenuItem(REST_ACTION));
         add(new DotMenu());
@@ -64,13 +63,11 @@ public class NotationMenu extends JMenu {
 
         addSeparator();
 
-        // Group 2: Spans & Barlines
         add(new RepeatsMenu());
         add(new BarlineMenu());
 
         addSeparator();
 
-        // Group 3: Articulation & Expression
         add(new ArticulationMenu());
         add(createTupletMenu());
         add(createDynamicsMenu());
@@ -80,7 +77,6 @@ public class NotationMenu extends JMenu {
 
         addSeparator();
 
-        // Group 4: Display
         add(new JMenuItem(GLISSANDO_ACTION));
         add(new JMenuItem(FALL_ACTION));
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
@@ -90,14 +86,12 @@ public class NotationMenu extends JMenu {
 
         addSeparator();
 
-        // Group 5: Staff Annotations
         for (var action : STAFF_ANNOTATION_ACTIONS) {
             add(action);
         }
 
         addSeparator();
 
-        // Group 6: Passage
         add(new JMenuItem(MAKE_ENDING_ACTION));
 
         disableWhenLineSelected(this);

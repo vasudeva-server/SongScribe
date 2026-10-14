@@ -68,8 +68,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
         StaffElement element,
         Graphics2D g2
     ) {
-        // While the editor is open, suppress the rendered box so the overlay is the
-        // sole representation. Connectors are not suppressed (no connectors in 1a).
+        // While the editor is open, the overlay is the sole representation of the box.
         if (invariants.getActivelyEditedElement() == element) {
             return;
         }

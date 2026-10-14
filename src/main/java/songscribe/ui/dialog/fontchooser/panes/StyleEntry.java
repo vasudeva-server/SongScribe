@@ -53,7 +53,6 @@ public final class StyleEntry {
             return false;
         }
 
-        // For comparison purposes, we only care about the PS font name
         var other = (StyleEntry) obj;
         return font.getPSName().equals(other.font.getPSName());
     }

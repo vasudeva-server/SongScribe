@@ -34,10 +34,8 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 public final class RestRenderer implements ElementRenderer<RestElement> {
 
-    // Gap in staff spaces between the rest glyph's advance and its first dot.
     private static final double DOT_GAP_SS = 0.5;
 
-    // Singleton instance
     private static final RestRenderer INSTANCE = new RestRenderer();
 
     private RestRenderer() {
@@ -46,10 +44,6 @@ public final class RestRenderer implements ElementRenderer<RestElement> {
     public static RestRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     public void render(

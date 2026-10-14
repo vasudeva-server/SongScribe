@@ -39,7 +39,6 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 public final class EndingRenderer {
 
-    // Singleton instance
     private static final EndingRenderer INSTANCE = new EndingRenderer();
 
     private EndingRenderer() {
@@ -48,10 +47,6 @@ public final class EndingRenderer {
     public static EndingRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     public void renderEndings(Graphics2D g2, LineInvariants invariants) {
         for (var entry : invariants.getLayoutResult().decorationLayouts().endings().entrySet()) {
@@ -94,8 +89,6 @@ public final class EndingRenderer {
 
             GraphicUtils.drawPath(g2, EndingBracketShape.points(outlineSs, closure), thicknessSs);
 
-            // Draw ending label (e.g. "1." or "2.") using Bravura volta glyphs.
-            // Baseline = bracket top + glyph height + visual offset below bracket.
             g2.setFont(EndingBracketGeometry.ENDING_FONT);
             var label = slot.label();
             // Deliberately the paint-time render context rather than TextMeasurement's: the
@@ -107,7 +100,6 @@ public final class EndingRenderer {
                 g2.getFontRenderContext(), label);
             var glyphHeightSs = TextMeasurement.inkHeight(glyphVector.getVisualBounds());
 
-            // Add 1 device-pixel gap between the digit and the period
             var onePixelSs = 1.0 / g2.getTransform().getScaleX();
             var periodPos = glyphVector.getGlyphPosition(1);
             glyphVector.setGlyphPosition(1, new Point2D.Double(

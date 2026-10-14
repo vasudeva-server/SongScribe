@@ -83,7 +83,7 @@ public class SplashWindow extends JWindow {
         var content = new JPanel(new BorderLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
-                super.paintComponent(g);   // paints the background color first
+                super.paintComponent(g);
 
                 // FlatLaf leaves AATextInfo null, so this window's default Graphics
                 // paints text with no antialiasing and integer metrics, making it wider
@@ -95,14 +95,12 @@ public class SplashWindow extends JWindow {
                 }
 
                 if (splashImage != null) {
-                    // Center the image
                     var x = (getWidth() - splashImage.getWidth()) / 2;
                     var y = (getHeight() - splashImage.getHeight()) / 2;
                     g.drawImage(splashImage, x, y, this);
                 }
             }
 
-            // Give the panel a proper preferred size based on the image
             @Override
             public Dimension getPreferredSize() {
                 if (splashImage != null) {
@@ -112,14 +110,13 @@ public class SplashWindow extends JWindow {
                     );
                 }
 
-                return new Dimension(0, 0); // fallback size
+                return new Dimension(0, 0);
             }
         };
 
         content.setBackground(bg);
         content.setOpaque(true);
 
-        // Add a panel for the version number and copyright
         var infoPanel = new JPanel();
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setBackground(bg);

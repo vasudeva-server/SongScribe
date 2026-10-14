@@ -41,7 +41,6 @@ public final class MusicXmlTags {
     // reader's tenths→px conversions cannot silently disagree.
     static final int TENTHS_PER_STAFF_SPACE = 10;
 
-    // Element names — document structure.
     public static final String SCORE_PARTWISE = "score-partwise";
     static final String        PART_LIST      = "part-list";
     static final String        SCORE_PART     = "score-part";
@@ -57,7 +56,6 @@ public final class MusicXmlTags {
     static final String        BAR_STYLE      = "bar-style";
     static final String        REPEAT         = "repeat";
 
-    // Element names — note subtree.
     static final String NOTE          = "note";
     static final String PITCH         = "pitch";
     static final String STEP          = "step";
@@ -80,15 +78,11 @@ public final class MusicXmlTags {
     static final String SLIDE         = "slide";
     static final String FALLOFF       = "falloff";
 
-    // Element names — lyric subtree. ATTR_NUMBER (verse number) and ATTR_TYPE
-    // (extend type) are shared, general-purpose attribute constants declared
-    // below; they are not redeclared here.
     static final String LYRIC       = "lyric";
     static final String SYLLABIC    = "syllabic";
     static final String LYRIC_TEXT  = "text";
     static final String EXTEND      = "extend";
 
-    // Element names — span subtree (beam, tie, tuplet, hairpin, trill, ending).
     static final String BEAM           = "beam";
     static final String TIE            = "tie";
     static final String TIED           = "tied";
@@ -106,7 +100,6 @@ public final class MusicXmlTags {
     static final String WAVY_LINE      = "wavy-line";
     static final String ENDING         = "ending";
 
-    // Element names — tempo / metronome direction subtree.
     static final String METRONOME          = "metronome";
     static final String BEAT_UNIT          = "beat-unit";
     static final String BEAT_UNIT_DOT      = "beat-unit-dot";
@@ -118,7 +111,6 @@ public final class MusicXmlTags {
     static final String METRONOME_DOT      = "metronome-dot";
     static final String METRONOME_RELATION = "metronome-relation";
 
-    // Element names — head / identification subtree.
     static final String        MOVEMENT_TITLE  = "movement-title";
     static final String        MOVEMENT_NUMBER = "movement-number";
     static final String        IDENTIFICATION  = "identification";
@@ -129,7 +121,6 @@ public final class MusicXmlTags {
     static final String        ENCODING_DATE   = "encoding-date";
     static final String        SUPPORTS        = "supports";
 
-    // Element names — defaults subtree.
     static final String DEFAULTS       = "defaults";
     static final String SCALING        = "scaling";
     static final String MILLIMETERS    = "millimeters";
@@ -144,16 +135,13 @@ public final class MusicXmlTags {
     static final String LYRIC_FONT     = "lyric-font";
     static final String LYRIC_LANGUAGE = "lyric-language";
 
-    // Element names — credit subtree.
     static final String CREDIT       = "credit";
     static final String CREDIT_TYPE  = "credit-type";
     static final String CREDIT_WORDS = "credit-words";
 
-    // Element names — miscellaneous subtree.
     static final String MISCELLANEOUS       = "miscellaneous";
     static final String MISCELLANEOUS_FIELD = "miscellaneous-field";
 
-    // Attribute names — document structure.
     public static final String ATTR_VERSION    = "version";
     static final String        ATTR_NEW_SYSTEM = "new-system";
     static final String        ATTR_LOCATION   = "location";
@@ -161,7 +149,6 @@ public final class MusicXmlTags {
     static final String        ATTR_NUMBER     = "number";
     static final String        ATTR_ID         = "id";
 
-    // Attribute names — note subtree.
     static final String ATTR_SLASH       = "slash";
     static final String ATTR_CAUTIONARY  = "cautionary";
     static final String ATTR_PARENTHESES = "parentheses";
@@ -175,11 +162,9 @@ public final class MusicXmlTags {
     static final String ATTR_LINE_TYPE   = "line-type";
     static final String ATTR_LINE_LENGTH = "line-length";
 
-    // Attribute names — tempo / metronome direction subtree.
     static final String ATTR_TEMPO        = "tempo";
     static final String ATTR_PRINT_OBJECT = "print-object";
 
-    // Attribute names — head / defaults / credit / miscellaneous.
     static final String ATTR_NAME        = "name";
     static final String ATTR_FONT_FAMILY = "font-family";
     static final String ATTR_FONT_SIZE   = "font-size";
@@ -192,20 +177,17 @@ public final class MusicXmlTags {
     static final String ATTR_PLACEMENT   = "placement";
     static final String ATTR_ELEMENT     = "element";
 
-    // Element content values — <key>'s <mode>. Every SongScribe key is major, so this is the
-    // only value the writer emits and the reader never reads one back.
+    // Every SongScribe key is major, so this is the only <mode> value the writer emits and the
+    // reader never reads one back.
     static final String MODE_MAJOR = "major";
 
-    // Element content values — tempo / metronome direction subtree. The
-    // <metronome-relation> symbol between the two metric-modulation note groups;
-    // "equals" is the only value the schema currently defines.
+    // The <metronome-relation> symbol between the two metric-modulation note groups; "equals" is
+    // the only value the schema defines.
     static final String RELATION_EQUALS = "equals";
 
-    // Attribute values — document structure.
     static final String YES     = "yes";
     static final String PART_ID = "P1";
 
-    // Attribute values — note subtree.
     static final String NO            = "no";
     static final String STEM_UP       = "up";
     static final String STEM_DOWN     = "down";
@@ -214,64 +196,53 @@ public final class MusicXmlTags {
     static final String LINE_STRAIGHT = "straight";
     static final String LINE_SOLID    = "solid";
 
-    // Attribute values — beam type (text content of <beam>).
     static final String BEAM_BEGIN = "begin";
     static final String BEAM_END   = "end";
 
-    // Attribute values — generic span type (used by tie, tied, wavy-line, ending @type).
     static final String TYPE_START = "start";
     static final String TYPE_STOP  = "stop";
 
-    // Attribute values — <tied orientation> (write-forward tie curve direction).
+    // Write-forward tie curve direction.
     static final String ORIENTATION_OVER  = "over";
     static final String ORIENTATION_UNDER = "under";
 
-    // Attribute values — wedge type (@type on <wedge>).
     static final String WEDGE_CRESCENDO  = "crescendo";
     static final String WEDGE_DIMINUENDO = "diminuendo";
 
-    // Attribute values — ending type (@type on <ending>).
     static final String ENDING_DISCONTINUE = "discontinue";
 
-    // Attribute values — span numbering.
-    // The wedge @number is always "1" (only one hairpin is ever open at a time);
-    // ending @number is "1" for the first volta bracket and "2" for the second.
+    // The wedge @number is always "1" (only one hairpin is ever open at a time); the ending
+    // @number is "1" for the first volta bracket and "2" for the second.
     static final String NUMBER_1 = "1";
     static final String NUMBER_2 = "2";
 
-    // Attribute values — fixed document fonts (write-forward).
+    // Write-forward: fixed, never read.
     static final String MUSIC_FONT_FAMILY = "Bravura";
     static final String MUSIC_FONT_SIZE   = "32";
 
-    // Attribute values — font weight/style (creator/credit/word fonts).
     static final String WEIGHT_BOLD   = "bold";
     static final String WEIGHT_NORMAL = "normal";
     static final String STYLE_ITALIC  = "italic";
     static final String STYLE_NORMAL  = "normal";
 
-    // Attribute values — scaling / page layout (write-forward, fixed).
+    // Write-forward: fixed, never read.
     static final double SCALING_MILLIMETERS = 7.0;
     static final String SCALING_TENTHS      = "40";
     static final String PAGE_HEIGHT_TENTHS  = "1596";
 
-    // Attribute values — <supports> element tokens for the whole-element features in
-    // SupportedFeature, which is where every entry the writer emits is listed.
     static final String SUPPORTS_ACCIDENTAL = "accidental";
     static final String SUPPORTS_BEAM       = "beam";
     static final String SUPPORTS_STEM       = "stem";
 
-    // Attribute values — <lyric-language xml:lang="…">.
     static final String LYRIC_LANGUAGE_DEFAULT = "en";
 
-    // Attribute value — xml:lang on the bangla-lyrics <credit-words> (Bangla ISO 639-1 code).
+    // The xml:lang of the bangla-lyrics <credit-words>: the Bangla ISO 639-1 code.
     static final String CREDIT_LANGUAGE_BANGLA = "bn";
 
-    // Element content values — <creator type="…">.
     static final String CREATOR_COMPOSER = "composer";
     static final String CREATOR_LYRICIST = "lyricist";
     static final String CREATOR_ARRANGER = "arranger";
 
-    // Element content values — <credit-type>.
     static final String CREDIT_TITLE            = "title";
     static final String CREDIT_SUBTITLE         = "subtitle";
     static final String CREDIT_COMPOSER         = "composer";
@@ -286,7 +257,6 @@ public final class MusicXmlTags {
     static final String CREDIT_TRANSLATION      = "translation";
     static final String CREDIT_FOOTNOTES        = "footnotes";
 
-    // Attribute values — <miscellaneous-field name="…">.
     static final String MISC_COMPOSITION_DATE          = "composition-date";
     static final String MISC_LYRICS_DATE               = "lyrics-date";
     static final String MISC_COMPOSITION_PLACE         = "composition-place";
@@ -297,7 +267,6 @@ public final class MusicXmlTags {
     static final String MISC_ROW_HEIGHT_ADJUSTMENT     = "row-height-adjustment";
     static final String MISC_DEFAULT_REST_LENGTH       = "default-rest-length";
 
-    // Rights/copyright format string (write-forward, ignored on read).
-    // %d is substituted with the current year.
+    // Write-forward: ignored on read. %d is substituted with the current year.
     static final String COPYRIGHT = "Copyright © %d Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0";
 }

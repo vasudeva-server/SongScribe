@@ -58,10 +58,6 @@ import songscribe.ui.component.score.PreviewElementManager;
  */
 public final class LineInvariants {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     static final Color REPLACED_ELEMENT_COLOR = new Color(249, 161, 161);
 
     /**
@@ -72,10 +68,6 @@ public final class LineInvariants {
      */
     public record Playing(int noteIndex, @Nullable Integer graceNoteIndex) {
     }
-
-    // ==========================================================================
-    // Instance Fields
-    // ==========================================================================
 
     private final Song song;
     private final DocumentFontsHolder fonts;
@@ -149,10 +141,6 @@ public final class LineInvariants {
     public static Builder builder(Song song, DocumentFontsHolder fonts, ViewScale viewScale) {
         return new Builder(song, fonts, viewScale);
     }
-
-    // ==========================================================================
-    // Accessors
-    // ==========================================================================
 
     public Song getSong() {
         return song;
@@ -234,10 +222,6 @@ public final class LineInvariants {
         return selectionColor;
     }
 
-    // ==========================================================================
-    // Lint marks
-    // ==========================================================================
-
     /**
      * @param flagged          whether the element itself is drawn in the lint color, when
      *                          no fact that outranks {@link ColorPriority#LINT} holds for it
@@ -297,10 +281,6 @@ public final class LineInvariants {
 
         return placeholder;
     }
-
-    // ==========================================================================
-    // Color resolution
-    // ==========================================================================
 
     /**
      * Reference equality and {@code equals} agree here only because the fallback is a shared
@@ -518,10 +498,6 @@ public final class LineInvariants {
         var spanEnd = currentLine.lyricSpanEnd(anchorIndex + 1, script);
         return playing.noteIndex() <= spanEnd.lastCoveredIndex();
     }
-
-    // ==========================================================================
-    // LayoutResultBuilder
-    // ==========================================================================
 
     public static final class Builder {
 

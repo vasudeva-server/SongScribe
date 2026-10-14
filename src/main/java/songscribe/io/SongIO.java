@@ -145,7 +145,6 @@ public final class SongIO {
         @Nullable
         private Song parsingSong = null;
 
-        // Parsed song data (replaces direct Song mutation)
         @Nullable
         private Tempo tempo = null;
         private String number = Strings.get(Strings.SONG_DEFAULT_NUMBER);
@@ -586,15 +585,10 @@ public final class SongIO {
          * rather than refusing the document.
          */
         public ParsedSong getSong() throws SAXException {
-            // For legacy files that predate the discrete attribution tags, derive
-            // composer/lyricist (and, for v1.0 only, date/place) from the blob.
             if (isLegacyAttributionFile()) {
                 parseLegacyAttributionBlob();
             }
 
-            // Run the ordered pre-assembly migrations over the parsed lines and
-            // song-level scalars. The pipeline owns all version-gated dispatch;
-            // see MigrationPipeline for the stage list and ordering invariant.
             var ctx = new MigrationContext();
             ctx.lines = parsedLines;
             ctx.legacyLineOffsets = parsedLegacyOffsets;
@@ -614,10 +608,8 @@ public final class SongIO {
             // normalize this away against a key the line does not yet inherit.
             applyDocumentKeyToFirstLine(ctx.lines);
 
-            // After migration, format version is CURRENT_FORMAT_VERSION (discrete attribution fields).
             var formatVersion = CURRENT_FORMAT_VERSION;
 
-            // Read the migrated scalars and lines back from the context.
             var data = new SongData(
                 tempo,
                 number,
@@ -642,11 +634,9 @@ public final class SongIO {
                 wordsDate
             );
 
-            // Repopulate the stub Song that was created at <song> startElement
-            // and attached to every parsed Line. This preserves Line.song
-            // references already established during parsing. Mutation tracking
-            // remains suspended (from newSuspendedStubSong) through loadFrom so
-            // that line-level setters during reload bypass the bracket check.
+            // Repopulating the stub keeps the Line.song references already established during
+            // parsing. Mutation tracking stays suspended (from newSuspendedStubSong) through
+            // loadFrom so that line-level setters during reload bypass the bracket check.
             if (parsingSong == null) {
                 throw new IllegalStateException("parsingSong was not initialized");
             }
@@ -663,8 +653,6 @@ public final class SongIO {
                 song.endSuspendMutationTracking();
             }
 
-            // Run the post-assembly migrations against the assembled song
-            // (legacy lyric import, grace-host melisma repair, syllabic backfill).
             ctx.song = song;
             MigrationPipeline.runPostAssembly(ctx);
 
@@ -756,8 +744,7 @@ public final class SongIO {
                 }
             }
 
-            // Only extract date/place from the blob for v1.0 files,
-            // where those fields were not serialized as separate XML tags.
+            // Only v1.0 files lack separate date and place tags.
             if (!isV10File() || byLineIndex == null) {
                 return;
             }
@@ -790,7 +777,6 @@ public final class SongIO {
         };
 
         private void parseLegacyDateLine(String dateLine) {
-            // Try "Month Day, Year" or "Month, Year"
             for (var i = 0; i < MONTH_NAMES.length; i++) {
                 if (dateLine.startsWith(MONTH_NAMES[i])) {
                     month = i + 1;
@@ -823,7 +809,6 @@ public final class SongIO {
                 }
             }
 
-            // Fall back: treat the whole line as a year
             year = dateLine.trim();
         }
 

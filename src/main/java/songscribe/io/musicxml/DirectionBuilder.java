@@ -59,10 +59,6 @@ final class DirectionBuilder {
 
     private DirectionBuilder() {}
 
-    // -------------------------------------------------------------------------
-    // Tempo
-    // -------------------------------------------------------------------------
-
     /**
      * The {@code <sound tempo>} is write-forward. A hidden tempo still emits beat-unit and
      * per-minute, so the visible tempo survives.
@@ -132,10 +128,6 @@ final class DirectionBuilder {
         return directionType;
     }
 
-    // -------------------------------------------------------------------------
-    // Metric modulation
-    // -------------------------------------------------------------------------
-
     /**
      * Returns {@code null} when the element carries no beat change.
      */
@@ -190,10 +182,6 @@ final class DirectionBuilder {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Hairpin wedges
-    // -------------------------------------------------------------------------
-
     /**
      * Belongs immediately before the hairpin's anchor note.
      */
@@ -239,10 +227,6 @@ final class DirectionBuilder {
 
         return direction;
     }
-
-    // -------------------------------------------------------------------------
-    // Annotations
-    // -------------------------------------------------------------------------
 
     /**
      * @return {@code null} when the element carries no annotation or the annotation has no text;

@@ -116,8 +116,7 @@ public final class OpticalSpacing {
             return 0.0;
         }
 
-        // Opposite-direction stems sharing one beam group is a "knee" - out of scope, so no
-        // correction is applied for that case.
+        // Opposite-direction stems sharing one beam group form a "knee", which takes no correction.
         if (prev.sharesBeamGroupWith(curr)) {
             return 0.0;
         }

@@ -261,10 +261,6 @@ public final class Beam extends Span<NoteElement> {
         return beamRange.contains(replacedIndex) && !newElement.getType().isBeamable();
     }
 
-    // -------------------------------------------------------------------------
-    // Direction
-    // -------------------------------------------------------------------------
-
     /**
      * Returns the direction every auto stem in this group points.
      *
@@ -342,10 +338,6 @@ public final class Beam extends Span<NoteElement> {
         return false;
     }
 
-    // -------------------------------------------------------------------------
-    // Beam stack count (beams carried by the shortest note in the group)
-    // -------------------------------------------------------------------------
-
     public int beamStackCount() {
         var maxBeamCount = 0;
 
@@ -364,10 +356,6 @@ public final class Beam extends Span<NoteElement> {
     protected Displacement displacement() {
         return Displacement.ABSORB_OVERLAPPING;
     }
-
-    // -------------------------------------------------------------------------
-    // Members
-    // -------------------------------------------------------------------------
 
     /**
      * A note a beam joins; only {@link Beam#members} creates one.

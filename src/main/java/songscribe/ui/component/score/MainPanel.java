@@ -43,14 +43,6 @@ public class MainPanel extends JPanel {
 
     public static final Ss SCORE_MARGIN_TOP_SS = new Ss(1.5);
 
-    // BoxLayout Y_AXIS sibling stack order (top to bottom):
-    //   titleComponent
-    //   subtitleComponent   (zero height when subtitle is empty)
-    //   scoreMarginTop strut
-    //   staffPanel
-    //   textPanel
-    //   footnotesComponent
-
     private final TitleComponent titleComponent;
 
     private final SubtitleComponent subtitleComponent;

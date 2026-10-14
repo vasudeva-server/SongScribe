@@ -28,7 +28,6 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public final class FermataAttachment extends Attachment implements IntrinsicHeight {
 
-    // SMuFL bbox-derived dimensions in staff-space units
     private static final double FERMATA_WIDTH_SS;
     private static final double FERMATA_HEIGHT_SS;
 

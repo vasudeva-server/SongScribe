@@ -112,7 +112,6 @@ public class TextPanel extends JPanel {
 
     @Override
     protected void paintComponent(Graphics g) {
-        // Calculate union width and set contentX on children before they paint
         if (song != null) {
             var g2 = (Graphics2D) g;
             var unionWidth = calculateUnionWidth(g2);
@@ -128,7 +127,6 @@ public class TextPanel extends JPanel {
                 banglaLyricsComponent.setContentX(contentX);
                 translationComponent.setContentX(contentX);
             } else {
-                // Reset to independent centering
                 underLyricsComponent.setContentX(null);
                 banglaLyricsComponent.setContentX(null);
                 translationComponent.setContentX(null);

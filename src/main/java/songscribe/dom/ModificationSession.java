@@ -70,9 +70,7 @@ public final class ModificationSession {
     // inner call must not disarm the guards the outer one is still relying on.
     private int autoMaintenanceDepth = 0;
 
-    // The edit in flight: created when the outermost bracket opens (depth 0→1) and dropped
-    // when it closes, so it is non-null exactly while a bracket is open. EDT-only, no
-    // synchronization.
+    // Non-null exactly while a bracket is open. EDT-only, no synchronization.
     private @Nullable OpenEdit openEdit = null;
 
     private final ModificationRules rules = new ModificationRules();
@@ -86,7 +84,6 @@ public final class ModificationSession {
         // Mutable: each removal a modification rule records is appended while the rules run.
         private final List<Mutation> batch = new ArrayList<>();
 
-        // Starts empty for every edit.
         private final ChangeReport.Builder report;
 
         OpenEdit(Song song, @Nullable String opName) {
@@ -98,8 +95,6 @@ public final class ModificationSession {
     ModificationSession(Song song) {
         this.song = song;
     }
-
-    // ========== Mode predicates ==========
 
     public boolean isModifying() {
         return modificationDepth > 0;
@@ -116,8 +111,6 @@ public final class ModificationSession {
     boolean isInAutoMaintenance() {
         return autoMaintenanceDepth > 0;
     }
-
-    // ========== Mode brackets ==========
 
     /**
      * Re-entrant: {@link Song#removeLine} nests an {@link Song#addLine} call.
@@ -182,13 +175,10 @@ public final class ModificationSession {
         }
     }
 
-    // ========== Modification brackets ==========
-
     private void beginModification(@Nullable String explicitLabel) {
         if (modificationDepth == 0) {
-            // UndoController holds the Tier-A pending op-name, set by the UIAction
-            // template around synchronous action dispatch (see UIAction.actionPerformed);
-            // explicitLabel is the Tier-B name from the labeled withModification overload.
+            // explicitLabel is the Tier-B name from the labeled withModification overload;
+            // otherwise the Tier-A name that UIAction.actionPerformed left pending in UndoController.
             openEdit = new OpenEdit(song, explicitLabel != null ? explicitLabel : UndoController.getPendingOpName());
         }
 

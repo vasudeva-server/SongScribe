@@ -91,14 +91,14 @@ public final class Song implements Disposable {
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
         NONE,
-        BENGALI, // 1
-        ENGLISH, // 2
-        BENGALI_ENGLISH, // 3
-        ENGLISH_BENGALI, // 4
-        SANSKRIT, // 5
-        FRENCH, // 6
-        SPANISH, // 7
-        OTHER, // 8
+        BENGALI,
+        ENGLISH,
+        BENGALI_ENGLISH,
+        ENGLISH_BENGALI,
+        SANSKRIT,
+        FRENCH,
+        SPANISH,
+        OTHER,
     }
 
     public static final String SRI_CHINMOY = "Sri Chinmoy";
@@ -146,21 +146,16 @@ public final class Song implements Disposable {
      */
     public static final double FALLBACK_LINE_WIDTH_SS = 90.0;
 
-    // Provides the default line width for new songs; set by the UI layer at startup
     private static DoubleSupplier defaultLineWidthProvider = () -> FALLBACK_LINE_WIDTH_SS;
 
     public static void setDefaultLineWidthProvider(DoubleSupplier provider) {
         defaultLineWidthProvider = provider;
     }
 
-    // The base tempo of the song. Every song has one — Tempo's defaults until the user
-    // changes it — so this is never null. Whether the header mark depicting it is drawn is
-    // decided by the mark's computed content width, never by nullness.
+    // Never null: whether the header mark is drawn is decided by the mark's computed content
+    // width, never by nullness.
     private Tempo tempo = new Tempo();
 
-    // The canonical attribution metadata record — single source of truth for every
-    // attribution field (title, number, place, date, composer, lyricist, lyricsSource,
-    // arrangement, unofficialTranslation, subtitle, wordsDate).
     private SongMetadata metadata = new SongMetadata(
         Strings.get(Strings.DOCUMENT_UNTITLED),  // title
         Strings.get(Strings.SONG_DEFAULT_NUMBER), // number
@@ -175,38 +170,27 @@ public final class Song implements Disposable {
         PartialDate.EmptyDate.INSTANCE // wordsDate
     );
 
-    // The language of the song
     private final LANGUAGE language = LANGUAGE.NONE;
 
-    // The full native lyrics of the song, displayed under the music
     private String underLyrics = "";
 
-    // If the song is in Bengali, the lyrics in Bengali script
     private String banglaLyrics = "";
 
-    // If the song is in a language other than English, the translated lyrics (if available)
     private String translatedLyrics = "";
 
-    // Additional info about the song
     private String footnotes = "";
 
-    // Block element carrying the attribution pane geometry and user Y offset for stacking
     private final Attribution attributionElement = new Attribution();
 
-    // Stable identity for the song tempo mark drawn at line 0's staff header. Carries no
-    // tempo of its own — see SongTempoMark.
     private final SongTempoMark tempoMarkElement = new SongTempoMark();
 
     private double rowHeightAdjustmentSs = 0;
 
-    // Line-wide rest length driving derived column spacing; persisted in the MusicXML
-    // header. Clamped to at least MIN_DEFAULT_REST_LENGTH_SS on every set.
+    // Clamped to at least MIN_DEFAULT_REST_LENGTH_SS on every set.
     private double defaultRestLengthSs = DEFAULT_REST_LENGTH_SS;
 
-    // The width of a staff line in staff-space units
     private double lineWidthSs = defaultLineWidthProvider.getAsDouble();
 
-    // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
 
     /**
@@ -215,8 +199,6 @@ public final class Song implements Disposable {
      */
     private final Map<Line, Key> inheritedKeys = new IdentityHashMap<>();
 
-    // The script the song is currently showing. A song's lyrics are written in scripts, not
-    // stanzas to stack, so exactly one script is laid out, painted and edited at any moment.
     // Deliberately not persisted: which script a reader last looked at is a property of the
     // session, not of the document, so every file opens on Script.LATIN.
     private Script activeScript = Script.LATIN;
@@ -235,16 +217,12 @@ public final class Song implements Disposable {
 
     private boolean modified;
 
-    // The mutation-recording state machine — every bracket, suspension, replay and
-    // beat-defining-edit entry point on this class delegates here. Held rather than
-    // inlined so the depth counters and the accumulated batch cannot be reached except
-    // through the API that keeps them balanced.
+    // Held rather than inlined so the depth counters and the accumulated batch cannot be
+    // reached except through the API that keeps them balanced.
     private final ModificationSession modifications = new ModificationSession(this);
 
-    // Owns the terminal invariant (last element of the last line is a valid terminal).
     private final TerminalMaintainer terminal = new TerminalMaintainer(this);
 
-    // Answers what tempo and what beat are in effect at a position.
     private final TempoResolver tempoResolver = new TempoResolver(this);
 
     // This song's own linter. Initialized here so every constructor, the parsing stub's
@@ -254,9 +232,8 @@ public final class Song implements Disposable {
     private final MessageSubscription subscription;
 
     public Song() {
-        // Suspend mutation tracking so that setup changes don't post a spurious
-        // SongDidChangeNotification to global subscribers before this Song is
-        // installed in any ScoreView.
+        // Tracking is suspended so that setup changes post no SongDidChangeNotification to global
+        // subscribers before this Song is installed in any ScoreView.
         withoutMutationTracking(() -> {
             var initialLine = new Line(this);
             initialLine.setKey(Key.DEFAULT);
@@ -299,12 +276,12 @@ public final class Song implements Disposable {
      * Posts no notification; the caller ({@code ScoreView.setSong}) posts a
      * {@link songscribe.message.notification.DocumentDidLoadNotification} once the song is
      * installed.
+     *
+     * <p>Must run under suspended mutation tracking: the fields are assigned directly, outside
+     * any mutation bracket.
      */
     @SuppressWarnings("CallToSimpleSetterFromWithinClass")
     public void loadFrom(SongData data) {
-        // Build the normalized attribution metadata record from the parsed data.
-        // Assigned directly (no mutation bracket) because loadFrom is always called
-        // under suspended mutation tracking (decision 8A).
         metadata = new SongMetadata(
             data.title(),
             data.number(),
@@ -319,9 +296,7 @@ public final class Song implements Disposable {
             data.wordsDate()
         );
 
-        // Apply remaining scalar fields. A legacy .mssw file may carry no <tempo> element at
-        // all, so the nullable parsed value is coalesced at the boundary — the song itself
-        // always has a tempo.
+        // A legacy .mssw file may carry no <tempo> element, so the parsed value is nullable.
         var loadedTempo = data.tempo();
         tempo = loadedTempo != null ? loadedTempo : new Tempo();
         applyUnderLyrics(data.underLyrics());
@@ -329,36 +304,25 @@ public final class Song implements Disposable {
         applyTranslatedLyrics(data.translatedLyrics());
         applyFootnotes(data.footnotes());
 
-        // Apply layout
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
         applyLineWidthSs(data.lineWidthSs());
 
-        // Replace lines. Mutation tracking is suspended by the caller for the
-        // duration of parsing and loadFrom, so applyChange does not post notifications.
         lines.clear();
 
         var loadedLines = data.lines();
 
         lines.addAll(loadedLines);
 
-        // The per-mutation propagation hook never ran: parsing is done under suspended tracking,
-        // so no line's key change reached applyChange. And a legacy file predates the rule that no
-        // key change restates the key in effect before it, so that repair belongs to reading
-        // rather than to any edit.
+        // Parsing runs under suspended tracking, so no key change reached the per-mutation
+        // propagation hook. A legacy file also predates the rule that no key change restates the
+        // key in effect before it, so that repair belongs to reading rather than to any edit.
         settleKeysAfterParsing();
 
         hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
         formatVersion = data.formatVersion();
 
-        // Loaded file starts unmodified
         modified = false;
-
-        // Note: SongChanged(FULL) is NOT posted here because the
-        // song hasn't been installed into ScoreView yet. ScoreView.setSong()
-        // posts the FULL message after all state is consistent.
     }
-
-    // ========== Getters (public, read-only API) ==========
 
     public Tempo getTempo() {
         return tempo;
@@ -601,8 +565,6 @@ public final class Song implements Disposable {
         return formatVersion;
     }
 
-    // ========== Setters (mutate + setModified + post) ==========
-
     /**
      * Stays public because the undo replayer and the MusicXML header reader drive it from outside
      * the editing UI.
@@ -670,8 +632,6 @@ public final class Song implements Disposable {
         mutateMetadata(MetadataField.FOOTNOTES, footnotes, newFootnotes, () -> footnotes = newFootnotes);
     }
 
-    // -- Direct setters (bypass mutation tracking; for preview/scratch Song instances only) --
-
     private static final Pattern BLANK_LINE_RUN = Pattern.compile("(\\s*\\n){2,}");
 
     /**
@@ -689,8 +649,6 @@ public final class Song implements Disposable {
         var collapsed = BLANK_LINE_RUN.matcher(trimmed).replaceAll("\n");
         return collapsed.isEmpty() ? SRI_CHINMOY : collapsed;
     }
-
-    // -- Layout setters --
 
     public void setRowHeightAdjustmentSs(double rowHeightAdjustment) {
         mutateLayout(
@@ -715,8 +673,6 @@ public final class Song implements Disposable {
         mutateLayout(
             LayoutField.LINE_WIDTH_SS, lineWidthSs, lineWidthValueSs, () -> lineWidthSs = lineWidthValueSs);
     }
-
-    // -- Setter helpers --
 
     /**
      * {@code current} and {@code newValue} compare by value, so that setting an unchanged value
@@ -748,8 +704,6 @@ public final class Song implements Disposable {
         withModification(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_LYRICS),
             () -> applyChange(new LyricsChange(field, current, newValue), apply));
     }
-
-    // -- Structure setters --
 
     public void addLine(Line line) {
         addLine(lines.size(), line);
@@ -877,11 +831,6 @@ public final class Song implements Disposable {
     public void replaceTerminal(ElementType incomingType) {
         terminal.replaceTerminal(incomingType);
     }
-
-    // ========== Modification brackets ==========
-    //
-    // Every entry point below delegates to this song's ModificationSession, which owns
-    // the depth counters and the accumulated mutation batch.
 
     public boolean isModifying() {
         return modifications.isModifying();
@@ -1537,8 +1486,6 @@ public final class Song implements Disposable {
         modifications.report(change);
     }
 
-    // -- IO/internal setters (remain public, no message posting) --
-
     public void setModified(boolean modified) {
         this.modified = modified;
     }
@@ -1550,8 +1497,6 @@ public final class Song implements Disposable {
     public void setFormatVersion(int formatVersion) {
         this.formatVersion = formatVersion;
     }
-
-    // ========== Update record handlers ==========
 
     @Handler
     public void metadataDidChange(SongMetadataDidChangeNotification update) {
@@ -1591,10 +1536,6 @@ public final class Song implements Disposable {
             }
         });
     }
-
-    // ========== Private helpers ==========
-
-    // -- Apply methods (field mutation only, no side effects) --
 
     private void applyUnderLyrics(String text) {
         underLyrics = StringUtils.processText(text, true);

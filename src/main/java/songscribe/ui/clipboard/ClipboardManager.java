@@ -33,12 +33,7 @@ import songscribe.message.notification.ClipboardDidChangeNotification;
  */
 public final class ClipboardManager {
 
-    // The last-captured fragment, or null if the clipboard is empty
     private @Nullable Fragment fragment;
-
-    // -------------------------------------------------------------------------
-    // Fragment accessors
-    // -------------------------------------------------------------------------
 
     /** {@code null} if the clipboard is empty. */
     public @Nullable Fragment getFragment() {
@@ -52,10 +47,6 @@ public final class ClipboardManager {
     public boolean isEmpty() {
         return fragment == null;
     }
-
-    // -------------------------------------------------------------------------
-    // Fragment mutators
-    // -------------------------------------------------------------------------
 
     public void setFragment(Fragment fragment) {
         this.fragment = fragment;

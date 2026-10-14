@@ -39,11 +39,12 @@ import songscribe.ui.binding.Widgets;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
+/**
+ * The Fonts tab owns the fonts that have no dedicated contextual tab: lyrics and annotation.
+ * The title, attribution and sub-attribution fonts belong to the Title and Attribution tabs.
+ */
 final class SongSettingsFontTab extends BaseDialog.Tab {
 
-    // The Fonts tab owns the fonts that have no dedicated contextual tab:
-    // lyrics and annotation. Title, attribution, and sub-attribution fonts
-    // are owned by the Title and Attribution tabs respectively.
     private final FontSettingRow.DescriptionLabel lyricsFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final ScoreTextPreview lyricsFontPreview = new ScoreTextPreview(
         "I shall bind myself at Your Feet.",

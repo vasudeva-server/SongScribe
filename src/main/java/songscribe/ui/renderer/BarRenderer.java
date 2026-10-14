@@ -35,11 +35,6 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 public final class BarRenderer implements ElementRenderer<BarElement> {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    // Singleton instance
     private static final BarRenderer INSTANCE = new BarRenderer();
 
     private BarRenderer() {
@@ -48,10 +43,6 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
     public static BarRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     public void render(
@@ -67,10 +58,6 @@ public final class BarRenderer implements ElementRenderer<BarElement> {
             drawStrokes(g2, element.bar(), 0, 0);
         }
     }
-
-    // ==========================================================================
-    // Drawing Helpers
-    // ==========================================================================
 
     /**
      * The one definition of a single barline, so one drawn from something other than an element

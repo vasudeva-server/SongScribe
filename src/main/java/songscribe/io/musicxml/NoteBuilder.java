@@ -154,7 +154,6 @@ final class NoteBuilder {
         noteType.setValue(typeToken);
         pmNote.setType(noteType);
 
-        // Grace notes never carry dots.
         var dotCount = isGrace ? 0 : writtenDots.count();
 
         for (var i = 0; i < dotCount; i++) {
@@ -165,7 +164,6 @@ final class NoteBuilder {
             pmNote.setAccidental(buildAccidental(ctx, note));
         }
 
-        // Emitted on every note in a tuplet span, rests included.
         if (tuplet != null) {
             pmNote.setTimeModification(buildTimeModification(ctx, tuplet));
         }
@@ -180,10 +178,6 @@ final class NoteBuilder {
 
         return pmNote;
     }
-
-    // -------------------------------------------------------------------------
-    // <notations> — the shared attachment point
-    // -------------------------------------------------------------------------
 
     /**
      * Every pass that attaches a notation goes through here, so one note never grows two
@@ -305,10 +299,6 @@ final class NoteBuilder {
             .add(factory.createArticulationsBreathMark(factory.createBreathMark()));
     }
 
-    // -------------------------------------------------------------------------
-    // The note's own children
-    // -------------------------------------------------------------------------
-
     /**
      * {@code <alter>} is emitted only when the note actually sounds altered; a natural sign is an
      * accidental, not an alteration.
@@ -405,10 +395,6 @@ final class NoteBuilder {
             case FORTISSIMO -> factory.createDynamicsFf(empty);
         };
     }
-
-    // -------------------------------------------------------------------------
-    // Value helpers
-    // -------------------------------------------------------------------------
 
     /**
      * Throws rather than rounds: {@link NoteTypeMapping#DIVISIONS} makes the scaling exact for

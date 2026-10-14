@@ -70,9 +70,6 @@ public final class ScoreInputHandler extends KeyAdapter
         this.callback = callback;
     }
 
-    //***************************
-    // MouseListener methods
-    //***************************
     @Override
     public void mouseClicked(MouseEvent e) {
         if (!UIUtils.isLeftClick(e)) {
@@ -111,23 +108,16 @@ public final class ScoreInputHandler extends KeyAdapter
         LineComponent.clearPreviewElement();
     }
 
-    //******************************
-    // MouseMotionListener methods
-    //******************************
     @Override
     public void mouseDragged(MouseEvent e) {
-        // Interface requires mouseDragged to be implemented
     }
 
     @Override
     public void mouseMoved(MouseEvent e) {
         // Nothing to do: the view itself has no hover behaviour, and every point a line
-        // responds to now falls inside that line's own bounds, so the line is hovered directly.
+        // responds to falls inside that line's own bounds, so the line is hovered directly.
     }
 
-    //***********************
-    // MouseWheelListener methods
-    //***********************
     @Override
     public void mouseWheelMoved(MouseWheelEvent e) {
         if ((e.getModifiersEx() & UIUtils.MENU_SHORTCUT_MASK) != UIUtils.MENU_SHORTCUT_MASK) {
@@ -141,9 +131,6 @@ public final class ScoreInputHandler extends KeyAdapter
         callback.zoomByWheel(e.getPreciseWheelRotation(), e.getPoint());
     }
 
-    //***********************
-    // KeyListener methods
-    //***********************
     @Override
     public void keyPressed(KeyEvent e) {
         if (e.getKeyCode() == KeyEvent.VK_ALT) {
@@ -173,10 +160,6 @@ public final class ScoreInputHandler extends KeyAdapter
             LineComponent.setAltPressed(false);
         }
     }
-
-    //***********************
-    // Helper methods
-    //***********************
 
     private static final int[] KEY_CODES = {
         KeyEvent.VK_UP,

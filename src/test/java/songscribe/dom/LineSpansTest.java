@@ -233,10 +233,6 @@ class LineSpansTest extends UnitTest {
         );
     }
 
-    // ------------------------------------------------------------------------
-    // Hairpins across a deletion
-    // ------------------------------------------------------------------------
-
     /** The element between {@link #EXISTING} and the crescendo after it, which each case deletes. */
     private static final int DELETED_INDEX = EXISTING.end() + 1;
 
@@ -407,10 +403,6 @@ class LineSpansTest extends UnitTest {
             .as("the same hairpin, not a copy of it")
             .containsExactly(hairpin);
     }
-
-    // ------------------------------------------------------------------------
-    // A deletion that takes a whole span
-    // ------------------------------------------------------------------------
 
     /**
      * One span of a kind, on a line of a real song, whose every element is then deleted.

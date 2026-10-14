@@ -77,10 +77,6 @@ class NoteDragHandler {
         this.lc = lc;
     }
 
-    // ======================================================================
-    // Accessors
-    // ======================================================================
-
     boolean isDragActive() {
         return dragElementIndex != null;
     }
@@ -92,10 +88,6 @@ class NoteDragHandler {
     Integer getDragElementIndex() {
         return dragElementIndex;
     }
-
-    // ======================================================================
-    // Mouse event handlers
-    // ======================================================================
 
     /**
      * Takes the already-resolved hit target. A lyric outranks an element, so a press on lyric
@@ -112,7 +104,6 @@ class NoteDragHandler {
             return false;
         }
 
-        // Shift+click extends selection — let the selection handler manage it
         if (e.isShiftDown()) {
             return false;
         }
@@ -141,15 +132,12 @@ class NoteDragHandler {
         ElementRange dragRange;
 
         if (range != null && coordinator.isElementSelected(hitIndex, lc.getLineIndex())) {
-            // Note is already part of the selection — preserve it for a potential drag.
-            // Capture the existing selection range so the drag group spans all
-            // originally-selected notes even after a collapse on release.
+            // The existing range is kept so the drag group spans all originally-selected notes
+            // even after a collapse on release.
             dragRange = range.range();
             lc.getSelectionHandler().playNoteIfPitched(hitIndex);
             pressPreservedMultiSelection = true;
         } else {
-            // Note is not in the current selection — replace selection with just this note.
-            // Drag group is only the clicked note.
             dragRange = ElementRange.single(hitIndex);
             lc.getSelectionHandler().selectAndPlayElement(hitIndex);
             pressPreservedMultiSelection = false;
@@ -162,7 +150,6 @@ class NoteDragHandler {
         dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragRange));
         resolveForeignLineComponents();
 
-        // Save state for the drag and for a press+release without drag
         dragElementIndex = hitIndex;
         originalDragStaffPositionSp = note.getStaffPosition().value();
         lastPlayedStaffPositionSp = originalDragStaffPositionSp;
@@ -202,7 +189,6 @@ class NoteDragHandler {
 
         var elementIndex = dragElementIndex;
 
-        // Clamp delta so no note in the group exits the valid staff range
         var clampedDelta = PitchShifter.clampDelta(dragGroup, deltaSp);
 
         // If the clamped delta lands on the last-played position, skip so a stationary
@@ -211,7 +197,6 @@ class NoteDragHandler {
             return;
         }
 
-        // Shared with arrow-key shifting: move the whole group to its new staff positions.
         PitchShifter.moveGroup(dragLine, dragGroup, elementIndex, clampedDelta);
 
         lastPlayedStaffPositionSp = originalDragStaffPositionSp + clampedDelta;

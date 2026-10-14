@@ -67,7 +67,6 @@ public final class ElementColumn {
     // the bare hyphen glyph width for hyphenated ones. Distinct from minGapToNextSyllableSs, which
     // is the wider comfortable/preferred gap the rest aims for.
     private double minCollisionGapToNextSyllableSs;
-    // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
     // Notehead-only width (grace-reduced or standard head) in staff spaces, excluding stem, flag,
     // and augmentation dots. Used for lyric centering so neither a flag nor a dot shifts the syllable
@@ -115,10 +114,6 @@ public final class ElementColumn {
      */
     public record MeasuredLyric(Lyric lyric, double widthSs) {}
 
-    // ==========================================================================
-    // Primary Element
-    // ==========================================================================
-
     public StaffElement getElement() {
         return element;
     }
@@ -150,10 +145,6 @@ public final class ElementColumn {
             ? NoteGeometry.effectiveDirection(note)
             : null;
     }
-
-    // ==========================================================================
-    // Horizontal Extents
-    // ==========================================================================
 
     public double getLeftExtentSs() {
         return extents.leftSs();
@@ -256,10 +247,6 @@ public final class ElementColumn {
         return xSs + noteheadWidthSs;
     }
 
-    // ==========================================================================
-    // Stem Information
-    // ==========================================================================
-
     public double getStemTopSs() {
         return extents.stemTopSs();
     }
@@ -295,10 +282,6 @@ public final class ElementColumn {
     public double getAbsoluteBottomYSs() {
         return getPositionSs() + getStemBottomSs();
     }
-
-    // ==========================================================================
-    // Syllable (Lyric)
-    // ==========================================================================
 
     /**
      * @return null if no syllable
@@ -361,10 +344,6 @@ public final class ElementColumn {
         this.minCollisionGapToNextSyllableSs = minCollisionGapToNextSyllableSs;
     }
 
-    // ==========================================================================
-    // Beam Group
-    // ==========================================================================
-
     public Beaming beaming() {
         return Beaming.of(beam);
     }
@@ -378,10 +357,6 @@ public final class ElementColumn {
         return element instanceof NoteElement note && note.hasGlissando();
     }
 
-    // ==========================================================================
-    // X Position (set by HorizontalSpacingCalculator)
-    // ==========================================================================
-
     public double getXSs() {
         return xSs;
     }
@@ -389,10 +364,6 @@ public final class ElementColumn {
     void setXSs(double xSs) {
         this.xSs = xSs;
     }
-
-    // ==========================================================================
-    // Object Methods
-    // ==========================================================================
 
     @Override
     public String toString() {
@@ -416,10 +387,6 @@ public final class ElementColumn {
 
         return sb.toString();
     }
-
-    // ==========================================================================
-    // Span Resolution
-    // ==========================================================================
 
     /**
      * @return {@code null} if the span cannot be placed

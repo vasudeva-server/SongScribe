@@ -40,7 +40,6 @@ import static songscribe.util.GraphicsState.Property.FONT;
  */
 public final class KeySignatureRenderer {
 
-    // Singleton instance
     private static final KeySignatureRenderer INSTANCE = new KeySignatureRenderer();
 
     private KeySignatureRenderer() {
@@ -49,10 +48,6 @@ public final class KeySignatureRenderer {
     public static KeySignatureRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Mid-Line Key Change Rendering
-    // ==========================================================================
 
     /**
      * What is drawn is {@link KeyChangeElement#drawnAccidentals()}'s answer, which
@@ -67,10 +62,6 @@ public final class KeySignatureRenderer {
     ) {
         drawRun(g2, element.drawnAccidentals(), frame.resolveElementXSs(element, invariants), invariants);
     }
-
-    // ==========================================================================
-    // Key Change Rendering (at end of line)
-    // ==========================================================================
 
     /**
      * What is drawn, and where, are {@link CautionaryKeySignature}'s answers, so that the space

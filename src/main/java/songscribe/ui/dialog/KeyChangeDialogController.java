@@ -196,14 +196,11 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
         var strandsItself = key == keyBefore;
         var ownRange = line.effectiveRange(StaffElementRun.ElementRange.single(elementIndex));
 
-        // Every key change further along this line that the new key leaves restating it. Scanning
-        // from past this one is the point: what stands before it is untouched by this edit.
+        // Scanning from past this key change: what stands before it is untouched by this edit.
         var strandedAfter = line.redundantKeyChangeRanges(elementIndex + 1, key);
         var onLine = new ArrayList<StaffElementRun.EffectiveRange>();
 
         if (strandsItself) {
-            // A removal, described as one: the key change and its barline go, and nothing takes
-            // their place.
             onLine.add(ownRange);
         }
 
@@ -216,8 +213,6 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
             line, onLine, line.keyAtEndUnder(elementIndex + 1, key));
 
         withModification(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY), () -> {
-            // The sweep goes ahead of the bound key change, whichever way it goes below, so its
-            // own index is still the one this route was given.
             stranding.sweep();
 
             if (!strandsItself) {
@@ -261,11 +256,9 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
 
         inserted.add(new KeyChangeElement(key));
 
-        // Every key change further along this line that the inserted key leaves restating it.
-        // Scanning from the insertion point is the point: what stands before it is untouched.
-        // An existing key change already standing after the insertion point still has the last
-        // word on the key this line leaves off in, so the inserted key reaches the next line
-        // only when none does.
+        // Scanning from the insertion point: what stands before it is untouched. A key change
+        // already standing after it still has the last word on the key this line leaves off in,
+        // so the inserted key reaches the next line only when none does.
         var strandedAfter = line.redundantKeyChangeRanges(elementIndex, key);
         var stranding = KeyChangeStranding.ofMidLineEdit(
             line, strandedAfter, line.keyAtEndUnder(elementIndex, key));

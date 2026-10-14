@@ -77,14 +77,11 @@ public final class EditModeManager {
     private final InsertionPointMode insertionPointMode;
     private final PasteModeManager pasteModeManager;
 
-    // Whether the preview element is visible (based on mouse position in mouse mode)
     private boolean previewElementIsVisible = false;
 
-    // The current preview element that will be inserted
     @Nullable
     private StaffElement previewElement = null;
 
-    // Whether to play a note sound when inserting elements
     private boolean playInsertedNote = true;
 
     // The insertion armed by the placement code, still inside the modification bracket.
@@ -121,10 +118,6 @@ public final class EditModeManager {
         return instance().pasteModeManager;
     }
 
-    // -------------------------------------------------------------------------
-    // Preview element accessors
-    // -------------------------------------------------------------------------
-
     public static boolean isPreviewElementVisible() {
         return instance().previewElementIsVisible;
     }
@@ -155,10 +148,6 @@ public final class EditModeManager {
     public static boolean hasPreviewElement() {
         return instance().previewElement != null;
     }
-
-    // -------------------------------------------------------------------------
-    // Insertion target
-    // -------------------------------------------------------------------------
 
     /** Null if the most recent song change was not a placement. */
     @Nullable
@@ -196,10 +185,6 @@ public final class EditModeManager {
         instance().playInsertedNote = playInsertedNote;
     }
 
-    // -------------------------------------------------------------------------
-    // Preview element creation and decoration
-    // -------------------------------------------------------------------------
-
     public static StaffElement makePreviewElement() {
         var elementType = ElementType.CROTCHET;
         var durationAction = Actions.DURATION_ACTION_GROUP.getSelected();
@@ -218,7 +203,6 @@ public final class EditModeManager {
     }
 
     public static StaffElement makePreviewElement(ElementType elementType) {
-        // Make a new element or rest of the given type
         var type = elementType;
 
         if (Actions.REST_ACTION.isSelected() && elementType.isPitchedNote()) {
@@ -238,7 +222,6 @@ public final class EditModeManager {
             dottable.setDots((dotAction != null) ? dotAction.dots() : Dots.NONE);
         }
 
-        // A rest takes no other decoration
         if (!(element instanceof NoteElement note)) {
             return;
         }
@@ -264,10 +247,6 @@ public final class EditModeManager {
             );
         }
     }
-
-    // -------------------------------------------------------------------------
-    // Element modification operations
-    // -------------------------------------------------------------------------
 
     public static boolean elementWasModified(Line line, int elementIndex) {
         var inst = instance();
@@ -323,7 +302,6 @@ public final class EditModeManager {
 
         var nextElement = inst.previewElement.getType().newInstance();
 
-        // Add any other element decorations
         decorateElement(nextElement);
         inst.scoreActions.setPreviewElement(nextElement);
         inst.scoreActions.repaint();
@@ -333,12 +311,8 @@ public final class EditModeManager {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Message handlers
-    //
-    // These must operate on `this` and never call instance(): a message can arrive
-    // before init() has assigned INSTANCE, which would abort the application.
-    // -------------------------------------------------------------------------
+    // The message handlers must operate on `this` and never call instance(): a message can
+    // arrive before init() has assigned INSTANCE, which would abort the application.
 
     @Handler
     public void songDidChange(SongDidChangeNotification message) {

@@ -32,7 +32,6 @@ public final class ModifierState {
     private ModifierState() {
     }
 
-    // ==================== macOS ====================
     @SuppressWarnings("InterfaceNeverImplemented")
     @FunctionalInterface
     private interface ApplicationServices extends Library {
@@ -61,7 +60,6 @@ public final class ModifierState {
         }
     }
 
-    // ==================== Windows ====================
     @SuppressWarnings("InterfaceNeverImplemented")
     @FunctionalInterface
     private interface User32 extends Library {
@@ -73,8 +71,6 @@ public final class ModifierState {
         var state = User32.INSTANCE.GetAsyncKeyState(VK_MENU);
         return (state & 0x8000) != 0;
     }
-
-    // ==================== Public API ====================
 
     public static boolean isAltPressed() {
         if (Platform.isMac()) {

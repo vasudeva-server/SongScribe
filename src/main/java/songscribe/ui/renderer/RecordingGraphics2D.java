@@ -143,10 +143,6 @@ public final class RecordingGraphics2D extends Graphics2D {
         return Map.copyOf(byString);
     }
 
-    // ==========================================================================
-    // Recording
-    // ==========================================================================
-
     public void reset() {
         drawables.clear();
         delegate.setTransform(new AffineTransform());
@@ -222,10 +218,6 @@ public final class RecordingGraphics2D extends Graphics2D {
 
         return glyphVector.getVisualBounds();
     }
-
-    // ==========================================================================
-    // Drawing — every method here records, none delegates
-    // ==========================================================================
 
     @Override
     public void drawString(String str, float x, float y) {
@@ -538,10 +530,6 @@ public final class RecordingGraphics2D extends Graphics2D {
     public void copyArea(int x, int y, int width, int height, int dx, int dy) {
         // Intentionally records nothing — see the Javadoc above.
     }
-
-    // ==========================================================================
-    // State — delegated in full, with no shadow copy
-    // ==========================================================================
 
     @Override
     public void translate(int x, int y) {

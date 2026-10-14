@@ -81,8 +81,6 @@ public final class TrillAction extends SelectableUIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        // Let the base recompute enabled from the flags (REQUIRES_SELECTION,
-        // grace mode, etc.).
         super.musicSelectionDidChange(message);
         refreshSelectedState();
     }

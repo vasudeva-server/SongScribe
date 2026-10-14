@@ -79,10 +79,6 @@ import songscribe.util.GraphicsState;
  */
 class LineRenderer {
 
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
     private static final float SELECTION_RECT_STROKE_WIDTH_PX = 2.0f;
 
     private static final double SELECTION_RECT_ARC_PX = 2.0;
@@ -90,26 +86,13 @@ class LineRenderer {
     /** So a zero-width band still renders. */
     private static final double MIN_BAND_WIDTH_PX = 1.0;
 
-    // ==========================================================================
-    // Instance Fields
-    // ==========================================================================
-
     private final LineComponent lc;
-
-    // ==========================================================================
-    // Constructor
-    // ==========================================================================
 
     LineRenderer(LineComponent lineComponent) {
         lc = lineComponent;
     }
 
-    // ==========================================================================
-    // Public Entry Points
-    // ==========================================================================
-
     void render(Graphics2D g2) {
-        // Build the immutable per-line invariants once.
         var invariants = buildInvariants();
 
         // The line-level frame carries the grace-note insert preview shift (rightward
@@ -170,10 +153,6 @@ class LineRenderer {
             .build();
     }
 
-    // ==========================================================================
-    // Staff and Line Beginning
-    // ==========================================================================
-
     private void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
@@ -224,10 +203,6 @@ class LineRenderer {
         AttributionRenderer.getInstance().render(invariants, g2);
     }
 
-    // ==========================================================================
-    // Note Rendering
-    // ==========================================================================
-
     private void renderElements(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var noteRenderer = StaffElementRenderer.getInstance();
         var line = invariants.requireCurrentLine();
@@ -237,7 +212,6 @@ class LineRenderer {
             for (var i = 0; i < line.elementCount(); i++) {
                 var element = line.getElement(i);
 
-                // Apply color based on selection/playing state
                 var color = getElementColor(i, invariants);
                 g2.setColor(color);
 
@@ -282,10 +256,6 @@ class LineRenderer {
 
         return Color.BLACK;
     }
-
-    // ==========================================================================
-    // Range Element Rendering
-    // ==========================================================================
 
     private void renderSlides(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         SlideRenderer.getInstance().renderSlidesFromLine(g2, invariants, frame);
@@ -387,10 +357,6 @@ class LineRenderer {
         EndingRenderer.getInstance().renderEndings(g2, invariants);
     }
 
-    // ==========================================================================
-    // Note Attachment Rendering
-    // ==========================================================================
-
     private void renderAttachments(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var articulationRenderer = ArticulationRenderer.getInstance();
         var fermataRenderer = FermataRenderer.getInstance();
@@ -469,10 +435,6 @@ class LineRenderer {
         // Tier 5: Lyric span connectors (hyphens, extenders) — line-level
         LyricConnectorRenderer.getInstance().render(g2, invariants, lineFrame);
     }
-
-    // ==========================================================================
-    // Overlay Rendering
-    // ==========================================================================
 
     void renderSelectionBand(Graphics2D g2) {
         var band = lc.getSelectionBand();

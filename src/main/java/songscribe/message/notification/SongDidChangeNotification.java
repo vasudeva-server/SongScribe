@@ -44,12 +44,10 @@ public class SongDidChangeNotification extends LintingNotification {
     private final List<Mutation> mutations;
     private final ChangeReport report;
 
-    // Op-name declared by the initiator of this edit (Tier A/B), or null when the
-    // edit declared no name — UndoController then derives a type-based fallback label.
     @Nullable
     private final String opName;
 
-    // Lazy cache for getLine(). null is a valid result, so we need a separate flag.
+    // null is a valid cached result, so the flag is separate.
     private boolean lineIsCached;
     @Nullable
     private Line cachedLine;

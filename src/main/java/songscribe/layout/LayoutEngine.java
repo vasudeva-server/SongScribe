@@ -62,7 +62,6 @@ public class LayoutEngine {
 
     static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
-    // Beam geometry constants (staff-space units unless noted)
     // Not the drawn beam thickness (that is BeamMetrics.BEAM_THICKNESS_SS) — only
     // the base the raster-thickening factor scales.
     static final double BEAM_DEPTH_SS = 0.4;
@@ -75,12 +74,9 @@ public class LayoutEngine {
 
     private static final String STEM_LOG_FORMAT = "%.3f";
 
-    // Tie geometry constants (LilyPond slur_shape port).
-    //
-    // Two LilyPond unit families are involved. "Position-space" tie-details are in
-    // half-staff-spaces and convert to staff spaces by ×0.5 (proven by
-    // Tie_configuration::get_transformed_bezier, which translates by
-    // delta_y_ + staff_space·0.5·position_). Geometric gaps are already in staff spaces.
+    // LilyPond's "position-space" tie-details are in half-staff-spaces and convert to staff
+    // spaces by ×0.5 (Tie_configuration::get_transformed_bezier translates by
+    // delta_y_ + staff_space·0.5·position_). Its geometric gaps are already in staff spaces.
 
     /** LilyPond {@code slur_shape} {@code h_inf}. */
     static final double TIE_HEIGHT_LIMIT_SS = 1.1;
@@ -130,7 +126,6 @@ public class LayoutEngine {
     private final double staffRightMarginSs;
     private final DocumentFontsHolder fonts;
 
-    // Calculators
     private final ElementColumnBuilder columnBuilder;
     private final VerticalStackingCalculator verticalCalculator;
 
@@ -142,7 +137,6 @@ public class LayoutEngine {
         this.staffRightMarginSs = staffRightMarginSs;
         this.fonts = fonts;
 
-        // Initialize calculators
         columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
         // The song's staff width, not a line's content width, which varies with column count:
         // every line's extents then clamp alike.
@@ -173,46 +167,37 @@ public class LayoutEngine {
 
     private LayoutResult layoutHoldingBeamDirections(
         Line line, boolean hasLeadingLyricContinuation, TempoMark tempoMark) {
-        // Step 1: Build note columns
         var columns = columnBuilder.buildColumns(line);
 
-        // Steps 2-3b: Place the columns horizontally. An empty line has no chain to solve and
+        // An empty line has no chain to solve and
         // falls straight through to the shared passes below, which all resolve to no-ops or
         // natural zeros on empty columns. It deliberately gets no special-cased result: the
         // extents below feed inter-line spacing, so a line that invents content extents it does
         // not have spaces itself as if it held that content.
         var fitsStaffWidth = placeColumnsHorizontally(columns, line, line.isLast());
 
-        // Step 3c: The notator's horizontal nudges land on the solved columns, before anything
-        // below reads a column's X.
+        // The notator's horizontal nudges land on the solved columns, before anything below reads a
+        // column's X.
         applyHorizontalNudges(columns);
 
-        // Step 4: The header (clef and key signature) depends on the line's key alone, so the
-        // builder opens with it.
+        // The header (clef and key signature) depends on the line's key alone, so the builder
+        // opens with it.
         var builder = LayoutResult.builder(createStaffHeader(line));
         builder.setOverflowsStaffWidth(!fitsStaffWidth);
 
-        // Step 5: Calculate beam layouts for beamed note groups
         calculateBeams(line, columns, builder);
-
-        // Step 5b: Calculate stem layouts for unbeamed notes
         calculateUnbeamedStems(columns, builder);
-
-        // Step 6: Calculate tie geometry for every tie and tie half the line owns
         calculateTies(line, columns, builder);
-
-        // Step 6b: Calculate slide geometry for every note carrying a glissando or a fall
         calculateSlides(line, columns, builder);
 
-        // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
+        // Vertical stacking reads the stem layouts the two stem passes above wrote.
         verticalCalculator.calculate(columns, line, builder, tempoMark);
 
-        // Step 7b: Compute lyric box and connector geometry, for the same script step 1 built the
-        // columns for — what makes their cached syllable widths reusable there.
+        // The lyrics are laid out for the script the columns were built for, which is what makes
+        // their cached syllable widths reusable.
         buildLyricLayout(
             columns, line.getSong().getActiveScript(), builder, hasLeadingLyricContinuation);
 
-        // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
     }
 
@@ -263,7 +248,6 @@ public class LayoutEngine {
         var solution = HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs);
         var fitsStaffWidth = !solution.isInfeasible();
 
-        // Anchor the first column at the solved chain's origin, then lay the solved gaps out from it.
         columns.getFirst().setXSs(solution.firstXSs());
 
         // An infeasible solve carries no lengths — the struts it could not fit are the placement.
@@ -279,7 +263,6 @@ public class LayoutEngine {
             columns.get(i).setXSs(columns.get(i - 1).getXSs() + gapLengthsSs[i - 1]);
         }
 
-        // Pin the terminal flush-right on the last line.
         // Layout is the sole writer of the terminal's x position.
         //
         // An overflowing line is skipped: the chain above already placed the terminal on its
@@ -305,9 +288,11 @@ public class LayoutEngine {
         return lengthsSs;
     }
 
+    /**
+     * @param columns those of the last line, where the terminal is the last element; only that
+     *                column is snapped flush-right, so interior {@code REPEAT_RIGHT}s stay in place
+     */
     private void positionTerminalFlushRight(List<ElementColumn> columns, double lineRestSs) {
-        // On the last line, the terminal is always the last element. Only the last
-        // column is snapped flush-right — interior REPEAT_RIGHTs are left in place.
         var lastColumn = columns.getLast();
         var lastType = lastColumn.getElement().getType();
 
@@ -355,7 +340,6 @@ public class LayoutEngine {
         Line line,
         LayoutResultBuilder builder) {
 
-        // Add element columns
         for (var column : columns) {
             builder.putElementColumn(column.getElement(), column);
         }
@@ -468,10 +452,6 @@ public class LayoutEngine {
             var thickeningSs = BEAM_DEPTH_SS * (factor - 1.0);
             var beamLine = new LayoutResult.BeamLine(firstColumnXSs, startYSs, slope);
 
-            // Build StemLayout for each element in the beam group and accumulate into a map
-            // for the BeamLayout.  All Y values are in staff-space with Y-down positive.
-            //   stemsUp:   topYSs = beamYSs (above notehead, smaller Y),  bottomYSs = elementAnchorYSs
-            //   stemsDown: topYSs = elementAnchorYSs,                     bottomYSs = beamYSs (below notehead, larger Y)
             var stemLayouts = new HashMap<StaffElement, LayoutResult.StemLayout>();
 
             if (!stemInputs.isEmpty()) {
@@ -564,10 +544,8 @@ public class LayoutEngine {
                 ? StemMetrics.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
-            // Extend the stem tip to reach the staff center (Y=0) when the stem points toward
-            // center but the natural stem length falls short. The signed distance the tip must
-            // travel toward center is elementYSs for an up-stem and -elementYSs for a down-stem;
-            // a stem pointing away from center (only via a manual override) is never extended.
+            // The stem tip reaches the staff center (Y=0) when the stem points toward it. A stem
+            // pointing away from center (only via a manual override) is never extended.
             var distanceTowardCenterSs = direction.isUp() ? elementYSs : -elementYSs;
             var lengtheningSs = isGraceNote
                 ? 0.0
@@ -578,7 +556,6 @@ public class LayoutEngine {
             var forcedShorteningSs = NoteGeometry.forcedShorteningSs(element);
             var effectiveLenSs = stemLenSs + lengtheningSs - forcedShorteningSs;
 
-            // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
             var topYSs = direction.isUp() ? elementYSs - effectiveLenSs : elementYSs;
             var bottomYSs = direction.isUp() ? elementYSs : elementYSs + effectiveLenSs;
 
@@ -772,8 +749,6 @@ public class LayoutEngine {
             endpointYSs, arcSign, BezierBow.height(tieWidthSs, TIE_RATIO, TIE_HEIGHT_LIMIT_SS));
         var shoulderYSs = endpointYSs + arcSign * heightSs;
 
-        // Outer/inner lens taper: outer control points offset away from the notes by the midpoint
-        // half-thickness, inner control points offset toward the notes.
         var outerCpYSs = shoulderYSs + arcSign * TIE_MID_THICKNESS_SS;
         var innerCpYSs = shoulderYSs - arcSign * TIE_MID_THICKNESS_SS;
 
@@ -1007,7 +982,6 @@ public class LayoutEngine {
             return naturalHeightSs;
         }
 
-        // Distance from the baseline out to the line, positive in the arc direction.
         var lineDistSs = arcSign * (nearestLineYSs - baseYSs);
 
         // Natural apex sits below the line: keep the arc under it, flattening only when its outer edge

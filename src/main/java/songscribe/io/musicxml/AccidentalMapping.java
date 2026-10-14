@@ -34,19 +34,11 @@ import songscribe.dom.Accidental;
  */
 public final class AccidentalMapping {
 
-    // -------------------------------------------------------------------------
-    // MusicXML <accidental> token values
-    // -------------------------------------------------------------------------
-
     public static final String ACCIDENTAL_NATURAL       = "natural";
     public static final String ACCIDENTAL_FLAT          = "flat";
     public static final String ACCIDENTAL_SHARP         = "sharp";
     public static final String ACCIDENTAL_FLAT_FLAT     = "flat-flat";
     public static final String ACCIDENTAL_DOUBLE_SHARP  = "double-sharp";
-
-    // -------------------------------------------------------------------------
-    // Reverse map: token → Accidental
-    // -------------------------------------------------------------------------
 
     private static final Map<String, Accidental> REVERSE_MAP = Map.of(
         ACCIDENTAL_NATURAL,       Accidental.NATURAL,
@@ -57,10 +49,6 @@ public final class AccidentalMapping {
     );
 
     private AccidentalMapping() {}
-
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
 
     public static String forAccidental(Accidental accidental) {
         return switch (accidental) {

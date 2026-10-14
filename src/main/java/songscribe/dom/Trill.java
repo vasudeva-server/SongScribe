@@ -29,7 +29,6 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
 
-    // SMuFL bbox-derived dimensions in staff-space units for the "tr" glyph
     public static final double TRILL_GLYPH_WIDTH_SS;
     private static final double TRILL_GLYPH_HEIGHT_SS;
 

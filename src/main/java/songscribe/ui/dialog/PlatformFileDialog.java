@@ -38,7 +38,6 @@ public class PlatformFileDialog {
     static SystemFileChooser.FileNameExtensionFilter convertFilter(ExtensionFileFilter maf) {
         var extensions = maf.getExtensions();
 
-        // Extract description without extension list (remove " (ext1, ext2)")
         var description = maf.getDescription();
         var parenIndex = description.lastIndexOf('(');
 
@@ -123,8 +122,7 @@ public class PlatformFileDialog {
     }
 
     public @Nullable ExtensionFileFilter getFileFilter() {
-        // First, try to infer format from the filename extension
-        // This is more reliable than the filter dropdown on macOS native dialogs
+        // The filename extension is more reliable than the filter dropdown on macOS native dialogs.
         var selectedFile = chooser.getSelectedFile();
 
         if (selectedFile != null && originalFilters != null) {
@@ -138,7 +136,6 @@ public class PlatformFileDialog {
             }
         }
 
-        // Fall back to filter dropdown selection
         var selectedFilter = chooser.getFileFilter();
 
         if (originalFilters != null && convertedFilters != null && selectedFilter != null) {

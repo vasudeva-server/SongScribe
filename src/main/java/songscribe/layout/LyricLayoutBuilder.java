@@ -169,8 +169,6 @@ public final class LyricLayoutBuilder {
             }
 
             if (lyric == null) {
-                // Note with no lyric: extender (if active) continues silently through this column.
-                // A note that can bear a syllable gets a placeholder where its syllable would go.
                 if (columnCanBearSyllable(columns, columnIndex)) {
                     var placeholderXSs = computeLyricBoxLeftXSs(new BoxPlacement(
                         column,
@@ -188,12 +186,10 @@ public final class LyricLayoutBuilder {
             }
 
             if (extend == Lyric.Extend.CONTINUE) {
-                // CONTINUE carrier: extender continues silently through this column.
                 continue;
             }
 
             if (extend == Lyric.Extend.STOP) {
-                // STOP carrier: ends active extender past this note's notehead, no box.
                 state.closeExtenderPastHead(connectors, activeScript, column.getNoteheadRightEdgeXSs());
                 continue;
             }
@@ -214,7 +210,6 @@ public final class LyricLayoutBuilder {
             var box = new LyricBoxLayout(boxXSs, widthSs, activeScript, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
-            // Close any pending hyphen at the start of this syllable.
             var pendingHyphen = state.pendingHyphen;
 
             if (pendingHyphen != null) {
@@ -227,7 +222,6 @@ public final class LyricLayoutBuilder {
                 state.pendingHyphen = null;
             }
 
-            // Close any active extender at the start of this syllable.
             state.closeExtender(connectors, activeScript, boxXSs);
 
             var syllableEndXSs = boxXSs + widthSs;

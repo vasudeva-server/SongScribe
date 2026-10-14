@@ -103,7 +103,6 @@ public final class LyricEditor extends MyJTextField {
     private static final Pattern FIRST_WORD_PATTERN =
         Pattern.compile("^\\s*([\\p{L}\\p{Mn}\\p{Mc}]+)");
 
-    // The text of each Placeholder. Only this editor uses them, so they live here.
     private static final String HYPHEN_TEXT = "-";
     private static final String UNDERSCORE_TEXT = "_";
 
@@ -1036,7 +1035,9 @@ public final class LyricEditor extends MyJTextField {
         openIndexOrDismiss(nextIndex);
     }
 
-    // Must NOT be inside an open modification bracket — opens its own.
+    /**
+     * Not called inside an open modification bracket; it opens its own.
+     */
     private void breakChainCommitAndAdvance(CommitKind kind, @Nullable Integer nextIndex) {
         if (!ensureLyricFits(kind, Lyric.Extend.NONE)) {
             trace("breakChainCommitAndAdvance: refused, the lyric does not fit");
@@ -1371,7 +1372,9 @@ public final class LyricEditor extends MyJTextField {
         dismiss(true);
     }
 
-    // Must be called inside an open modification bracket.
+    /**
+     * Called inside an open modification bracket.
+     */
     private void applyDismissAdjustment() {
         if (suppressDismissAdjustment) {
             trace("dismissAdjustment: suppressed, a chain was just built by hand");

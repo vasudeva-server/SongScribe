@@ -53,7 +53,6 @@ public final class InsertionPointOverlay extends JComponent {
      */
     public record Text(String title, String hint) {}
 
-    // Vertical offset from the viewport's top edge down to the pill's top edge.
     private static final int TOP_MARGIN_PX = 10;
 
     private final ScoreView scoreView;

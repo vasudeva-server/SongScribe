@@ -53,7 +53,6 @@ import static songscribe.engraving.BarStroke.THIN;
  * negative and a bottom offset positive.
  */
 public enum ElementType {
-    // Notes
     SEMIBREVE(Kind.NOTE, NoteValue.WHOLE, new NoteheadAppearance(WholeNotehead.WHOLE)),
     MINIM(Kind.NOTE, NoteValue.HALF, new NoteheadAppearance(StemmedNotehead.HALF)),
     CROTCHET(Kind.NOTE, NoteValue.QUARTER, new NoteheadAppearance(StemmedNotehead.BLACK)),
@@ -62,7 +61,6 @@ public enum ElementType {
     DEMI_SEMIQUAVER(Kind.NOTE, NoteValue.THIRTY_SECOND,
         new NoteheadAppearance(StemmedNotehead.BLACK)),
 
-    // Rests
     SEMIBREVE_REST(Kind.REST, NoteValue.WHOLE,
         new DottableGlyphAppearance(SMuFLGlyph.REST_WHOLE, -2)),
     MINIM_REST(Kind.REST, NoteValue.HALF, new DottableGlyphAppearance(SMuFLGlyph.REST_HALF, 0)),
@@ -74,10 +72,8 @@ public enum ElementType {
     DEMI_SEMIQUAVER_REST(Kind.REST, NoteValue.THIRTY_SECOND,
         new DottableGlyphAppearance(SMuFLGlyph.REST_32ND, 0)),
 
-    // Grace notes
     GRACE_QUAVER(Kind.GRACE_NOTE, NoteValue.EIGHTH, new NoteheadAppearance(StemmedNotehead.BLACK)),
 
-    // Repeats
     REPEAT_LEFT(Kind.REPEAT, BarAppearance.of(THICK, THIN, DOTS)),
     REPEAT_RIGHT(Kind.REPEAT, BarAppearance.of(DOTS, THIN, THICK)),
     REPEAT_LEFT_RIGHT(Kind.REPEAT, BarAppearance.of(DOTS, THIN, THICK, THIN, DOTS)),
@@ -87,12 +83,10 @@ public enum ElementType {
     // hit rect is built from it, so the drawn glyph and its clickable area cannot disagree.
     BREATH_MARK(Kind.BREATH_MARK, new PlainGlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA, -5)),
 
-    // Barlines
     SINGLE_BARLINE(Kind.BARLINE, BarAppearance.SINGLE_BARLINE),
     DOUBLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN, THIN)),
     FINAL_DOUBLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN, THICK)),
 
-    // Key changes
     KEY_CHANGE(Kind.KEY_CHANGE, new KeySignatureAppearance());
 
     /**
@@ -121,10 +115,6 @@ public enum ElementType {
             return Strings.get(labelKey);
         }
     }
-
-    // ========================================================================
-    // Geometry constants — canonical definitions; layout/ui reference these
-    // ========================================================================
 
     public static final float GRACE_NOTE_SCALE = 0.75f;
 
@@ -468,10 +458,6 @@ public enum ElementType {
         };
     }
 
-    // ========================================================================
-    // Element bounds in staff spaces
-    // ========================================================================
-
     /**
      * Runs inside the constructor, so it references no constant of this enum.
      */
@@ -509,11 +495,9 @@ public enum ElementType {
         var headRightSs = headBBox.rightSs();
         var stemUpXSs = anchors.stemUpSE().xSs();
 
-        // Stem tip above the notehead for an up-stem, below it for a down-stem.
         var upTopSs = anchors.stemUpSE().ySs() - StemMetrics.STEM_LENGTH_SS;
         var downBottomSs = anchors.stemDownNW().ySs() + StemMetrics.STEM_LENGTH_SS;
 
-        // Width: max of notehead and stem-up flag extent
         var widthSs = headRightSs;
         var flagGlyph = flagGlyph(kind, value, Direction.UP);
 

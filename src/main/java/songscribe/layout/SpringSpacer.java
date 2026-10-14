@@ -100,8 +100,6 @@ public final class SpringSpacer {
             var unitLevelSs = (budgetSs - freeOffsetSs) / freeWeight;
             var worst = worstViolator(springs, naturalSs, clamped, unitLevelSs);
 
-            // No free gap violates a bound: each rests at its offset plus its weighted share of the
-            // common level.
             if (worst == null) {
                 for (var i = 0; i < gapCount; i++) {
                     if (!clamped[i]) {
@@ -113,7 +111,6 @@ public final class SpringSpacer {
                 return SpringSolveResult.solved(lengthsSs);
             }
 
-            // A strut clamp pins the gap on its floor; a natural clamp leaves it at its natural length.
             var worstGap = worst.gap();
             var worstSpring = springs.get(worstGap);
             lengthsSs[worstGap] = worst.atStrut() ? worstSpring.strutSs() : naturalSs[worstGap];

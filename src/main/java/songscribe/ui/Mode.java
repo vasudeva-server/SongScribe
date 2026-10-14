@@ -21,9 +21,6 @@
 package songscribe.ui;
 
 public enum Mode {
-    // Selecting notes or a staff line
     SELECT,
-
-    // Editing notes
     EDIT
 }

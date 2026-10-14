@@ -32,25 +32,13 @@ import songscribe.dom.Accidental;
  */
 public final class LegacyAccidentals {
 
-    // -------------------------------------------------------------------------
-    // Retired MusicXML <accidental> token values
-    // -------------------------------------------------------------------------
-
     public static final String ACCIDENTAL_NATURAL_FLAT  = "natural-flat";
     public static final String ACCIDENTAL_NATURAL_SHARP = "natural-sharp";
-
-    // -------------------------------------------------------------------------
-    // Legacy token → replacement Accidental
-    // -------------------------------------------------------------------------
 
     private static final Map<String, Accidental> LEGACY_TOKEN_MAP = Map.of(
         ACCIDENTAL_NATURAL_FLAT,  Accidental.FLAT,
         ACCIDENTAL_NATURAL_SHARP, Accidental.SHARP
     );
-
-    // -------------------------------------------------------------------------
-    // Legacy enum name → replacement Accidental
-    // -------------------------------------------------------------------------
 
     private static final Map<String, Accidental> LEGACY_NAME_MAP = Map.of(
         "NATURAL_FLAT",  Accidental.FLAT,
@@ -59,10 +47,6 @@ public final class LegacyAccidentals {
     );
 
     private LegacyAccidentals() {}
-
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
 
     /**
      * Returns {@code null} if {@code token} is not a retired token.

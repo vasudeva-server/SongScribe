@@ -81,7 +81,6 @@ public class VerticalStackingCalculator {
         var noteAttachedStacker = new NoteAttachedStacker(context, noteAttachedExtents);
         noteAttachedStacker.stackInner();
 
-        // Initialize structural layer from note-attached layer
         structuralExtents.copyTopFrom(noteAttachedExtents);
 
         var structuralStacker = new StructuralStacker(context, structuralExtents);
@@ -160,8 +159,6 @@ public class VerticalStackingCalculator {
         return Math.max(contentAboveStaffSs, aboveFromAttribution);
     }
 
-    // ---- Accidental seeding ----
-
     static void seedAccidentalsIntoStructural(
         List<ElementColumn> columns,
         StaffExtents structuralExtents) {
@@ -177,11 +174,8 @@ public class VerticalStackingCalculator {
                 continue;
             }
 
-            // Translate from notehead-relative to absolute staff X.
-            // bounds.leftSs() is negative (accidental is left of the notehead).
+            // The bounds are relative to the notehead, and their Y is relative to the note center.
             var accXSs = column.getXSs() + bounds.leftSs();
-
-            // bounds Y values are relative to the note center; shift to staff coordinates.
             var centerYSs = note.getStaffPosition().toSs();
 
             var accidentalFootprint = new Footprint(accXSs, bounds.widthSs());
@@ -190,9 +184,6 @@ public class VerticalStackingCalculator {
                 Direction.DOWN, accidentalFootprint, bounds.bottomSs() + centerYSs);
         }
     }
-
-
-    // ---- Manual offset application ----
 
     /**
      * Offsets are applied after all collision detection; no collision re-run occurs, so the user

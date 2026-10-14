@@ -67,10 +67,6 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
         EditModeManager.getInsertionPointMode().enter(this);
     }
 
-    // -------------------------------------------------------------------------
-    // InsertionPointMode.Client
-    // -------------------------------------------------------------------------
-
     @Override
     public InsertionPointOverlay.Text overlayText() {
         return new InsertionPointOverlay.Text(

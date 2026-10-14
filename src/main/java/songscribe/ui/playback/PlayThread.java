@@ -64,8 +64,7 @@ public class PlayThread implements Runnable {
 
         try {
             Thread.sleep(NOTE_DURATION_MS);
-        } catch (InterruptedException e) {
-            // okay
+        } catch (InterruptedException ignored) {
         }
 
         sendNoteOff(pitch);
@@ -102,8 +101,7 @@ public class PlayThread implements Runnable {
             var on = new ShortMessage();
             on.setMessage(ShortMessage.NOTE_ON, 0, pitch, PlaybackController.SELECTED_NOTE_VELOCITY);
             MidiController.midiReceiver.send(on, MidiController.NO_TIMESTAMP);
-        } catch (InvalidMidiDataException e) {
-            // Ignore
+        } catch (InvalidMidiDataException ignored) {
         }
     }
 
@@ -116,8 +114,7 @@ public class PlayThread implements Runnable {
             var off = new ShortMessage();
             off.setMessage(ShortMessage.NOTE_OFF, 0, pitch, 0);
             MidiController.midiReceiver.send(off, MidiController.NO_TIMESTAMP);
-        } catch (InvalidMidiDataException e) {
-            // Ignore
+        } catch (InvalidMidiDataException ignored) {
         }
     }
 }

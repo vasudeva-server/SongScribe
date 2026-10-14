@@ -285,20 +285,18 @@ public final class LineIO {
         private void parseTupletData(String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
-                var grade = 3; // default to triplet
+                var grade = 3;
                 var yOffsetSs = 0.0;
 
                 var data = segment.data();
 
                 if (data != null) {
-                    // Has data portion: grade[,vertPos]
                     var parts = data.split(",");
 
                     try {
                         grade = Integer.parseInt(parts[0]);
                     } catch (NumberFormatException _) {
                         LOG.warn("Corrupt document: malformed tuplet grade: '{}', using default {}", parts[0], grade);
-                        // Leave grade at default of 3
                     }
 
                     if (parts.length > 1) {
@@ -528,7 +526,6 @@ public final class LineIO {
             if (!pendingTrillPairs.isEmpty()) {
                 var last = pendingTrillPairs.getLast();
 
-                // Extend the current run if this element is contiguous
                 if (last.end() == elementIndex - 1) {
                     pendingTrillPairs.set(
                         pendingTrillPairs.size() - 1, new TrillPair(last.anchor(), elementIndex, last.yOffsetSs()));
@@ -536,7 +533,6 @@ public final class LineIO {
                 }
             }
 
-            // Start a new run: anchor == end == elementIndex, yOffsetSs == 0
             pendingTrillPairs.add(new TrillPair(elementIndex, elementIndex, 0));
         }
 

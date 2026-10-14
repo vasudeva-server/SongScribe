@@ -38,7 +38,6 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 
 public final class ArticulationRenderer implements ElementRenderer<StaffElement> {
 
-    // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();
 
     private ArticulationRenderer() {
@@ -47,10 +46,6 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     public static ArticulationRenderer getInstance() {
         return INSTANCE;
     }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
 
     @Override
     public void render(

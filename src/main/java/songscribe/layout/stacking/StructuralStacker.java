@@ -265,7 +265,6 @@ public class StructuralStacker {
     private List<ScriptObstacle> scriptObstacles(ElementColumn column) {
         var obstacles = new ArrayList<ScriptObstacle>();
 
-        // Only a note carries scripts.
         if (!(column.getElement() instanceof NoteElement note)) {
             return obstacles;
         }

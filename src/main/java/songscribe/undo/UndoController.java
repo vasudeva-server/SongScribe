@@ -109,30 +109,24 @@ public final class UndoController {
 
     private static final UndoController INSTANCE = new UndoController();
 
-    // Top of each deque is the most-recent step (push/pop); the bottom (removeLast)
-    // is the oldest, evicted first when the depth limit is exceeded.
     private final Deque<UndoStep> undoStack = new ArrayDeque<>();
     private final Deque<UndoStep> redoStack = new ArrayDeque<>();
 
-    // Reentrancy guard: true while replaying a step, so the SongDidChangeNotification
-    // the replay bracket posts is not itself pushed as a new step.
+    // True while replaying, so the SongDidChangeNotification that the replay bracket
+    // posts is not itself pushed as a new step.
     private boolean applyingReplay;
 
-    // Reference to the undo step on top of undoStack at last save (or BASELINE when
-    // the stack was empty then). Compared with == everywhere. cleanValid is false while no
-    // position in the history is clean: the marked step was evicted, a replay failed, or
-    // the load changed the song and it has not been saved since.
+    // Compared with == everywhere. cleanValid is false while no position in the history is
+    // clean: the marked step was evicted, a replay failed, or the load changed the song and
+    // it has not been saved since.
     private UndoStep cleanStep = BASELINE;
     private boolean cleanValid = true;
 
-    // Tier-A op-name declared by the current UI action, set around dispatch by the
-    // UIAction template and consumed by the song's modification bracket at the depth 0→1
-    // transition. Held here — the intermediary between UI and model — rather than on
-    // Song so the domain model carries no UI-label state. EDT-only, no synchronization.
+    // Held here rather than on Song so the domain model carries no UI-label state.
+    // EDT-only, no synchronization.
     @Nullable
     private String pendingOpName;
 
-    // The open document as the engine sees it, or null when none is open.
     private Supplier<@Nullable ReplayTarget> target = () -> null;
 
     private UndoController() {
@@ -332,8 +326,6 @@ public final class UndoController {
             return Strings.get(plainKey);
         }
 
-        // A declared op-name is used verbatim; otherwise derive the type-based
-        // fallback label from the step's dominant mutation.
         var opName = step.opName();
 
         //noinspection ReplaceNullCheck

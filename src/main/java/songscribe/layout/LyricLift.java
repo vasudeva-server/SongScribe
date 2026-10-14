@@ -64,7 +64,6 @@ public final class LyricLift {
             var requirementSs = lyricRequirementSs(columns.get(i), columns.get(i + 1), beforePrev, afterCurr);
             requirementsSs[i] = requirementSs;
 
-            // The absolute shortfall: how far this gap's ideal rest falls short of its requirement.
             // The largest shortfall on the line becomes the even lift; a tight beam gap contributes
             // only its own small shortfall, so it never inflates the whole line.
             //
@@ -84,15 +83,12 @@ public final class LyricLift {
         for (var i = 0; i < springs.size(); i++) {
             var spring = springs.get(i);
 
-            // Lift-exempt gaps pass through untouched — no share of the lift, no requirement spike.
             if (spring.liftExempt()) {
                 lifted.add(spring);
                 continue;
             }
 
             var factor = HorizontalSpacingCalculator.restFactorFor(columns.get(i), columns.get(i + 1));
-            // The gap's proportional share of the even lift, plus a local spike wherever the capped
-            // lift still falls short of the requirement.
             var evenRestSs = spring.restSs() + factor * liftSs;
             var newRestSs = Math.max(evenRestSs, requirementsSs[i]);
 

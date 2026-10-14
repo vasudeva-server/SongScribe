@@ -163,7 +163,6 @@ public final class InstalledFonts {
         } else if (isBold) {
             weightSuffix = "Bold";
         } else if (isItalic) {
-            // Italic with no weight variant maps to the Italic face.
             return "Italic";
         } else {
             weightSuffix = "Regular";

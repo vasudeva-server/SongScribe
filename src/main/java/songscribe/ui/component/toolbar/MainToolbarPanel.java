@@ -37,7 +37,6 @@ import songscribe.ui.component.ThemeAwareMatteBorder;
  */
 public final class MainToolbarPanel extends JPanel {
 
-    // The minimum space between the main tools and the playback controls
     private static final int TOOLBAR_MARGIN = 40;
 
     static final int NO_BORDER = 0;
@@ -62,7 +61,6 @@ public final class MainToolbarPanel extends JPanel {
         toolsPanel.add(createStaffAnnotationToolbarPanel());
         add(toolsPanel, BorderLayout.WEST);
 
-        // Add a minimum margin between the main tools and the playback controls
         add(Box.createHorizontalStrut(TOOLBAR_MARGIN), BorderLayout.CENTER);
 
         add(createPlaybackToolbarPanel(), BorderLayout.EAST);

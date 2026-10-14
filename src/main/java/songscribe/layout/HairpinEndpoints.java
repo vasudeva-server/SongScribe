@@ -145,7 +145,8 @@ public final class HairpinEndpoints {
     /**
      * The edges are the glyph's <em>advance</em> box, not its ink. Deliberately unclamped — the
      * result may legitimately fall outside the hairpin's own columns. Serves both the own-bound
-     * and adjacent-element callers; do not split it into two variants.
+     * and adjacent-element callers; do not split it into two variants. An index outside the line
+     * yields empty, so callers may pass {@code anchorIndex - 1} and {@code endIndex + 1} unchecked.
      */
     private static OptionalDouble dynamicTipXSs(
         Line line,
@@ -153,7 +154,6 @@ public final class HairpinEndpoints {
         int index,
         SpanEnd side
     ) {
-        // Range-guarded here so callers may pass anchorIndex - 1 and endIndex + 1 unchecked.
         if (!line.hasIndex(index)) {
             return OptionalDouble.empty();
         }

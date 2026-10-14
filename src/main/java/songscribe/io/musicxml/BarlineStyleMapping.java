@@ -35,33 +35,17 @@ import songscribe.dom.ElementType;
  */
 public final class BarlineStyleMapping {
 
-    // -------------------------------------------------------------------------
-    // MusicXML bar-style attribute values
-    // -------------------------------------------------------------------------
-
     public static final String BAR_STYLE_REGULAR     = "regular";
     public static final String BAR_STYLE_LIGHT_LIGHT = "light-light";
     public static final String BAR_STYLE_LIGHT_HEAVY = "light-heavy";
     public static final String BAR_STYLE_HEAVY_LIGHT = "heavy-light";
     public static final String BAR_STYLE_NONE        = "none";
 
-    // -------------------------------------------------------------------------
-    // MusicXML repeat direction attribute values
-    // -------------------------------------------------------------------------
-
     public static final String REPEAT_FORWARD  = "forward";
     public static final String REPEAT_BACKWARD = "backward";
 
-    // -------------------------------------------------------------------------
-    // MusicXML barline location attribute values
-    // -------------------------------------------------------------------------
-
     public static final String LOCATION_LEFT  = "left";
     public static final String LOCATION_RIGHT = "right";
-
-    // -------------------------------------------------------------------------
-    // Forward-map entries (one per supported ElementType)
-    // -------------------------------------------------------------------------
 
     private static final Map<ElementType, BarlineEntry> FORWARD_MAP = Map.of(
         ElementType.SINGLE_BARLINE,       new BarlineEntry(BAR_STYLE_REGULAR,     null,            LOCATION_RIGHT),
@@ -71,13 +55,9 @@ public final class BarlineStyleMapping {
         ElementType.REPEAT_RIGHT,         new BarlineEntry(BAR_STYLE_LIGHT_HEAVY, REPEAT_BACKWARD, LOCATION_RIGHT)
     );
 
-    // -------------------------------------------------------------------------
-    // Reverse map — bar-style alone is sufficient for all cases except the
-    // light-heavy ambiguity, which is resolved by the presence/absence of a
-    // repeat direction (REPEAT_RIGHT has one; FINAL_DOUBLE_BARLINE does not).
-    // heavy-light always resolves to REPEAT_LEFT and needs no repeat direction,
-    // so it is covered by REVERSE_MAP_NO_REPEAT alone.
-    // -------------------------------------------------------------------------
+    // Bar-style alone identifies the element except for light-heavy, which a repeat direction
+    // disambiguates (REPEAT_RIGHT has one; FINAL_DOUBLE_BARLINE does not). heavy-light always
+    // resolves to REPEAT_LEFT, so REVERSE_MAP_NO_REPEAT covers it alone.
 
     private static final Map<String, ElementType> REVERSE_MAP_NO_REPEAT = Map.of(
         BAR_STYLE_REGULAR,     ElementType.SINGLE_BARLINE,
@@ -91,10 +71,6 @@ public final class BarlineStyleMapping {
     );
 
     private BarlineStyleMapping() {}
-
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
 
     /**
      * Returns {@code null} if the type has no entry (e.g. {@code REPEAT_LEFT_RIGHT}).
@@ -121,10 +97,6 @@ public final class BarlineStyleMapping {
 
         return REVERSE_MAP_NO_REPEAT.get(barStyle);
     }
-
-    // -------------------------------------------------------------------------
-    // Value type
-    // -------------------------------------------------------------------------
 
     public record BarlineEntry(
         String barStyle,
