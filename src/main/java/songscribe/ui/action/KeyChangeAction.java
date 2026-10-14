@@ -40,8 +40,7 @@ import songscribe.ui.edit.InsertionPointMode;
  * {@link #insertionPointChosen}: opening it there would put a modal dialog in front of a banner
  * still telling the user to click.
  *
- * <p>See {@code docs/key-changes.md} for what a mid-line key change means, and
- * {@link KeyChangeElement}'s position invariant for why some positions are refused.
+ * <p>{@link KeyChangeElement}'s position invariant is why some positions are refused.
  */
 public final class KeyChangeAction extends UIAction implements InsertionPointMode.Client {
 

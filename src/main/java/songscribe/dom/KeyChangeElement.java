@@ -94,7 +94,7 @@ public final class KeyChangeElement extends StructuralElement {
      * On a line, the key changed from is the line's, re-read on every call so the extent tracks
      * the line around it. On no line it is the key {@link #forMeasurement} was given; an element
      * it did not build has none, and a guessed width would be too narrow for every change that
-     * cancels. See {@code docs/key-changes.md}.
+     * cancels.
      */
     public KeySignatureExtent extent() {
         return new KeySignatureExtent(previousKey(), key);

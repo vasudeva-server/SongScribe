@@ -264,8 +264,6 @@ public final class HorizontalSpacingCalculator {
      * The single source of truth for per-pair horizontal spacing, shared by full layout and
      * insertion: a delta-X (Ss) between the two columns' origins. Grace, key signature and
      * glissando are folded in here, so a {@code Spring} needs no post-processing.
-     *
-     * <p>See {@code docs/layout-geometry.md} for the full recipe with each floor's formula.
      */
     public static Spring buildSpring(ElementColumn prev, ElementColumn curr, double lineRestSs) {
         return buildSpring(prev, curr, lineRestSs, null, null, null);

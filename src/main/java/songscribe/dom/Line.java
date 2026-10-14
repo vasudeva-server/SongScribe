@@ -54,7 +54,7 @@ import songscribe.message.mutation.TieRemoval;
  * line is the song's to maintain: see {@link TerminalMaintainer}.
  *
  * <p><b>Ties.</b> A tie is a note's own state; the line is where it is recorded
- * ({@link #addTie}, {@link #removeTie}). See {@code docs/span-invalidation.md}.
+ * ({@link #addTie}, {@link #removeTie}).
  *
  * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
  * actually takes effect at the start of the line; null means the line inherits the key in effect
@@ -224,8 +224,9 @@ public final class Line implements EditableRun {
      * <p>This is what a deletion needs and {@link #keyAtEndUnder(int, Key)} cannot give.
      * Removing a mid-line key change moves the key every following line inherits, so the
      * deletion owes the same cross-line stranding sweep an inserted key change owes
-     * — {@code KeyChangeStranding.ofMidLineEdit} takes this key as its starting point. Why a
-     * deletion computes that reach unconditionally is in {@code docs/key-changes.md}.
+     * — {@code KeyChangeStranding.ofMidLineEdit} takes this key as its starting point. A deletion
+     * computes that reach whether or not it removes a key change, because one that removes none
+     * leaves the end key where it was and the reach is one line, on the same path.
      *
      * @param effectiveRange the elements the deletion removes
      * @return the key in effect after this line's last element once the range is gone; never null

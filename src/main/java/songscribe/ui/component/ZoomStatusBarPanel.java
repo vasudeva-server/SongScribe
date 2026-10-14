@@ -64,7 +64,7 @@ public final class ZoomStatusBarPanel extends JPanel {
         new JSlider(ZoomController.MIN_ZOOM_PERCENT, ZoomController.MAX_ZOOM_PERCENT, ZoomController.DEFAULT_ZOOM_PERCENT);
 
     // The effect that keeps this panel current. Never disposed: the status bar lives for
-    // the process (see docs/lifecycle.md), so there is no retirement to release it at.
+    // the process, so there is no retirement to release it at.
     private final Bindings bindings = new Bindings();
 
     public ZoomStatusBarPanel() {

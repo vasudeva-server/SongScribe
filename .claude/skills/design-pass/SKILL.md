@@ -57,11 +57,11 @@ pass on row 3 writes `plans/design-pass-3/findings-1-2.md`, then
 
 **Steps 1 and 2 share one document**, because the inventory is what the
 class-design argument is made from and neither is reviewable without the other.
-Steps 3, 4, 5, 6, 7, 9 and 13 each have their own.
+Steps 3, 4, 5, 6, 7 and 12 each have their own.
 
-**Steps 8, 10, 11 and 12 have no findings document.** Steps 8, 10 and 11 run
+**Steps 8, 9, 10 and 11 have no findings document.** Steps 8, 9 and 10 run
 something and report what it says; there is nothing in them for a reviewer to
-decide. Step 12 is itself a review, and its marks come back on the code rather
+decide. Step 11 is itself a review, and its marks come back on the code rather
 than on a document.
 
 **A findings document covers its own step's axis and nothing else.** Step 3 asks
@@ -96,7 +96,7 @@ Then:
 - **Open it.** `roughdraft open "<absolute path to the document>"`. The command
   **blocks until the user closes the review session**, so the waiting is the tool
   call itself, not a turn you end and hope to be woken from. Nothing changes
-  while it is open: no production file, no test file, no `docs/` file, no
+  while it is open: no production file, no test file, no `guides/` file, no
   register row. **The document you open is plain Markdown**: never write a
   `<span id="rd-…">` or any other review anchor into it yourself — those are
   written by the reviewer's tool when a comment is placed, and an earlier
@@ -123,7 +123,7 @@ Then:
 - **Then execute the step**, and snapshot.
 
 The findings documents are working memory on the same terms as the record, and
-step 13 deletes them with it.
+step 12 deletes them with it.
 
 ### Doctrine — read before step 2, do not paraphrase
 
@@ -131,11 +131,11 @@ step 13 deletes them with it.
   attack, class design, types over tests, boundaries, guards, `@Nullable`,
   scoped globals, extraction, what Javadoc states, the testing floor and the gate
   that proposes tests before they are written. Everything here serves it.
-- **`.claude/guides/contracts.md`** — what a Javadoc may state, and the form of
+- **`guides/conventions/contracts.md`** — what a Javadoc may state, and the form of
   a full contract.
-- **`.claude/guides/testing-common.md`** — where cases come from, triage,
+- **`guides/conventions/testing-common.md`** — where cases come from, triage,
   diagnostics.
-- **`.claude/guides/testing-unit.md`** — parameterized case tables and the
+- **`guides/conventions/testing-unit.md`** — parameterized case tables and the
   exhaustiveness assertion.
 - **`.claude/rules/java.md`** — Javadoc syntax and the signature rules.
 - **`reference/classification.md`** — which contracts you may decide and which
@@ -187,25 +187,21 @@ See [reference/step-7-test-only-surface.md](reference/step-7-test-only-surface.m
 
 See [reference/step-8-suite-and-visual-gates.md](reference/step-8-suite-and-visual-gates.md).
 
-## Step 9: Judge the diagrams
+## Step 9: Coverage — once, scoped
 
-See [reference/step-9-judge-the-diagrams.md](reference/step-9-judge-the-diagrams.md).
+See [reference/step-9-coverage.md](reference/step-9-coverage.md).
 
-## Step 10: Coverage — once, scoped
+## Step 10: Mutation — opportunistic
 
-See [reference/step-10-coverage.md](reference/step-10-coverage.md).
+See [reference/step-10-mutation.md](reference/step-10-mutation.md).
 
-## Step 11: Mutation — opportunistic
+## Step 11: Adversarial review
 
-See [reference/step-11-mutation.md](reference/step-11-mutation.md).
+See [reference/step-11-adversarial-review.md](reference/step-11-adversarial-review.md).
 
-## Step 12: Adversarial review
+## Step 12: Close out
 
-See [reference/step-12-adversarial-review.md](reference/step-12-adversarial-review.md).
-
-## Step 13: Close out
-
-See [reference/step-13-close-out.md](reference/step-13-close-out.md).
+See [reference/step-12-close-out.md](reference/step-12-close-out.md).
 
 ## Things that stay true throughout
 
@@ -258,7 +254,7 @@ See [reference/step-13-close-out.md](reference/step-13-close-out.md).
   other — a plan that re-argues a decision drifts from the record, and a record
   that tracks progress drifts from the plan.
 
-  **The plan is deleted with the record at step 13.** It is working memory on the
+  **The plan is deleted with the record at step 12.** It is working memory on the
   same terms, and `plans/design-pass-register.md` states why under *The record is
   working memory*.
 

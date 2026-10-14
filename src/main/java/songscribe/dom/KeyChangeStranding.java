@@ -29,7 +29,7 @@ import songscribe.dom.StaffElementRun.EffectiveRange;
  *
  * <p>A key change that restates the key already in effect draws nothing and is not
  * representable, so the edit that strands one removes it, together with the element it is
- * paired with, in the same undo step as the edit itself — see {@code docs/key-changes.md}. Each
+ * paired with, in the same undo step as the edit itself. Each
  * factory is the pure, pre-mutation query that says what an edit will strand; {@link #sweep} and
  * its two deferred forms are the removal, called inside the edit's modification bracket.
  *

@@ -29,7 +29,7 @@ import songscribe.util.GraphicUtils;
  * pixels that {@link songscribe.ui.ViewScale} folds the current zoom on top of. One document
  * scale holds for every document and every view.
  * <p>
- * Zoom is per-view; see {@code docs/zoom.md}.
+ * Zoom is per-view state, never a property of the document.
  */
 public final class DocumentScale {
 

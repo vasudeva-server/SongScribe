@@ -71,8 +71,6 @@ import songscribe.message.notification.UndoStateDidChangeNotification;
 /**
  * Application-level undo/redo engine. SongScribe is single-document, so one stack pair is correct.
  *
- * <p>See {@code docs/undo.md} for the flow and the round-trip and identity guarantees.
- *
  * <ul>
  *   <li>One bracket, one step: whoever opens the outermost bracket decides what counts as one
  *       edit.

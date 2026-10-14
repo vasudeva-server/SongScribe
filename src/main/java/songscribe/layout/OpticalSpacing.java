@@ -37,9 +37,11 @@ import songscribe.engraving.Staff;
  * <p>Grace columns are ordinary columns here: the gap into a grace and the gap out of it to its
  * host are both corrected, though the grace-to-host gap is {@code liftExempt}.
  *
- * <p>A "knee" (a beam that changes stem direction mid-group) is not implemented.
+ * <p>Vertical overlap is how far the two columns' vertical spans intersect, and is zero where they
+ * are disjoint. The correction ramps with it rather than switching on at a threshold, so spacing
+ * does not jump when a pitch changes by one step.
  *
- * <p>See {@code docs/layout-geometry.md}.
+ * <p>A "knee" (a beam that changes stem direction mid-group) is not implemented.
  */
 public final class OpticalSpacing {
 

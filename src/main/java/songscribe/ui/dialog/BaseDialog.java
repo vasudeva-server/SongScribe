@@ -268,6 +268,10 @@ public abstract class BaseDialog implements Disposable {
         return composite;
     }
 
+    /**
+     * The container for a tabbed dialog. Never build a {@code JTabbedPane} instead: the tab
+     * lifecycle callbacks fire from this container's selection listener.
+     */
     protected JComponent createTabbedContent() {
         hasSidebar = true;
         return tabbedContent;
@@ -774,8 +778,8 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * <strong>Window parenting only.</strong> It is not a route to the score; see
-     * {@code .claude/guides/dialogs.md}.
+     * <strong>Window parenting only.</strong> It is not a route to the score: the document is
+     * reached only through a {@link DocumentDialogController}.
      */
     protected MainFrame getMainFrame() {
         return mainFrame;
@@ -821,6 +825,14 @@ public abstract class BaseDialog implements Disposable {
      * <strong>A tab populates and displays; it does not commit and it does not validate.</strong>
      * A rule that spans tabs cannot be checked from inside one, and a commit split across tabs is
      * several undo steps for one edit. See {@link StandardDialog}.
+     *
+     * <p><strong>A subclass constructor ends with {@code build()}</strong>, which the framework
+     * cannot call for it; a tab that omits it comes up empty.
+     *
+     * <p><strong>A button inside a tab is a plain {@code JButton}, never a
+     * {@code UIAction}</strong>: a {@code UIAction} registers with the message bus in its
+     * constructor and needs an owner to release it, and a tab has no disposal point beyond the
+     * dialog's bindings.
      */
     @SuppressWarnings("NoopMethodInAbstractClass")
     protected abstract class Tab extends JPanel {

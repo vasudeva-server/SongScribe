@@ -17,8 +17,8 @@ Produce:
   rejects;
 - **every method a test derives from**, which is what decides whether it has a
   full contract;
-- which existing `docs/*.md` describe the subsystem this target sits in, since a
-  method cites that overview rather than restating it;
+- which files in `guides/` cover the subsystem this target sits in, since a
+  Javadoc does not restate a cross-type rule or a concept they hold;
 - every test class, with its case count and what it appears to cover.
 
 Subagent prompts must bound the search surface: absolute working directory,

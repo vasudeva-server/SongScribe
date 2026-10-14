@@ -44,8 +44,7 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * <p>Every case runs against one song whose key changes each change the key where they stand,
  * so nothing is stranded until an edit moves a key: a first line in the document key, an
  * inheriting line changing to another key, an inheriting line changing back, a line with a key of
- * its own holding a key change that the wrong reach would strand, and a last inheriting line. See
- * {@code docs/key-changes.md}, <em>A mid-line change never restates the key already in effect</em>.
+ * its own holding a key change that the wrong reach would strand, and a last inheriting line.
  */
 class KeyChangeStrandingTest extends UnitTest {
 

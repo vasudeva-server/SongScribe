@@ -30,8 +30,6 @@ import java.util.List;
  * <p>Never implement this on a {@link java.awt.Window} subclass: {@code Window.dispose()}
  * already means releasing the native peer, and Swing calls it on paths the application does
  * not control.
- *
- * <p>See {@code docs/lifecycle.md}.
  */
 @FunctionalInterface
 public interface Disposable {

@@ -55,7 +55,7 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * <p>The forward walk that re-derives those keys stops at the first line establishing a key of its
  * own, which is sound only while that line keeps the same predecessor. An arriving line is the one
  * thing that breaks it, so the cases cover a line arriving both keyed and inheriting, arriving at
- * index 0, and leaving. See {@code docs/key-changes.md}.
+ * index 0, and leaving.
  */
 class InheritedKeyPropagationTest extends UnitTest {
 

@@ -39,7 +39,7 @@ names a whole package, each list is that one directory.
 
 A row marked *(undecomposed)* is a directory nobody has read yet. **Split it on
 the read**, never before: step 1 names the systems the directory actually holds,
-you take one of them, and step 13 rewrites the register's single row into those
+you take one of them, and step 12 rewrites the register's single row into those
 systems. Splitting from a directory listing predicts boundaries instead of
 finding them, which is the error the register exists to avoid.
 

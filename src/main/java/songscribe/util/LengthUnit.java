@@ -27,8 +27,7 @@ import songscribe.prefs.PrefsValue;
  * A physical length unit the user types and reads lengths in, chosen by
  * {@code PrefsKey.UNITS}.
  *
- * <p>Inches are the pivot of every conversion. This is a display unit, not a layout unit; see
- * {@code .claude/guides/spatial-units.md} for staff spaces and pixels.
+ * <p>Inches are the pivot of every conversion. This is a display unit, not a layout unit.
  *
  * <p>Nothing reads the user's choice yet: the Preferences control and the conversions are kept
  * for page setup. Do not remove either as dead code.

@@ -91,11 +91,10 @@ import songscribe.io.ReadAnnotation;
  * by {@code songscribe.dom.Key#accidentalsFrom}, so a document renders under this program's
  * cancellation policy; {@code <mode>} is never read because no SongScribe key has a mode.
  *
- * <p>Four rules are order-sensitive and live in the passes that own them: a tie's stop
- * resolves before its start on the same note; a hairpin's stop before its start, except
- * when one note both opens and closes one; the first tempo mark of the first measure is
- * the song's own; and a tie may cross a line boundary, while a hairpin and a volta may
- * not.
+ * <p>Three rules are order-sensitive and live in the passes that own them: a hairpin's stop
+ * resolves before its start, except when one note both opens and closes one; the first tempo
+ * mark of the first measure is the song's own; and a tie may cross a line boundary, while a
+ * hairpin and a volta may not.
  *
  * <p><b>Damaged marks.</b> This writer pairs every span mark it emits, so a mark that does not
  * pair is damage. The pass that meets a damaged mark drops it, keeps the notes it sat on, adds

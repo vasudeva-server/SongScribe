@@ -302,12 +302,16 @@ public final class NoteGeometry {
         return middleLineYSs + staffPosition * Staff.HALF_SPACE_SS;
     }
 
+    /**
+     * The X span of one ledger line, note-relative and right-positive: it reaches past the note
+     * head on each side.
+     */
     public record LedgerExtentSs(double leftSs, double rightSs) {}
 
     /**
      * Per-note ledger-line geometry, identical for all of a note's ledger lines: compute it once
      * via {@link #getLedgerLineGeometry} and call {@link #extentAtSs} per line. Note-relative, X
-     * right-positive and Y down-positive. See {@code docs/layout-geometry.md}.
+     * right-positive and Y down-positive.
      *
      * @param closestAccidentalSs bounds of the note's nearest accidental close enough to shorten a
      *     ledger line for, or {@code null} when the note has none

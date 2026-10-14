@@ -21,7 +21,7 @@ See `.claude/skills/run/SKILL.md` for how to launch the app.
 - For UI-visible changes, either the user exercises the change themselves in
   a running instance (`./scripts/run.sh`), or you check
   `~/Library/Logs/SongScribe/songscribe.log` after describing the exact
-  steps you took/expect, per `.claude/guides/logging.md`.
+  steps you took/expect, per `guides/conventions/logging.md`.
 
 Report what you actually did (compiled, ran tests, asked the user to check
 the UI) rather than a generic pass/fail verdict implying automated

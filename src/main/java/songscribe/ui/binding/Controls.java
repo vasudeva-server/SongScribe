@@ -61,6 +61,10 @@ import songscribe.ui.component.TickSlider;
  * changed by code that knows nothing of this package is still read correctly — it just does not
  * <i>notify</i> unless the route carries the write.
  *
+ * <p>A control this repository does not own does not route {@code setText} into its property,
+ * so an {@code ON_COMMIT} text property over one goes stale on a programmatic write; bind it
+ * {@code WHILE_TYPING} or write through the property.
+ *
  * <p>Every adapter names, in its own contract, the Swing route it observes and whether that
  * route fires on a programmatic write, because the wrong route loses writes and nothing
  * reports the loss.

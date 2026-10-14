@@ -249,9 +249,8 @@ public interface StaffElementRun {
      *
      * <p>Two things are refused whatever {@code incoming} is, both because they are half of a
      * pair that only means anything whole: a <b>grace note</b>, which belongs to the host that
-     * follows it, and either half of a <b>key change and the barline it sits behind</b> — the pair
-     * rule in {@code docs/key-changes.md}, which {@link #effectiveBegin} deletes whole for the
-     * same reason.
+     * follows it, and either half of a <b>key change and the barline it sits behind</b>, which
+     * {@link #effectiveBegin} deletes whole for the same reason.
      *
      * <p>A <b>bar line</b> — an {@code incoming} whose {@link ElementType#isBar()} is true — is
      * also refused where it would stand first in the song ({@link SongStart}): at the song-start
@@ -294,7 +293,7 @@ public interface StaffElementRun {
      *   <li>in front of a <b>mid-line key change</b>, which is the gap between it and the
      *       barline it stands behind. Anything landing there leaves the key change preceded by
      *       something other than a barline, breaking {@link KeyChangeElement}'s position
-     *       invariant — see {@code docs/key-changes.md}.</li>
+     *       invariant.</li>
      *   <li>in front of the <b>host of a paired grace note</b>, which is the gap between the
      *       grace note and the note it decorates. The two mean nothing apart, so nothing goes
      *       between them.</li>
@@ -401,8 +400,6 @@ public interface StaffElementRun {
      *       a duration element, and the inserted run ends with the key change —
      *       {@link #canTrailRunAt}.</li>
      * </ul>
-     *
-     * <p>See {@code docs/key-changes.md} for what a mid-line key change means.
      *
      * @param index the slot the key change would be inserted at, so that it lands in front of the
      *     element currently at {@code index}; out of range yields {@code false}, since no note

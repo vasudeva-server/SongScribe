@@ -53,8 +53,7 @@ public final class MessageSubscription implements Disposable {
 
     /**
      * The bus holds the listener weakly, so a process-lifetime listener with no owner of its
-     * own is annotated {@code @Listener(references = References.Strong)}; see
-     * {@code docs/messages.md}.
+     * own is annotated {@code @Listener(references = References.Strong)}.
      */
     public static void addProcessListener(Object listener) {
         MessageCenter.subscribe(listener);

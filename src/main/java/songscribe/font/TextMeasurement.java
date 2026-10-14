@@ -51,6 +51,12 @@ import songscribe.util.GraphicUtils;
  * taken without the fractional-metrics hint that {@link GraphicUtils#setRenderingHints} turns
  * on wrap a paragraph at a different word than the paint pass does.
  * <p>
+ * An answer is in the unit the measured font was sized in, which a query cannot know: a font
+ * sized in staff spaces answers in staff spaces, and one sized in document pixels answers in
+ * document pixels. Text is measured at document scale with no view, so one layout holds at every
+ * zoom; a measurement taken off a live {@code Graphics2D} is valid only at that paint pass's
+ * zoom, so it is drawn from at once and never stored or fed into layout.
+ * <p>
  * Text that is measured here and later drawn is also <em>shaped</em> here, through
  * {@link #glyphVector} and {@link #textLayout}.
  */

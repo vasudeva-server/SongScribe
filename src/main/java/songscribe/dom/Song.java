@@ -718,6 +718,10 @@ public final class Song implements Disposable {
 
     // -- Setter helpers --
 
+    /**
+     * {@code current} and {@code newValue} compare by value, so that setting an unchanged value
+     * records nothing.
+     */
     private void mutateMetadata(
         MetadataField field, @Nullable Object current, @Nullable Object newValue, Runnable apply
     ) {
@@ -877,8 +881,7 @@ public final class Song implements Disposable {
     // ========== Modification brackets ==========
     //
     // Every entry point below delegates to this song's ModificationSession, which owns
-    // the depth counters and the accumulated mutation batch. See that class, and
-    // docs/mutations.md, for the rules callers must honor.
+    // the depth counters and the accumulated mutation batch.
 
     public boolean isModifying() {
         return modifications.isModifying();
@@ -1174,8 +1177,7 @@ public final class Song implements Disposable {
      * <p>A view holding per-line geometry needs this. A line's header signature and the spacing
      * around it are solved from the key that line runs in, and the room kept clear at its end is
      * solved from the cautionary it leads into — so a key move leaves stale geometry on lines no
-     * mutation names, and the line ahead of the move is one of them. See
-     * {@code docs/key-changes.md}.
+     * mutation names, and the line ahead of the move is one of them.
      *
      * <p>Asked after the mutation has been applied, so the answer describes the document as it now
      * stands, which is what a stale view has to be brought up to.
@@ -1420,7 +1422,7 @@ public final class Song implements Disposable {
      * its own key</em> — stated once: that line's running key cannot move, so nothing past it can
      * either. The line that stops the chain is still reported, because what it inherits is kept
      * current too: giving that line a key is compared against it, and clearing that line's key
-     * makes it the key the line runs in. See {@code docs/key-changes.md}.
+     * makes it the key the line runs in.
      *
      * <p>Pure: it reads each line's own key and elements and never the inherited keys this song
      * keeps. A caller projecting an edit that has not happened yet therefore gets the chain the
@@ -1491,9 +1493,10 @@ public final class Song implements Disposable {
     }
 
     /**
-     * One of the two places the stranded-key-change rule is enforced; see
-     * {@code docs/key-changes.md}. Removing a stranded key change leaves the chain
-     * {@link #rebuildInheritedKeysAfterParsing()} settled intact, so no second pass is owed.
+     * One of the two places the stranded-key-change rule is enforced: an edit reaches only what
+     * its own key move strands, so only a read sees a stranding an older document holds.
+     * Removing a stranded key change leaves the chain {@link #rebuildInheritedKeysAfterParsing()}
+     * settled intact, so no second pass is owed.
      */
     private void removeStrandedKeyChangesAfterParsing() {
         for (var line : lines) {

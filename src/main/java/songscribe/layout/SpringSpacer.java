@@ -40,8 +40,6 @@ public final class SpringSpacer {
     }
 
     /**
-     * See {@code docs/layout-geometry.md} for the decision diagram.
-     *
      * @param springs the gaps between adjacent column origins, in left-to-right order
      * @return {@link SpringSolveResult#infeasible()} when the chain overflows even fully
      *         compressed

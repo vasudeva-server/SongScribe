@@ -114,13 +114,12 @@ import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
 /**
- * Manages and draws the music score and its lyrics, and handles input for editing it. See
- * {@code docs/score-view-hierarchy.md}.
+ * Manages and draws the music score and its lyrics, and handles input for editing it.
  *
  * <h2>Lifecycle</h2>
  * Process-lifetime: {@link #init()} subscribes the view to the message bus and nothing ever
  * unsubscribes it. The class is deliberately not {@code songscribe.lifecycle.Disposable}; there is
- * nothing to release (the long-lived-views case in {@code docs/lifecycle.md}).
+ * nothing to release.
  */
 
 public final class ScoreView
@@ -180,7 +179,7 @@ public final class ScoreView
     private final ValueProperty<Integer> zoomPercent = new ValueProperty<>(viewScale.getZoomPercent());
 
     // Effects this view declares on its own state. Never disposed: every ScoreView lives
-    // for the process (see docs/lifecycle.md), so there is no retirement to release them at.
+    // for the process, so there is no retirement to release them at.
     private final Bindings bindings = new Bindings();
 
     // Called when a file is successfully opened (e.g. to update the window title)

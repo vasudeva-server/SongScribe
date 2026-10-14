@@ -35,7 +35,7 @@ import songscribe.message.mutation.Mutation;
  * ({@link Tie#between}) and the tie {@link Tie#holds() holds}. A tie that stays also removes any
  * beam that holds both of its notes, since the tie wins. It judges every tied note of the lines
  * an edit touched and of the line before each, since a tie from that line can end in the touched
- * one. See {@code docs/span-invalidation.md}.
+ * one. A tie loaded from a file is trusted, because a load records nothing for the rule to judge.
  */
 final class TieRule implements ModificationRule {
 

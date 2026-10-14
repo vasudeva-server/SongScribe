@@ -36,6 +36,11 @@ import songscribe.engraving.StaffPosition;
  * states, and the only thing that constructs a {@link ChainedAccidental}. A walk over the live
  * song after a recorded change and a walk over a projection of an edit that has not landed
  * both come here, so an edit's preview and its result cannot disagree about a note.
+ *
+ * <p>A chain is the notes at one staff position from an anchor up to, and not including, the
+ * next anchor or cancel at that position or the next key change. It crosses barlines, repeats and
+ * line breaks, and its notes need not be adjacent. The walk changes what is written on a note,
+ * never what the note sounds.
  */
 public final class AccidentalChain {
 

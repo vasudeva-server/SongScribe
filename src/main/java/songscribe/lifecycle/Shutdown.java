@@ -32,8 +32,6 @@ import org.slf4j.LoggerFactory;
  * tasks run in registration order and any may veto, then EDT tasks and JVM tasks run LIFO. The
  * emergency paths skip straight to JVM exit, where the shutdown hook runs the JVM tasks; each
  * runs at most once across both paths.
- *
- * <p>See {@code docs/lifecycle.md}.
  */
 public final class Shutdown {
 

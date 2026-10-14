@@ -49,7 +49,7 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * <p>Every case runs against the same shape of song, so each answer can be told from its
  * neighbors: a first line in the document key, an inheriting line leaving off in another key by
  * way of a mid-line key change, a plain inheriting line, a line with a key of its own, and a last
- * line inheriting from it. See {@code docs/key-changes.md}.
+ * line inheriting from it.
  */
 class InheritanceChainTest extends UnitTest {
 

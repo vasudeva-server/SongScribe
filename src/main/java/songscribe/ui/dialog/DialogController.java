@@ -127,7 +127,8 @@ public abstract class DialogController<I extends @Nullable Copyable<I>, O extend
 
         // Returns values rather than the null literal: NullAway reads a bare type variable as
         // non-null whatever its bound permits, so a literal null here is rejected while the same
-        // null travelling inside I is not. See the nullable-I section of .claude/guides/dialogs.md.
+        // null travelling inside I is not. The same shape serves any generic method that passes a
+        // nullable type variable through.
         return values == null ? values : values.copy();
     }
 }

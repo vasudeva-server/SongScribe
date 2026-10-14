@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.within;
 /**
  * How far a melisma and a hyphen reach past the column they start on — the promise that a column
  * bearing no syllable is passed over rather than treated as the end of the chain — and which
- * columns get a missing-lyric placeholder and where it sits. See {@code docs/lyrics.md}.
+ * columns get a missing-lyric placeholder and where it sits.
  */
 class LyricLayoutBuilderTest extends UnitTest {
 

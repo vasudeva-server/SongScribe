@@ -33,8 +33,7 @@ import songscribe.ui.component.NonBlankTextField;
  * <p><strong>OK is unavailable while the field is blank</strong>, rather than blankness being
  * refused when OK is pressed. The condition reads the field's property, so it answers to a cut
  * and a paste as readily as to typing. The field is a {@link NonBlankTextField}, so the same
- * rule also holds once focus leaves it. See the validity section of
- * {@code .claude/guides/dialogs.md}.
+ * rule also holds once focus leaves it.
  *
  * <p><strong>It opens while another modal dialog is already up</strong>: the combo it serves
  * lives inside a dialog.

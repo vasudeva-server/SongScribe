@@ -341,9 +341,9 @@ public class MainFrame extends JFrame {
     }
 
     /**
-     * Runs on the {@code "startup-gate"} thread.
-     *
-     * <p>See {@code docs/lifecycle.md} for the full cross-thread sequence.
+     * Runs on the {@code "startup-gate"} thread. Holds the reveal until a minimum splash time has
+     * passed, so the splash does not flash by on a fast machine, and until MIDI has finished or
+     * run out of its allowance, so a broken MIDI device cannot hold the application hostage.
      */
     private static void runStartupGate() {
         var elapsedMs = System.currentTimeMillis() - splashShownAtMs;
@@ -476,7 +476,7 @@ public class MainFrame extends JFrame {
         //
         // main() constructs the singleton, which calls initFrame() to wire the UI; initFrame()
         // calls Actions.initialize(this) to populate the Actions.* constants, and the first read
-        // of one of those constants is MenuController.init(this). See docs/lifecycle.md.
+        // of one of those constants is MenuController.init(this).
         Actions.initialize(this);
         PlaybackController.initialize(this);
 

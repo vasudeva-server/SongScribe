@@ -29,8 +29,6 @@ import songscribe.smufl.SMuFLMetadata;
  * including the stem, and the stem-free extent where a glissando attaches. Extents are note-local,
  * X=0 at the notehead glyph origin. Ledger lines and the flag are excluded because a glissando,
  * pinned at notehead-center Y, never meets them.
- *
- * <p>See {@code docs/layout-geometry.md}.
  */
 public final class NoteColumnGeometry {
 

@@ -50,7 +50,7 @@ they need:
    instance it builds lives for the process, so a `dispose()` now would be unreachable.
    Add a `Lifecycle` clause to `ScoreView`'s Javadoc stating that.
 4. Rewrite the ownership clause in `Bindings`'s class Javadoc, `WriteGuard`'s Javadoc,
-   `.claude/guides/bindings.md` and `docs/lifecycle.md` to read *one owner with a
+   `guides/conventions/bindings.md` and `guides/conventions/lifecycle.md` to read *one owner with a
    disposal point* rather than *one dialog*. State in `Bindings`'s Javadoc why an
    owner's field rather than a global registry: a registry entry is a key, not an
    owner, so nothing ties an entry's lifetime to the object's, a class-keyed entry

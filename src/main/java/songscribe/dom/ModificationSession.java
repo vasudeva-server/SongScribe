@@ -37,7 +37,10 @@ import songscribe.undo.UndoController;
  * auto-maintenance modes, each depth-counted so nesting is safe. A replay judges nothing, so an
  * undo or a redo always delivers an empty report.
  *
- * <p>See {@code docs/mutations.md} for the emission rules callers must honor.
+ * <p>Suspension and replay are not interchangeable: suspension records nothing, so it leaves no
+ * undo entry, no modified flag and no report, while a replay still records, and only stops the
+ * companion side-work its batch already carries. The outermost bracket alone decides what counts
+ * as one edit.
  */
 public final class ModificationSession {
 

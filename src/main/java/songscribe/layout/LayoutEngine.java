@@ -920,6 +920,15 @@ public class LayoutEngine {
      * Distance from the tied notes' shared center to the tie endpoints, in the arc direction.
      * Placement is purely note-relative and independent of any articulation, matching LilyPond.
      *
+     * <p>Computed directly, not by LilyPond's penalty-minimizing search: for a single tie with no
+     * neighboring ties that search converges on this placement. Chords with several ties, and
+     * collisions with other ties, accidentals or stems, are not modeled.
+     *
+     * <p>A note in the space just inside the outermost staff line is pushed past that line so the
+     * endpoints clear it. LilyPond leaves them on the line, which is a defect there; do not
+     * reproduce it. A dotted note on a line lifts the tie clear of its dot, and the dot never
+     * moves.
+     *
      * @param arcSign +1 when the arc bulges downward, -1 upward
      */
     static double tieSeatSs(StaffPosition notePosition, int arcSign, boolean dotRowCoincides) {

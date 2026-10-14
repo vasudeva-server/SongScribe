@@ -38,7 +38,6 @@ import songscribe.binding.Binding.InitialWrite;
  *
  * <p>A {@code Bindings} belongs to exactly one owner, which must call {@link #dispose} when
  * the owner is disposed; otherwise the observations keep the owner and its controls alive.
- * See {@code docs/lifecycle.md}.
  *
  * <p>EDT-only.
  */
@@ -74,7 +73,9 @@ public final class Bindings implements Disposable {
      *
      * @param <T> the derived value's type, declared {@code @Nullable} when absence is
      *     a value the graph carries
-     * @param body the derivation; it must read only values and must not write any,
+     * @param body the derivation; it must read its inputs through {@code ObservableValue}s,
+     *     because a direct control read such as {@code field.getText()} is invisible to the
+     *     dependency tracker and leaves the derivation stale; it must not write any value,
      *     must be free of side effects, and must not read the value it defines
      * @return the derived value
      * @effects registers the derivation here, and the derivation holds an observation

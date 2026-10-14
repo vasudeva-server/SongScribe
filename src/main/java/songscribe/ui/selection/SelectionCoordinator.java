@@ -366,6 +366,9 @@ public final class SelectionCoordinator implements Disposable {
      * Mutations are folded front-to-back: each record's indices are relative to the state the
      * previous record left behind. The final end-of-range check is a backstop for structural
      * changes that never reached the mutation record; do not remove it as unreachable.
+     *
+     * <p>Must run ahead of every other reader of the range for the notification: a subscriber
+     * that outranks it and reads the range sees positions that no longer exist.
      */
     public void revalidateElementSelection(SongDidChangeNotification notification) {
         var range = getRange();

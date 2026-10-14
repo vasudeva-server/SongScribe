@@ -35,7 +35,7 @@ import songscribe.message.mutation.Mutation;
  *
  * <p>The mutation list is never empty, so a subscriber may read the first mutation without
  * guarding, and it holds every state change the bracket made, so {@code UndoController} can
- * replay it as a unit. See {@code docs/mutations.md}.
+ * replay it as a unit.
  *
  * <p>EDT only: the cached {@link #getLine()} result is not synchronized.
  */

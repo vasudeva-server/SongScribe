@@ -20,6 +20,17 @@
 
 package songscribe.message.mutation;
 
+/**
+ * One recorded change to a song. Undo replays a batch in reverse, so the order in which records
+ * are emitted is part of their meaning.
+ *
+ * <p>A record that removes state depending on an element is emitted before the change that
+ * prompted it, so undo restores the element first and the dependent state finds what it points
+ * at. The removals the modification rules make at the close of an edit are the exception, and
+ * are emitted after the changes that broke them, because each judged the final state. A record
+ * for terminal maintenance of another line is emitted after the line insertion or deletion that
+ * prompted it, so undo handles it before the line operation.
+ */
 public sealed interface Mutation
     permits ElementInsertion, ElementDeletion, ElementModification, ElementReplacement,
             LineInsertion, LineDeletion,

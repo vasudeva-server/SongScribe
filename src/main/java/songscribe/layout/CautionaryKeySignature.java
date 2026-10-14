@@ -40,7 +40,7 @@ import songscribe.engraving.EngravingConstants;
  * line does not already end in a barline or a repeat. Padding either side of the accidentals is
  * {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}.
  *
- * <p>See {@code docs/key-changes.md}.
+ * <p>It is stored nowhere and written to no file.
  *
  * @param previousKey   the key the line leaves off in — the left-hand side of the change
  * @param nextKey       the key the following line begins in, never equal to {@code previousKey}

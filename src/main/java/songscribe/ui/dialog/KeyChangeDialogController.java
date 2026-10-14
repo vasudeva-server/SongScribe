@@ -166,7 +166,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      * A mid-line key change anywhere in the reach — this line from its start, then every line
      * inheriting from it, up to the first with a key of its own — that would restate the key in
      * effect before it is removed with its barline, in the same bracket, so one undo takes back
-     * the key and the removals together. See {@code docs/key-changes.md}.
+     * the key and the removals together.
      *
      * <p>The undo step is named <em>Add</em> where the line inherited its key until now and
      * <em>Change</em> where it already had one of its own.
@@ -186,7 +186,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      *
      * <p><b>A key change told to restate the key in front of it is removed instead</b>, together
      * with the barline it sits behind: it would be invisible while still in the document, which
-     * the invariant in {@code docs/key-changes.md} forbids. The same goes for any key change
+     * {@link KeyChangeStranding} exists to prevent. The same goes for any key change
      * further along the line that the new key strands. The sweep runs first, so the key change's
      * own index is still the one this route was given when the in-place edit lands.
      */
@@ -237,11 +237,11 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      * without restricting where the user may click.</b> A position that already follows a barline
      * or a repeat takes the key change alone; every other position takes a barline first. Either
      * way they enter inside <b>one</b> modification bracket, so a single undo takes back the whole
-     * edit — see {@code docs/mutations.md}.
+     * edit.
      *
      * <p>A key change further along the line, or on a line that inherits, which the inserted key
      * leaves restating what is already in effect is removed with its barline, in this same
-     * bracket, before the new element lands. See {@code docs/key-changes.md}.
+     * bracket, before the new element lands.
      */
     private void insertKeyChange(Key key) {
         if (elementIndex < Line.FIRST_LEGAL_KEY_CHANGE_INDEX

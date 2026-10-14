@@ -24,7 +24,7 @@ package songscribe.dom;
  *
  * <p>The pair that draws nothing at all is not a shape, so nothing has to ask whether a tempo is
  * visible. {@link Metronome} always draws a glyph; {@link TextOnly} always draws text. A marking
- * is immutable and compared by value. See {@code docs/song-tempo.md}.
+ * is immutable and compared by value.
  */
 public sealed interface TempoMarking {
 

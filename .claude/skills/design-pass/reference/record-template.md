@@ -20,11 +20,10 @@ Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 | 7 Test-only surface | ⏳ | ⏳ | — | |
 | 8a Suite gate | ⏳ | n/a | — | |
 | 8b Visual gate | ⏳ | n/a | — | |
-| 9 Diagrams | ⏳ | ⏳ | — | |
-| 10 Coverage | ⏳ | n/a | — | |
-| 11 Mutation | ⏳ | n/a | — | opportunistic |
-| 12 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
-| 13 Close out | ⏳ | ⏳ | — | |
+| 9 Coverage | ⏳ | n/a | — | |
+| 10 Mutation | ⏳ | n/a | — | opportunistic |
+| 11 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
+| 12 Close out | ⏳ | ⏳ | — | |
 
 *Gate* is the state of the step's findings document: ⏳ not written · 📖 open for
 review · ✅ resolved. A step whose *Gate* is not ✅ has made no code change, so a
@@ -44,5 +43,5 @@ to be. Deleted from the register when claimed.
 Anything surfaced that was not this target's to fix, and anything a step turned
 up that belongs to a later step's axis — the latter is picked up by that step's
 findings document rather than argued where it was found. Harvested to the
-register at step 13, before this file is deleted.
+register at step 12, before this file is deleted.
 ```

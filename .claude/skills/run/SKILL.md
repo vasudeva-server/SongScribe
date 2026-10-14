@@ -30,7 +30,7 @@ Any other arguments are passed through to the application.
 
 - `./scripts/compile.sh` — compile. No flags, no pipes, no additions.
 - `./scripts/test.sh` — run tests. See `.claude/rules/development.md` and
-  `.claude/guides/testing-e2e.md` for targets and conventions.
+  `guides/conventions/testing-e2e.md` for targets and conventions.
 
 ## Confirming a UI change works
 
@@ -43,7 +43,7 @@ screenshot it programmatically here. To confirm a UI change:
    exercise the change themselves, or describe the exact steps for them to
    follow.
 3. Check `~/Library/Logs/SongScribe/songscribe.log` for exceptions after the
-   relevant action, per `.claude/guides/logging.md`.
+   relevant action, per `guides/conventions/logging.md`.
 
 Do not attempt xvfb, Playwright, or other headless GUI automation against
 this app — none of it applies to a native Swing desktop process.

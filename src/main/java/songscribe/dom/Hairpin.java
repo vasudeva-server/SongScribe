@@ -33,8 +33,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * A hairpin has one horizontal and one vertical user offset, each moving the whole hairpin.
  * <p>
  * Every attached hairpin meets every invariant below. {@link #spanning} and {@link #createCopy}
- * are the only ways to make one. See {@code docs/hairpin-editing.md} and
- * {@code docs/span-invalidation.md}.
+ * are the only ways to make one.
  *
  * @invariant it starts on a pitched note, or on a grace note whose host is a pitched note
  * @invariant it ends on a pitched note, never on a rest

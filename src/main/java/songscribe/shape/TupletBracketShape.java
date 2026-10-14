@@ -25,8 +25,9 @@ import java.awt.geom.Point2D;
 
 /**
  * The two arms of a tuplet bracket, split by the central number gap, in staff-space values.
- * Each arm is a single polyline so its corner joins cleanly when stroked. See
- * {@code docs/layout-geometry.md}.
+ * Each arm is a single polyline so its corner joins cleanly when stroked. A sloped
+ * bracket gives each corner its own height, and each vertical hangs straight down from its
+ * corner by a fixed arm length.
  */
 public final class TupletBracketShape {
 

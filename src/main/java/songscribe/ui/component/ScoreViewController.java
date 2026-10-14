@@ -982,7 +982,7 @@ public final class ScoreViewController {
 
     /**
      * Callers compute it <b>before</b> opening a modification bracket and hand it to
-     * {@link #deleteElementRange}, which sweeps it inside. See {@code docs/key-changes.md}.
+     * {@link #deleteElementRange}, which sweeps it inside.
      */
     private static KeyChangeStranding deletionStranding(Line line, StaffElementRun.EffectiveRange bounds) {
         var range = bounds.range();
@@ -1066,6 +1066,9 @@ public final class ScoreViewController {
      * overflowing is <b>not</b> fit-gated.
      *
      * <p>The paste reports every span it removes or leaves out into the open bracket's report.
+     *
+     * <p>Every question to the user is asked before the first change, so declining leaves the
+     * bracket empty and records no undo step.
      *
      * @return {@code INSERTED} also when the fragment reduced to nothing (every key change it
      *     carried restates the running key, or it held only bar lines dropped at the start of

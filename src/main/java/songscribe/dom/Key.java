@@ -38,8 +38,7 @@ import songscribe.util.Copyable;
  * <p>The constants run in fifths order, so {@link #values()} is the order a key list shows the
  * user and {@link #ordinal()} tracks {@link #fifths()}.
  *
- * <p>There is no mode: every key is major, because only MusicXML SongScribe wrote is read (see
- * {@code docs/musicxml-object-model.md}).
+ * <p>There is no mode: every key is major, because only MusicXML SongScribe wrote is read.
  */
 public enum Key implements Copyable<Key> {
     SEVEN_FLATS(-7),

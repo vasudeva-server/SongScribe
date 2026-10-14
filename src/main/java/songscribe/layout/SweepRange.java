@@ -34,6 +34,9 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * Both answers come from here so a painted band never lies over notation that refuses to
  * highlight; neither limit nor membership is derived anywhere else.
  * <p>
+ * The band is the interval between the press point and the pointer, and neither end is widened
+ * to the notation under it, so the band's edge tracks the pointer even inside a column.
+ * <p>
  * The song's auto-maintained terminal is excluded by where {@link #of} stops collecting columns.
  * <p>
  * An instance is a snapshot of one layout. Build a new one per drag event, since a line's content

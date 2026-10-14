@@ -39,23 +39,7 @@ import static songscribe.engraving.BarStroke.THIN;
  * elements of one type — pitch, dots, accidental, a key — lives on the element.
  *
  * <p>Each constant carries a {@link NoteValue} exactly when its kind is a note, a grace note or
- * a rest. The eleven predicates that name a category answer from the kind alone, and this
- * matrix is the whole of what they promise:
- *
- * <pre>
- *                  NOTE  GRACE_NOTE  REST  BARLINE  REPEAT  BREATH_MARK  KEY_CHANGE
- *   isPitchedNote   ✓
- *   isGraceNote            ✓
- *   isNote          ✓      ✓
- *   isRest                            ✓
- *   isDuration      ✓                 ✓
- *   isBarLine                               ✓
- *   isRepeat                                         ✓
- *   isBar                                   ✓        ✓
- *   isBreathMark                                              ✓
- *   isKeyChange                                                            ✓
- *   isNonDuration                           ✓        ✓        ✓            ✓
- * </pre>
+ * a rest. The predicates that name a category answer from the kind alone.
  *
  * <p>A grace note is a note that is neither a duration nor a non-duration:
  * {@link #isDuration()} and {@link #isNonDuration()} do not partition the kinds.
@@ -328,7 +312,7 @@ public enum ElementType {
     }
 
     /**
-     * A repeat ends a section, so nothing runs through it. See {@code docs/lyrics.md}.
+     * A repeat ends a section, so nothing runs through it.
      */
     boolean bearsLyricChain() {
         return !isRepeat();

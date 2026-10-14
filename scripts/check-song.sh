@@ -8,7 +8,7 @@ else
   QUIET=false
 fi
 
-RESULT=$(/usr/bin/xmllint --noout --nonet --schema "$SCRIPT_DIR"/../docs/musicxml-4.0-schema/musicxml.xsd "$1" 2>&1 >/dev/null)
+RESULT=$(/usr/bin/xmllint --noout --nonet --schema "$SCRIPT_DIR"/../reference/musicxml-4.0-schema/musicxml.xsd "$1" 2>&1 >/dev/null)
 STATUS=$?
 
 if [[ "$QUIET" == false ]]; then

@@ -11,8 +11,6 @@ import songscribe.error.RuntimeError;
  * startup, before anything can post or subscribe; a listener joins and leaves it only through
  * {@link MessageSubscription}. Whoever constructs the bus chooses the publication-error policy;
  * the application's is {@link #exitOnPublicationError}.
- *
- * <p>See {@code docs/messages.md}.
  */
 public final class MessageCenter {
 

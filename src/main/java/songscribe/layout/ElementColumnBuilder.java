@@ -250,7 +250,7 @@ public class ElementColumnBuilder {
     /**
      * The direction and the length are the <em>drawn</em> ones
      * ({@link NoteGeometry#effectiveDirection}, {@link NoteGeometry#stemLengthSs}), so
-     * {@code getAbsoluteTopYSs()} stays on the real tip. See {@code docs/layout-geometry.md}.
+     * {@code getAbsoluteTopYSs()} stays on the real tip.
      */
     double calculateStemTopSs(StaffElement element) {
         var elementType = element.getType();

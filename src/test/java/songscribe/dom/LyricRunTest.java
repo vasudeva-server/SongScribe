@@ -40,7 +40,6 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 /**
  * Which insertions break a word or a melisma and which are transparent to one — the promise
  * {@link ElementType#interruptsLyricChain()} makes and {@link LyricRun}'s insertion repairs keep.
- * See {@code docs/lyrics.md}.
  */
 class LyricRunTest extends UnitTest {
 

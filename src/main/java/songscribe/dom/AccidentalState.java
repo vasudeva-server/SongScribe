@@ -35,5 +35,10 @@ public sealed interface AccidentalState permits ChainedAccidental, AccidentalSta
 
     record Chosen(Accidental sounding) implements AccidentalState {}
 
+    /**
+     * A note with no pitch of its own, such as a fresh note or one moved to another staff
+     * position, sounds the alteration in force where it lands. A pasted note keeps the pitch it
+     * was copied with instead.
+     */
     record Adopting() implements AccidentalState {}
 }

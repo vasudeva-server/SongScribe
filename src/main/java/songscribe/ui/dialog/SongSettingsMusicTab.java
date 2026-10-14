@@ -29,8 +29,7 @@ import songscribe.util.UIUtils;
 /**
  * The {@link SongSettingsDialog} Music tab: the song's tempo.
  *
- * <p>There is no key control here: a song has no key of its own. See
- * {@code docs/key-changes.md}.
+ * <p>There is no key control here: a song has no key of its own.
  *
  * <p>Nothing on this tab can be wrong: every state its controls can reach describes a tempo, so
  * it has no {@code InputVerifier} and contributes nothing to validation.

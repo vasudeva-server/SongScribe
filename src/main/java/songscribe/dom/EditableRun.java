@@ -97,9 +97,7 @@ public interface EditableRun extends LyricRun {
      * through.
      * <p>
      * A syllable goes with its note, a paired grace note's syllable included: deleting the grace
-     * note alone leaves its host an ordinary note with no lyric. What the lyrics that remain
-     * then read as is the chain rule in {@code docs/lyrics.md}, <i>Deleting elements closes the
-     * chains up</i>.
+     * note alone leaves its host an ordinary note with no lyric.
      * <p>
      * The range is the one {@link StaffElementRun#effectiveRange} widened, so the breath mark
      * directly after the caller's elements goes with them. Nothing past the widened range goes:

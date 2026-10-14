@@ -59,9 +59,7 @@ import songscribe.message.mutation.TieRemoval;
  * interleaved is the caller's obligation; nothing here checks it.
  *
  * <p>{@link ElementModification} restores in place, never via {@code setElement}, so anchor
- * references held inside other stacked records stay valid.
- *
- * <p>See {@code docs/undo.md} and {@code docs/mutations.md}.
+ * references held inside other stacked records stay valid, and so does the selection.
  */
 public final class MutationReplayer {
 

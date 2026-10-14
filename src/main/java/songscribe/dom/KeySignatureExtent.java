@@ -27,7 +27,7 @@ import java.util.List;
  *
  * <p>A key signature's extent is never a property of the key alone, so the pair of keys is the
  * smallest thing that can answer either question; the accidentals drawn and the column reserved
- * for them are read off one value and cannot disagree. See {@code docs/key-changes.md} for the
+ * for them are read off one value and cannot disagree. {@link Key#accidentalsFrom} states the
  * cancellation policy.
  *
  * @param previousKey the key in effect immediately before the change — the one whose accidentals

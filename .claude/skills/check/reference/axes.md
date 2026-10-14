@@ -84,7 +84,7 @@ with one structural mistake, what would it be?*
 5. **Growth by special case** — a structure where each new case was handled by
    adding a branch rather than by fitting the case into the model, so the next
    case costs the same again.
-6. **Wrong seam** — units that do not match the way the code actually changes,
+6. **Wrong decomposition** — units that do not match the way the code actually changes,
    so one conceptual change always touches several files in lockstep.
 7. **Wrong representation** — a type whose shape does not fit the concept, so
    fields have to be filled with values that mean nothing, callers ignore parts
@@ -147,7 +147,7 @@ production code, so difficulty writing one is evidence about the code.
 12. **Unreachable behavior** — an error path no caller can provoke from outside.
     Distinguish two cases: a guard the contract deliberately makes unreachable is
     correct and needs no test; a behavior the contract promises but nothing can
-    provoke is a seam in the wrong place.
+    provoke is a wrong decomposition (item 6).
 13. **Doing too much** — a method whose test needs several unrelated fixtures,
     which means the method has several unrelated responsibilities.
 14. **Interaction-only verification** — tests forced to assert on calls because
@@ -164,8 +164,8 @@ production code, so difficulty writing one is evidence about the code.
     Report the design flaw and count these tests as *removals*, not as breakage.
 
 When the Contract & API axis reports a member reachable only from tests, its
-structural diagnosis belongs here: the seam is in the wrong place, and that is
-what needs saying.
+structural diagnosis belongs here: the decomposition is wrong (item 6), and that
+is what needs saying.
 
 ### Before proposing anything
 
@@ -177,8 +177,8 @@ usually the visible end of the structural mistake you are looking for. Tests are
 not consumers.
 
 Report the flaw, the symptoms it explains, the corrected design, and what the
-change touches, per *Reporting a design finding*. Consult the design notes under
-`docs/` first, and return no findings when the code is structurally sound, per
+change touches, per *Reporting a design finding*. Consult the matching files in
+`guides/` first, and return no findings when the code is structurally sound, per
 *Check the design notes before reporting*.
 
 ---
@@ -186,13 +186,13 @@ change touches, per *Reporting a design finding*. Consult the design notes under
 ## Axis 2: Contract & API
 
 A Javadoc is judged against the five clause types in
-`.claude/guides/contracts.md`, and a full contract against the tests derived from
+`guides/conventions/contracts.md`, and a full contract against the tests derived from
 it. Read that guide and the **Contracts in Javadoc** and **Signature Rules for
 Contracts** sections of `.claude/rules/java.md` before reporting.
 
 Where a doc scope came with the code, it is part of this axis's material, not
 background: a promise restated in prose is a second copy of it, and rule 12
-below is where that is judged. `docs/` and `plans/` are the only places a stale
+below is where that is judged. `guides/` and `plans/` are the only places a stale
 promise can sit without the compiler or a reference lookup reaching it.
 
 ### Does each clause belong?
@@ -251,24 +251,22 @@ should state, not merely that one is missing.
 11. **A rule repeated on several methods belongs one tier up** — on the class or
    in `package-info.java`. Repeated clauses drift and eventually contradict one
    another.
-12. **A rule spanning subsystems belongs in `docs/`**, with the method's Javadoc
-    linking to it rather than paraphrasing it. The paraphrase is the copy that
-    goes stale.
+12. **A rule that no single type can enforce belongs in `guides/subsystems/`**
+    as a cross-type rule. A Javadoc never names a guide file and never
+    paraphrases the rule.
 
     The converse is the same finding, and is the one you will actually meet: a
-    passage in `docs/` or `plans/` stating a promise about one member is that
+    passage in `guides/` or `plans/` stating a promise about one member is that
     member's contract written where nothing can keep it honest, and a claim
-    appearing in both a Javadoc and a doc is one copy too many whichever was
-    written first. **Start from whichever side you were given.** A Javadoc naming
-    no doc is not evidence that no second copy exists — paraphrasing *instead of*
-    linking is precisely what leaves no link to follow, so this defect conceals
-    itself from a search that begins at the link. Where the doc scope is
-    non-empty, read each passage against the contracts of the members it
-    discusses, matching on the claim rather than on the wording; a duplicate
+    appearing in both a Javadoc and a guide is one copy too many whichever was
+    written first. **Start from whichever side you were given.** No link joins
+    the two copies, so a search for one never reaches the other. Where the doc
+    scope is non-empty, read each passage against the contracts of the members
+    it discusses, matching on the claim rather than on the wording; a duplicate
     survives being reworded and a verbatim clause is the end of the range, not
-    the test for it. The fix is to cut the prose back to what no contract can
-    hold — which piece owns what, and why the set is complete — and have the
-    Javadoc link to it.
+    the test for it. The fix is to move the promise into the member's Javadoc
+    and delete it from the guide, which keeps only what the rules for its kind
+    allow.
 
 ### Names
 
@@ -339,7 +337,7 @@ it first and say what a user would see.
 2. **Null contracts** — a `@Nullable` value dereferenced without a check; a
    `@NonNull` parameter that some call site can reach with null; a null return
    the caller treats as a value. Recall that the project bans `Optional` and see
-   `.claude/guides/null-handling.md`.
+   `guides/conventions/null-handling.md`.
 3. **The code disagrees with its own contract** — the Javadoc promises one thing
    and the body does another. Say which of the two is wrong about the domain; if
    it is the contract, that is a contract finding and must be stated explicitly
@@ -377,8 +375,8 @@ say so.
 ## Axis 4: Test Conformance — sonnet
 
 Given the test scope and its production counterparts. Read
-`.claude/guides/testing-common.md` in full, and
-`.claude/guides/testing-unit.md` for the conventions; both are the source of
+`guides/conventions/testing-common.md` in full, and
+`guides/conventions/testing-unit.md` for the conventions; both are the source of
 truth for what this axis enforces.
 
 **This axis never counts branches, never asks what fraction of a method ran, and
@@ -418,7 +416,7 @@ mechanical form of the check:
 3. **Does every assertion correspond to a clause of the contract?** An assertion
    with no clause is one of two things: a promise missing from the contract, or a
    test written from the code. Say which you believe it is. See *Write from the
-   contract, not from the code* in `.claude/guides/testing-common.md`.
+   contract, not from the code* in `guides/conventions/testing-common.md`.
 4. **Tells of a test written from the body** — it pins an ordering, a format, a
    collection type, or an intermediate value the contract never mentions; it
    asserts the exact number of times a collaborator was called; it breaks on a

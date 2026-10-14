@@ -20,7 +20,8 @@
 package songscribe.ui.binding;
 
 /**
- * When a text-bearing control's property notifies.
+ * When a text-bearing control's property notifies. It governs notification only: a normalizer
+ * runs on focus loss whichever value is chosen, and the value notified is the normalized one.
  */
 public enum Timing {
     WHILE_TYPING,

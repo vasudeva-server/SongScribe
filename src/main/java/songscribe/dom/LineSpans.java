@@ -36,7 +36,7 @@ import songscribe.message.mutation.SpanRemoval;
 
 /**
  * The spans drawn over one line's elements — beams, trills, hairpins, tuplets and endings —
- * and everything that concerns them as a collection. See {@code docs/span-invalidation.md}.
+ * and everything that concerns them as a collection.
  * <p>
  * The only writer of the list it holds: a span enters or leaves only through {@link #add} and
  * {@link #remove} here.
@@ -197,8 +197,11 @@ public final class LineSpans {
      * and the companion span mutations are recorded before the primary element mutation: undo
      * replays a step in reverse and has to restore the element before the spans that point at it.
      * <p>
-     * Does nothing while the song is replaying undo or redo; see
-     * {@code docs/span-invalidation.md}.
+     * Does nothing while the song is replaying undo or redo, because the recorded step already
+     * carries its companion span changes, and because replay passes through states no edit made
+     * that a span's rule would wrongly judge: undoing the deletion of several elements puts them
+     * back one at a time, and a sweep after the first could remove an ending the step's own
+     * later insertions restore.
      * <p>
      * The whole decision is made before any of it is acted on, so one span's removal cannot
      * change what a later span is judged against. A span a deletion takes whole is removed with
@@ -556,7 +559,9 @@ public final class LineSpans {
 
     /**
      * The editor's rule for where a text dynamic may go: on a hairpin's anchor or end element,
-     * never under the wedge. See {@code docs/hairpin-editing.md}.
+     * never under the wedge. The rule covers the bound, not only an element two hairpins share,
+     * so deleting one of two back-to-back hairpins leaves a legal dynamic and nothing needs
+     * cleaning up.
      */
     public boolean isInsideHairpin(int noteIndex) {
         return hasSpan(Hairpin.class, Span.strictlyContaining(noteIndex));

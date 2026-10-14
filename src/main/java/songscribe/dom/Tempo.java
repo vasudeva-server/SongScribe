@@ -29,7 +29,7 @@ import songscribe.util.Copyable;
  * minute, and a marking saying what is drawn.
  *
  * <p>Immutable, compared by value. Every tempo draws something, by the shape of
- * {@link TempoMarking}. See {@code docs/song-tempo.md}.
+ * {@link TempoMarking}.
  */
 public record Tempo(int visibleTempo, BeatUnit tempoType, TempoMarking marking)
     implements Copyable<Tempo> {

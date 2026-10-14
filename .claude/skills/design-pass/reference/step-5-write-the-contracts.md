@@ -4,7 +4,7 @@
 produces confident, plausible, wrong Javadoc — worse than none, because
 everything downstream then tests against it.
 
-**A Javadoc states only what the code cannot say.** `.claude/guides/contracts.md`
+**A Javadoc states only what the code cannot say.** `guides/conventions/contracts.md`
 lists the five clause types. A method with none of them has no Javadoc. A full
 contract exists only on a method that a test derives from.
 
@@ -39,9 +39,9 @@ Then *What needs deciding*, holding two kinds of item:
 signature changed before it. Then write, in this order: the method clauses and
 full contracts as the reviewer settled them, the class Javadoc — purpose,
 threading, lifecycle obligations, invariants several of its methods depend on —
-then `package-info.java` for invariants spanning the classes. **Anything
-spanning subsystems goes to `docs/`;** if a `docs/` document already states it,
-cite rather than restate.
+then `package-info.java` for invariants spanning the classes. **A rule that
+no single type can enforce goes to `guides/subsystems/`;** if a guide already
+states it, the Javadoc does not restate it and does not name the guide.
 
 Two things that are not optional:
 

@@ -12,4 +12,6 @@ Always pass `rename_in_comments: false` to `jet_brains_rename`. A symbol named i
 
 **It does not protect Markdown.** A rename still rewrites the old name in Markdown files, which silently destroys a sentence that names both the old and the new name — a plan or decision record states what was found and decided, so rewriting the name there turns it into a tautology rather than updating it. After every rename, read the prose diff (`git status --porcelain | grep -v '\.java$'`) and restore what records history; a spec or register row naming a type that must exist today is the only kind that should keep the new name.
 
-For name-path syntax, per-tool parameters, the constructor-body workaround, and the refactoring tool catalog: [Serena Reference](../guides/serena-reference.md).
+A Javadoc does not state structure. Get what a type holds from `jet_brains_get_symbols_overview`, and what uses it from `jet_brains_find_referencing_symbols`.
+
+For the tool defects and the capabilities that the tool schemas do not make clear: [Serena](../../guides/tool-references/serena.md).

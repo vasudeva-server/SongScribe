@@ -33,6 +33,9 @@ import songscribe.message.Message;
  * listener MUST use a priority strictly less than {@link #APPLY_PRIORITY} (a bare
  * {@code @Handler} does), or it may run before the zoom is applied. Only a handler that must
  * see the score before the zoom uses {@link #BEFORE_APPLY_PRIORITY}.
+ * <p>
+ * A handler runs mid-change, before the view has re-laid out. Work that needs the settled zoom
+ * observes the view's zoom property instead, which reports after re-layout.
  */
 public class ZoomDidChangeNotification extends Message {
 

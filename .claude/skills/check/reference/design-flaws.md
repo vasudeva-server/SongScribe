@@ -133,10 +133,10 @@ is the finding.
 ## Check the design notes before reporting
 
 Read whatever surrounding code is needed to judge structure — callers,
-collaborators, the package's `package-info.java`, and any matching design note
-under `docs/`. If `docs/` documents why the current structure is the way it is,
-address that reasoning directly rather than ignoring it: either say why it no
-longer holds, or drop the finding.
+collaborators, the package's `package-info.java`, and any matching file in
+`guides/`. If a cross-type rule there, or a Javadoc, states why the current
+structure is the way it is, address that reasoning directly rather than ignoring
+it: either say why it no longer holds, or drop the finding.
 
 Never invent architecture work to justify an agent's existence. If the code has
 no structural problem, say so plainly and return no findings — a speculative

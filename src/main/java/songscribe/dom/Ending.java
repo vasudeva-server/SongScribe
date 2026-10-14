@@ -36,7 +36,7 @@ import songscribe.error.RuntimeError;
  * {@link #illFormedReason} judges every invariant below but the last two over one line's
  * elements: the section rule reads the song across lines, and the last invariant holds between
  * every two endings on a line. Every attached ending meets all of them. {@link #spanning} is the
- * one way to make an ending for a line; see {@code docs/span-invalidation.md}.
+ * one way to make an ending for a line.
  * <p>
  * Two endings may sit back to back on a line; when no repeat opens between them, the section
  * rule refuses the later one.

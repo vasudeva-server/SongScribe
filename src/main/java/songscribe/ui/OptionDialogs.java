@@ -42,6 +42,18 @@ import songscribe.util.UIUtils;
  * Centralized dialog utility. All user-facing dialogs in the application
  * route through this class, which handles suppression in headless and
  * test contexts.
+ *
+ * <p><strong>Titles and messages are {@code Strings} keys, not text.</strong> A key is a
+ * {@code String}, so passing literal text compiles and then fails to resolve. The two
+ * exceptions take already-resolved text: the {@code WithString} error variant, and the button
+ * labels of the multi-option dialog.
+ *
+ * <p>A confirm dialog never answers {@code CLOSED_OPTION}: a dismissed window answers
+ * {@code CANCEL_OPTION} where the dialog offered Cancel, and {@code NO_OPTION} otherwise.
+ *
+ * <p>A suppressed confirm or input prompt answers its suppressed default, so a test whose
+ * path depends on the answer passes the default that path needs; otherwise it silently takes
+ * the "user said no" branch.
  */
 public final class OptionDialogs {
 

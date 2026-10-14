@@ -169,7 +169,7 @@ Exception: illustrating an example calculation/formula, where literals are neede
 
 ## Contracts in Javadoc
 
-**What a Javadoc may state is in [Contracts](../guides/contracts.md).** Read it
+**What a Javadoc may state is in [Contracts](../../guides/conventions/contracts.md).** Read it
 before writing one. Only the Javadoc mechanics are here.
 
 `invariant` and `effects` are custom tags, written only in a full contract.

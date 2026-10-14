@@ -65,7 +65,11 @@ import songscribe.util.LengthUnit;
  * <p>Writing is EDT-only: every {@code put}, {@code reset} and {@code resetAll} notifies the
  * views, and {@code songscribe.binding} is unsynchronized. Reads are unrestricted.
  *
- * <p>See {@code .claude/guides/prefs.md}.
+ * <p>A scalar getter throws when there is neither a stored value nor a default; a collection
+ * getter answers an empty collection. No getter answers {@code null}.
+ *
+ * <p>A handler of {@code PrefsDidChangeNotification} that reacts to one key also tests for
+ * {@code PrefsKey.ALL}, which a reset of everything carries instead of the individual key.
  */
 public final class Prefs {
 
@@ -299,6 +303,7 @@ public final class Prefs {
         return Collections.emptyList();
     }
 
+    /** Replaces the stored list wholesale, unlike {@link #putMap}, which merges. */
     public static void putStringList(PrefsKey key, List<String> value) {
         INSTANCE.store.put(key.key(), new ArrayList<>(value));
         INSTANCE.save(key);
@@ -322,6 +327,10 @@ public final class Prefs {
         return Collections.emptyMap();
     }
 
+    /**
+     * Merges {@code entries} into the stored map, keeping every existing key the call does not
+     * name. To remove a key, write back a map read without it, or reset the key.
+     */
     public static void putMap(PrefsKey key, Map<String, ?> entries) {
         var current = new HashMap<>(getMap(key));
         current.putAll(entries);

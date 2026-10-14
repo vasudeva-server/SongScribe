@@ -40,8 +40,6 @@ import songscribe.smufl.StemmedNotehead;
  * on is derived each time ({@link #tie()}, {@link #incomingTie()}). Only a note that passes
  * {@link Tie#canAnchor} is ever tied. Apart from {@link #copyStateFrom} and conversion, only
  * {@link Line#addTie} and {@link Line#removeTie} write whether a note in a line is tied.
- *
- * <p>See {@code docs/accidentals.md} and {@code docs/span-invalidation.md}.
  */
 public final class NoteElement extends StaffElement implements Dottable {
 

@@ -46,8 +46,7 @@ import songscribe.util.DateUtils;
  *
  * <p><b>Credit routing.</b> The writer emits composer, dates and place in both the head
  * (canonical) and a {@code <credit>} (display-only). The head value wins, so a hand-edited file
- * cannot corrupt the model through a credit. See {@code docs/musicxml-object-model.md} for the
- * full routing table.
+ * cannot corrupt the model through a credit.
  */
 final class HeaderMapper {
 

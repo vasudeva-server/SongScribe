@@ -40,6 +40,10 @@ public final class ViewScale {
 
     private static final int NATURAL_ZOOM_PERCENT = 100;
 
+    /**
+     * The scale of a consumer that has no view, such as a dialog preview: it renders at natural
+     * size whatever zoom any live view shows.
+     */
     public static final ViewScale IDENTITY = new ViewScale();
 
     private final int zoomPercent;

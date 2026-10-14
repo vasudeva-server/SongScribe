@@ -36,26 +36,8 @@ import songscribe.util.LogUtils;
  * Port of LilyPond's beam-positioning pipeline ({@code Beam_scoring_problem}),
  * as a pure-math, layout-state-free computation.
  *
- * <pre>
- *  SIGN CONVENTION
- *  LayoutEngine (SongScribe space)  : ss, Y-DOWN positive, y=0 = middle staff line
- *  BeamScoring  (LilyPond space)    : ss, Y-UP   positive, y=0 = middle staff line
- *
- *  Every Y-up ↔ Y-down conversion happens ONLY at the LayoutEngine ↔ BeamScoring
- *  boundary. Inside this class everything is Y-up.
- *
- *      IN  (per stem):  headYUpSs  = -staffPosition.toSs()
- *                       headHalfPos = -staffPosition
- *
- *      OUT (per group): a beam position is (leftY, rightY) — the Y of the CENTER
- *                       of the beam farthest from the noteheads, at the first and
- *                       last stem's X. Converted back by the caller as:
- *
- *                           startYSs = -leftY - dirSign * bt / 2
- *                           slope    = -(rightY - leftY) / xSpan
- *
- *                       (bt = beam thickness in ss; slope is Y-down per X.)
- * </pre>
+ * <p>Inside this class Y grows upward from the middle staff line, in staff spaces, as in
+ * LilyPond; the caller converts its Y-down values on the way in and on the way out.
  *
  * <p>Deliberate simplifications relative to LilyPond: no knees, no cross-staff
  * beams, no collision avoidance (beams score only against staff lines), no

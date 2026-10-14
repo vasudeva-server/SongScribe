@@ -1,6 +1,6 @@
 # Classifying a Contract, and the Confirmation Checkpoint
 
-The contracts step writes every clause that `.claude/guides/contracts.md` allows
+The contracts step writes every clause that `guides/conventions/contracts.md` allows
 and the target needs, and every full contract a test derives from. Most can be
 written straight through; some may not be decided alone. This file is how to tell them
 apart and what to do with the second kind.
@@ -38,14 +38,14 @@ The promise is determinable from something you can point at:
 
 - **the type system** — nullability, sealed hierarchies, what an enum admits;
 - **arithmetic** — geometry, spacing, unit conversion
-  (`.claude/guides/spatial-units.md` and `docs/zoom.md` already state the
-  governing rules);
+  (`guides/conventions/spatial-units.md` and `guides/subsystems/zoom.md` already
+  state the governing rules);
 - **an external standard** — MusicXML's schema, SMuFL's glyph registry, the MIDI
   spec. The standard is the authority and it is readable;
-- **an existing subsystem overview** — `docs/mutations.md`, `docs/lyrics.md`,
-  `docs/messages.md`, `docs/undo.md`, `docs/lifecycle.md`. If the arrangement is
-  already described there, the method contract cites it rather than re-deciding
-  it;
+- **an existing cross-type rule or convention** — `guides/subsystems/undo.md`,
+  `guides/subsystems/lyrics.md`, `guides/conventions/messages.md`,
+  `guides/conventions/lifecycle.md`. If the rule already states the arrangement,
+  the method contract does not re-decide it;
 - **collections, parsing, string handling, serialization round-trips.**
 
 Pointing at the source is the qualifying move. If you cannot name what makes the
@@ -64,7 +64,8 @@ The promise encodes a music-notation judgment. Typical territory:
   precedes it;
 - beaming, ties and slurs — when they form, when they break, where they attach;
 - lyrics — melismas, hyphen chains, what a verse index means when verses differ
-  in length (`docs/lyrics.md` covers some of this; anything past it is domain);
+  in length (`guides/subsystems/lyrics.md` and `guides/concepts/lyrics.md` cover some of
+  this; anything past them is domain);
 - pitch spelling, key signatures, accidental scope and carry;
 - defaults and limits a musician would notice — a stack depth, a spacing minimum,
   what happens at the edge of a line;

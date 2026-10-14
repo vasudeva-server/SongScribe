@@ -398,6 +398,10 @@ public class StructuralStacker {
      * A group of two or more is placed in two passes: every member's own demand first, then all
      * placed against the most outward. A member that reserved before its neighbours were measured
      * would push them off the shared line.
+     *
+     * <p>A hairpin is centered on the shared line by its full height, while a text dynamic's glyph
+     * sits low enough that its x-height center lands on it; centering the glyph's box instead would
+     * leave differently shaped dynamics at visibly different heights.
      */
     private void stackDynamicsGroup(
         DynamicGrouper.Group group,

@@ -604,7 +604,7 @@ public interface LyricRun extends StaffElementRun {
      * <ul>
      *   <li>a {@link Lyric.Extend#STOP} carrier, which closes the melisma and is covered;</li>
      *   <li>a text-bearing lyric, which starts a span of its own and is not covered;</li>
-     *   <li>a repeat, which nothing runs through (see {@code docs/lyrics.md}), and which is not
+     *   <li>a repeat, which nothing runs through, and which is not
      *       covered;</li>
      *   <li>the end of the run, where the span stays open onto whatever follows the run.</li>
      * </ul>

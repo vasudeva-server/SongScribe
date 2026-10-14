@@ -27,6 +27,9 @@ package songscribe.dom;
  * It carries no state of its own: it is a stable identity key, one instance per {@link Song}
  * ({@link Song#getTempoMarkElement()}), and reads the tempo from {@link Song#getTempo()} at
  * layout and paint time.
+ *
+ * <p>It is never selectable and never hit-tested, because hit-testing offers only attachments to
+ * a note and this mark belongs to no element.
  */
 public final class SongTempoMark extends LineElement {
 }

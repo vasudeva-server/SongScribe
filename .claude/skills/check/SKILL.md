@@ -138,20 +138,22 @@ After resolving the scope in any mode, split it into three subsets:
 - **Production scope** — all non-test source files (`.java`, `.kt` that do not
   end in `Test.java`).
 - **Test scope** — all `*Test.java` files.
-- **Doc scope** — every changed `docs/*.md` and `plans/*.md`, plus every
-  `docs/*.md` named by a Javadoc anywhere in the production scope. Mode B
-  resolves no changed files, so there the scope is the named docs alone.
+- **Doc scope** — every changed `guides/**/*.md` and `plans/*.md`, plus every
+  file in `guides/subsystems/` or `guides/concepts/` that names a type in the
+  production scope. Mode B resolves no changed files, so there the scope is the
+  guides that name a type alone.
 
 For each test in the test scope, identify its **production counterpart** (e.g.
 `StringUtilsTest` → `songscribe.util.StringUtils`) using Serena per
 `.claude/rules/serena.md`, and locate that counterpart's contract — the method
-Javadoc, the class Javadoc, and any `docs/*.md` they link to. The Test
+Javadoc, the class Javadoc, and any cross-type rule in `guides/subsystems/` that
+names the counterpart. The Test
 Conformance axis is given the contract, not just the class.
 
 The doc scope is collected because a contract can be duplicated into prose, and
 prose is where that copy survives: nothing compiles it, no reference lookup finds
 it, and a changed method leaves it standing and wrong. Markdown is otherwise
-invisible to this skill — a changed `docs/*.md` sits in the diff and belongs to
+invisible to this skill — a changed `guides/**/*.md` sits in the diff and belongs to
 neither of the other two subsets.
 
 Any scope may be empty. If all three are empty, say so and stop.
@@ -214,7 +216,7 @@ investigating:
   implementation free to change. The score is never reported as a grade.
 
 See **Diagnostics: coverage and mutation** in
-`.claude/guides/testing-common.md`. A ranked list of uncovered regions handed to
+`guides/conventions/testing-common.md`. A ranked list of uncovered regions handed to
 an agent told to fix what it finds is a to-do list, and it structurally produces
 the green-chasing the contract regime exists to remove — which is why neither one
 runs here automatically.
@@ -224,17 +226,17 @@ runs here automatically.
 Wait for every launched agent to complete, then choose the path based on whether
 `--fix` was in `$ARGUMENTS`.
 
-**Before writing or editing any Javadoc**, read `.claude/guides/contracts.md`
+**Before writing or editing any Javadoc**, read `guides/conventions/contracts.md`
 and the **Contracts in Javadoc** section of `.claude/rules/java.md` in full —
 once, not once per Javadoc.
 
 **Before writing or editing any test**, read `~/.claude/guides/design.md` for
-whether the behavior earns a test at all, then `.claude/guides/testing-common.md`
-and `.claude/guides/testing-unit.md` in full — once, not once per test. Writing
+whether the behavior earns a test at all, then `guides/conventions/testing-common.md`
+and `guides/conventions/testing-unit.md` in full — once, not once per test. Writing
 tests requires the whole guide's conventions: derivation from the contract,
 naming, structure, fixtures, and assertion style. **If any test being written or edited is an e2e test** (extends
 `E2ETest`, lives under `src/test/java/songscribe/e2e/`), also read
-`.claude/guides/testing-e2e.md` in full — on top of, not instead of, the two
+`guides/conventions/testing-e2e.md` in full — on top of, not instead of, the two
 guides above.
 
 ### Every question names the finding it comes from

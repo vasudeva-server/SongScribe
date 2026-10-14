@@ -62,7 +62,7 @@ import songscribe.util.UIUtils;
  * applies each edit as it is made extends {@link BaseDialog} directly.
  *
  * <p><strong>A commit becomes visible through the notification it posts.</strong> A commit that
- * reaches the screen some other way arranges that itself; see {@code docs/mutations.md}.
+ * reaches the screen some other way arranges that itself.
  *
  * @param <I> what to show — already a copy, so a subclass may edit it in place without reaching
  *            the document. Its bound permits {@code @Nullable} itself, for a family like

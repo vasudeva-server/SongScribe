@@ -47,6 +47,11 @@ import songscribe.util.StringUtils;
  * width is the widest wrapped line, not the song's line width, and with empty
  * {@link #songText()} it collapses to {@code (0, 0)}. Centering on the page is the parent's
  * responsibility.
+ * <p>
+ * An empty title or subtitle therefore has no hit area, and a double-click where it would sit does
+ * nothing; that is deliberate, because a placeholder target would put an invisible click-swallowing
+ * strip above every score. The clipped-text color is the same as that of a staff line holding
+ * more than the staff can show, because both mean the page shows less than the document holds.
  */
 public abstract class BaseTitleComponent extends ScoreComponent {
 
