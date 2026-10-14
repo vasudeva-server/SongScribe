@@ -37,6 +37,10 @@
 # A PROSE=1 that appears on a command that isn't an rg/grep search at all does
 # nothing (see the first check below) and is denied so it doesn't calcify into
 # a reflex prefix.
+#
+# sed, cat, head and tail on a .java path are denied outright, with no escape
+# hatch: they read or edit Java source past both serena and the Read hook, which
+# sees only the Read tool. Read with offset and limit is the route for raw lines.
 
 set -euo pipefail
 
@@ -97,6 +101,42 @@ deny() {
     '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
   exit 0
 }
+
+# Judged per pipeline segment, so a .java path that is another command's argument
+# (`git diff -- Foo.java | head`) does not count against the text tool beside it.
+readonly TEXT_TOOL='(^|[[:space:]])(sed|cat|head|tail)([[:space:]]|$)'
+readonly JAVA_PATH='\.java\b'
+
+uses_text_tool_on_java() {
+  local segments="$cmd" segment
+  segments=${segments//&&/$'\n'}
+  segments=${segments//||/$'\n'}
+  segments=${segments//|/$'\n'}
+  segments=${segments//;/$'\n'}
+
+  while IFS= read -r segment; do
+    if grep -qE "$TEXT_TOOL" <<< "$segment" && grep -qE "$JAVA_PATH" <<< "$segment"; then
+      return 0
+    fi
+  done <<< "$segments"
+
+  return 1
+}
+
+if uses_text_tool_on_java; then
+  read -r -d '' reason <<'EOF' || true
+This reads or edits Java source through sed, cat, head or tail, which bypasses
+serena and the Read hook. See .claude/rules/serena.md.
+
+  find_symbol("Class/member", include_body=true) -> one member's source
+  get_symbols_overview(file)                     -> what a class contains
+  Read(file, offset, limit)                      -> raw lines at a known place,
+                                                    such as a constructor body
+  Edit, or replace_in_files                      -> a change to Java source
+EOF
+
+  deny "$reason"
+fi
 
 # Not a text search at all. A stray PROSE=1 here has no effect anywhere below,
 # so catch it rather than let it silently pass as a habit.
