@@ -78,11 +78,10 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * paste lands inside of is removed or kept by its kind, and the fragment's spans of the kinds
  * that decides are dropped. It is asserted on the reconciliation itself, which is pure.
  *
- * <p>The target rule ({@link PasteSpanReconciliation#settle}): a pasted ending or hairpin is
- * judged by its kind's own rule against the line as the paste leaves it, and so is a tuplet or a
- * beam. An accepted span is added as the one its rule built, carrying the pasted span's user
- * state, and a refused one is not added and is reported with the rule's reason. A trill has no
- * rule, and is added as the fragment's own. These run through {@link FragmentPaste#paste}, inside
+ * <p>The target rule ({@link PasteSpanReconciliation#settle}): every pasted span is judged by its
+ * kind's own rule against the line as the paste leaves it. An accepted span is added as the one
+ * its rule built, carrying the pasted span's user state, and a refused one is not added and is
+ * reported with the rule's reason. These run through {@link FragmentPaste#paste}, inside
  * the modification bracket a paste runs in, so what is asserted is what the song holds and what
  * the paste reports.
  *
@@ -276,18 +275,11 @@ class PasteSpanReconciliationTest extends UnitTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("factoryBuiltCases")
+    @MethodSource("acceptedCases")
     void testASpanItsFactoryAcceptsIsAddedAsTheOneTheFactoryBuiltNotTheFragments(AcceptedCase testCase) {
         var pasted = pasteOntoEmptyLine(testCase);
 
         assertThat(pasted.spansOnLine()).singleElement().isNotSameAs(pasted.fragmentSpan());
-    }
-
-    @Test
-    void testATrillIsAddedAsTheFragmentsOwnSpan() {
-        var pasted = pasteOntoEmptyLine(trillCase());
-
-        assertThat(pasted.spansOnLine()).singleElement().isSameAs(pasted.fragmentSpan());
     }
 
     @ParameterizedTest
@@ -313,16 +305,8 @@ class PasteSpanReconciliationTest extends UnitTest {
                 new AcceptedCase("a tuplet of three quavers", Tuplet.class, THREE_QUAVERS,
                     PasteSpanReconciliationTest::tuplet),
                 new AcceptedCase("a beam", Beam.class, THREE_QUAVERS, line -> beamOver(line, wholeRangeOf(line))),
-                trillCase()),
+                new AcceptedCase("a trill", Trill.class, THREE_QUAVERS, line -> trillOver(line, wholeRangeOf(line)))),
             Stream.of(Hairpin.Kind.values()).map(PasteSpanReconciliationTest::hairpinCase));
-    }
-
-    static Stream<AcceptedCase> factoryBuiltCases() {
-        return acceptedCases().filter(testCase -> testCase.kind() != Trill.class);
-    }
-
-    private static AcceptedCase trillCase() {
-        return new AcceptedCase("a trill", Trill.class, THREE_QUAVERS, line -> trillOver(line, wholeRangeOf(line)));
     }
 
     private static AcceptedCase hairpinCase(Hairpin.Kind kind) {

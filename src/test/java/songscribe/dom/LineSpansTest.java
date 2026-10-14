@@ -222,10 +222,10 @@ class LineSpansTest extends UnitTest {
                 Tuplet.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTriplet,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("a trill removes the trill it overlaps",
-                Trill.class, () -> lineOfQuavers(LINE_LENGTH), Trill::new,
+                Trill.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTrill,
                 EXISTING, OVERLAPPING, Outcome.ONLY_THE_NEW),
             new DisplacementCase("a trill leaves the trill flush against it standing",
-                Trill.class, () -> lineOfQuavers(LINE_LENGTH), Trill::new,
+                Trill.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTrill,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("an ending stands beside the ending a repeat opening separates it from",
                 Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding,
@@ -430,7 +430,7 @@ class LineSpansTest extends UnitTest {
             new WholeSpanDeletionCase("a tuplet",
                 Tuplet.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTriplet, EXISTING),
             new WholeSpanDeletionCase("a trill",
-                Trill.class, () -> lineOfQuavers(LINE_LENGTH), Trill::new, EXISTING),
+                Trill.class, () -> lineOfQuavers(LINE_LENGTH), LineSpansTest::newTrill, EXISTING),
             new WholeSpanDeletionCase("an ending",
                 Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding, EXISTING_ENDING)
         );
@@ -521,6 +521,10 @@ class LineSpansTest extends UnitTest {
 
     private static Span<?> newEnding(StaffElement anchor, StaffElement end) {
         return over(anchor, end, SpanFactory::endingOver);
+    }
+
+    private static Span<?> newTrill(StaffElement anchor, StaffElement end) {
+        return over(anchor, end, SpanFactory::trillOver);
     }
 
     /** The span {@code build} makes over the range from {@code anchor} to {@code end}, on their line. */

@@ -212,6 +212,13 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
                 note(element(MusicXmlTags.GRACE, ""), MIDDLE_C_PITCH,
                     element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START) + middleCEighth(), 2,
                 dropped(Strings.REPORT_TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
+            new DroppedMarkCase("a trill starting on a rest",
+                eighthRest(trill(MusicXmlTags.TYPE_START)) + middleCEighth(trill(MusicXmlTags.TYPE_STOP)), 2,
+                dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE)),
+            new DroppedMarkCase("a trill covering a rest",
+                middleCEighth(trill(MusicXmlTags.TYPE_START)) + eighthRest()
+                    + middleCEighth(trill(MusicXmlTags.TYPE_STOP)), 3,
+                dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_REST_OR_BREATH_MARK)),
             new DroppedMarkCase("a beam mark on a rest",
                 eighthRest(beam(MusicXmlTags.BEAM_BEGIN)) + middleCEighth(beam(MusicXmlTags.BEAM_END)), 2,
                 new ReportedChange(

@@ -26,7 +26,7 @@ Read `LineSpans` first.
 
 - Change a line's elements only through the `Line` primitives, never through its element list,
   because each primitive hands the pending change to `LineSpans.sweep` before it lands.
-- Add a `Beam`, `Hairpin` or `Ending` to a line only from the span a `spanning` factory
+- Add a `Beam`, `Hairpin`, `Ending` or `Trill` to a line only from the span a `spanning` factory
   returned, because the factory judges the kind's whole invariant and the editor, the paste and
   the load must agree on it.
 - Express a reshaped span as the removal of the old span and the addition of a copy, never as a

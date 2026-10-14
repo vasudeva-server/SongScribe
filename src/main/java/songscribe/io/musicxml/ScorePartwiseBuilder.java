@@ -358,46 +358,34 @@ final class ScorePartwiseBuilder {
     }
 
     private static void applyTrills(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        for (var entry : lines) {
-            var line = entry.line();
+        var notes = context.index().notes();
 
-            for (var trill : line.spanRegistry().findSpans(Trill.class)) {
-                var range = trill.range();
-                addTrillStart(context, line.getElement(range.begin()), trill);
-                addWavyLine(context, line.getElement(range.end()), StartStopContinue.STOP);
+        for (var entry : lines) {
+            for (var trill : entry.line().spanRegistry().findSpans(Trill.class)) {
+                var anchorNote = notes.get(trill.getAnchorElement());
+                var endNote = notes.get(trill.getEndElement());
+
+                if (anchorNote != null) {
+                    addTrillStart(context, anchorNote, trill);
+                }
+
+                if (endNote != null) {
+                    addWavyLine(context, endNote, StartStopContinue.STOP);
+                }
             }
         }
     }
 
-    private static void addTrillStart(BuildContext context, StaffElement element, Trill trill) {
-        var pmNote = trilledNote(context, element);
-
-        if (pmNote == null) {
-            return;
-        }
-
+    private static void addTrillStart(BuildContext context, Note pmNote, Trill trill) {
         var factory = context.factory();
         ornamentsOf(context, pmNote).getTrillMarkOrTurnOrDelayedTurn()
             .add(factory.createOrnamentsTrillMark(factory.createEmptyTrillSound()));
 
-        var start = addWavyLine(context, element, StartStopContinue.START);
-
-        if (start != null) {
-            start.setRelativeY(MusicXmlUnits.shiftTenths(trill.getUserYOffsetSs()));
-        }
+        var start = addWavyLine(context, pmNote, StartStopContinue.START);
+        start.setRelativeY(MusicXmlUnits.shiftTenths(trill.getUserYOffsetSs()));
     }
 
-    /**
-     * Returns null when the note does not take one.
-     */
-    private static @Nullable WavyLine addWavyLine(
-            BuildContext context, StaffElement element, StartStopContinue type) {
-        var pmNote = trilledNote(context, element);
-
-        if (pmNote == null) {
-            return null;
-        }
-
+    private static WavyLine addWavyLine(BuildContext context, Note pmNote, StartStopContinue type) {
         var factory = context.factory();
         var wavyLine = factory.createWavyLine();
         wavyLine.setType(type);
@@ -406,15 +394,6 @@ final class ScorePartwiseBuilder {
             .add(factory.createOrnamentsWavyLine(wavyLine));
 
         return wavyLine;
-    }
-
-    /** Null when {@code element}'s note cannot carry a trill — a rest never can. */
-    private static @Nullable Note trilledNote(BuildContext context, StaffElement element) {
-        if (element.getType().isRest()) {
-            return null;
-        }
-
-        return context.index().notes().get(element);
     }
 
     /**

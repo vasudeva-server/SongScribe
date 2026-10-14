@@ -504,15 +504,22 @@ public final class LineIO {
             pendingEndingPairs.clear();
         }
 
+        /**
+         * A range the trill rule refuses is dropped with a log line, not reported to the user.
+         */
         private void createTrillsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTrillPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair.anchor(), pair.end(), line.elementCount(), "trill");
 
-                var anchorElement = line.getElement(pair.anchor());
-                var endElement = line.getElement(pair.end());
-                var trill = new Trill(anchorElement, endElement);
-                trill.setUserYOffsetSs(pair.yOffsetSs());
-                trill.addTo();
+                switch (Trill.spanning(line, new ElementRange(pair.anchor(), pair.end()))) {
+                    case Spanning.Spanned<Trill>(var trill, _) -> {
+                        trill.setUserYOffsetSs(pair.yOffsetSs());
+                        trill.addTo();
+                    }
+                    case Spanning.Refused<Trill> refused -> LOG.warn(
+                        "Corrupt document: dropping trill {}..{}: {}",
+                        pair.anchor(), pair.end(), Strings.get(refused.reasonKey()));
+                }
             }
 
             pendingTrillPairs.clear();

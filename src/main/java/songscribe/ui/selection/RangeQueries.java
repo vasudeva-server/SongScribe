@@ -37,6 +37,7 @@ import songscribe.dom.Spanning;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
+import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletValidator;
@@ -512,9 +513,38 @@ public final class RangeQueries {
         return Ending.spanning(line, new ElementRange(anchorIndex, end));
     }
 
-    public static boolean canToggleTrill(ElementSelection range) {
-        return selectedElements(range).stream()
-            .anyMatch(element -> element.getType().isPitchedNote());
+    /**
+     * Returns the trill the toggle adds over {@code selection}, or the reason there is none. The
+     * selection is trimmed to its first and last pitched notes, so a rest or a bar line the user
+     * selected past either end does not refuse the trill.
+     *
+     * @return {@link Trill#spanning}'s answer for the range from the first pitched note of
+     *     {@code selection} to its last; a refusal when {@code selection} holds no pitched note
+     */
+    public static Spanning<Trill> trillOver(ElementSelection selection) {
+        var line = selection.line();
+        var range = selection.range();
+        var begin = range.begin();
+        var end = range.end();
+
+        while (begin < end && !line.getElement(begin).getType().isPitchedNote()) {
+            begin++;
+        }
+
+        while (end > begin && !line.getElement(end).getType().isPitchedNote()) {
+            end--;
+        }
+
+        return Trill.spanning(line, new ElementRange(begin, end));
+    }
+
+    /**
+     * True also for a selection {@link #trillOver} refuses that overlaps a trill, because the
+     * toggle must still remove that trill.
+     */
+    public static boolean canToggleTrill(ElementSelection selection) {
+        return trillOver(selection) instanceof Spanning.Spanned<Trill>
+            || selection.line().spanRegistry().hasTrillOverlapping(selection.range());
     }
 
     private static List<StaffElement> selectedElements(ElementSelection range) {

@@ -115,12 +115,17 @@ public final class SpanFactory {
     /**
      * A trill over {@code range} of {@code line}, not yet added to it.
      *
-     * @param line  the line whose elements anchor and end the trill
-     * @param range the range the trill covers
+     * @param line  the line whose notes anchor and end the trill
+     * @param range the range the trill covers; both ends are pitched notes
      * @return the trill
+     * @throws AssertionError if {@link Trill#spanning} refuses the range
      */
     public static Trill trillOver(Line line, ElementRange range) {
-        return new Trill(line.getElement(range.begin()), line.getElement(range.end()));
+        return switch (Trill.spanning(line, range)) {
+            case Spanning.Spanned<Trill> spanned -> spanned.span();
+            case Spanning.Refused<Trill> refused ->
+                throw new AssertionError("no trill over " + range + ": " + refused.reasonKey());
+        };
     }
 
     /**

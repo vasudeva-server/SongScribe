@@ -86,7 +86,7 @@ import songscribe.dom.TupletValidator;
  *
  * <p>Every kind with a factory is judged by the same rule that judges creating it by hand where
  * it lands, and a span its factory accepts is built by the factory, never taken from the
- * fragment. A trill has no rule a destination can break. A tuplet is judged with its own ratio,
+ * fragment. A tuplet is judged with its own ratio,
  * not one re-derived from the destination's beat. A paste that merely abuts a hairpin is not a
  * refusal: same-type hairpins converge as when the user draws one flush against another, and
  * different types stand side by side.
@@ -220,9 +220,9 @@ public record PasteSpanReconciliation(
      *     entry to {@link Settlement#reports}; never both
      * @invariant each of {@link #fragmentSpansDropped} contributes exactly one entry to
      *     {@link Settlement#reports}, with the reason it carries
-     * @invariant a trill is added as the fragment's own span; a tuplet, beam, ending or hairpin
-     *     is added as the span its factory built ({@link Tuplet#spanningStated},
-     *     {@link Beam#spanning}, {@link Ending#spanning}, {@link Hairpin#spanning}), carrying
+     * @invariant every span is added as the span its factory built
+     *     ({@link Tuplet#spanningStated}, {@link Beam#spanning}, {@link Ending#spanning},
+     *     {@link Hairpin#spanning}, {@link Trill#spanning}), carrying
      *     the fragment span's user state through {@link LineElement#copyBaseStateFrom}, never as the
      *     fragment's
      * @invariant a refused span is reported with the reason of its factory's
@@ -246,7 +246,7 @@ public record PasteSpanReconciliation(
                 case Ending ending -> settleWith(ending, Ending.spanning(line, ending.range()), spansToAdd, reports);
                 case Hairpin hairpin -> settleWith(
                     hairpin, Hairpin.spanning(line, hairpin.getKind(), hairpin.range()), spansToAdd, reports);
-                case Trill trill -> spansToAdd.add(trill);
+                case Trill trill -> settleWith(trill, Trill.spanning(line, trill.range()), spansToAdd, reports);
             }
         }
 

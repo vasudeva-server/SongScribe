@@ -26,8 +26,7 @@ import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.Spanning;
 import songscribe.dom.Trill;
 import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -118,13 +117,14 @@ public final class TrillAction extends SelectableUIAction {
         }
 
         var line = range.line();
-        var selected = range.range();
 
         line.getSong().withModification(() -> {
             if (isSelected()) {
-                addTrillSpanningSelection(line, selected);
+                if (RangeQueries.trillOver(range) instanceof Spanning.Spanned<Trill>(var trill, var _)) {
+                    trill.addTo();
+                }
             } else {
-                line.spanRegistry().removeOverlapping(Trill.class, selected);
+                line.spanRegistry().removeOverlapping(Trill.class, range.range());
             }
         });
     }
@@ -133,19 +133,5 @@ public final class TrillAction extends SelectableUIAction {
         var range = scoreView.getSelectionCoordinator().getRange();
 
         return (range != null) ? range.toElementSelection() : null;
-    }
-
-    private void addTrillSpanningSelection(Line line, ElementRange selected) {
-        // Enablement (canToggleTrill) already guarantees a pitched note in the
-        // range; the empty check is a defensive fallback for that invariant.
-        var pitchedNotes = line.getElements(selected).stream()
-            .filter(element -> element.getType().isPitchedNote())
-            .toList();
-
-        if (pitchedNotes.isEmpty()) {
-            return;
-        }
-
-        new Trill(pitchedNotes.getFirst(), pitchedNotes.getLast()).addTo();
     }
 }

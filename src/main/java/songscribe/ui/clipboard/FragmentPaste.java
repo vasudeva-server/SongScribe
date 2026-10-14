@@ -52,9 +52,9 @@ public final class FragmentPaste {
      * Pastes {@code reduction}'s fragment into {@code line} at {@code target}, as one edit of the
      * caller's open modification bracket, and reports every span the paste removes or leaves out.
      *
-     * <p>Every tuplet, beam, ending and hairpin the paste adds is the one its kind's factory
-     * built where the fragment landed, carrying the fragment span's user state; a trill is added
-     * as the fragment's own. {@link PasteSpanReconciliation#settle} states the rule.
+     * <p>Every span the paste adds is the one its kind's factory built where the fragment
+     * landed, carrying the fragment span's user state. {@link PasteSpanReconciliation#settle}
+     * states the rule.
      *
      * <p>The fragment's elements and spans are taken as they are: a fresh instantiation, which
      * this paste consumes, already reduced by {@link Fragment#withoutRedundantKeyChanges} for the

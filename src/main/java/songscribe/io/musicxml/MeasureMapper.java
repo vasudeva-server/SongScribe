@@ -1252,21 +1252,34 @@ final class MeasureMapper {
             }
 
             if (pairsOnOneLine(Strings.REPORT_TRILLS_REMOVED, open, note)) {
-                var anchor = open.opener().element();
-                var element = note.element();
-                var trill = anchor == element ? new Trill(anchor) : new Trill(anchor, element);
-
-                if (open.yOffsetSs() != 0) {
-                    trill.setUserYOffsetSs(open.yOffsetSs());
-                }
-
-                trill.addTo();
+                closeTrill(open, note);
             }
 
             open = null;
         }
 
         dropDangling(Strings.REPORT_TRILLS_REMOVED, open);
+    }
+
+    /**
+     * A pair {@link Trill#spanning} refuses is damaged.
+     *
+     * @param open a trill whose opener is on the line {@code end} is on
+     */
+    private void closeTrill(OpenTrill open, NoteSite end) {
+        var line = end.line();
+        var range = new ElementRange(line.getElementIndex(open.opener().element()), line.getElementIndex(end.element()));
+
+        switch (Trill.spanning(line, range)) {
+            case Spanning.Spanned<Trill>(var trill, _) -> {
+                if (open.yOffsetSs() != 0) {
+                    trill.setUserYOffsetSs(open.yOffsetSs());
+                }
+
+                trill.addTo();
+            }
+            case Spanning.Refused<Trill> refused -> drop(refused.reportedAt(through(open, end)));
+        }
     }
 
     private boolean pairsOnOneLine(String headingKey, OpenMark open, NoteSite end) {
