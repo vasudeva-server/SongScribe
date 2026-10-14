@@ -23,8 +23,6 @@ Read `MusicXmlReader` and `MusicXmlWriter` first.
 - `SoftwareProvenance`
 - `SupportedFeature`
 - `SafeXmlParser`
-- `TupletLoadPass`
-- `SpanLoadPass`
 
 ## Rules
 

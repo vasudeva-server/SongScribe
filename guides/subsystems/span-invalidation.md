@@ -16,6 +16,7 @@ Read `LineSpans` first.
 - `Trill`
 - `Tuplet`
 - `SpanLoadPass`
+- `TupletLoadPass`
 - `PendingSpan`
 - `ModificationRule`
 - `TieRule`
