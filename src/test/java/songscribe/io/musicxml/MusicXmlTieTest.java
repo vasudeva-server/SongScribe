@@ -73,7 +73,7 @@ class MusicXmlTieTest extends UnitTest {
 
     /** The {@code <tied type="start">} marker, inside {@code <notations>}. */
     private static final String TIED_START =
-        element(MusicXmlTags.NOTATIONS, emptyTag(MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START));
+        element(MusicXmlRoundTripSupport.NOTATIONS, emptyTag(MusicXmlRoundTripSupport.TIED, MusicXmlRoundTripSupport.ATTR_TYPE, MusicXmlRoundTripSupport.TYPE_START));
 
     @Test
     void testATieWithinALineAndATieAcrossALineBreakSurviveAWriteAndARead() throws Exception {
@@ -131,7 +131,7 @@ class MusicXmlTieTest extends UnitTest {
 
     @Test
     void testAFileThatBeamsTheTwoNotesOfATieLoadsWithTheTieAndWithoutTheBeam() throws Exception {
-        var markup = middleCEighth(beam(MusicXmlTags.BEAM_BEGIN), TIED_START) + middleCEighth(beam(MusicXmlTags.BEAM_END));
+        var markup = middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_BEGIN), TIED_START) + middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END));
 
         var result = parseResult(scoreWithMeasureBody(markup));
         var line = result.song().getLine(FIRST_LINE);
@@ -148,8 +148,8 @@ class MusicXmlTieTest extends UnitTest {
 
     /** The primary {@code <beam number="1">} marker with {@code beamValue}. */
     private static String beam(String beamValue) {
-        return openTag(MusicXmlTags.BEAM, MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
-            + beamValue + closeTag(MusicXmlTags.BEAM);
+        return openTag(MusicXmlRoundTripSupport.BEAM, MusicXmlRoundTripSupport.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
+            + beamValue + closeTag(MusicXmlRoundTripSupport.BEAM);
     }
 
     /**
@@ -177,12 +177,12 @@ class MusicXmlTieTest extends UnitTest {
         return Stream.of(
             new MarkerCase("a note", middleCEighth(TIED_START), ElementType.Kind.NOTE, true),
             new MarkerCase("a rest",
-                note(element(MusicXmlTags.REST, ""), element(MusicXmlTags.DURATION, EIGHTH_DURATION),
-                    element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START),
+                note(element(MusicXmlRoundTripSupport.REST, ""), element(MusicXmlRoundTripSupport.DURATION, EIGHTH_DURATION),
+                    element(MusicXmlRoundTripSupport.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START),
                 ElementType.Kind.REST, false),
             new MarkerCase("a grace note",
-                note(element(MusicXmlTags.GRACE, ""), MIDDLE_C_PITCH,
-                    element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START),
+                note(element(MusicXmlRoundTripSupport.GRACE, ""), MIDDLE_C_PITCH,
+                    element(MusicXmlRoundTripSupport.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START),
                 ElementType.Kind.GRACE_NOTE, false)
         );
     }

@@ -62,9 +62,6 @@ public final class CycleModeAction extends UIAction {
         currentAction = Actions.modeAction(message.getMode());
     }
 
-    /**
-     * Reads {@link Actions} live so the mode actions can be recreated without a stale reference.
-     */
     private ModeAction otherAction() {
         return currentAction == Actions.EDIT_MODE_ACTION
             ? Actions.SELECT_MODE_ACTION

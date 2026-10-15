@@ -104,11 +104,11 @@ final class HeaderBuilder {
         var factory = context.factory();
 
         var identification = factory.createIdentification();
-        identification.getCreator().add(newCreator(factory, song.getComposer(), MusicXmlTags.CREATOR_COMPOSER));
-        identification.getCreator().add(newCreator(factory, song.getLyricist(), MusicXmlTags.CREATOR_LYRICIST));
+        identification.getCreator().add(newCreator(factory, song.getComposer(), CreatorType.COMPOSER));
+        identification.getCreator().add(newCreator(factory, song.getLyricist(), CreatorType.LYRICIST));
 
         if (song.isArrangement()) {
-            identification.getCreator().add(newCreator(factory, Song.SRI_CHINMOY, MusicXmlTags.CREATOR_ARRANGER));
+            identification.getCreator().add(newCreator(factory, Song.SRI_CHINMOY, CreatorType.ARRANGER));
         }
 
         var rights = factory.createTypedText();
@@ -121,10 +121,10 @@ final class HeaderBuilder {
         scorePartwise.setIdentification(identification);
     }
 
-    private static TypedText newCreator(ObjectFactory factory, String name, String type) {
+    private static TypedText newCreator(ObjectFactory factory, String name, CreatorType type) {
         var creator = factory.createTypedText();
         creator.setValue(name);
-        creator.setType(type);
+        creator.setType(type.token());
         return creator;
     }
 
@@ -161,47 +161,47 @@ final class HeaderBuilder {
 
     private static Miscellaneous buildMiscellaneous(
             ObjectFactory factory, Song song, DocumentFontsHolder fonts, HeaderText headerText) {
-        var fields = new LinkedHashMap<String, String>();
+        var fields = new LinkedHashMap<MiscellaneousField, String>();
 
         if (!headerText.compositionDate().isEmpty()) {
-            fields.put(MusicXmlTags.MISC_COMPOSITION_DATE, headerText.compositionDate());
+            fields.put(MiscellaneousField.COMPOSITION_DATE, headerText.compositionDate());
         }
 
         if (!headerText.lyricsDate().isEmpty()) {
-            fields.put(MusicXmlTags.MISC_LYRICS_DATE, headerText.lyricsDate());
+            fields.put(MiscellaneousField.LYRICS_DATE, headerText.lyricsDate());
         }
 
         if (!song.getPlace().isEmpty()) {
-            fields.put(MusicXmlTags.MISC_COMPOSITION_PLACE, song.getPlace());
+            fields.put(MiscellaneousField.COMPOSITION_PLACE, song.getPlace());
         }
 
-        fields.put(MusicXmlTags.MISC_LYRICS_SOURCE, song.getLyricsSource().name());
+        fields.put(MiscellaneousField.LYRICS_SOURCE, song.getLyricsSource().name());
 
         if (song.isUnofficialTranslation()) {
-            fields.put(MusicXmlTags.MISC_UNOFFICIAL_TRANSLATION, "true");
+            fields.put(MiscellaneousField.UNOFFICIAL_TRANSLATION, "true");
         }
 
         var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
-        fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT, subAttributionFont.getPSName());
-        fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE, String.valueOf(subAttributionFont.getSize()));
+        fields.put(MiscellaneousField.SUB_ATTRIBUTION_FONT, subAttributionFont.getPSName());
+        fields.put(MiscellaneousField.SUB_ATTRIBUTION_FONT_SIZE, String.valueOf(subAttributionFont.getSize()));
 
         var rowHeightAdjustmentSs = song.getRowHeightAdjustmentSs();
 
         if (rowHeightAdjustmentSs != 0) {
-            fields.put(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, String.valueOf(rowHeightAdjustmentSs));
+            fields.put(MiscellaneousField.ROW_HEIGHT_ADJUSTMENT, String.valueOf(rowHeightAdjustmentSs));
         }
 
         var defaultRestLengthSs = song.getDefaultRestLengthSs();
 
         if (defaultRestLengthSs != Song.DEFAULT_REST_LENGTH_SS) {
-            fields.put(MusicXmlTags.MISC_DEFAULT_REST_LENGTH, String.valueOf(defaultRestLengthSs));
+            fields.put(MiscellaneousField.DEFAULT_REST_LENGTH, String.valueOf(defaultRestLengthSs));
         }
 
         var miscellaneous = factory.createMiscellaneous();
 
         for (var field : fields.entrySet()) {
             var miscellaneousField = factory.createMiscellaneousField();
-            miscellaneousField.setName(field.getKey());
+            miscellaneousField.setName(field.getKey().token());
             miscellaneousField.setValue(field.getValue());
             miscellaneous.getMiscellaneousField().add(miscellaneousField);
         }
@@ -281,44 +281,39 @@ final class HeaderBuilder {
         var song = context.song();
         var credits = scorePartwise.getCredit();
 
-        addCredit(context, credits, MusicXmlTags.CREDIT_TITLE, FontKey.TITLE,
-            song.getNumberedTitle(), CreditStyle.centered());
-        addCredit(context, credits, MusicXmlTags.CREDIT_SUBTITLE, FontKey.SUBTITLE,
-            song.getSubtitle(), CreditStyle.plain());
+        addCredit(context, credits, CreditType.TITLE, song.getNumberedTitle(), CreditStyle.centered());
+        addCredit(context, credits, CreditType.SUBTITLE, song.getSubtitle(), CreditStyle.plain());
 
         var attributionRelativeYSs = song.getAttributionElement().getUserYOffsetSs();
 
-        addAttributionCredit(context, credits, MusicXmlTags.CREDIT_COMPOSER,
+        addAttributionCredit(context, credits, CreditType.COMPOSER,
             song.getComposer(), attributionRelativeYSs);
-        addAttributionCredit(context, credits, MusicXmlTags.CREDIT_LYRICIST,
+        addAttributionCredit(context, credits, CreditType.LYRICIST,
             song.getLyricist(), attributionRelativeYSs);
 
         if (song.isArrangement()) {
-            addAttributionCredit(context, credits, MusicXmlTags.CREDIT_ARRANGER,
+            addAttributionCredit(context, credits, CreditType.ARRANGER,
                 Song.SRI_CHINMOY, attributionRelativeYSs);
         }
 
-        addAttributionCredit(context, credits, MusicXmlTags.CREDIT_COMPOSITION_DATE,
+        addAttributionCredit(context, credits, CreditType.COMPOSITION_DATE,
             headerText.compositionDate(), attributionRelativeYSs);
 
         if (!headerText.lyricsDate().isEmpty()) {
-            addAttributionCredit(context, credits, MusicXmlTags.CREDIT_LYRICS_DATE,
+            addAttributionCredit(context, credits, CreditType.LYRICS_DATE,
                 headerText.lyricsDate(), attributionRelativeYSs);
         }
 
-        addAttributionCredit(context, credits, MusicXmlTags.CREDIT_RIGHTS,
+        addAttributionCredit(context, credits, CreditType.RIGHTS,
             headerText.rights(), attributionRelativeYSs);
-        addAttributionCredit(context, credits, MusicXmlTags.CREDIT_PLACE,
+        addAttributionCredit(context, credits, CreditType.PLACE,
             song.getPlace(), attributionRelativeYSs);
 
-        addCredit(context, credits, MusicXmlTags.CREDIT_UNDERLYRICS, FontKey.LYRICS,
-            song.getUnderLyrics(), CreditStyle.plain());
-        addCredit(context, credits, MusicXmlTags.CREDIT_BANGLA_LYRICS, FontKey.BANGLA,
+        addCredit(context, credits, CreditType.UNDERLYRICS, song.getUnderLyrics(), CreditStyle.plain());
+        addCredit(context, credits, CreditType.BANGLA_LYRICS,
             song.getBanglaLyrics(), CreditStyle.inLanguage(MusicXmlTags.CREDIT_LANGUAGE_BANGLA));
-        addCredit(context, credits, MusicXmlTags.CREDIT_TRANSLATION, FontKey.LYRICS,
-            song.getTranslatedLyrics(), CreditStyle.plain());
-        addCredit(context, credits, MusicXmlTags.CREDIT_FOOTNOTES, FontKey.FOOTNOTE,
-            song.getFootnotes(), CreditStyle.plain());
+        addCredit(context, credits, CreditType.TRANSLATION, song.getTranslatedLyrics(), CreditStyle.plain());
+        addCredit(context, credits, CreditType.FOOTNOTES, song.getFootnotes(), CreditStyle.plain());
     }
 
     private record CreditStyle(
@@ -350,8 +345,8 @@ final class HeaderBuilder {
     }
 
     private static void addAttributionCredit(
-            BuildContext context, List<Credit> credits, String creditType, String text, double relativeYSs) {
-        addCredit(context, credits, creditType, FontKey.ATTRIBUTION, text, CreditStyle.atOffset(relativeYSs));
+            BuildContext context, List<Credit> credits, CreditType creditType, String text, double relativeYSs) {
+        addCredit(context, credits, creditType, text, CreditStyle.atOffset(relativeYSs));
     }
 
     /**
@@ -360,8 +355,7 @@ final class HeaderBuilder {
     private static void addCredit(
             BuildContext context,
             List<Credit> credits,
-            String creditType,
-            FontKey fontKey,
+            CreditType creditType,
             String text,
             CreditStyle style) {
         if (text.isBlank()) {
@@ -371,9 +365,9 @@ final class HeaderBuilder {
         var factory = context.factory();
         var credit = factory.createCredit();
         var items = credit.getCreditTypeOrLinkOrBookmark();
-        items.add(factory.createCreditCreditType(creditType));
+        items.add(factory.createCreditCreditType(creditType.token()));
 
-        var font = context.fonts().getFont(fontKey);
+        var font = context.fonts().getFont(creditType.fontKey);
         var creditWords = factory.createFormattedText();
         creditWords.setValue(text);
         creditWords.setFontFamily(font.getPSName());

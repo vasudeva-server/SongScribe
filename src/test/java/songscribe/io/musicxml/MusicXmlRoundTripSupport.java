@@ -63,6 +63,60 @@ final class MusicXmlRoundTripSupport {
     private MusicXmlRoundTripSupport() {
     }
 
+    static final String PART_LIST      = "part-list";
+    static final String SCORE_PART     = "score-part";
+    static final String PART           = "part";
+    static final String MEASURE        = "measure";
+    static final String ATTRIBUTES     = "attributes";
+    static final String KEY            = "key";
+    static final String FIFTHS         = "fifths";
+    static final String PRINT          = "print";
+    static final String BARLINE        = "barline";
+    static final String BAR_STYLE      = "bar-style";
+    static final String PITCH          = "pitch";
+    static final String STEP           = "step";
+    static final String OCTAVE         = "octave";
+    static final String REST           = "rest";
+    static final String GRACE          = "grace";
+    static final String DURATION       = "duration";
+    static final String NOTE_TYPE      = "type";
+    static final String NOTATIONS      = "notations";
+    static final String LYRIC          = "lyric";
+    static final String SYLLABIC       = "syllabic";
+    static final String LYRIC_TEXT     = "text";
+    static final String BEAM           = "beam";
+    static final String TIED           = "tied";
+    static final String TIME_MOD       = "time-modification";
+    static final String ACTUAL_NOTES   = "actual-notes";
+    static final String NORMAL_NOTES   = "normal-notes";
+    static final String NORMAL_TYPE    = "normal-type";
+    static final String TUPLET         = "tuplet";
+    static final String DIRECTION      = "direction";
+    static final String DIRECTION_TYPE = "direction-type";
+    static final String WEDGE          = "wedge";
+    static final String ORNAMENTS      = "ornaments";
+    static final String ENDING         = "ending";
+    static final String BEAT_UNIT      = "beat-unit";
+    static final String WORDS          = "words";
+    static final String IDENTIFICATION = "identification";
+    static final String ENCODING       = "encoding";
+
+    static final String ATTR_NEW_SYSTEM   = "new-system";
+    static final String ATTR_LOCATION     = "location";
+    static final String ATTR_NUMBER       = "number";
+    static final String ATTR_ID           = "id";
+    static final String ATTR_DEFAULT_X    = "default-x";
+    static final String ATTR_TYPE         = "type";
+    static final String ATTR_PRINT_OBJECT = "print-object";
+
+    static final String YES             = "yes";
+    static final String NO              = "no";
+    static final String BEAM_BEGIN      = "begin";
+    static final String BEAM_END        = "end";
+    static final String TYPE_START      = "start";
+    static final String TYPE_STOP       = "stop";
+    static final String WEDGE_CRESCENDO = "crescendo";
+
     /**
      * A non-zero X offset (in pixels) that survives the px → ss → tenths → ss → px
      * round-trip without rounding loss.  Any integer number of pixels is exact at the
@@ -87,9 +141,9 @@ final class MusicXmlRoundTripSupport {
      * so a fixture that emits two loses whichever it did not keep.
      */
     static final String SOFTWARE_ENCODING =
-        "    " + openTag(MusicXmlTags.ENCODING) + '\n' +
+        "    " + openTag(ENCODING) + '\n' +
         "      " + element(MusicXmlTags.SOFTWARE, SoftwareProvenance.SOFTWARE) + '\n' +
-        "    " + closeTag(MusicXmlTags.ENCODING) + '\n';
+        "    " + closeTag(ENCODING) + '\n';
 
     /**
      * Minimal SongScribe provenance block. Every hand-built {@code <score-partwise>}
@@ -99,9 +153,9 @@ final class MusicXmlRoundTripSupport {
      * root element so future fixtures inherit the tag instead of silently breaking.
      */
     static final String SOFTWARE_IDENTIFICATION =
-        "  " + openTag(MusicXmlTags.IDENTIFICATION) + '\n' +
+        "  " + openTag(IDENTIFICATION) + '\n' +
         SOFTWARE_ENCODING +
-        "  " + closeTag(MusicXmlTags.IDENTIFICATION) + '\n';
+        "  " + closeTag(IDENTIFICATION) + '\n';
 
     /** The single part these fixtures declare and then fill. */
     private static final String PART_ID = "P1";
@@ -114,7 +168,7 @@ final class MusicXmlRoundTripSupport {
 
     /** The {@code <pitch>} of middle C. */
     static final String MIDDLE_C_PITCH =
-        element(MusicXmlTags.PITCH, element(MusicXmlTags.STEP, MIDDLE_C_STEP) + element(MusicXmlTags.OCTAVE, MIDDLE_C_OCTAVE));
+        element(PITCH, element(STEP, MIDDLE_C_STEP) + element(OCTAVE, MIDDLE_C_OCTAVE));
 
     private static final String NOTE_INDENT = "      ";
     private static final String NOTE_CHILD_INDENT = "        ";
@@ -124,34 +178,28 @@ final class MusicXmlRoundTripSupport {
      * SongScribe provenance tag, a new-system {@code <print>} (so the reader starts a
      * line), and standard attributes. Shared by the hand-built reader edge-case and
      * round-trip fixtures.
-     *
-     * <p>Element and attribute names come from {@link MusicXmlTags} wherever the codec
-     * has a constant for them, so renaming one there cannot leave this fixture quietly
-     * emitting an element the reader no longer recognises. The few names spelled out
-     * below ({@code divisions}, {@code time}, {@code clef}, {@code part-name}) are
-     * literals in the writer too, so there is no constant for them to drift from.
      */
     static String scoreWithMeasureBody(String measureBody) {
         return
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             openTag(MusicXmlTags.SCORE_PARTWISE, MusicXmlTags.ATTR_VERSION, MusicXmlTags.VERSION_VALUE) + '\n' +
             SOFTWARE_IDENTIFICATION +
-            "  " + openTag(MusicXmlTags.PART_LIST) + '\n' +
-            "    " + openTag(MusicXmlTags.SCORE_PART, MusicXmlTags.ATTR_ID, PART_ID) +
-                "<part-name></part-name>" + closeTag(MusicXmlTags.SCORE_PART) + '\n' +
-            "  " + closeTag(MusicXmlTags.PART_LIST) + '\n' +
-            "  " + openTag(MusicXmlTags.PART, MusicXmlTags.ATTR_ID, PART_ID) + '\n' +
-            "    " + openTag(MusicXmlTags.MEASURE, MusicXmlTags.ATTR_NUMBER, "1") + '\n' +
-            "      " + emptyTag(MusicXmlTags.PRINT, MusicXmlTags.ATTR_NEW_SYSTEM, MusicXmlTags.YES) + '\n' +
-            "      " + openTag(MusicXmlTags.ATTRIBUTES) + '\n' +
+            "  " + openTag(PART_LIST) + '\n' +
+            "    " + openTag(SCORE_PART, ATTR_ID, PART_ID) +
+                "<part-name></part-name>" + closeTag(SCORE_PART) + '\n' +
+            "  " + closeTag(PART_LIST) + '\n' +
+            "  " + openTag(PART, ATTR_ID, PART_ID) + '\n' +
+            "    " + openTag(MEASURE, ATTR_NUMBER, "1") + '\n' +
+            "      " + emptyTag(PRINT, ATTR_NEW_SYSTEM, YES) + '\n' +
+            "      " + openTag(ATTRIBUTES) + '\n' +
             "        <divisions>" + MusicXmlUnits.DIVISIONS + "</divisions>\n" +
-            "        " + element(MusicXmlTags.KEY, element(MusicXmlTags.FIFTHS, "0")) + '\n' +
+            "        " + element(KEY, element(FIFTHS, "0")) + '\n' +
             "        <time print-object=\"no\"><senza-misura/></time>\n" +
             "        <clef><sign>G</sign><line>2</line></clef>\n" +
-            "      " + closeTag(MusicXmlTags.ATTRIBUTES) + '\n' +
+            "      " + closeTag(ATTRIBUTES) + '\n' +
             measureBody +
-            "    " + closeTag(MusicXmlTags.MEASURE) + '\n' +
-            "  " + closeTag(MusicXmlTags.PART) + '\n' +
+            "    " + closeTag(MEASURE) + '\n' +
+            "  " + closeTag(PART) + '\n' +
             closeTag(MusicXmlTags.SCORE_PARTWISE) + '\n';
     }
 
@@ -175,8 +223,8 @@ final class MusicXmlRoundTripSupport {
     static String middleCEighth(String... markers) {
         var children = new ArrayList<>(List.of(
             MIDDLE_C_PITCH,
-            element(MusicXmlTags.DURATION, EIGHTH_DURATION),
-            element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH)));
+            element(DURATION, EIGHTH_DURATION),
+            element(NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH)));
         children.addAll(List.of(markers));
 
         return note(children.toArray(String[]::new));

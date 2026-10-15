@@ -78,40 +78,10 @@ public final class ActionReflector implements Disposable {
     }
 
     private <T> List<T> collectActions(Class<? extends T> type, Predicate<? super UIAction> filter) {
-        var result = new ArrayList<T>();
-
-        for (var field : Actions.class.getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                continue;
-            }
-
-            try {
-                var value = field.get(null);
-
-                if (value instanceof UIAction action) {
-                    if (filter.test(action) && type.isInstance(action)) {
-                        result.add(type.cast(action));
-                    }
-                } else if (value instanceof UIAction[] array) {
-                    for (var action : array) {
-                        if (filter.test(action) && type.isInstance(action)) {
-                            result.add(type.cast(action));
-                        }
-                    }
-                } else if (value instanceof List<?> list) {
-                    for (var item : list) {
-                        if (item instanceof UIAction action
-                            && filter.test(action) && type.isInstance(action)) {
-                            result.add(type.cast(action));
-                        }
-                    }
-                }
-            } catch (IllegalAccessException e) {
-                // Non-public fields are skipped
-            }
-        }
-
-        return result;
+        return Actions.allActions().stream()
+            .filter(action -> filter.test(action) && type.isInstance(action))
+            .<T>map(type::cast)
+            .toList();
     }
 
     private List<UIAction.Reflectable<?>> getReflectableActions() {

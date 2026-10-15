@@ -38,18 +38,18 @@ public final class NoteColumnGeometry {
 
     public static ColumnExtent glissandoAttachExtentSs(NoteElement note, Beaming beaming) {
         var noteType = note.getType();
-        var direction = NoteGeometry.effectiveDirection(note);
+        var direction = StemGeometry.effectiveDirection(note);
 
         var glyph = note.notehead().glyph();
         var noteheadBBox = SMuFLMetadata.bboxSs(glyph);
         var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
         var leftSs = offsetX + noteheadBBox.leftSs();
 
-        var rightSs = NoteGeometry.dotsRightExtentSs(
+        var rightSs = DotGeometry.dotsRightExtentSs(
             note, beaming, direction, noteType.getElementWidthSs());
 
         if (note.accidentalState().drawn() != null) {
-            var accidentalStartXSs = NoteGeometry.getAccidentalStartXSs(note);
+            var accidentalStartXSs = AccidentalGeometry.getAccidentalStartXSs(note);
 
             if (accidentalStartXSs < leftSs) {
                 leftSs = accidentalStartXSs;
@@ -70,8 +70,8 @@ public final class NoteColumnGeometry {
         // no Bravura notehead does: its stem anchors sit exactly on the outer bbox edges, and the
         // grace stem sits well inside.
         if (note.getType().isNoteWithStem()) {
-            var direction = NoteGeometry.effectiveDirection(note);
-            var stemGeom = NoteGeometry.computeBaseStemGeometry(note, direction);
+            var direction = StemGeometry.effectiveDirection(note);
+            var stemGeom = StemGeometry.computeBaseStem(note, direction);
             var stemLeftXSs = stemGeom.stemLeftXSs();
 
             if (direction.isUp()) {

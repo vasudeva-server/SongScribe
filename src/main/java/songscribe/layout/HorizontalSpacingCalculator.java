@@ -800,7 +800,7 @@ public final class HorizontalSpacingCalculator {
 
         return rightExtentFacingSs(prev, curr)
             - curr.getLeftExtentSs()
-            + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+            + SlideGeometry.MIN_GLISSANDO_RESERVATION_SS;
     }
 
     /**

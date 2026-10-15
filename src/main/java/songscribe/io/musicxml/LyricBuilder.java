@@ -88,7 +88,7 @@ final class LyricBuilder {
 
     private static Extend buildExtend(ObjectFactory factory, Lyric.Extend extend) {
         var pmExtend = factory.createExtend();
-        pmExtend.setType(StartStopContinue.fromValue(SyllabicMapping.forExtend(extend)));
+        pmExtend.setType(SyllabicMapping.forExtend(extend));
 
         return pmExtend;
     }

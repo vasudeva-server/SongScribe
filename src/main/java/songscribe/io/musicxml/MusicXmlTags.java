@@ -20,162 +20,48 @@
 package songscribe.io.musicxml;
 
 /**
- * The MusicXML vocabulary shared by {@link MusicXmlReader} and
- * {@link MusicXmlWriter}: element names, attribute names, and the attribute
- * values both sides depend on.
- *
- * <p>The class is public only so that tests outside this package can build MusicXML fixtures
- * from the same vocabulary.
+ * The MusicXML element names, attribute names and fixed values that the code reads or writes
+ * by name rather than through the proxymusic object graph.
  */
-public final class MusicXmlTags {
+final class MusicXmlTags {
 
     private MusicXmlTags() {}
 
     /**
      * The minimum version the reader accepts; older documents are rejected.
      */
-    public static final String VERSION_VALUE = "4.0";
+    static final String VERSION_VALUE = "4.0";
 
     // MusicXML's positional coordinate unit is the tenth: 1 staff space = 10
     // tenths. Shared by both sides of the codec so the writer's px→tenths and the
     // reader's tenths→px conversions cannot silently disagree.
     static final int TENTHS_PER_STAFF_SPACE = 10;
 
-    public static final String SCORE_PARTWISE = "score-partwise";
-    static final String        PART_LIST      = "part-list";
-    static final String        SCORE_PART     = "score-part";
-    static final String        PART           = "part";
-    static final String        MEASURE        = "measure";
-    static final String        ATTRIBUTES     = "attributes";
-    static final String        KEY            = "key";
-    static final String        FIFTHS         = "fifths";
-    static final String        CANCEL         = "cancel";
-    static final String        MODE           = "mode";
-    static final String        PRINT          = "print";
-    static final String        BARLINE        = "barline";
-    static final String        BAR_STYLE      = "bar-style";
-    static final String        REPEAT         = "repeat";
+    static final String SCORE_PARTWISE = "score-partwise";
 
-    static final String NOTE          = "note";
-    static final String PITCH         = "pitch";
-    static final String STEP          = "step";
-    static final String ALTER         = "alter";
-    static final String OCTAVE        = "octave";
-    static final String REST          = "rest";
-    static final String GRACE         = "grace";
-    static final String DURATION      = "duration";
-    static final String NOTE_TYPE     = "type";
-    static final String DOT           = "dot";
-    static final String ACCIDENTAL    = "accidental";
-    static final String STEM          = "stem";
-    static final String NOTATIONS     = "notations";
-    static final String ARTICULATIONS = "articulations";
-    static final String ACCENT        = "accent";
-    static final String STACCATO      = "staccato";
-    static final String FERMATA       = "fermata";
-    static final String DYNAMICS      = "dynamics";
-    static final String BREATH_MARK   = "breath-mark";
-    static final String SLIDE         = "slide";
-    static final String FALLOFF       = "falloff";
-
-    static final String LYRIC       = "lyric";
-    static final String SYLLABIC    = "syllabic";
-    static final String LYRIC_TEXT  = "text";
-    static final String EXTEND      = "extend";
-
-    static final String BEAM           = "beam";
-    static final String TIE            = "tie";
-    static final String TIED           = "tied";
-    static final String TIME_MOD       = "time-modification";
-    static final String ACTUAL_NOTES   = "actual-notes";
-    static final String NORMAL_NOTES   = "normal-notes";
-    static final String NORMAL_TYPE    = "normal-type";
-    static final String NORMAL_DOT     = "normal-dot";
-    static final String TUPLET         = "tuplet";
-    static final String DIRECTION      = "direction";
-    static final String DIRECTION_TYPE = "direction-type";
-    static final String WEDGE          = "wedge";
-    static final String ORNAMENTS      = "ornaments";
-    static final String TRILL_MARK     = "trill-mark";
-    static final String WAVY_LINE      = "wavy-line";
-    static final String ENDING         = "ending";
+    static final String NOTE        = "note";
+    static final String DOT         = "dot";
+    static final String ACCENT      = "accent";
+    static final String STACCATO    = "staccato";
+    static final String BREATH_MARK = "breath-mark";
+    static final String FALLOFF     = "falloff";
+    static final String NORMAL_DOT  = "normal-dot";
+    static final String WAVY_LINE   = "wavy-line";
 
     static final String METRONOME          = "metronome";
-    static final String BEAT_UNIT          = "beat-unit";
-    static final String BEAT_UNIT_DOT      = "beat-unit-dot";
     static final String PER_MINUTE         = "per-minute";
-    static final String WORDS              = "words";
-    static final String SOUND              = "sound";
     static final String METRONOME_NOTE     = "metronome-note";
-    static final String METRONOME_TYPE     = "metronome-type";
-    static final String METRONOME_DOT      = "metronome-dot";
     static final String METRONOME_RELATION = "metronome-relation";
 
-    static final String        MOVEMENT_TITLE  = "movement-title";
-    static final String        MOVEMENT_NUMBER = "movement-number";
-    static final String        IDENTIFICATION  = "identification";
-    static final String        CREATOR         = "creator";
-    static final String        RIGHTS          = "rights";
-    static final String        ENCODING        = "encoding";
-    public static final String SOFTWARE        = "software";
-    static final String        ENCODING_DATE   = "encoding-date";
-    static final String        SUPPORTS        = "supports";
+    static final String SOFTWARE = "software";
+    static final String SUPPORTS = "supports";
 
-    static final String DEFAULTS       = "defaults";
-    static final String SCALING        = "scaling";
-    static final String MILLIMETERS    = "millimeters";
-    static final String TENTHS         = "tenths";
-    static final String PAGE_LAYOUT    = "page-layout";
-    static final String PAGE_HEIGHT    = "page-height";
-    static final String PAGE_WIDTH     = "page-width";
-    static final String STAFF_LAYOUT   = "staff-layout";
-    static final String STAFF_DISTANCE = "staff-distance";
-    static final String MUSIC_FONT     = "music-font";
-    static final String WORD_FONT      = "word-font";
-    static final String LYRIC_FONT     = "lyric-font";
-    static final String LYRIC_LANGUAGE = "lyric-language";
-
-    static final String CREDIT       = "credit";
     static final String CREDIT_TYPE  = "credit-type";
     static final String CREDIT_WORDS = "credit-words";
 
-    static final String MISCELLANEOUS       = "miscellaneous";
-    static final String MISCELLANEOUS_FIELD = "miscellaneous-field";
-
-    public static final String ATTR_VERSION    = "version";
-    static final String        ATTR_NEW_SYSTEM = "new-system";
-    static final String        ATTR_LOCATION   = "location";
-    static final String        ATTR_DIRECTION  = "direction";
-    static final String        ATTR_NUMBER     = "number";
-    static final String        ATTR_ID         = "id";
-
-    static final String ATTR_SLASH       = "slash";
-    static final String ATTR_CAUTIONARY  = "cautionary";
-    static final String ATTR_PARENTHESES = "parentheses";
-    static final String ATTR_DEFAULT_X   = "default-x";
-    static final String ATTR_DEFAULT_Y   = "default-y";
-    static final String ATTR_RELATIVE_X  = "relative-x";
-    static final String ATTR_RELATIVE_Y  = "relative-y";
-    static final String ATTR_TYPE        = "type";
-    static final String ATTR_ORIENTATION = "orientation";
-    static final String ATTR_LINE_SHAPE  = "line-shape";
-    static final String ATTR_LINE_TYPE   = "line-type";
-    static final String ATTR_LINE_LENGTH = "line-length";
-
-    static final String ATTR_TEMPO        = "tempo";
-    static final String ATTR_PRINT_OBJECT = "print-object";
-
-    static final String ATTR_NAME        = "name";
-    static final String ATTR_FONT_FAMILY = "font-family";
-    static final String ATTR_FONT_SIZE   = "font-size";
-    static final String ATTR_FONT_WEIGHT = "font-weight";
-    static final String ATTR_FONT_STYLE  = "font-style";
-    static final String ATTR_JUSTIFY     = "justify";
-    static final String ATTR_HALIGN      = "halign";
-    static final String ATTR_XML_LANG    = "xml:lang";
-    static final String ATTR_PAGE        = "page";
-    static final String ATTR_PLACEMENT   = "placement";
-    static final String ATTR_ELEMENT     = "element";
+    static final String ATTR_VERSION    = "version";
+    static final String ATTR_RELATIVE_X = "relative-x";
+    static final String ATTR_FONT_SIZE  = "font-size";
 
     // Every SongScribe key is major, so this is the only <mode> value the writer emits and the
     // reader never reads one back.
@@ -185,31 +71,7 @@ public final class MusicXmlTags {
     // the only value the schema defines.
     static final String RELATION_EQUALS = "equals";
 
-    static final String YES     = "yes";
     static final String PART_ID = "P1";
-
-    static final String NO            = "no";
-    static final String STEM_UP       = "up";
-    static final String STEM_DOWN     = "down";
-    static final String SLIDE_START   = "start";
-    static final String SLIDE_STOP    = "stop";
-    static final String LINE_STRAIGHT = "straight";
-    static final String LINE_SOLID    = "solid";
-
-    static final String BEAM_BEGIN = "begin";
-    static final String BEAM_END   = "end";
-
-    static final String TYPE_START = "start";
-    static final String TYPE_STOP  = "stop";
-
-    // Write-forward tie curve direction.
-    static final String ORIENTATION_OVER  = "over";
-    static final String ORIENTATION_UNDER = "under";
-
-    static final String WEDGE_CRESCENDO  = "crescendo";
-    static final String WEDGE_DIMINUENDO = "diminuendo";
-
-    static final String ENDING_DISCONTINUE = "discontinue";
 
     // The wedge @number is always "1" (only one hairpin is ever open at a time); the ending
     // @number is "1" for the first volta bracket and "2" for the second.
@@ -219,11 +81,6 @@ public final class MusicXmlTags {
     // Write-forward: fixed, never read.
     static final String MUSIC_FONT_FAMILY = "Bravura";
     static final String MUSIC_FONT_SIZE   = "32";
-
-    static final String WEIGHT_BOLD   = "bold";
-    static final String WEIGHT_NORMAL = "normal";
-    static final String STYLE_ITALIC  = "italic";
-    static final String STYLE_NORMAL  = "normal";
 
     // Write-forward: fixed, never read.
     static final double SCALING_MILLIMETERS = 7.0;
@@ -238,34 +95,6 @@ public final class MusicXmlTags {
 
     // The xml:lang of the bangla-lyrics <credit-words>: the Bangla ISO 639-1 code.
     static final String CREDIT_LANGUAGE_BANGLA = "bn";
-
-    static final String CREATOR_COMPOSER = "composer";
-    static final String CREATOR_LYRICIST = "lyricist";
-    static final String CREATOR_ARRANGER = "arranger";
-
-    static final String CREDIT_TITLE            = "title";
-    static final String CREDIT_SUBTITLE         = "subtitle";
-    static final String CREDIT_COMPOSER         = "composer";
-    static final String CREDIT_LYRICIST         = "lyricist";
-    static final String CREDIT_ARRANGER         = "arranger";
-    static final String CREDIT_COMPOSITION_DATE = "composition date";
-    static final String CREDIT_LYRICS_DATE      = "lyrics date";
-    static final String CREDIT_RIGHTS           = "rights";
-    static final String CREDIT_PLACE            = "place";
-    static final String CREDIT_UNDERLYRICS      = "underlyrics";
-    static final String CREDIT_BANGLA_LYRICS    = "bangla-lyrics";
-    static final String CREDIT_TRANSLATION      = "translation";
-    static final String CREDIT_FOOTNOTES        = "footnotes";
-
-    static final String MISC_COMPOSITION_DATE          = "composition-date";
-    static final String MISC_LYRICS_DATE               = "lyrics-date";
-    static final String MISC_COMPOSITION_PLACE         = "composition-place";
-    static final String MISC_LYRICS_SOURCE             = "lyrics-source";
-    static final String MISC_UNOFFICIAL_TRANSLATION    = "unofficial-translation";
-    static final String MISC_SUB_ATTRIBUTION_FONT      = "sub-attribution-font";
-    static final String MISC_SUB_ATTRIBUTION_FONT_SIZE = "sub-attribution-font-size";
-    static final String MISC_ROW_HEIGHT_ADJUSTMENT     = "row-height-adjustment";
-    static final String MISC_DEFAULT_REST_LENGTH       = "default-rest-length";
 
     // Write-forward: ignored on read. %d is substituted with the current year.
     static final String COPYRIGHT = "Copyright © %d Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0";

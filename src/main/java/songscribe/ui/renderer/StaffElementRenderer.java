@@ -31,7 +31,6 @@ import songscribe.dom.BarElement;
 import songscribe.dom.BreathMarkElement;
 import songscribe.dom.Direction;
 import songscribe.dom.Dots;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.NoteElement;
 import songscribe.dom.RestElement;
@@ -40,8 +39,11 @@ import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.LedgerLine;
 import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
+import songscribe.layout.AccidentalGeometry;
 import songscribe.layout.Beaming;
+import songscribe.layout.DotGeometry;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.StemGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.util.GraphicsState;
 
@@ -136,7 +138,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     ) {
         var noteType = note.getType();
         var glyph = note.notehead().glyph();
-        var direction = NoteGeometry.effectiveDirection(note);
+        var direction = StemGeometry.effectiveDirection(note);
 
         // Note: Don't set color here - respect the color set by the caller
 
@@ -176,10 +178,10 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             return null;
         }
 
-        var direction = NoteGeometry.effectiveDirection(note);
+        var direction = StemGeometry.effectiveDirection(note);
 
         var upper = direction.isUp();
-        var geom = NoteGeometry.computeBaseStemGeometry(note, direction);
+        var geom = StemGeometry.computeBaseStem(note, direction);
         var stemWidthSs = StemMetrics.thicknessSs();
 
         // Both stem directions keep their exact (sub-pixel) position. The score draws glyphs with
@@ -221,7 +223,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         var naturalStemLength = geom.lengthSs() + lengtheningSs - forcedShorteningSs;
         var stemLength = beamed
             ? naturalStemLength
-            : Math.max(NoteGeometry.FORCED_STEM_FLOOR_SS, naturalStemLength);
+            : Math.max(StemGeometry.FORCED_STEM_FLOOR_SS, naturalStemLength);
         var anchorY = geom.anchorYSs();
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam
@@ -275,7 +277,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         }
 
         var noteType = note.getType();
-        var flagGlyph = noteType.getFlagGlyph(NoteGeometry.effectiveDirection(note));
+        var flagGlyph = noteType.getFlagGlyph(StemGeometry.effectiveDirection(note));
 
         if (flagGlyph == null) {
             return;
@@ -290,7 +292,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
         if (noteType.isGraceNote()) {
             flagFont = RenderingUtils.GRACE_NOTE_FONT;
-            flagX = (float) NoteGeometry.getGraceFlagOriginXSs(stemTip.x);
+            flagX = (float) StemGeometry.getGraceFlagOriginXSs(stemTip.x);
         } else {
             flagFont = RenderingUtils.MUSIC_FONT;
         }
@@ -314,7 +316,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
-            NoteGeometry.forEachDotPosition(
+            DotGeometry.forEachDotPosition(
                 note, beaming, direction, (dotX, yOffset) ->
                 g2.drawString(dotStr, dotX.floatValue(), yOffset.floatValue()));
         }
@@ -365,7 +367,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             // gap is computed against the wrong glyph size).
             g2.setFont(RenderingUtils.getGlyphFont(note));
 
-            var startX = NoteGeometry.getAccidentalStartXSs(note);
+            var startX = AccidentalGeometry.getAccidentalStartXSs(note);
             g2.drawString(accidental.glyph().asString(), startX, 0f);
         }
     }

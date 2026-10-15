@@ -22,19 +22,14 @@ package songscribe.ui.action;
 
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 import javax.swing.KeyStroke;
 
 import net.engio.mbassy.listener.Handler;
 import net.engio.mbassy.listener.Listener;
 import net.engio.mbassy.listener.References;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -72,8 +67,6 @@ import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 })
 public final class Actions {
 
-    private static final Logger LOG = LoggerFactory.getLogger(Actions.class);
-
     public static ModeAction SELECT_MODE_ACTION;
     public static ModeAction EDIT_MODE_ACTION;
     public static CycleModeAction CYCLE_MODE_ACTION;
@@ -107,11 +100,8 @@ public final class Actions {
     public static ElementTypeAction[] REPEAT_ACTIONS;
     public static ElementTypeAction[] BARLINE_ACTIONS;
 
-    // A full member of BARLINE_ACTIONS and therefore of NON_DURATION_ACTION_GROUP and the
-    // barline popup panel. Kept as its own field so BarlineMenu can identify it by name rather
-    // than by array index. What keeps it from acting as a drawing pen is the
-    // score.clearSelection()-before-syncPreviewElementWithSelectedDuration() ordering in
-    // ScoreViewController.modeDidChange, not its enablement.
+    // Also a member of BARLINE_ACTIONS. BarlineMenu identifies it through this field rather
+    // than by array index.
     public static FinalDoubleBarlineAction FINAL_DOUBLE_BARLINE_ACTION;
 
     public static ElementTypeAction BREATH_MARK_ACTION;
@@ -179,6 +169,10 @@ public final class Actions {
     public static FocusScoreAction FOCUS_SCORE_ACTION;
     public static ToggleMessagesAction TOGGLE_MESSAGES_ACTION;
 
+    private static final List<UIAction> registeredActions = new ArrayList<>();
+
+    private static List<AppMenuAction> appMenuActions = List.of();
+
     /**
      * Called once per process, at the top of {@link MainFrame#initFrame()}, before any
      * constant in this class is first referenced.
@@ -190,18 +184,18 @@ public final class Actions {
 
         UndoController.initialize(mainFrame::getScoreView);
 
-        SELECT_MODE_ACTION = ModeAction.createSelectModeAction(mainFrame);
-        EDIT_MODE_ACTION = ModeAction.createEditModeAction(mainFrame);
-        CYCLE_MODE_ACTION = CycleModeAction.createAction(mainFrame);
+        SELECT_MODE_ACTION = register(ModeAction.createSelectModeAction(mainFrame));
+        EDIT_MODE_ACTION = register(ModeAction.createEditModeAction(mainFrame));
+        CYCLE_MODE_ACTION = register(CycleModeAction.createAction(mainFrame));
         MODE_ACTION_GROUP = new ActionGroup<>(SELECT_MODE_ACTION, EDIT_MODE_ACTION);
 
-        GRACE_EIGHTH_NOTE_ACTION = ElementTypeAction.createGraceEighthNoteAction(mainFrame);
-        THIRTY_SECOND_NOTE_ACTION = ElementTypeAction.createThirtySecondNoteAction(mainFrame);
-        SIXTEENTH_NOTE_ACTION = ElementTypeAction.createSixteenthNoteAction(mainFrame);
-        EIGHTH_NOTE_ACTION = ElementTypeAction.createEighthNoteAction(mainFrame);
-        QUARTER_NOTE_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
-        HALF_NOTE_ACTION = ElementTypeAction.createHalfNoteAction(mainFrame);
-        WHOLE_NOTE_ACTION = ElementTypeAction.createWholeNoteAction(mainFrame);
+        GRACE_EIGHTH_NOTE_ACTION = register(ElementTypeAction.createGraceEighthNoteAction(mainFrame));
+        THIRTY_SECOND_NOTE_ACTION = register(ElementTypeAction.createThirtySecondNoteAction(mainFrame));
+        SIXTEENTH_NOTE_ACTION = register(ElementTypeAction.createSixteenthNoteAction(mainFrame));
+        EIGHTH_NOTE_ACTION = register(ElementTypeAction.createEighthNoteAction(mainFrame));
+        QUARTER_NOTE_ACTION = register(ElementTypeAction.createQuarterNoteAction(mainFrame));
+        HALF_NOTE_ACTION = register(ElementTypeAction.createHalfNoteAction(mainFrame));
+        WHOLE_NOTE_ACTION = register(ElementTypeAction.createWholeNoteAction(mainFrame));
 
         NOTE_DURATION_ACTIONS = List.of(
             GRACE_EIGHTH_NOTE_ACTION,
@@ -224,17 +218,17 @@ public final class Actions {
         );
         DURATION_ACTION_GROUP.setDefaultAction(QUARTER_NOTE_ACTION);
 
-        DOT_ACTION = DotAction.createDotAction(mainFrame);
-        DOUBLE_DOT_ACTION = DotAction.createDoubleDotAction(mainFrame);
+        DOT_ACTION = register(DotAction.createDotAction(mainFrame));
+        DOUBLE_DOT_ACTION = register(DotAction.createDoubleDotAction(mainFrame));
         DOT_ACTION_GROUP = new ActionGroup<>(DOT_ACTION, DOUBLE_DOT_ACTION);
 
-        REST_ACTION = RestModeAction.createAction(mainFrame);
+        REST_ACTION = register(RestModeAction.createAction(mainFrame));
 
-        FLAT_ACTION = AccidentalAction.createFlatAction(mainFrame);
-        DOUBLE_FLAT_ACTION = AccidentalAction.createDoubleFlatAction(mainFrame);
-        NATURAL_ACTION = AccidentalAction.createNaturalAction(mainFrame);
-        SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
-        DOUBLE_SHARP_ACTION = AccidentalAction.createDoubleSharpAction(mainFrame);
+        FLAT_ACTION = register(AccidentalAction.createFlatAction(mainFrame));
+        DOUBLE_FLAT_ACTION = register(AccidentalAction.createDoubleFlatAction(mainFrame));
+        NATURAL_ACTION = register(AccidentalAction.createNaturalAction(mainFrame));
+        SHARP_ACTION = register(AccidentalAction.createSharpAction(mainFrame));
+        DOUBLE_SHARP_ACTION = register(AccidentalAction.createDoubleSharpAction(mainFrame));
         ACCIDENTAL_ACTION_GROUP = new ActionGroup<>(
             DOUBLE_FLAT_ACTION,
             FLAT_ACTION,
@@ -244,51 +238,51 @@ public final class Actions {
         );
 
         REPEAT_ACTIONS = new ElementTypeAction[]{
-            ElementTypeAction.createLeftRepeatAction(mainFrame),
-            ElementTypeAction.createRightRepeatAction(mainFrame),
-            ElementTypeAction.createLeftRightRepeatAction(mainFrame),
+            register(ElementTypeAction.createLeftRepeatAction(mainFrame)),
+            register(ElementTypeAction.createRightRepeatAction(mainFrame)),
+            register(ElementTypeAction.createLeftRightRepeatAction(mainFrame)),
         };
-        FINAL_DOUBLE_BARLINE_ACTION = FinalDoubleBarlineAction.createAction(mainFrame);
+        FINAL_DOUBLE_BARLINE_ACTION = register(FinalDoubleBarlineAction.createAction(mainFrame));
         BARLINE_ACTIONS = new ElementTypeAction[]{
-            ElementTypeAction.createDoubleBarlineAction(mainFrame),
-            ElementTypeAction.createSingleBarlineAction(mainFrame),
+            register(ElementTypeAction.createDoubleBarlineAction(mainFrame)),
+            register(ElementTypeAction.createSingleBarlineAction(mainFrame)),
             FINAL_DOUBLE_BARLINE_ACTION,
         };
-        BREATH_MARK_ACTION = ElementTypeAction.createBreathMarkAction(mainFrame);
+        BREATH_MARK_ACTION = register(ElementTypeAction.createBreathMarkAction(mainFrame));
         NON_DURATION_ACTION_GROUP = new NonDurationActionGroup();
 
-        MAKE_ENDING_ACTION = new FirstSecondEndingAction(mainFrame);
-        ACCENT_ACTION = ArticulationAction.createAccentAction(mainFrame);
-        STACCATO_ACTION = ArticulationAction.createStaccatoAction(mainFrame);
+        MAKE_ENDING_ACTION = register(new FirstSecondEndingAction(mainFrame));
+        ACCENT_ACTION = register(ArticulationAction.createAccentAction(mainFrame));
+        STACCATO_ACTION = register(ArticulationAction.createStaccatoAction(mainFrame));
 
-        TOGGLE_BEAM_ACTION = ToggleNotationAction.createBeamAction(mainFrame);
-        TOGGLE_TIE_ACTION = ToggleNotationAction.createTieAction(mainFrame);
-        GLISSANDO_ACTION = ToggleNotationAction.createGlissandoAction(mainFrame);
-        FALL_ACTION = ToggleNotationAction.createFallAction(mainFrame);
+        TOGGLE_BEAM_ACTION = register(ToggleNotationAction.createBeamAction(mainFrame));
+        TOGGLE_TIE_ACTION = register(ToggleNotationAction.createTieAction(mainFrame));
+        GLISSANDO_ACTION = register(ToggleNotationAction.createGlissandoAction(mainFrame));
+        FALL_ACTION = register(ToggleNotationAction.createFallAction(mainFrame));
 
         TOGGLE_TUPLET_ACTIONS = List.of(
-            TupletAction.createDupletAction(mainFrame),
-            TupletAction.createTripletAction(mainFrame),
-            TupletAction.createQuadrupletAction(mainFrame),
-            TupletAction.createQuintupletAction(mainFrame),
-            TupletAction.createSextupletAction(mainFrame),
-            TupletAction.createSeptupletAction(mainFrame)
+            register(TupletAction.createDupletAction(mainFrame)),
+            register(TupletAction.createTripletAction(mainFrame)),
+            register(TupletAction.createQuadrupletAction(mainFrame)),
+            register(TupletAction.createQuintupletAction(mainFrame)),
+            register(TupletAction.createSextupletAction(mainFrame)),
+            register(TupletAction.createSeptupletAction(mainFrame))
         );
 
-        FLIP_STEM_DIRECTION_ACTION = StemDirectionAction.createFlipAction(mainFrame);
-        AUTO_STEM_DIRECTION_ACTION = StemDirectionAction.createAutoAction(mainFrame);
-        EDIT_LYRIC_ACTION = EditLyricAction.createAction(mainFrame);
-        TRILL_ACTION = TrillAction.createAction(mainFrame);
+        FLIP_STEM_DIRECTION_ACTION = register(StemDirectionAction.createFlipAction(mainFrame));
+        AUTO_STEM_DIRECTION_ACTION = register(StemDirectionAction.createAutoAction(mainFrame));
+        EDIT_LYRIC_ACTION = register(EditLyricAction.createAction(mainFrame));
+        TRILL_ACTION = register(TrillAction.createAction(mainFrame));
 
-        HAIRPIN_CRESCENDO_ACTION = HairpinAction.createCrescendoAction(mainFrame);
-        HAIRPIN_DIMINUENDO_ACTION = HairpinAction.createDiminuendoAction(mainFrame);
+        HAIRPIN_CRESCENDO_ACTION = register(HairpinAction.createCrescendoAction(mainFrame));
+        HAIRPIN_DIMINUENDO_ACTION = register(HairpinAction.createDiminuendoAction(mainFrame));
 
-        DYNAMIC_PP_ACTION = DynamicMarkingAction.createPianissimoAction(mainFrame);
-        DYNAMIC_P_ACTION = DynamicMarkingAction.createPianoAction(mainFrame);
-        DYNAMIC_MP_ACTION = DynamicMarkingAction.createMezzoPianoAction(mainFrame);
-        DYNAMIC_MF_ACTION = DynamicMarkingAction.createMezzoForteAction(mainFrame);
-        DYNAMIC_F_ACTION = DynamicMarkingAction.createForteAction(mainFrame);
-        DYNAMIC_FF_ACTION = DynamicMarkingAction.createFortissimoAction(mainFrame);
+        DYNAMIC_PP_ACTION = register(DynamicMarkingAction.createPianissimoAction(mainFrame));
+        DYNAMIC_P_ACTION = register(DynamicMarkingAction.createPianoAction(mainFrame));
+        DYNAMIC_MP_ACTION = register(DynamicMarkingAction.createMezzoPianoAction(mainFrame));
+        DYNAMIC_MF_ACTION = register(DynamicMarkingAction.createMezzoForteAction(mainFrame));
+        DYNAMIC_F_ACTION = register(DynamicMarkingAction.createForteAction(mainFrame));
+        DYNAMIC_FF_ACTION = register(DynamicMarkingAction.createFortissimoAction(mainFrame));
         DYNAMIC_MARKING_ACTION_GROUP = new ActionGroup<>(
             DYNAMIC_PP_ACTION,
             DYNAMIC_P_ACTION,
@@ -298,10 +292,10 @@ public final class Actions {
             DYNAMIC_FF_ACTION
         );
 
-        TEMPO_CHANGE_ACTION = TempoChangeAction.createAction(mainFrame);
-        BEAT_CHANGE_ACTION = BeatChangeAction.createAction(mainFrame);
-        ANNOTATION_ACTION = AnnotationAction.createAction(mainFrame);
-        KEY_CHANGE_ACTION = KeyChangeAction.createAction(mainFrame);
+        TEMPO_CHANGE_ACTION = register(TempoChangeAction.createAction(mainFrame));
+        BEAT_CHANGE_ACTION = register(BeatChangeAction.createAction(mainFrame));
+        ANNOTATION_ACTION = register(AnnotationAction.createAction(mainFrame));
+        KEY_CHANGE_ACTION = register(KeyChangeAction.createAction(mainFrame));
         STAFF_ANNOTATION_ACTIONS = List.of(
             TEMPO_CHANGE_ACTION,
             BEAT_CHANGE_ACTION,
@@ -309,32 +303,33 @@ public final class Actions {
             KEY_CHANGE_ACTION
         );
 
-        FERMATA_ACTION = FermataAction.createAction(mainFrame);
-        PREFERENCES_ACTION = new PreferencesOpenAction(mainFrame);
-        SONG_SETTINGS_ACTION = SongSettingsOpenAction.createAction(mainFrame);
-        ABOUT_ACTION = AboutOpenAction.createAction(mainFrame);
-        PRINT_ACTION = PrintAction.createAction(mainFrame);
-        QUIT_ACTION = QuitAction.createAction(mainFrame);
-        CLEAR_RECENTS_ACTION = ClearRecentsAction.createAction(mainFrame);
+        FERMATA_ACTION = register(FermataAction.createAction(mainFrame));
+        PREFERENCES_ACTION = register(new PreferencesOpenAction(mainFrame));
+        SONG_SETTINGS_ACTION = register(SongSettingsOpenAction.createAction(mainFrame));
+        ABOUT_ACTION = register(AboutOpenAction.createAction(mainFrame));
+        PRINT_ACTION = register(PrintAction.createAction(mainFrame));
+        QUIT_ACTION = register(QuitAction.createAction(mainFrame));
+        CLEAR_RECENTS_ACTION = register(ClearRecentsAction.createAction(mainFrame));
 
-        UNDO_ACTION = UndoAction.createAction(mainFrame);
-        REDO_ACTION = RedoAction.createAction(mainFrame);
+        UNDO_ACTION = register(UndoAction.createAction(mainFrame));
+        REDO_ACTION = register(RedoAction.createAction(mainFrame));
 
-        CUT_ACTION = CutAction.createAction(mainFrame);
-        COPY_ACTION = CopyAction.createAction(mainFrame);
-        PASTE_ACTION = PasteAction.createAction(mainFrame);
-        DELETE_ACTION = DeleteAction.createAction(mainFrame);
-        SELECT_ALL_ELEMENTS_ACTION = SelectAllElementsAction.createAction(mainFrame);
-        DESELECT_ACTION = DeselectAction.createAction(mainFrame);
+        CUT_ACTION = register(CutAction.createAction(mainFrame));
+        COPY_ACTION = register(CopyAction.createAction(mainFrame));
+        PASTE_ACTION = register(PasteAction.createAction(mainFrame));
+        DELETE_ACTION = register(DeleteAction.createAction(mainFrame));
+        SELECT_ALL_ELEMENTS_ACTION = register(SelectAllElementsAction.createAction(mainFrame));
+        DESELECT_ACTION = register(DeselectAction.createAction(mainFrame));
 
-        ZOOM_IN_ACTION = ZoomAction.createZoomInAction(mainFrame);
-        ZOOM_OUT_ACTION = ZoomAction.createZoomOutAction(mainFrame);
+        ZOOM_IN_ACTION = register(ZoomAction.createZoomInAction(mainFrame));
+        ZOOM_OUT_ACTION = register(ZoomAction.createZoomOutAction(mainFrame));
         ZOOM_LEVEL_ACTIONS = ZoomLevelAction.createActions(mainFrame);
+        ZOOM_LEVEL_ACTIONS.forEach(Actions::register);
 
-        MINIMIZE_WINDOW_ACTION = MinimizeWindowAction.createAction(mainFrame);
-        ZOOM_WINDOW_ACTION = ZoomWindowAction.createAction(mainFrame);
-        FOCUS_SCORE_ACTION = FocusScoreAction.createAction(mainFrame);
-        TOGGLE_MESSAGES_ACTION = ToggleMessagesAction.createAction(mainFrame);
+        MINIMIZE_WINDOW_ACTION = register(MinimizeWindowAction.createAction(mainFrame));
+        ZOOM_WINDOW_ACTION = register(ZoomWindowAction.createAction(mainFrame));
+        FOCUS_SCORE_ACTION = register(FocusScoreAction.createAction(mainFrame));
+        TOGGLE_MESSAGES_ACTION = register(ToggleMessagesAction.createAction(mainFrame));
 
         // Cmd+Shift+= is a secondary accelerator for zoom-in (alongside Cmd+=), matching
         // the common "=" / "+" key ambiguity across keyboard layouts.
@@ -344,7 +339,20 @@ public final class Actions {
             ZOOM_IN_ACTION
         );
 
-        appMenuActions = null;
+        appMenuActions = registeredActions.stream()
+            .filter(AppMenuAction.class::isInstance)
+            .map(AppMenuAction.class::cast)
+            .toList();
+    }
+
+    private static <A extends UIAction> A register(A action) {
+        registeredActions.add(action);
+        return action;
+    }
+
+    /** Every action that {@link #initialize} builds, each one once, in construction order. */
+    public static List<UIAction> allActions() {
+        return Collections.unmodifiableList(registeredActions);
     }
 
     public static ModeAction modeAction(Mode mode) {
@@ -369,14 +377,10 @@ public final class Actions {
         FERMATA_ACTION.reset();
         TRILL_ACTION.reset();
 
-        // Rebuild the preview from the now-cleared toggles. We cannot rely on the
-        // DURATION_ACTION_GROUP.select() above to rebuild it: when the quarter note is
-        // already the selected duration (the common case on document load) that select()
-        // is a no-op and posts nothing, so the preview would otherwise keep a previous
-        // document's decorations even though the toolbar shows them cleared. It has to be
-        // a full rebuild rather than a re-decoration because REST_ACTION and
-        // NON_DURATION_ACTION_GROUP are cleared silently after the select() above, and the
-        // element's type — rest or barline — cannot be decorated back into a note.
+        // The select() above posts nothing when the quarter note is already selected, and the
+        // resets after it are silent, so without this the preview keeps the previous
+        // document's decorations. The scope is ELEMENT because a rest or barline preview
+        // cannot be decorated back into a note.
         MessageCenter.post(new UpdatePreviewElementCommand(UpdatePreviewElementCommand.Scope.ELEMENT));
     }
 
@@ -391,39 +395,8 @@ public final class Actions {
         STACCATO_ACTION.setSelected(false);
     }
 
-    private static @Nullable List<AppMenuAction> appMenuActions = null;
-
     public static List<AppMenuAction> getAppMenuActions() {
-        if (appMenuActions != null) {
-            return appMenuActions;
-        }
-
-        var result = new ArrayList<AppMenuAction>();
-
-        forEachActionConstant(value -> {
-            if (value instanceof AppMenuAction action) {
-                result.add(action);
-            }
-        });
-
-        appMenuActions = Collections.unmodifiableList(result);
         return appMenuActions;
-    }
-
-    private static void forEachActionConstant(Consumer<@Nullable Object> action) {
-        var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
-
-        for (var field : Actions.class.getDeclaredFields()) {
-            if ((field.getModifiers() & requiredModifiers) != requiredModifiers) {
-                continue;
-            }
-
-            try {
-                action.accept(field.get(null));
-            } catch (IllegalAccessException e) {
-                LOG.warn("Cannot access field '{}'", field.getName(), e);
-            }
-        }
     }
 
     private Actions() {

@@ -27,6 +27,7 @@ import java.util.Set;
 import org.audiveris.proxymusic.AboveBelow;
 import org.audiveris.proxymusic.Attributes;
 import org.audiveris.proxymusic.Barline;
+import org.audiveris.proxymusic.BeamValue;
 import org.audiveris.proxymusic.Direction;
 import org.audiveris.proxymusic.FormattedTextId;
 import org.audiveris.proxymusic.Metronome;
@@ -34,6 +35,8 @@ import org.audiveris.proxymusic.MetronomeNote;
 import org.audiveris.proxymusic.Note;
 import org.audiveris.proxymusic.Print;
 import org.audiveris.proxymusic.ScorePartwise;
+import org.audiveris.proxymusic.StartStop;
+import org.audiveris.proxymusic.StartStopDiscontinue;
 import org.audiveris.proxymusic.Wedge;
 import org.audiveris.proxymusic.WedgeType;
 import org.audiveris.proxymusic.YesNo;
@@ -601,11 +604,12 @@ final class MeasureMapper {
 
                 if (marker != null) {
                     var host = site.endingHost;
-                    var isStop = MusicXmlTags.TYPE_STOP.equals(marker.type())
-                        || MusicXmlTags.ENDING_DISCONTINUE.equals(marker.type());
+                    var type = marker.type();
+                    var isStop = type == StartStopDiscontinue.STOP
+                        || type == StartStopDiscontinue.DISCONTINUE;
 
                     if (MusicXmlTags.NUMBER_1.equals(marker.number())
-                        && MusicXmlTags.TYPE_START.equals(marker.type())) {
+                        && type == StartStopDiscontinue.START) {
                         dropOpenEnding(open);
                         // A note-anchored start (a null host) defers to the next note, which the
                         // invisible barline carrying it always precedes — including across a
@@ -984,16 +988,9 @@ final class MeasureMapper {
                 continue;
             }
 
-            var typeToken = ProxyMusicAccess.token(type, WedgeType::value);
-
-            if (typeToken == null) {
-                continue;
-            }
-
-            var kind = WedgeTypeMapping.wedgeKind(typeToken);
+            var kind = type == null ? null : WedgeTypeMapping.wedgeKind(type);
 
             if (kind == null) {
-                // Not a crescendo/diminuendo start (nor a stop) — unrecognised; ignore.
                 continue;
             }
 
@@ -1054,7 +1051,7 @@ final class MeasureMapper {
         for (var note : notes) {
             var slideType = NoteMapper.slideType(note.pmNote());
 
-            if (MusicXmlTags.SLIDE_STOP.equals(slideType)) {
+            if (slideType == StartStop.STOP) {
                 if (open == null) {
                     dropOrphanStop(Strings.REPORT_GLISSANDOS_REMOVED, note);
                     continue;
@@ -1069,7 +1066,7 @@ final class MeasureMapper {
                 }
 
                 open = null;
-            } else if (MusicXmlTags.SLIDE_START.equals(slideType)) {
+            } else if (slideType == StartStop.START) {
                 dropDangling(Strings.REPORT_GLISSANDOS_REMOVED, open);
                 open = new OpenSlide(note);
             }
@@ -1084,10 +1081,10 @@ final class MeasureMapper {
         for (var note : notes) {
             var beamType = NoteMapper.primaryBeamType(note.pmNote());
 
-            if (MusicXmlTags.BEAM_BEGIN.equals(beamType)) {
+            if (beamType == BeamValue.BEGIN) {
                 dropDangling(Strings.REPORT_BEAMS_REMOVED, open);
                 open = new OpenBeam(note);
-            } else if (MusicXmlTags.BEAM_END.equals(beamType)) {
+            } else if (beamType == BeamValue.END) {
                 if (open == null) {
                     dropOrphanStop(Strings.REPORT_BEAMS_REMOVED, note);
                 } else {
@@ -1095,7 +1092,7 @@ final class MeasureMapper {
                     open = null;
                 }
             }
-            // BEAM_CONTINUE keeps the run open — no action.
+            // BeamValue.CONTINUE keeps the run open — no action.
         }
 
         dropDangling(Strings.REPORT_BEAMS_REMOVED, open);

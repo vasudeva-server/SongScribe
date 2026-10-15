@@ -22,26 +22,16 @@ package songscribe.layout.stacking;
 
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.Attribution;
-import songscribe.dom.CollisionRegion;
 import songscribe.dom.Direction;
-import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.LineElement;
 import songscribe.dom.NoteElement;
 import songscribe.engraving.Staff;
-import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFontsHolder;
-import songscribe.layout.DecorationLayouts;
+import songscribe.layout.AccidentalGeometry;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.Footprint;
 import songscribe.layout.LayoutEngine.TempoMark;
-import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
-import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 
 /**
@@ -168,7 +158,7 @@ public class VerticalStackingCalculator {
                 continue;
             }
 
-            var bounds = NoteGeometry.getAccidentalBoundsSs(note);
+            var bounds = AccidentalGeometry.getAccidentalBoundsSs(note);
 
             if (bounds == null) {
                 continue;

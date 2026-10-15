@@ -26,8 +26,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.dom.BarElement;
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.Ending;
@@ -53,8 +51,10 @@ public final class EndingBracketGeometry {
 
     private static final float LABEL_FONT_SCALE = 0.6f;
 
+    private static final float MUSIC_FONT_SIZE_SS = 4.0f;
+
     public static final Font ENDING_FONT = LocalFonts.load(
-        "emmentaler-16.otf", NoteGeometry.MUSIC_FONT_SIZE_SS * LABEL_FONT_SCALE);
+        "emmentaler-16.otf", MUSIC_FONT_SIZE_SS * LABEL_FONT_SCALE);
 
     private static final Rectangle2D LABEL_1_BOUNDS_SS =
         TextMeasurement.requireVisualBounds("1.", ENDING_FONT);
@@ -79,7 +79,7 @@ public final class EndingBracketGeometry {
      *       opening anchor and closes on its closing anchor, each measured from the bar's column X
      *       ({@link songscribe.dom.BarAppearance#openingAnchorSs},
      *       {@link songscribe.dom.BarAppearance#closingAnchorSs}).</li>
-     *   <li>At a note or a rest, a bracket opens {@link NoteGeometry#ACCIDENTAL_PADDING_SS} left
+     *   <li>At a note or a rest, a bracket opens {@link AccidentalGeometry#ACCIDENTAL_PADDING_SS} left
      *       of its column's left edge ({@link ElementColumn#getLeftEdgeXSs}), and closes one
      *       advance of {@link SMuFLGlyph#AUGMENTATION_DOT} right of its column's right edge
      *       ({@link ElementColumn#getRightEdgeXSs}), whether or not the element is dotted.</li>
@@ -128,7 +128,7 @@ public final class EndingBracketGeometry {
             x1 = startColumn.getXSs() + startBar.bar().openingAnchorSs();
         }
         else {
-            x1 = startColumn.getLeftEdgeXSs() - NoteGeometry.ACCIDENTAL_PADDING_SS;
+            x1 = startColumn.getLeftEdgeXSs() - AccidentalGeometry.ACCIDENTAL_PADDING_SS;
         }
 
         var x2 = columnFn.apply(split).getXSs() + split.bar().closingAnchorSs();

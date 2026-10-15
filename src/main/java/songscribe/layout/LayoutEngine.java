@@ -35,10 +35,8 @@ import songscribe.dom.Dots;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
-import songscribe.dom.Slide;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Tie;
 import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.Staff;
@@ -553,7 +551,7 @@ public class LayoutEngine {
 
             // Shorten a stem forced into its unnatural direction (Ross & Gourlay). Disjoint from
             // lengthening — a stem is lengthened, natural, or shortened, never two at once.
-            var forcedShorteningSs = NoteGeometry.forcedShorteningSs(element);
+            var forcedShorteningSs = StemGeometry.forcedShorteningSs(element);
             var effectiveLenSs = stemLenSs + lengtheningSs - forcedShorteningSs;
 
             var topYSs = direction.isUp() ? elementYSs - effectiveLenSs : elementYSs;
@@ -955,7 +953,7 @@ public class LayoutEngine {
 
         // Dot row = note row displaced up (Y-down); seat row = note row + one half-space in the arc
         // direction (LilyPond position_ += dir). They meet only for an upward arc into the dot's space.
-        var dotRowSp = notePosition.value() + Staff.ssToHalfSpaces(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
+        var dotRowSp = notePosition.value() + Staff.ssToHalfSpaces(DotGeometry.DOT_ON_LINE_Y_SHIFT_SS);
         var seatRowSp = notePosition.value() + arcSign;
 
         return dotRowSp == seatRowSp;

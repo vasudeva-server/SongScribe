@@ -99,7 +99,7 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
     private static final String NO_NORMAL_NOTES = "0";
 
     private static final String NEW_SYSTEM =
-        "      " + emptyTag(MusicXmlTags.PRINT, MusicXmlTags.ATTR_NEW_SYSTEM, MusicXmlTags.YES) + '\n';
+        "      " + emptyTag(MusicXmlRoundTripSupport.PRINT, MusicXmlRoundTripSupport.ATTR_NEW_SYSTEM, MusicXmlRoundTripSupport.YES) + '\n';
 
     private static final int FIRST_LINE = 0;
     private static final int SECOND_LINE = 1;
@@ -137,16 +137,16 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
     static Stream<CrossLineCase> crossLineCases() {
         return Stream.of(
             new CrossLineCase("a beam", List.of(
-                middleCEighth(beam(MusicXmlTags.BEAM_BEGIN)),
-                middleCEighth(beam(MusicXmlTags.BEAM_END))), Beam.class, Strings.REPORT_BEAMS_REMOVED),
+                middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)),
+                middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END))), Beam.class, Strings.REPORT_BEAMS_REMOVED),
             new CrossLineCase("a tuplet", List.of(
-                middleCEighth(tripletRatio(), tupletBracket(MusicXmlTags.TYPE_START)),
+                middleCEighth(tripletRatio(), tupletBracket(MusicXmlRoundTripSupport.TYPE_START)),
                 middleCEighth(tripletRatio()),
-                middleCEighth(tripletRatio(), tupletBracket(MusicXmlTags.TYPE_STOP))),
+                middleCEighth(tripletRatio(), tupletBracket(MusicXmlRoundTripSupport.TYPE_STOP))),
                 Tuplet.class, Strings.REPORT_TUPLETS_REMOVED),
             new CrossLineCase("a trill", List.of(
-                middleCEighth(trill(MusicXmlTags.TYPE_START)),
-                middleCEighth(trill(MusicXmlTags.TYPE_STOP))), Trill.class, Strings.REPORT_TRILLS_REMOVED)
+                middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_START)),
+                middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP))), Trill.class, Strings.REPORT_TRILLS_REMOVED)
         );
     }
 
@@ -179,19 +179,19 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
     static Stream<DroppedMarkCase> droppedMarkCases() {
         return Stream.of(
             new DroppedMarkCase("a beam start no end pairs with",
-                middleCEighth(beam(MusicXmlTags.BEAM_BEGIN)) + middleCEighth(), 2,
+                middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)) + middleCEighth(), 2,
                 dropped(Strings.REPORT_BEAMS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("a beam end no start pairs with",
-                middleCEighth() + middleCEighth(beam(MusicXmlTags.BEAM_END)), 2,
+                middleCEighth() + middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END)), 2,
                 dropped(Strings.REPORT_BEAMS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_START)),
             new DroppedMarkCase("a trill start no end pairs with",
-                middleCEighth(trill(MusicXmlTags.TYPE_START)) + middleCEighth(), 2,
+                middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_START)) + middleCEighth(), 2,
                 dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("a trill end no start pairs with",
-                middleCEighth() + middleCEighth(trill(MusicXmlTags.TYPE_STOP)), 2,
+                middleCEighth() + middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP)), 2,
                 dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_START)),
             new DroppedMarkCase("a hairpin still open when the part ends",
-                wedge(MusicXmlTags.WEDGE_CRESCENDO) + middleCEighth() + middleCEighth(), 2,
+                wedge(MusicXmlRoundTripSupport.WEDGE_CRESCENDO) + middleCEighth() + middleCEighth(), 2,
                 dropped(Strings.REPORT_HAIRPINS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("an ending still open when the part ends",
                 endingStart() + middleCEighth() + middleCEighth(), 2,
@@ -209,18 +209,18 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
                 eighthRest(TIED_START) + middleCEighth(), 2,
                 dropped(Strings.REPORT_TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
             new DroppedMarkCase("a tie on a grace note",
-                note(element(MusicXmlTags.GRACE, ""), MIDDLE_C_PITCH,
-                    element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START) + middleCEighth(), 2,
+                note(element(MusicXmlRoundTripSupport.GRACE, ""), MIDDLE_C_PITCH,
+                    element(MusicXmlRoundTripSupport.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START) + middleCEighth(), 2,
                 dropped(Strings.REPORT_TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
             new DroppedMarkCase("a trill starting on a rest",
-                eighthRest(trill(MusicXmlTags.TYPE_START)) + middleCEighth(trill(MusicXmlTags.TYPE_STOP)), 2,
+                eighthRest(trill(MusicXmlRoundTripSupport.TYPE_START)) + middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP)), 2,
                 dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE)),
             new DroppedMarkCase("a trill covering a rest",
-                middleCEighth(trill(MusicXmlTags.TYPE_START)) + eighthRest()
-                    + middleCEighth(trill(MusicXmlTags.TYPE_STOP)), 3,
+                middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_START)) + eighthRest()
+                    + middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP)), 3,
                 dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_REST_OR_BREATH_MARK)),
             new DroppedMarkCase("a beam mark on a rest",
-                eighthRest(beam(MusicXmlTags.BEAM_BEGIN)) + middleCEighth(beam(MusicXmlTags.BEAM_END)), 2,
+                eighthRest(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)) + middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END)), 2,
                 new ReportedChange(
                     Strings.REPORT_BEAMS_REMOVED,
                     Strings.get(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT),
@@ -235,17 +235,17 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
 
     /** Three eighths that open and close one tuplet bracket, each carrying {@code ratio}. */
     private static String threeNoteTuplet(String ratio) {
-        return middleCEighth(ratio, tupletBracket(MusicXmlTags.TYPE_START))
+        return middleCEighth(ratio, tupletBracket(MusicXmlRoundTripSupport.TYPE_START))
             + middleCEighth(ratio)
-            + middleCEighth(ratio, tupletBracket(MusicXmlTags.TYPE_STOP));
+            + middleCEighth(ratio, tupletBracket(MusicXmlRoundTripSupport.TYPE_STOP));
     }
 
     /** An eighth rest carrying {@code markers} after its {@code <type>}. */
     private static String eighthRest(String... markers) {
         var children = new ArrayList<>(List.of(
-            element(MusicXmlTags.REST, ""),
-            element(MusicXmlTags.DURATION, EIGHTH_DURATION),
-            element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH)));
+            element(MusicXmlRoundTripSupport.REST, ""),
+            element(MusicXmlRoundTripSupport.DURATION, EIGHTH_DURATION),
+            element(MusicXmlRoundTripSupport.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH)));
         children.addAll(List.of(markers));
 
         return note(children.toArray(String[]::new));
@@ -253,28 +253,28 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
 
     /** A {@code <direction>} holding a wedge of {@code wedgeType}, which binds to the next note. */
     private static String wedge(String wedgeType) {
-        return element(MusicXmlTags.DIRECTION,
-            element(MusicXmlTags.DIRECTION_TYPE, emptyTag(MusicXmlTags.WEDGE, MusicXmlTags.ATTR_TYPE, wedgeType)))
+        return element(MusicXmlRoundTripSupport.DIRECTION,
+            element(MusicXmlRoundTripSupport.DIRECTION_TYPE, emptyTag(MusicXmlRoundTripSupport.WEDGE, MusicXmlRoundTripSupport.ATTR_TYPE, wedgeType)))
             + '\n';
     }
 
     /** The invisible left barline that carries an ending's start, which binds to the next note. */
     private static String endingStart() {
-        return openTag(MusicXmlTags.BARLINE, MusicXmlTags.ATTR_LOCATION, BarlineStyleMapping.LOCATION_LEFT)
-            + element(MusicXmlTags.BAR_STYLE, BarlineStyleMapping.BAR_STYLE_NONE)
-            + '<' + MusicXmlTags.ENDING + ' ' + attr(MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
-            + ' ' + attr(MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START) + "/>"
-            + closeTag(MusicXmlTags.BARLINE) + '\n';
+        return openTag(MusicXmlRoundTripSupport.BARLINE, MusicXmlRoundTripSupport.ATTR_LOCATION, BarlineStyleMapping.LOCATION_LEFT)
+            + element(MusicXmlRoundTripSupport.BAR_STYLE, BarlineStyleMapping.BAR_STYLE_NONE)
+            + '<' + MusicXmlRoundTripSupport.ENDING + ' ' + attr(MusicXmlRoundTripSupport.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
+            + ' ' + attr(MusicXmlRoundTripSupport.ATTR_TYPE, MusicXmlRoundTripSupport.TYPE_START) + "/>"
+            + closeTag(MusicXmlRoundTripSupport.BARLINE) + '\n';
     }
 
     /** The {@code <tied type="start">} marker, inside {@code <notations>}. */
     private static final String TIED_START =
-        element(MusicXmlTags.NOTATIONS, emptyTag(MusicXmlTags.TIED, MusicXmlTags.ATTR_TYPE, MusicXmlTags.TYPE_START));
+        element(MusicXmlRoundTripSupport.NOTATIONS, emptyTag(MusicXmlRoundTripSupport.TIED, MusicXmlRoundTripSupport.ATTR_TYPE, MusicXmlRoundTripSupport.TYPE_START));
 
     /** The primary {@code <beam number="1">} marker with {@code beamValue}. */
     private static String beam(String beamValue) {
-        return openTag(MusicXmlTags.BEAM, MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
-            + beamValue + closeTag(MusicXmlTags.BEAM);
+        return openTag(MusicXmlRoundTripSupport.BEAM, MusicXmlRoundTripSupport.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
+            + beamValue + closeTag(MusicXmlRoundTripSupport.BEAM);
     }
 
     /** A triplet's {@code <time-modification>}, which every note under the bracket carries. */
@@ -284,21 +284,21 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
 
     /** A {@code <time-modification>} stating {@code actualNotes} in the time of {@code normalNotes} eighths. */
     private static String timeModification(String actualNotes, String normalNotes) {
-        return element(MusicXmlTags.TIME_MOD,
-            element(MusicXmlTags.ACTUAL_NOTES, actualNotes)
-                + element(MusicXmlTags.NORMAL_NOTES, normalNotes)
-                + element(MusicXmlTags.NORMAL_TYPE, NoteTypeMapping.TYPE_EIGHTH));
+        return element(MusicXmlRoundTripSupport.TIME_MOD,
+            element(MusicXmlRoundTripSupport.ACTUAL_NOTES, actualNotes)
+                + element(MusicXmlRoundTripSupport.NORMAL_NOTES, normalNotes)
+                + element(MusicXmlRoundTripSupport.NORMAL_TYPE, NoteTypeMapping.TYPE_EIGHTH));
     }
 
     /** The {@code <tuplet>} bracket marker of {@code type}, which only the outer notes carry. */
     private static String tupletBracket(String type) {
-        return element(MusicXmlTags.NOTATIONS, emptyTag(MusicXmlTags.TUPLET, MusicXmlTags.ATTR_TYPE, type));
+        return element(MusicXmlRoundTripSupport.NOTATIONS, emptyTag(MusicXmlRoundTripSupport.TUPLET, MusicXmlRoundTripSupport.ATTR_TYPE, type));
     }
 
     /** The {@code <wavy-line>} marker of {@code type}, inside {@code <ornaments>}. */
     private static String trill(String type) {
-        return element(MusicXmlTags.NOTATIONS,
-            element(MusicXmlTags.ORNAMENTS,
-                emptyTag(MusicXmlTags.WAVY_LINE, MusicXmlTags.ATTR_TYPE, type)));
+        return element(MusicXmlRoundTripSupport.NOTATIONS,
+            element(MusicXmlRoundTripSupport.ORNAMENTS,
+                emptyTag(MusicXmlTags.WAVY_LINE, MusicXmlRoundTripSupport.ATTR_TYPE, type)));
     }
 }

@@ -98,12 +98,12 @@ class MusicXmlNoteBoundsTest extends UnitTest {
     private static String note(int octave, int dotCount) {
         return
             "      " + openTag(MusicXmlTags.NOTE) + '\n' +
-            "        " + openTag(MusicXmlTags.PITCH) + '\n' +
-            "          " + element(MusicXmlTags.STEP, "C") + '\n' +
-            "          " + element(MusicXmlTags.OCTAVE, Integer.toString(octave)) + '\n' +
-            "        " + closeTag(MusicXmlTags.PITCH) + '\n' +
-            "        " + element(MusicXmlTags.DURATION, Integer.toString(MusicXmlUnits.DIVISIONS)) + '\n' +
-            "        " + element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_QUARTER) + '\n' +
+            "        " + openTag(MusicXmlRoundTripSupport.PITCH) + '\n' +
+            "          " + element(MusicXmlRoundTripSupport.STEP, "C") + '\n' +
+            "          " + element(MusicXmlRoundTripSupport.OCTAVE, Integer.toString(octave)) + '\n' +
+            "        " + closeTag(MusicXmlRoundTripSupport.PITCH) + '\n' +
+            "        " + element(MusicXmlRoundTripSupport.DURATION, Integer.toString(MusicXmlUnits.DIVISIONS)) + '\n' +
+            "        " + element(MusicXmlRoundTripSupport.NOTE_TYPE, NoteTypeMapping.TYPE_QUARTER) + '\n' +
             "        <dot/>\n".repeat(dotCount) +
             "      " + closeTag(MusicXmlTags.NOTE) + '\n';
     }

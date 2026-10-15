@@ -48,24 +48,24 @@ class MusicXmlTempoReadTest extends UnitTest {
     private static String hiddenMetronome(String description) {
         var words = description.isEmpty()
             ? ""
-            : "        " + openTag(MusicXmlTags.DIRECTION_TYPE) + '\n'
-                + "          " + element(MusicXmlTags.WORDS, description) + '\n'
-                + "        " + closeTag(MusicXmlTags.DIRECTION_TYPE) + '\n';
+            : "        " + openTag(MusicXmlRoundTripSupport.DIRECTION_TYPE) + '\n'
+                + "          " + element(MusicXmlRoundTripSupport.WORDS, description) + '\n'
+                + "        " + closeTag(MusicXmlRoundTripSupport.DIRECTION_TYPE) + '\n';
 
         return
-            "      " + openTag(MusicXmlTags.DIRECTION) + '\n' +
-            "        " + openTag(MusicXmlTags.DIRECTION_TYPE) + '\n' +
+            "      " + openTag(MusicXmlRoundTripSupport.DIRECTION) + '\n' +
+            "        " + openTag(MusicXmlRoundTripSupport.DIRECTION_TYPE) + '\n' +
             "          " + openTag(
                 MusicXmlTags.METRONOME,
-                MusicXmlTags.ATTR_PRINT_OBJECT,
-                MusicXmlTags.NO
+                MusicXmlRoundTripSupport.ATTR_PRINT_OBJECT,
+                MusicXmlRoundTripSupport.NO
             ) + '\n' +
-            "            " + element(MusicXmlTags.BEAT_UNIT, NoteTypeMapping.TYPE_QUARTER) + '\n' +
+            "            " + element(MusicXmlRoundTripSupport.BEAT_UNIT, NoteTypeMapping.TYPE_QUARTER) + '\n' +
             "            " + element(MusicXmlTags.PER_MINUTE, Integer.toString(BPM)) + '\n' +
             "          " + closeTag(MusicXmlTags.METRONOME) + '\n' +
-            "        " + closeTag(MusicXmlTags.DIRECTION_TYPE) + '\n' +
+            "        " + closeTag(MusicXmlRoundTripSupport.DIRECTION_TYPE) + '\n' +
             words +
-            "      " + closeTag(MusicXmlTags.DIRECTION) + '\n';
+            "      " + closeTag(MusicXmlRoundTripSupport.DIRECTION) + '\n';
     }
 
     @Test

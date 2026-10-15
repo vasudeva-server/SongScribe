@@ -83,14 +83,10 @@ public final class SelectionCoordinator implements Disposable {
 
     private final ActionReflector actionReflector = new ActionReflector(this);
 
-    @Nullable
-    private ElementSelection contentCacheSelection = null;
-    private boolean hasDurations;
-    private boolean hasRests;
+    private final SelectionCache<SelectionContent> contentCache = new SelectionCache<>();
 
-    @Nullable
-    private ElementSelection applicabilityCacheSelection = null;
-    private final Map<UIAction.Reflectable<?>, Boolean> applicabilityCache = new IdentityHashMap<>();
+    private final SelectionCache<Map<UIAction.Reflectable<?>, Boolean>> applicabilityCache =
+        new SelectionCache<>();
 
     private final MessageSubscription subscription;
 
@@ -475,21 +471,43 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     public boolean selectionHasDurations() {
-        if (!hasActiveSelection()) {
-            return false;
-        }
-
-        ensureContentComputed();
-        return hasDurations;
+        var content = selectionContent();
+        return content != null && content.hasDurations();
     }
 
     public boolean selectionHasRests() {
+        var content = selectionContent();
+        return content != null && content.hasRests();
+    }
+
+    private @Nullable SelectionContent selectionContent() {
         if (!hasActiveSelection()) {
-            return false;
+            return null;
         }
 
-        ensureContentComputed();
-        return hasRests;
+        var selection = getSelection();
+        return selection == null ? null : contentCache.get(selection, SelectionContent::of);
+    }
+
+    private record SelectionContent(boolean hasDurations, boolean hasRests) {
+
+        static SelectionContent of(ElementSelection selection) {
+            var hasDurations = false;
+
+            for (var element : selection.line().getElements(selection.range())) {
+                var elementType = element.getType();
+
+                if (elementType.isRest()) {
+                    return new SelectionContent(true, true);
+                }
+
+                if (elementType.isDuration() || elementType.isGraceNote()) {
+                    hasDurations = true;
+                }
+            }
+
+            return new SelectionContent(hasDurations, false);
+        }
     }
 
     /** True when any selected element can, as in {@link #isApplicableToSelection}. */
@@ -515,12 +533,9 @@ public final class SelectionCoordinator implements Disposable {
             return false;
         }
 
-        if (!selection.equals(applicabilityCacheSelection)) {
-            applicabilityCacheSelection = selection;
-            applicabilityCache.clear();
-        }
+        var applicability = applicabilityCache.get(selection, ignored -> new IdentityHashMap<>());
 
-        return applicabilityCache.computeIfAbsent(action, ignored -> {
+        return applicability.computeIfAbsent(action, ignored -> {
             var line = selection.line();
             var bounds = selection.range();
             var applicable = false;
@@ -539,39 +554,6 @@ public final class SelectionCoordinator implements Disposable {
 
             return applicable;
         });
-    }
-
-    private void ensureContentComputed() {
-        var selection = getSelection();
-
-        if (selection == null || selection.equals(contentCacheSelection)) {
-            return;
-        }
-
-        hasDurations = false;
-        var hasNonDurations = false;
-        hasRests = false;
-        contentCacheSelection = selection;
-
-        var line = selection.line();
-
-        for (var element : line.getElements(selection.range())) {
-            var elementType = element.getType();
-
-            if (elementType.isDuration() || elementType.isGraceNote()) {
-                hasDurations = true;
-
-                if (elementType.isRest()) {
-                    hasRests = true;
-                }
-            } else {
-                hasNonDurations = true;
-            }
-
-            if (hasDurations && hasNonDurations && hasRests) {
-                break;
-            }
-        }
     }
 
     public ActionReflector getActionReflector() {
@@ -594,9 +576,8 @@ public final class SelectionCoordinator implements Disposable {
 
     /** Package-private so {@link SelectionActionApplier} can call it inside its modification bracket. */
     void invalidateSelectionCaches() {
-        contentCacheSelection = null;
-        applicabilityCacheSelection = null;
-        applicabilityCache.clear();
+        contentCache.invalidate();
+        applicabilityCache.invalidate();
         actionReflector.invalidateReflectionGuard();
     }
 }

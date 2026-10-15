@@ -60,7 +60,7 @@ class SupportedFeatureTest extends UnitTest {
             new SupportsCase("entry names the element but no attribute",
                 score -> declare(score, MusicXmlTags.NOTE, null, YesNo.YES), false),
             new SupportsCase("entry names the element but another attribute",
-                score -> declare(score, MusicXmlTags.NOTE, MusicXmlTags.ATTR_DEFAULT_X, YesNo.YES), false),
+                score -> declare(score, MusicXmlTags.NOTE, MusicXmlRoundTripSupport.ATTR_DEFAULT_X, YesNo.YES), false),
             new SupportsCase("entry names the attribute but another element",
                 score -> declare(score, MusicXmlTags.SUPPORTS_BEAM, MusicXmlTags.ATTR_RELATIVE_X, YesNo.YES), false),
             new SupportsCase("exact entry with type no",

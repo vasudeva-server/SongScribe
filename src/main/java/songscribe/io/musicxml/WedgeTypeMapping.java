@@ -19,8 +19,7 @@
  */
 package songscribe.io.musicxml;
 
-import java.util.Map;
-
+import org.audiveris.proxymusic.WedgeType;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Hairpin;
@@ -28,33 +27,25 @@ import songscribe.dom.Hairpin.Kind;
 
 /**
  * Bidirectional mapping between a {@link Hairpin}'s {@link Kind} and its MusicXML
- * {@code <wedge type>} token ({@code "crescendo"}, {@code "diminuendo"}).
- *
- * <p>The wedge {@code type="stop"} token has no SongScribe counterpart and never appears in this
- * map.
+ * {@code <wedge type>}.
  */
 final class WedgeTypeMapping {
 
-    // "stop" has no entry: it is a structural marker, not a kind.
-
-    private static final Map<String, Hairpin.Kind> KIND_BY_TOKEN = Map.of(
-        MusicXmlTags.WEDGE_CRESCENDO,  Hairpin.Kind.CRESCENDO,
-        MusicXmlTags.WEDGE_DIMINUENDO, Hairpin.Kind.DIMINUENDO
-    );
-
     private WedgeTypeMapping() {}
 
-    static String wedgeType(Hairpin hairpin) {
+    static WedgeType wedgeType(Hairpin hairpin) {
         return switch (hairpin.getKind()) {
-            case Kind.CRESCENDO -> MusicXmlTags.WEDGE_CRESCENDO;
-            case Kind.DIMINUENDO -> MusicXmlTags.WEDGE_DIMINUENDO;
+            case Kind.CRESCENDO -> WedgeType.CRESCENDO;
+            case Kind.DIMINUENDO -> WedgeType.DIMINUENDO;
         };
     }
 
-    /**
-     * Returns {@code null} if the token is not a start-type wedge.
-     */
-    static Hairpin.@Nullable Kind wedgeKind(String wedgeType) {
-        return KIND_BY_TOKEN.get(wedgeType);
+    /** {@code null} for a type that does not start a hairpin. */
+    static Hairpin.@Nullable Kind wedgeKind(WedgeType wedgeType) {
+        return switch (wedgeType) {
+            case CRESCENDO -> Kind.CRESCENDO;
+            case DIMINUENDO -> Kind.DIMINUENDO;
+            case STOP, CONTINUE -> null;
+        };
     }
 }

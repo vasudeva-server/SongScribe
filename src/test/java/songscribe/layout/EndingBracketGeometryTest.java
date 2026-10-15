@@ -153,7 +153,7 @@ class EndingBracketGeometryTest extends UnitTest {
     private static final EndRule OPENS_ON_NOTE = (xSs, column, type) ->
         assertThat(column.getLeftEdgeXSs() - xSs)
             .as("a bracket opening on a note sits one accidental padding left of its left edge")
-            .isCloseTo(NoteGeometry.ACCIDENTAL_PADDING_SS, within(TOLERANCE_SS));
+            .isCloseTo(AccidentalGeometry.ACCIDENTAL_PADDING_SS, within(TOLERANCE_SS));
 
     /** A note closes a bracket one augmentation-dot advance right of the column's right edge. */
     private static final EndRule CLOSES_ON_NOTE = (xSs, column, type) ->

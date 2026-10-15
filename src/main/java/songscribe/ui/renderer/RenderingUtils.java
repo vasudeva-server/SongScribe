@@ -33,6 +33,7 @@ import songscribe.engraving.LedgerLine;
 import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.StemGeometry;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -201,7 +202,7 @@ public final class RenderingUtils {
     }
 
     static double stemCenterXOffsetSs(StemmedNotehead notehead, Direction direction) {
-        var anchorXSs = NoteGeometry.stemSideAnchor(notehead, direction).xSs();
+        var anchorXSs = StemGeometry.stemSideAnchor(notehead, direction).xSs();
         var upper = direction.isUp();
 
         // upper: SE anchor is the stem's right edge; center = anchorXSs - half stem width

@@ -345,10 +345,10 @@ final class NoteMapper {
     }
 
     /** {@code null} when the note carries none. */
-    static @Nullable String slideType(Note pmNote) {
+    static @Nullable StartStop slideType(Note pmNote) {
         for (var child : notationChildren(pmNote)) {
             if (child instanceof Slide slide) {
-                return ProxyMusicAccess.token(slide.getType(), StartStop::value);
+                return slide.getType();
             }
         }
 
@@ -359,12 +359,12 @@ final class NoteMapper {
      * {@code null} when the note carries none. Secondary levels and hooks are write-forward, so
      * only the primary beam drives span collapse.
      */
-    static @Nullable String primaryBeamType(Note pmNote) {
-        String beamType = null;
+    static @Nullable BeamValue primaryBeamType(Note pmNote) {
+        BeamValue beamType = null;
 
         for (var beam : pmNote.getBeam()) {
             if (beam.getNumber() == 1) {
-                beamType = ProxyMusicAccess.token(beam.getValue(), BeamValue::value);
+                beamType = beam.getValue();
             }
         }
 
@@ -508,11 +508,7 @@ final class NoteMapper {
         if (pmExtend == null) {
             extend = Lyric.Extend.NONE;
         } else {
-            // An <extend> with an absent or unrecognised type is a melisma START
-            // (see SyllabicMapping).
-            extend = SyllabicMapping.forExtendToken(
-                ProxyMusicAccess.token(pmExtend.getType(), StartStopContinue::value)
-            );
+            extend = SyllabicMapping.forExtendType(pmExtend.getType());
         }
 
         Lyric.@Nullable Syllabic syllabic;

@@ -37,6 +37,19 @@ public final class SlideGeometry {
 
     public static final double MIN_RECT_LENGTH_SS = 0.75;
 
+    public static final double GLISSANDO_DRAWN_GAP_SS = 0.4;
+
+    /**
+     * Mirrors LilyPond's {@code BendAfter} padding. Shared by {@code SlideRenderer} (the drawn gap)
+     * and {@code ElementColumnBuilder} (the layout reservation for a fall).
+     */
+    public static final double FALL_GAP_SS = 0.5;
+
+    private static final double GLISSANDO_MIN_LENGTH_SS = 1.0;
+
+    public static final double MIN_GLISSANDO_RESERVATION_SS =
+        GLISSANDO_MIN_LENGTH_SS + 2 * GLISSANDO_DRAWN_GAP_SS;
+
     private SlideGeometry() {
     }
 
@@ -101,7 +114,7 @@ public final class SlideGeometry {
         var dy = attachEndY - attachStartY;
         var attachLength = Math.hypot(dx, dy);
 
-        var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
+        var gap = GLISSANDO_DRAWN_GAP_SS;
 
         if (attachLength <= 2 * gap) {
             return null;
@@ -127,7 +140,7 @@ public final class SlideGeometry {
     }
 
     public static Rectangle2D.Double computeFallBoundsSs(NoteContext src) {
-        var glyphXSs = src.columnRightXSs() + NoteGeometry.FALL_GAP_SS;
+        var glyphXSs = src.columnRightXSs() + FALL_GAP_SS;
         var glyphYSs = src.cySs();
 
         // The glyph bbox is in staff spaces with the renderer's Y-down convention, relative to the

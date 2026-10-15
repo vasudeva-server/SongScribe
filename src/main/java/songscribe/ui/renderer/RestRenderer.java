@@ -23,8 +23,7 @@ import java.awt.Graphics2D;
 
 import songscribe.dom.Dots;
 import songscribe.dom.RestElement;
-import songscribe.engraving.StaffPosition;
-import songscribe.layout.NoteGeometry;
+import songscribe.layout.DotGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicsState;
@@ -81,7 +80,7 @@ public final class RestRenderer implements ElementRenderer<RestElement> {
 
             for (var i = 0; i < rest.dots().count(); i++) {
                 g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
-                dotX += NoteGeometry.DOT_SPACING_SS;
+                dotX += DotGeometry.DOT_SPACING_SS;
             }
         }
     }

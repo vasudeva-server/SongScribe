@@ -159,8 +159,8 @@ public class ElementColumnBuilder {
         var extentSs = 0.0;
 
         if (element instanceof NoteElement note && note.accidentalState().drawn() != null) {
-            var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(note);
-            extentSs -= (accidentalWidthSs + NoteGeometry.ACCIDENTAL_PADDING_SS);
+            var accidentalWidthSs = AccidentalGeometry.getAccidentalWidthSs(note);
+            extentSs -= (accidentalWidthSs + AccidentalGeometry.ACCIDENTAL_PADDING_SS);
         }
 
         return extentSs;
@@ -185,7 +185,7 @@ public class ElementColumnBuilder {
 
     /**
      * The direction that decides a note's right extent is the drawn one
-     * ({@link NoteGeometry#effectiveDirection}).
+     * ({@link StemGeometry#effectiveDirection}).
      */
     private static double calculateRightExtentInternal(
         StaffElement element,
@@ -198,7 +198,7 @@ public class ElementColumnBuilder {
             return element.getGlyphWidthSs();
         }
 
-        var direction = NoteGeometry.effectiveDirection(note);
+        var direction = StemGeometry.effectiveDirection(note);
 
         // Element head right edge — per type, so a whole note is measured as a whole note and a
         // grace note as the grace-scaled head.
@@ -208,10 +208,10 @@ public class ElementColumnBuilder {
         // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
         // the dots already clear the flag when an unbeamed up-stem one is present.
         var baseRightExtentSs = includeAugmentation
-            ? NoteGeometry.dotsRightExtentSs(note, beaming, direction, noteheadRightExtentSs)
+            ? DotGeometry.dotsRightExtentSs(note, beaming, direction, noteheadRightExtentSs)
             : noteheadRightExtentSs;
 
-        var flagBBox = NoteGeometry.flagBBoxLocalSs(note, direction, beaming);
+        var flagBBox = StemGeometry.flagBBoxLocalSs(note, direction, beaming);
         var flagRightExtentSs = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
         var rightExtentSs = Math.max(baseRightExtentSs, flagRightExtentSs);
@@ -228,7 +228,7 @@ public class ElementColumnBuilder {
             var fallAdvanceWidthSs = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
             // The fall anchors after the notehead/dots right edge, not the flag, so compute its
             // extent independently and take the max to avoid stacking it on top of the flag width.
-            var fallRightExtentSs = baseRightExtentSs + NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
+            var fallRightExtentSs = baseRightExtentSs + SlideGeometry.FALL_GAP_SS + fallAdvanceWidthSs;
             rightExtentSs = Math.max(rightExtentSs, fallRightExtentSs);
         }
 
@@ -237,7 +237,7 @@ public class ElementColumnBuilder {
 
     /**
      * The direction and the length are the <em>drawn</em> ones
-     * ({@link NoteGeometry#effectiveDirection}, {@link NoteGeometry#stemLengthSs}), so
+     * ({@link StemGeometry#effectiveDirection}, {@link StemGeometry#stemLengthSs}), so
      * {@code getAbsoluteTopYSs()} stays on the real tip.
      */
     double calculateStemTopSs(StaffElement element) {
@@ -247,10 +247,10 @@ public class ElementColumnBuilder {
             return elementType.getNoteheadTopOffsetSs();
         }
 
-        var direction = NoteGeometry.effectiveDirection(note);
+        var direction = StemGeometry.effectiveDirection(note);
 
         if (direction.isUp()) {
-            return -(NoteGeometry.stemLengthSs(elementType) - NoteGeometry.forcedShorteningSs(note));
+            return -(StemGeometry.stemLengthSs(elementType) - StemGeometry.forcedShorteningSs(note));
         }
 
         return elementType.getNoteheadTopOffsetSs();
@@ -266,10 +266,10 @@ public class ElementColumnBuilder {
             return elementType.getNoteheadBottomOffsetSs();
         }
 
-        var direction = NoteGeometry.effectiveDirection(note);
+        var direction = StemGeometry.effectiveDirection(note);
 
         if (direction.isDown()) {
-            return NoteGeometry.stemLengthSs(elementType) - NoteGeometry.forcedShorteningSs(note);
+            return StemGeometry.stemLengthSs(elementType) - StemGeometry.forcedShorteningSs(note);
         }
 
         return elementType.getNoteheadBottomOffsetSs();

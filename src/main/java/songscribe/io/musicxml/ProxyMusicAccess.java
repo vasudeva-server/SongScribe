@@ -190,15 +190,14 @@ final class ProxyMusicAccess {
             return null;
         }
 
-        return new EndingMarker(
-            ending.getNumber(), token(ending.getType(), StartStopDiscontinue::value), ending.getRelativeY());
+        return new EndingMarker(ending.getNumber(), ending.getType(), ending.getRelativeY());
     }
 
     /**
-     * {@code number} and {@code type} may be null for malformed input; the consumers
-     * compare with null-safe {@code equals}.
+     * {@code number} and {@code type} may be null for malformed input.
      */
-    record EndingMarker(@Nullable String number, @Nullable String type, @Nullable BigDecimal relativeY) {}
+    record EndingMarker(
+        @Nullable String number, @Nullable StartStopDiscontinue type, @Nullable BigDecimal relativeY) {}
 
     /** {@code null} when the note omits the element. */
     static @Nullable String noteTypeToken(Note note) {

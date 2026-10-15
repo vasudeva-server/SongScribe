@@ -188,7 +188,7 @@ final class DirectionBuilder {
     static Direction buildHairpinStartDirection(BuildContext context, Hairpin hairpin) {
         var factory = context.factory();
         var wedge = factory.createWedge();
-        wedge.setType(WedgeType.fromValue(WedgeTypeMapping.wedgeType(hairpin)));
+        wedge.setType(WedgeTypeMapping.wedgeType(hairpin));
         wedge.setNumber(WEDGE_NUMBER);
         wedge.setRelativeX(hairpinXOffsetTenths(hairpin));
         wedge.setRelativeY(MusicXmlUnits.shiftTenths(hairpin.getUserYOffsetSs()));

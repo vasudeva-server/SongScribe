@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import java.util.Map;
 
+import org.audiveris.proxymusic.StartStopContinue;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Lyric;
@@ -28,10 +29,10 @@ import songscribe.dom.Lyric;
 /**
  * Bidirectional lookup table between SongScribe {@link Lyric.Syllabic} /
  * {@link Lyric.Extend} values and their MusicXML {@code <syllabic>} text
- * content / {@code <extend type>} attribute tokens.
+ * content / {@code <extend type>} attribute values.
  *
- * <p>{@link Lyric.Extend#NONE} has <b>no</b> MusicXML token: it is the absence of an
- * {@code <extend>} child. {@link #forExtend} therefore rejects it, and {@link #forExtendToken}
+ * <p>{@link Lyric.Extend#NONE} has <b>no</b> MusicXML value: it is the absence of an
+ * {@code <extend>} child. {@link #forExtend} therefore rejects it, and {@link #forExtendType}
  * never produces it.
  */
 final class SyllabicMapping {
@@ -41,11 +42,6 @@ final class SyllabicMapping {
     static final String SYLLABIC_MIDDLE = "middle";
     static final String SYLLABIC_END    = "end";
 
-    // NONE has no token: it represents the absence of an <extend> element.
-
-    static final String EXTEND_START    = "start";
-    static final String EXTEND_STOP     = "stop";
-    static final String EXTEND_CONTINUE = "continue";
 
     private static final Map<Lyric.Syllabic, String> SYLLABIC_FORWARD_MAP = Map.of(
         Lyric.Syllabic.SINGLE, SYLLABIC_SINGLE,
@@ -63,21 +59,6 @@ final class SyllabicMapping {
         SYLLABIC_END,    Lyric.Syllabic.END
     );
 
-    // NONE has no entry: forExtend() rejects it explicitly rather than returning null.
-
-    private static final Map<Lyric.Extend, String> EXTEND_FORWARD_MAP = Map.of(
-        Lyric.Extend.START,    EXTEND_START,
-        Lyric.Extend.STOP,     EXTEND_STOP,
-        Lyric.Extend.CONTINUE, EXTEND_CONTINUE
-    );
-
-    // "start" has no entry: it is the fallback forExtendToken() returns for an absent token, so
-    // it is folded into the default rather than duplicated here.
-
-    private static final Map<String, Lyric.Extend> EXTEND_REVERSE_MAP = Map.of(
-        EXTEND_STOP,     Lyric.Extend.STOP,
-        EXTEND_CONTINUE, Lyric.Extend.CONTINUE
-    );
 
     private SyllabicMapping() {}
 
@@ -106,26 +87,28 @@ final class SyllabicMapping {
         return syllabic != null ? syllabic : Lyric.Syllabic.SINGLE;
     }
 
-    static String forExtend(Lyric.Extend extend) {
-        var token = EXTEND_FORWARD_MAP.get(extend);
-
-        if (token == null) {
-            throw new IllegalArgumentException(extend + " has no <extend type> token");
-        }
-
-        return token;
+    static StartStopContinue forExtend(Lyric.Extend extend) {
+        return switch (extend) {
+            case START -> StartStopContinue.START;
+            case STOP -> StartStopContinue.STOP;
+            case CONTINUE -> StartStopContinue.CONTINUE;
+            case NONE -> throw new IllegalArgumentException(extend + " has no <extend type> token");
+        };
     }
 
     /**
-     * An absent or unrecognized token defaults to {@link Lyric.Extend#START}, as for a legacy
-     * self-closed {@code <extend/>}.
+     * An absent type defaults to {@link Lyric.Extend#START}, as for a legacy self-closed
+     * {@code <extend/>}.
      */
-    static Lyric.Extend forExtendToken(@Nullable String token) {
-        if (token == null) {
+    static Lyric.Extend forExtendType(@Nullable StartStopContinue type) {
+        if (type == null) {
             return Lyric.Extend.START;
         }
 
-        var extend = EXTEND_REVERSE_MAP.get(token);
-        return extend != null ? extend : Lyric.Extend.START;
+        return switch (type) {
+            case START -> Lyric.Extend.START;
+            case STOP -> Lyric.Extend.STOP;
+            case CONTINUE -> Lyric.Extend.CONTINUE;
+        };
     }
 }

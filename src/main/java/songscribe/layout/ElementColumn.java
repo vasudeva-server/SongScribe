@@ -20,15 +20,12 @@
 
 package songscribe.layout;
 
-import java.util.List;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
 import songscribe.dom.Direction;
-import songscribe.dom.ElementType;
-import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
@@ -135,14 +132,14 @@ public final class ElementColumn {
     }
 
     /**
-     * The <em>drawn</em> stem direction ({@link NoteGeometry#effectiveDirection}), so a grace note
+     * The <em>drawn</em> stem direction ({@link StemGeometry#effectiveDirection}), so a grace note
      * reports {@code UP}, the only direction it ever renders.
      *
      * @return {@code null} when this column's element renders no stem
      */
     public @Nullable Direction stemDirection() {
         return element.getType().isNoteWithStem() && element instanceof NoteElement note
-            ? NoteGeometry.effectiveDirection(note)
+            ? StemGeometry.effectiveDirection(note)
             : null;
     }
 
@@ -186,7 +183,7 @@ public final class ElementColumn {
             return rightExtentSs;
         }
 
-        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(note, direction, beaming());
+        var flagBoundsSs = StemGeometry.flagBBoxLocalSs(note, direction, beaming());
 
         if (flagBoundsSs == null) {
             return rightExtentSs;

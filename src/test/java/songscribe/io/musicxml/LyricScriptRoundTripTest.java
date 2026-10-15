@@ -112,10 +112,10 @@ class LyricScriptRoundTripTest extends UnitTest {
     }
 
     private static String scoreWithLyricNumbered(int number) {
-        var lyric = openTag(MusicXmlTags.LYRIC, MusicXmlTags.ATTR_NUMBER, Integer.toString(number))
-            + element(MusicXmlTags.SYLLABIC, "single")
-            + element(MusicXmlTags.LYRIC_TEXT, SYLLABLE)
-            + closeTag(MusicXmlTags.LYRIC);
+        var lyric = openTag(MusicXmlRoundTripSupport.LYRIC, MusicXmlRoundTripSupport.ATTR_NUMBER, Integer.toString(number))
+            + element(MusicXmlRoundTripSupport.SYLLABIC, "single")
+            + element(MusicXmlRoundTripSupport.LYRIC_TEXT, SYLLABLE)
+            + closeTag(MusicXmlRoundTripSupport.LYRIC);
 
         return scoreWithMeasureBody(middleCEighth(lyric));
     }

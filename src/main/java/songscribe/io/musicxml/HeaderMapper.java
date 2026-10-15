@@ -209,7 +209,12 @@ final class HeaderMapper {
         }
 
         // The writer emits exactly one of each.
-        var creditType = creditTypes.getLast();
+        var creditType = XmlToken.forToken(CreditType.class, creditTypes.getLast());
+
+        if (creditType == null) {
+            return;
+        }
+
         var creditWords = lastCreditWords(creditWordsList);
         var text = creditWords == null ? "" : orEmpty(creditWords.getValue());
 
@@ -217,35 +222,32 @@ final class HeaderMapper {
             // Canonical — the subtitle has no <movement-*> equivalent, so the credit
             // is its source of truth. Folded into SongMetadata with the rest of the
             // head (there is no setSubtitle mutator).
-            case MusicXmlTags.CREDIT_SUBTITLE -> {
+            case SUBTITLE -> {
                 subtitle = text;
-                applyCreditFont(FontKey.SUBTITLE, creditWords);
+                applyCreditFont(creditType.fontKey, creditWords);
             }
 
             // Canonical — the four score-below text blocks are standalone Song
             // fields with direct setters.
-            case MusicXmlTags.CREDIT_UNDERLYRICS -> song.setUnderLyrics(text);
-            case MusicXmlTags.CREDIT_BANGLA_LYRICS -> song.setBanglaLyrics(text);
-            case MusicXmlTags.CREDIT_TRANSLATION -> song.setTranslatedLyrics(text);
-            case MusicXmlTags.CREDIT_FOOTNOTES -> song.setFootnotes(text);
+            case UNDERLYRICS -> song.setUnderLyrics(text);
+            case BANGLA_LYRICS -> song.setBanglaLyrics(text);
+            case TRANSLATION -> song.setTranslatedLyrics(text);
+            case FOOTNOTES -> song.setFootnotes(text);
 
             // Display-only attribution roles — the text is re-derived from the head
             // <creator>/<rights>/misc-fields, so it is ignored; only the shared
             // relative-y (the attribution user Y offset) is recovered, once.
-            case MusicXmlTags.CREDIT_COMPOSER,
-                 MusicXmlTags.CREDIT_LYRICIST,
-                 MusicXmlTags.CREDIT_ARRANGER,
-                 MusicXmlTags.CREDIT_COMPOSITION_DATE,
-                 MusicXmlTags.CREDIT_LYRICS_DATE,
-                 MusicXmlTags.CREDIT_RIGHTS,
-                 MusicXmlTags.CREDIT_PLACE -> readAttributionOffsetOnce(creditWords);
+            case COMPOSER,
+                 LYRICIST,
+                 ARRANGER,
+                 COMPOSITION_DATE,
+                 LYRICS_DATE,
+                 RIGHTS,
+                 PLACE -> readAttributionOffsetOnce(creditWords);
 
             // Display-only text, canonical font — the title text is re-derived from
             // <movement-*>, but the credit is still the font's source of truth.
-            case MusicXmlTags.CREDIT_TITLE -> applyCreditFont(FontKey.TITLE, creditWords);
-
-            default -> {
-            }
+            case TITLE -> applyCreditFont(creditType.fontKey, creditWords);
         }
     }
 
@@ -275,45 +277,52 @@ final class HeaderMapper {
     /**
      * The arranger's text is always {@code SRI_CHINMOY}, so only its presence matters.
      */
-    private void applyCreator(@Nullable String creatorType, String text) {
-        if (MusicXmlTags.CREATOR_COMPOSER.equals(creatorType)) {
-            headComposer = text;
-        } else if (MusicXmlTags.CREATOR_LYRICIST.equals(creatorType)) {
-            headLyricist = text;
-        } else if (MusicXmlTags.CREATOR_ARRANGER.equals(creatorType)) {
-            headArrangement = true;
+    private void applyCreator(@Nullable String creatorToken, String text) {
+        var creatorType = XmlToken.forToken(CreatorType.class, creatorToken);
+
+        if (creatorType == null) {
+            return;
+        }
+
+        switch (creatorType) {
+            case COMPOSER -> headComposer = text;
+            case LYRICIST -> headLyricist = text;
+            case ARRANGER -> headArrangement = true;
         }
     }
 
     private void applyMiscField(@Nullable String name, String text) throws SAXException {
-        if (MusicXmlTags.MISC_COMPOSITION_DATE.equals(name)) {
-            headDate = parsedDateOr(text, headDate);
-        } else if (MusicXmlTags.MISC_LYRICS_DATE.equals(name)) {
-            headWordsDate = parsedDateOr(text, headWordsDate);
-        } else if (MusicXmlTags.MISC_COMPOSITION_PLACE.equals(name)) {
-            headPlace = text;
-        } else if (MusicXmlTags.MISC_LYRICS_SOURCE.equals(name)) {
-            headLyricsSource = lyricsSourceOrThrow(text);
-        } else if (MusicXmlTags.MISC_UNOFFICIAL_TRANSLATION.equals(name)) {
-            headUnofficialTranslation = Boolean.parseBoolean(text);
-        } else if (MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT.equals(name)) {
+        var field = XmlToken.forToken(MiscellaneousField.class, name);
+
+        if (field == null) {
+            return;
+        }
+
+        switch (field) {
+            case COMPOSITION_DATE -> headDate = parsedDateOr(text, headDate);
+            case LYRICS_DATE -> headWordsDate = parsedDateOr(text, headWordsDate);
+            case COMPOSITION_PLACE -> headPlace = text;
+            case LYRICS_SOURCE -> headLyricsSource = lyricsSourceOrThrow(text);
+            case UNOFFICIAL_TRANSLATION -> headUnofficialTranslation = Boolean.parseBoolean(text);
+
             // A staff-space delta stored verbatim (the writer omits it when 0).
-            song.setRowHeightAdjustmentSs(
-                MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, text)
-            );
-        } else if (MusicXmlTags.MISC_DEFAULT_REST_LENGTH.equals(name)) {
+            case ROW_HEIGHT_ADJUSTMENT ->
+                song.setRowHeightAdjustmentSs(MusicXmlUnits.parseDoubleOrThrow(field.token(), text));
+
             // A staff-space line rest stored verbatim (the writer omits it at the
             // default); the setter clamps it, and an absent field leaves the song's
             // default in place.
-            song.setDefaultRestLengthSs(
-                MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.MISC_DEFAULT_REST_LENGTH, text)
-            );
-        } else if (MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT.equals(name)) {
-            subAttributionFontFamily = text;
-            applySubAttributionFont();
-        } else if (MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE.equals(name)) {
-            subAttributionFontSize = MusicXmlUnits.parseIntOrThrow(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE, text);
-            applySubAttributionFont();
+            case DEFAULT_REST_LENGTH ->
+                song.setDefaultRestLengthSs(MusicXmlUnits.parseDoubleOrThrow(field.token(), text));
+
+            case SUB_ATTRIBUTION_FONT -> {
+                subAttributionFontFamily = text;
+                applySubAttributionFont();
+            }
+            case SUB_ATTRIBUTION_FONT_SIZE -> {
+                subAttributionFontSize = MusicXmlUnits.parseIntOrThrow(field.token(), text);
+                applySubAttributionFont();
+            }
         }
     }
 
@@ -375,7 +384,7 @@ final class HeaderMapper {
             // parseXxxOrThrow methods: it says only that the constant does not exist, which the
             // message below already reports, with the field.
             throw DocumentValidation.corrupt(
-                LOG, "Corrupt document: malformed <{}> value: '{}'", MusicXmlTags.MISC_LYRICS_SOURCE, token);
+                LOG, "Corrupt document: malformed <{}> value: '{}'", MiscellaneousField.LYRICS_SOURCE.token(), token);
         }
     }
 
