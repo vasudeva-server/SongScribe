@@ -40,29 +40,29 @@ public enum LintRule {
      * playback so that it never meets a leading repeat; a leading plain bar line blocks it too,
      * because one rule covers every bar type.
      */
-    LEADING_BAR(new LeadingBarCheck(), EnumSet.of(Flag.BLOCKS_EXPORT, Flag.BLOCKS_PLAYBACK)),
+    LEADING_BAR(new LeadingBarCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT, Flag.BLOCKS_PLAYBACK)),
 
     /** Every repeat section is opened and closed exactly once, and none is nested. Blocks playback, which cannot follow broken repeats. */
-    BALANCED_REPEATS(new BalancedRepeatsCheck(), EnumSet.of(Flag.BLOCKS_EXPORT, Flag.BLOCKS_PLAYBACK)),
+    BALANCED_REPEATS(new BalancedRepeatsCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT, Flag.BLOCKS_PLAYBACK)),
 
     /** Every slot carries a lyric in the active script, or an open lyric chain covers it. */
-    MISSING_LYRIC(new MissingLyricCheck(), EnumSet.of(Flag.BLOCKS_EXPORT)),
+    MISSING_LYRIC(new MissingLyricCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT)),
 
     /** Every Fine stands on a bar, before the end, with a later reference to it, and the reverse. */
-    UNBALANCED_FINE(new UnbalancedFineCheck(), EnumSet.of(Flag.BLOCKS_EXPORT));
+    UNBALANCED_FINE(new UnbalancedFineCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT));
 
-    /** What a finding prevents until it is fixed. The one statement of each flag; enforcing code links here. */
+    /** What a finding prevents until it is fixed. */
     public enum Flag {
 
         /**
-         * An export is refused. A save asks for confirmation first, and writes only when the
-         * user confirms.
+         * Until the finding is fixed, the song cannot be printed or exported, and a save needs the
+         * user's consent.
          */
-        BLOCKS_EXPORT,
+        BLOCKS_OUTPUT,
 
         /**
-         * Play is disabled while playback is stopped and the settings play repeats; a running
-         * playback can always be stopped.
+         * Until the finding is fixed, the song cannot start to play with repeats. A playback that
+         * already runs is not stopped.
          */
         BLOCKS_PLAYBACK
     }

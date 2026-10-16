@@ -25,9 +25,10 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Consumer;
-import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
@@ -48,8 +49,8 @@ import songscribe.util.UIUtils;
  * exceptions take already-resolved text: the {@code WithString} error variant, and the button
  * labels of the multi-option dialog.
  *
- * <p>A confirm dialog never answers {@code CLOSED_OPTION}: a dismissed window answers
- * {@code CANCEL_OPTION} where the dialog offered Cancel, and {@code NO_OPTION} otherwise.
+ * <p>A dismissed confirm window answers {@link Answer#CANCEL} where the dialog offered Cancel,
+ * and {@link Answer#NO} otherwise.
  *
  * <p>A suppressed confirm or input prompt answers its suppressed default, so a test whose
  * path depends on the answer passes the default that path needs; otherwise it silently takes
@@ -79,7 +80,7 @@ public final class OptionDialogs {
     ) {
         showMessageDialog(
             parent, Strings.get(titleKey), resolveMessage(messageKey, messageArgs),
-            JOptionPane.INFORMATION_MESSAGE, LOG::trace, false
+            MessageType.INFORMATION, LOG::trace, false
         );
     }
 
@@ -97,7 +98,7 @@ public final class OptionDialogs {
         String title,
         String message
     ) {
-        showMessageDialog(parent, title, message, JOptionPane.ERROR_MESSAGE, LOG::error, true);
+        showMessageDialog(parent, title, message, MessageType.ERROR, LOG::error, true);
     }
 
     public static void showWarningMessage(
@@ -108,53 +109,28 @@ public final class OptionDialogs {
     ) {
         showMessageDialog(
             parent, Strings.get(titleKey), resolveMessage(messageKey, messageArgs),
-            JOptionPane.WARNING_MESSAGE, LOG::warn, false
+            MessageType.WARNING, LOG::warn, false
         );
     }
 
-    public static int showConfirmDialog(
-        @Nullable Component parent,
-        String titleKey,
-        String messageKey,
-        int optionType,
-        int messageType
-    ) {
-        return showConfirmDialog(parent, titleKey, messageKey, optionType, messageType, JOptionPane.NO_OPTION);
-    }
-
-    public static int showConfirmDialog(
-        @Nullable Component parent,
-        String titleKey,
-        String messageKey,
-        int optionType,
-        int messageType,
-        int suppressedDefault
-    ) {
-        var title = Strings.get(titleKey);
-        var message = Strings.get(messageKey);
+    public static Answer showConfirmDialog(@Nullable Component parent, Confirm confirm) {
+        var title = Strings.get(confirm.titleKey());
+        var message = resolveMessage(confirm.messageKey(), confirm.messageArgs());
         LOG.trace(message);
 
         if (isSuppressed()) {
-            return suppressedDefault;
+            return confirm.suppressedDefault();
         }
 
         try {
-            var pane = new JOptionPane(message, messageType, optionType);
+            var buttons = confirm.buttons();
+            var pane = new JOptionPane(message, confirm.messageType().value, buttons.value);
             showOptionPane(pane, parent, title);
 
-            var value = pane.getValue();
-            var result = value instanceof Integer i ? i : JOptionPane.CLOSED_OPTION;
-
-            if (result == JOptionPane.CLOSED_OPTION) {
-                return optionType == JOptionPane.YES_NO_CANCEL_OPTION
-                    ? JOptionPane.CANCEL_OPTION
-                    : JOptionPane.NO_OPTION;
-            }
-
-            return result;
+            return pane.getValue() instanceof Integer value ? buttons.answerOf(value) : buttons.dismissedAnswer;
         } catch (HeadlessException e) {
             LOG.error("HeadlessException showing confirm dialog", e);
-            return suppressedDefault;
+            return confirm.suppressedDefault();
         }
     }
 
@@ -195,31 +171,34 @@ public final class OptionDialogs {
         }
     }
 
-    public static int showOptionDialog(
-        @Nullable Component parent,
-        String titleKey,
-        String messageKey,
-        int optionType,
-        int messageType,
-        @Nullable Icon icon,
-        Object @Nullable [] options,
-        @Nullable Object initialValue,
-        Object... messageArgs
-    ) {
+    /**
+     * @return the index in {@link Choice#buttonLabels()} of the button pressed, or
+     *     {@link JOptionPane#CLOSED_OPTION} if the window was dismissed or the dialog suppressed
+     */
+    public static int showChoiceDialog(@Nullable Component parent, Choice choice) {
         if (isSuppressed()) {
             return JOptionPane.CLOSED_OPTION;
         }
 
-        var title = Strings.get(titleKey);
-        var message = resolveMessage(messageKey, messageArgs);
+        var title = Strings.get(choice.titleKey());
+        var message = resolveMessage(choice.messageKey(), choice.messageArgs());
         LOG.trace("{}", message);
 
         try {
-            var pane = new JOptionPane(message, messageType, optionType, icon, options, initialValue);
+            var labels = choice.buttonLabels();
+            var pane = new JOptionPane(
+                message,
+                choice.messageType().value,
+                JOptionPane.DEFAULT_OPTION,
+                null,
+                labels.toArray(),
+                labels.get(choice.defaultButton())
+            );
             showOptionPane(pane, parent, title);
-            return getOptionPaneResult(pane, options);
+
+            return pane.getValue() instanceof String label ? labels.indexOf(label) : JOptionPane.CLOSED_OPTION;
         } catch (HeadlessException e) {
-            LOG.error("HeadlessException showing option dialog", e);
+            LOG.error("HeadlessException showing choice dialog", e);
             return JOptionPane.CLOSED_OPTION;
         }
     }
@@ -228,7 +207,7 @@ public final class OptionDialogs {
         @Nullable Component parent,
         String title,
         String message,
-        int messageType,
+        MessageType messageType,
         Consumer<? super String> logger,
         boolean beep
     ) {
@@ -243,7 +222,7 @@ public final class OptionDialogs {
         }
 
         try {
-            var pane = new JOptionPane(message, messageType);
+            var pane = new JOptionPane(message, messageType.value);
             showOptionPane(pane, parent, title);
         } catch (HeadlessException e) {
             LOG.error("HeadlessException showing message dialog", e);
@@ -300,26 +279,6 @@ public final class OptionDialogs {
         }
     }
 
-    private static int getOptionPaneResult(JOptionPane pane, Object @Nullable [] options) {
-        var value = pane.getValue();
-
-        if (value == null) {
-            return JOptionPane.CLOSED_OPTION;
-        }
-
-        if (options == null) {
-            return value instanceof Integer i ? i : JOptionPane.CLOSED_OPTION;
-        }
-
-        for (var i = 0; i < options.length; i++) {
-            if (value.equals(options[i])) {
-                return i;
-            }
-        }
-
-        return JOptionPane.CLOSED_OPTION;
-    }
-
     private static String resolveMessage(String key, Object[] args) {
         return args.length == 0 ? Strings.get(key) : Strings.get(key, args);
     }
@@ -327,5 +286,71 @@ public final class OptionDialogs {
     /** Public so windows not built from {@code JOptionPane} honor the same flag. */
     public static boolean isSuppressed() {
         return GraphicsEnvironment.isHeadless() || suppressDialogs;
+    }
+
+    /** The content of a confirm dialog. */
+    public record Confirm(
+        String titleKey,
+        String messageKey,
+        ConfirmButtons buttons,
+        MessageType messageType,
+        Answer suppressedDefault,
+        Object... messageArgs
+    ) {}
+
+    /** The content of a dialog whose buttons the caller names. */
+    public record Choice(
+        String titleKey,
+        String messageKey,
+        MessageType messageType,
+        List<String> buttonLabels,
+        int defaultButton,
+        Object... messageArgs
+    ) {
+        public Choice {
+            buttonLabels = List.copyOf(buttonLabels);
+            Objects.checkIndex(defaultButton, buttonLabels.size());
+        }
+    }
+
+    public enum Answer {
+        YES,
+        NO,
+        CANCEL
+    }
+
+    public enum ConfirmButtons {
+        YES_NO(JOptionPane.YES_NO_OPTION, Answer.NO),
+        YES_NO_CANCEL(JOptionPane.YES_NO_CANCEL_OPTION, Answer.CANCEL);
+
+        private final int value;
+        private final Answer dismissedAnswer;
+
+        ConfirmButtons(int value, Answer dismissedAnswer) {
+            this.value = value;
+            this.dismissedAnswer = dismissedAnswer;
+        }
+
+        private Answer answerOf(int optionPaneValue) {
+            return switch (optionPaneValue) {
+                case JOptionPane.YES_OPTION -> Answer.YES;
+                case JOptionPane.NO_OPTION -> Answer.NO;
+                case JOptionPane.CANCEL_OPTION -> Answer.CANCEL;
+                default -> dismissedAnswer;
+            };
+        }
+    }
+
+    public enum MessageType {
+        ERROR(JOptionPane.ERROR_MESSAGE),
+        INFORMATION(JOptionPane.INFORMATION_MESSAGE),
+        WARNING(JOptionPane.WARNING_MESSAGE),
+        QUESTION(JOptionPane.QUESTION_MESSAGE);
+
+        private final int value;
+
+        MessageType(int value) {
+            this.value = value;
+        }
     }
 }

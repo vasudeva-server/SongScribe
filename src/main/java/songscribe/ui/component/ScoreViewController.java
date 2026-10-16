@@ -1058,19 +1058,14 @@ public final class ScoreViewController {
     private static final int REMOVE_AND_PASTE_OPTION = 0;
 
     private static boolean confirmRemoveLeadingBreathMark() {
-        var cancelLabel = Strings.get(Strings.BUTTON_CANCEL);
-        var removeLabel = Strings.get(Strings.BUTTON_REMOVE_AND_PASTE);
-        var result = OptionDialogs.showOptionDialog(
-            null,
+        var choice = new OptionDialogs.Choice(
             Strings.CONFIRM_TITLE_PASTE,
             Strings.CONFIRM_PASTE_LEADING_BREATH_MARK,
-            JOptionPane.DEFAULT_OPTION,
-            JOptionPane.WARNING_MESSAGE,
-            null,
-            new Object[]{removeLabel, cancelLabel},
-            removeLabel
+            OptionDialogs.MessageType.WARNING,
+            List.of(Strings.get(Strings.BUTTON_REMOVE_AND_PASTE), Strings.get(Strings.BUTTON_CANCEL)),
+            REMOVE_AND_PASTE_OPTION
         );
-        return result == REMOVE_AND_PASTE_OPTION;
+        return OptionDialogs.showChoiceDialog(null, choice) == REMOVE_AND_PASTE_OPTION;
     }
 
     /**

@@ -40,6 +40,7 @@ import java.awt.image.BaseMultiResolutionImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -74,10 +75,8 @@ import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongFileWriter;
-import songscribe.layout.PageModel;
 import songscribe.lifecycle.Shutdown;
 import songscribe.lint.LintRule;
-import songscribe.lint.Linter;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.command.NewFileCommand;
@@ -97,9 +96,9 @@ import songscribe.prefs.PrefsKey;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.Output;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
-import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
@@ -836,22 +835,19 @@ public class MainFrame extends JFrame {
         var docName = getDisplayName();
         var saveIdx = 0;
         var dontSaveIdx = 1;
-        var options = new Object[]{
-            Strings.get(Strings.BUTTON_SAVE),
-            Strings.get(Strings.BUTTON_DONT_SAVE),
-            Strings.get(Strings.BUTTON_CANCEL)
-        };
-        var answer = OptionDialogs.showOptionDialog(
-            this,
+        var choice = new OptionDialogs.Choice(
             Strings.CONFIRM_TITLE_SAVE_CHANGES,
             Strings.CONFIRM_SAVE_MODIFIED,
-            JOptionPane.YES_NO_CANCEL_OPTION,
-            JOptionPane.QUESTION_MESSAGE,
-            null,
-            options,
-            options[saveIdx],
+            OptionDialogs.MessageType.QUESTION,
+            List.of(
+                Strings.get(Strings.BUTTON_SAVE),
+                Strings.get(Strings.BUTTON_DONT_SAVE),
+                Strings.get(Strings.BUTTON_CANCEL)
+            ),
+            saveIdx,
             docName
         );
+        var answer = OptionDialogs.showChoiceDialog(this, choice);
 
         if (answer == saveIdx) {
             return SaveAction.createAction(this).perform(this);
@@ -1037,15 +1033,15 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        var answer = OptionDialogs.showConfirmDialog(
-            this,
+        var confirm = new OptionDialogs.Confirm(
             Strings.CONFIRM_TITLE_REVERT_TO_SAVED,
             Strings.CONFIRM_REVERT_TO_SAVED,
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.QUESTION_MESSAGE
+            OptionDialogs.ConfirmButtons.YES_NO,
+            OptionDialogs.MessageType.QUESTION,
+            OptionDialogs.Answer.NO
         );
 
-        if (answer != JOptionPane.YES_OPTION) {
+        if (OptionDialogs.showConfirmDialog(this, confirm) != OptionDialogs.Answer.YES) {
             return;
         }
 
@@ -1074,11 +1070,24 @@ public class MainFrame extends JFrame {
 
     @Handler
     public void handleSaveAs(SaveAsCommand message) {
-        saveAsNewFile();
+        saveAs();
     }
 
     public boolean save() {
-        return (currentFile == null) ? saveAsNewFile() : saveCurrentFile();
+        if (!saveIsAllowed()) {
+            return false;
+        }
+
+        return (currentFile == null) ? chooseFileAndWrite() : saveCurrentFile();
+    }
+
+    private boolean saveAs() {
+        return saveIsAllowed() && chooseFileAndWrite();
+    }
+
+    /** Asked before the file chooser opens, because a "No" after it discards the user's choice of file. */
+    private boolean saveIsAllowed() {
+        return scoreView != null && Output.SAVE.allowed(this, scoreView.getSong());
     }
 
     private boolean saveCurrentFile() {
@@ -1089,33 +1098,13 @@ public class MainFrame extends JFrame {
         return writeSong(currentFile);
     }
 
-    /**
-     * Leaves the window's current file alone. Every save goes through here, so this is the one
-     * place a save is gated: a finding carrying {@link LintRule.Flag#BLOCKS_EXPORT} first asks
-     * the user to confirm, Yes by default; where dialogs are suppressed the default is taken and
-     * the file is written.
-     */
+    /** Leaves the window's current file alone. */
     private boolean writeSong(File file) {
         if (scoreView == null) {
             return false;
         }
 
         var song = scoreView.getSong();
-
-        if (song.getLinter().hasFlag(LintRule.Flag.BLOCKS_EXPORT)) {
-            var answer = OptionDialogs.showConfirmDialog(
-                this,
-                Strings.CONFIRM_TITLE_SONG_HAS_ERRORS,
-                Strings.CONFIRM_SAVE_WITH_ERRORS,
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE,
-                JOptionPane.YES_OPTION
-            );
-
-            if (answer != JOptionPane.YES_OPTION) {
-                return false;
-            }
-        }
 
         try {
             // scoreView is both the document fonts holder and the line layout provider: saved
@@ -1138,7 +1127,7 @@ public class MainFrame extends JFrame {
         return false;
     }
 
-    boolean saveAsNewFile() {
+    private boolean chooseFileAndWrite() {
         if (scoreView == null) {
             return false;
         }

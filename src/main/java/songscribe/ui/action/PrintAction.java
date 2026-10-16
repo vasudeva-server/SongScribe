@@ -24,6 +24,7 @@ import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.Output;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -47,6 +48,10 @@ public final class PrintAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
+        if (!Output.PRINT.allowed(getMainFrame(), getSong())) {
+            return;
+        }
+
         OptionDialogs.showInfoMessage(getMainFrame(), Strings.ALERT_TITLE_PRINT, Strings.ALERT_PRINT_NOT_IMPLEMENTED);
     }
 }

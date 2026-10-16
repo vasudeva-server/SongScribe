@@ -104,7 +104,7 @@ class SaveBlockedByLintTest extends E2ETest {
 
         buildNotes(Actions.QUARTER_NOTE_ACTION, MIDDLE_STAFF_LINE);
 
-        assertThat(GuiActionRunner.execute(() -> song().getLinter().hasFlag(LintRule.Flag.BLOCKS_EXPORT)))
+        assertThat(GuiActionRunner.execute(() -> song().getLinter().hasFlag(LintRule.Flag.BLOCKS_OUTPUT)))
             .as("the note the click inserted has no lyric")
             .isTrue();
 
@@ -129,7 +129,7 @@ class SaveBlockedByLintTest extends E2ETest {
                 @Override
                 protected boolean isMatching(JDialog candidate) {
                     return candidate.isShowing()
-                        && Strings.get(Strings.CONFIRM_TITLE_SONG_HAS_ERRORS).equals(candidate.getTitle());
+                        && Strings.get(Strings.ALERT_TITLE_SAVE).equals(candidate.getTitle());
                 }
             })
             .withTimeout(DIALOG_TIMEOUT_MS)
