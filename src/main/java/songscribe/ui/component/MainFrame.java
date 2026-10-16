@@ -667,7 +667,7 @@ public class MainFrame extends JFrame {
         installDividerReleaseListener();
         contentSplitPane.addPropertyChangeListener("UI", _ -> installDividerReleaseListener());
 
-        applyMessagesPanelVisible(Prefs.getBoolean(PrefsKey.MESSAGES_PANEL_VISIBLE));
+        applyMessagesPanelVisible(false);
     }
 
     /**
@@ -739,7 +739,6 @@ public class MainFrame extends JFrame {
         }
 
         applyMessagesPanelVisible(true);
-        Prefs.put(PrefsKey.MESSAGES_PANEL_VISIBLE, true);
     }
 
     /** Keyboard focus stays where it is, or moves to the score when the panel holds it. */
@@ -754,7 +753,6 @@ public class MainFrame extends JFrame {
         var panelHadFocus = focusOwner != null && SwingUtilities.isDescendingFrom(focusOwner, reportPanel);
 
         applyMessagesPanelVisible(false);
-        Prefs.put(PrefsKey.MESSAGES_PANEL_VISIBLE, false);
 
         if (panelHadFocus) {
             focusScore();

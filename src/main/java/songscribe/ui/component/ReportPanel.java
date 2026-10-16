@@ -209,7 +209,9 @@ public final class ReportPanel extends JPanel {
         changeReport = message.getReport();
         showRows(message.getSong());
 
-        if (!model.isEmpty()) {
+        if (status.get() == ReportStatus.EMPTY) {
+            mainFrame.hideMessagesPanel();
+        } else {
             mainFrame.showMessagesPanel();
         }
     }
@@ -235,9 +237,10 @@ public final class ReportPanel extends JPanel {
             changeRows.add(changeRow(change));
         }
 
+        var lintReport = song.getLinter().getReport();
         var lintRows = new ArrayList<Row>();
 
-        for (var finding : song.getLinter().getReport().findings()) {
+        for (var finding : lintReport.findings()) {
             lintRows.add(lintRow(finding));
         }
 
@@ -248,14 +251,7 @@ public final class ReportPanel extends JPanel {
         model.clear();
         model.addAll(changeRows);
         model.addAll(lintRows);
-
-        if (!lintRows.isEmpty()) {
-            status.set(ReportStatus.FINDINGS);
-        } else if (!changeRows.isEmpty()) {
-            status.set(ReportStatus.CHANGES);
-        } else {
-            status.set(ReportStatus.EMPTY);
-        }
+        status.set(ReportStatus.of(lintReport, changeReport));
 
         if (selected != null) {
             var index = model.indexOf(selected);

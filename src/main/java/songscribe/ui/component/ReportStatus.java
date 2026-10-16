@@ -22,11 +22,12 @@ package songscribe.ui.component;
 import java.util.function.BiFunction;
 import javax.swing.Icon;
 
+import songscribe.dom.ChangeReport;
+import songscribe.lint.LintReport;
 import songscribe.util.GraphicUtils;
 
 /**
- * What the Messages panel lists, named by the most urgent kind of row it holds: a lint finding
- * outranks a change, and a change outranks an empty list.
+ * What the Messages panel lists, named by the most urgent kind of row it holds.
  */
 public enum ReportStatus {
 
@@ -43,6 +44,22 @@ public enum ReportStatus {
     ReportStatus(String iconFile, BiFunction<String, Integer, ? extends Icon> iconLoader) {
         this.iconFile = iconFile;
         this.iconLoader = iconLoader;
+    }
+
+    /**
+     * @return {@link #FINDINGS} when {@code lint} has a finding, else {@link #CHANGES} when
+     *         {@code changes} has a change, else {@link #EMPTY}
+     */
+    public static ReportStatus of(LintReport lint, ChangeReport changes) {
+        if (!lint.isEmpty()) {
+            return FINDINGS;
+        }
+
+        if (!changes.isEmpty()) {
+            return CHANGES;
+        }
+
+        return EMPTY;
     }
 
     public Icon icon(int size) {
