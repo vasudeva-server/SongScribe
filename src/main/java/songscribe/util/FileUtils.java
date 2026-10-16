@@ -114,11 +114,4 @@ public final class FileUtils {
         return new File(System.getenv("USERPROFILE"), "Documents");
     }
 
-    public static void copyFile(File in, File out) {
-        try {
-            Files.copy(in.toPath(), out.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException ignored) {
-        }
-    }
-
 }

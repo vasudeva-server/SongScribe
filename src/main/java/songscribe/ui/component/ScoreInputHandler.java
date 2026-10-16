@@ -26,7 +26,6 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.util.LinkedHashMap;
@@ -62,7 +61,7 @@ import songscribe.util.UIUtils;
  * than on any score component.
  */
 public final class ScoreInputHandler extends KeyAdapter
-    implements MouseListener, MouseMotionListener, MouseWheelListener {
+    implements MouseListener, MouseWheelListener {
 
     private final InputHandlerCallback callback;
 
@@ -106,16 +105,6 @@ public final class ScoreInputHandler extends KeyAdapter
         // its own preview down. This covers the cursor leaving without that exit being
         // delivered, where the preview would otherwise be left painted.
         LineComponent.clearPreviewElement();
-    }
-
-    @Override
-    public void mouseDragged(MouseEvent e) {
-    }
-
-    @Override
-    public void mouseMoved(MouseEvent e) {
-        // Nothing to do: the view itself has no hover behaviour, and every point a line
-        // responds to falls inside that line's own bounds, so the line is hovered directly.
     }
 
     @Override

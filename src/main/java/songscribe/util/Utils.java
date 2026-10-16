@@ -117,17 +117,6 @@ public final class Utils {
         );
     }
 
-    public static void sleep(long ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException ignored) {
-        }
-    }
-
-    public static String getPlatformKeyStrokeString(KeyStroke key) {
-        return getPlatformModifiersString(key) + getPlatformKeyString(key);
-    }
-
     public static String getPlatformModifiersString(KeyStroke key) {
         var sb = new StringBuilder();
         var modifiers = key.getModifiers();

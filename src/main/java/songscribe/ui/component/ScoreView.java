@@ -257,7 +257,6 @@ public final class ScoreView
         // The install above could not cascade — there was no main panel yet.
         documentFontManager.applyFonts();
 
-        addMouseMotionListener(inputHandler);
         addMouseListener(inputHandler);
         addMouseWheelListener(inputHandler);
 
