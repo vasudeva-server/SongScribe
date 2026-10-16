@@ -299,7 +299,7 @@ get it confirmed before writing it.
    - any concrete **production bug**, first;
    - **design findings**, each followed by the symptoms and tests it explains,
      so the reader sees one decision rather than a list of unrelated patches;
-   - **contract findings** — clauses that restate the body, missing clauses,
+   - **contract findings** — clauses a caller does not need, missing clauses,
      full contracts missing where a test derives, wrong names, and signatures
      that need a parameter object or an enum. Put a proposed change to an existing contract at the top of this
      group, since it is an approval case;

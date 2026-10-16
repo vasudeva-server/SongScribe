@@ -2,19 +2,30 @@
 
 What a Javadoc may state. Read before you write or change a Javadoc.
 
-**A Javadoc states only what the code cannot say. It never describes what the
-body does.** A reader can read the body. A clause that restates the body adds
-nothing while it is correct. When the body changes, nothing makes the clause
-change with it, and the reader trusts the wrong clause instead of the body.
+**A Javadoc states only what a caller needs to use the member correctly. It
+never describes the implementation** — not the body, and not the code the body
+reaches. A clause about the implementation adds nothing a caller can act on
+while it is correct. When the implementation changes, nothing makes the clause
+change with it, and the reader trusts the wrong clause instead of the code.
 
-The test for each clause: **can a reader learn this from the body of this
-method?** If yes, delete the clause.
+The test for each clause: **does a caller need it to meet an obligation, to
+branch on a result, or to rely on an outcome?** If not, delete the clause.
 
-**Err on the side of conciseness.** The less a Javadoc says about the
-implementation, the better. When you are not sure whether a clause restates the
-body, delete it. A clause that stays states the reason or the promise in as few
-words as it can, and never the mechanism that keeps it: no steps, no list of
-fields or branches, no walk through what the method calls.
+A clause fails the test when it names:
+
+- a step the member takes, or the order of its steps;
+- a callee, or the route by which the member gets its result;
+- a collaborator, a holder or a reader of the type;
+- a mechanism that keeps a promise, where the promise alone is what the caller
+  relies on — state the promise and drop the mechanism.
+
+A clause of type 3 below is the one exception. It addresses whoever would change
+a constraint, not a caller, and it names what breaks elsewhere, because that is
+the fact the reader cannot see.
+
+**Err on the side of conciseness.** When you are not sure whether a caller
+needs a clause, delete it. A clause that stays states the obligation, the
+meaning or the outcome in as few words as it can.
 
 ## The five clause types
 
@@ -57,6 +68,25 @@ Outside a full contract, `@throws`, `@effects` and `@invariant` are never
 written. A `@return` appears only to state what a null return means. A `@param`
 appears only to carry a clause of type 1 or 2.
 
+## A constant states what its value means
+
+The Javadoc of a constant or an enum value states what the value means in the
+domain. It never names the code that reads the value, or what that code does
+with it: those are the readers and the steps the test above rejects.
+
+```java
+// Names the readers and their steps — not written
+/** Print shows an alert and stops. A save asks for confirmation first. */
+BLOCKS_OUTPUT,
+
+// States what the value means
+/**
+ * Until the finding is fixed, the song cannot be printed or exported, and a save needs the
+ * user's consent.
+ */
+BLOCKS_OUTPUT,
+```
+
 ## Full contracts
 
 **A full contract stays only where a test is derived from it**, which means a
@@ -66,11 +96,15 @@ it calls the method itself, or names the method as what it asserts — a sweep t
 that drives `Hairpin.outcomeFor` through edits derives from it. A test that only
 reaches the method on the way to something else does not. The full contract states every
 clause that a test case comes from, so that the test can be written again
-without the body. The five clause types do not limit it.
+without the body. The five clause types do not limit it; the caller test does.
+Every clause states an outcome that a caller can observe through the public
+API, never the route to it.
 
 A full contract uses the standard tags and two custom tags: `@invariant` for a
 property of every result, and `@effects` for a change to state outside the
-return value. Each custom tag holds one clause and repeats, like `@throws`.
+return value. Each custom tag holds one clause and repeats, like `@throws`. An
+`@effects` clause names the state that changes and what it is afterwards; it
+never names the call that changes it or the reason an internal step runs.
 
 **The tell of a real full contract is that the implementation could break
 it.** If you cannot imagine the code breaking the promise, you described the

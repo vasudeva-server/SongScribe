@@ -11,7 +11,7 @@ failures this skill exists to avoid.
 | Axis | Model | Input | Covers |
 |---|---|---|---|
 | Des | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
-| Contract & API | inherit | production scope, plus the doc scope when it is non-empty | clauses that restate the body; missing preconditions, null meanings, reasons and class-level facts; full contracts where tests derive; promises duplicated into prose; naming; signature quality; test-only surface |
+| Contract & API | inherit | production scope, plus the doc scope when it is non-empty | clauses a caller does not need; missing preconditions, null meanings, reasons and class-level facts; full contracts where tests derive; promises duplicated into prose; naming; signature quality; test-only surface |
 | Correctness & Efficiency | sonnet | production scope | real defects, null contracts, repeated or redundant work |
 | Test Conformance | sonnet | test scope and its production counterparts | should each test exist at all, and does it exercise what the contract promises |
 
@@ -185,7 +185,7 @@ change touches, per *Reporting a design finding*. Consult the matching files in
 
 ## Axis 2: Contract & API
 
-A Javadoc is judged against the five clause types in
+A Javadoc is judged against the caller test and the five clause types in
 `guides/conventions/contracts.md`, and a full contract against the tests derived from
 it. Read that guide and the **Contracts in Javadoc** and **Signature Rules for
 Contracts** sections of `.claude/rules/java.md` before reporting.
@@ -197,15 +197,20 @@ promise can sit without the compiler or a reference lookup reaching it.
 
 ### Does each clause belong?
 
-Mechanical: apply the five clause types, and report each clause that is none of
-them for deletion. Do not check whether such a clause is accurate — it goes
-either way.
+Mechanical: ask of each clause, full contracts included, whether a caller needs
+it to meet an obligation, to branch on a result, or to rely on an outcome. Report
+each clause that fails for deletion, or for reduction to the caller fact it
+hides. Do not check whether such a clause is accurate — it goes either way.
 
-1. **A clause that restates the body** — a first sentence that says what the
-   method does, a `@param` or `@return` that repeats a name, or a `@throws`,
-   `@effects`, `@invariant` or `@log` outside a full contract.
+1. **A clause that describes the implementation** — a first sentence that says
+   what the method does; a `@param` or `@return` that repeats a name; a step, the
+   order of steps, a callee, or the route to the result; a collaborator, a holder
+   or a reader of the type; a mechanism stated beside the promise it keeps; an
+   `@effects` that names the call that changes state or why an internal step
+   runs; or a `@throws`, `@effects` or `@invariant` outside a full contract. A
+   clause of type 3 is exempt: it names what breaks elsewhere.
 2. **A full contract on a method that no test derives from.** Report the clauses
-   to keep: those of the five types.
+   to keep: those of the five types that pass the caller test.
 
 ### Is a clause missing?
 
