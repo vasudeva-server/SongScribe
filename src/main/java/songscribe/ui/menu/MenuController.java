@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import javax.swing.Action;
+import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
@@ -267,22 +269,26 @@ public class MenuController {
     JMenu initWindowMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_WINDOW));
 
-        menu.add(Actions.MINIMIZE_WINDOW_ACTION);
-        menu.add(Actions.ZOOM_WINDOW_ACTION);
-        menu.addSeparator();
-        menu.add(Actions.TOGGLE_MESSAGES_ACTION);
-        menu.addSeparator();
-
         // The native check mark matches the system menus. The menu bar is installed on macOS
         // only, so this image URL is always available where the menu shows.
         var checkmark = new ImageIcon(
             Toolkit.getDefaultToolkit().createImage("NSImage://NSMenuOnStateTemplate")
         );
-        var focusScoreItem = new JCheckBoxMenuItem(Actions.FOCUS_SCORE_ACTION);
-        focusScoreItem.setSelectedIcon(checkmark);
-        menu.add(focusScoreItem);
+
+        menu.add(Actions.MINIMIZE_WINDOW_ACTION);
+        menu.add(Actions.ZOOM_WINDOW_ACTION);
+        menu.addSeparator();
+        menu.add(checkItem(Actions.TOGGLE_MESSAGES_ACTION, checkmark));
+        menu.addSeparator();
+        menu.add(checkItem(Actions.FOCUS_SCORE_ACTION, checkmark));
 
         return menu;
+    }
+
+    private static JCheckBoxMenuItem checkItem(Action action, Icon checkmark) {
+        var item = new JCheckBoxMenuItem(action);
+        item.setSelectedIcon(checkmark);
+        return item;
     }
 
     JMenu initEditMenu() {

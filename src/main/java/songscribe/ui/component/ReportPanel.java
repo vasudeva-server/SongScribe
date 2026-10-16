@@ -57,6 +57,8 @@ import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.binding.ObservableValue;
+import songscribe.binding.ValueProperty;
 import songscribe.dom.ChangeReport;
 import songscribe.dom.LineRange;
 import songscribe.dom.ReportedChange;
@@ -70,6 +72,7 @@ import songscribe.message.notification.ActiveScriptDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.LintCalloutWasDismissedNotification;
 import songscribe.message.notification.LintMarkSelectionDidChangeNotification;
+import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.util.GraphicUtils;
@@ -128,6 +131,8 @@ public final class ReportPanel extends JPanel {
     private final DefaultListModel<Row> model = new DefaultListModel<>();
     private final JList<Row> list = new ReportList(model, Strings.get(Strings.REPORT_NONE));
 
+    private final ValueProperty<ReportStatus> status = new ValueProperty<>(ReportStatus.EMPTY);
+
     private ChangeReport changeReport = ChangeReport.EMPTY;
 
     ReportPanel(MainFrame mainFrame) {
@@ -184,6 +189,10 @@ public final class ReportPanel extends JPanel {
         MessageSubscription.addProcessListener(this);
     }
 
+    public ObservableValue<ReportStatus> status() {
+        return status;
+    }
+
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
         changeReport = message.getReport();
@@ -229,11 +238,7 @@ public final class ReportPanel extends JPanel {
         var lintRows = new ArrayList<Row>();
 
         for (var finding : song.getLinter().getReport().findings()) {
-            var row = lintRow(finding);
-
-            if (row != null) {
-                lintRows.add(row);
-            }
+            lintRows.add(lintRow(finding));
         }
 
         // List.sort is stable, so rows at one position keep the order of their report.
@@ -243,6 +248,14 @@ public final class ReportPanel extends JPanel {
         model.clear();
         model.addAll(changeRows);
         model.addAll(lintRows);
+
+        if (!lintRows.isEmpty()) {
+            status.set(ReportStatus.FINDINGS);
+        } else if (!changeRows.isEmpty()) {
+            status.set(ReportStatus.CHANGES);
+        } else {
+            status.set(ReportStatus.EMPTY);
+        }
 
         if (selected != null) {
             var index = model.indexOf(selected);
@@ -266,17 +279,13 @@ public final class ReportPanel extends JPanel {
     }
 
     /**
-     * @return {@code null} when the finding's element is in no line of its song
+     * The finding is from the current lint report: every {@link LintingNotification} lints the
+     * song as it is built, and no handler changes the song before this panel reads the report.
      */
-    private static @Nullable Row lintRow(LintFinding finding) {
+    private static Row lintRow(LintFinding finding) {
         var mark = finding.mark();
         var element = mark.element();
-        var line = element.getParentLine();
-
-        if (line == null || !line.getSong().contains(line)) {
-            return null;
-        }
-
+        var line = element.requireParentLine();
         var lineIndex = line.index();
         var elementIndex = line.getElementIndex(element);
 
@@ -455,8 +464,7 @@ public final class ReportPanel extends JPanel {
         private final Icon lintBadge = GraphicUtils.getScaledSVGIcon(LINT_BADGE, LINT_BADGE_SIZE);
 
         // The themed badge takes the color of the label's foreground, so it follows the selection.
-        private final Icon changeBadge = GraphicUtils.getScaledSVGIcon(CHANGE_BADGE,
-            CHANGE_BADGE_SIZE, true);
+        private final Icon changeBadge = GraphicUtils.getScaledThemedSVGIcon(CHANGE_BADGE, CHANGE_BADGE_SIZE);
 
         private int cellWidth = 0;
 

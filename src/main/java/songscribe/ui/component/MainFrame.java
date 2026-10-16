@@ -647,6 +647,11 @@ public class MainFrame extends JFrame {
 
         initContentSplitPane();
         contentPane.add(contentSplitPane, BorderLayout.CENTER);
+
+        var reportStatus = reportPanel.status();
+        Runnable showReportStatus = () -> Actions.TOGGLE_MESSAGES_ACTION.setStatus(reportStatus.get());
+        showReportStatus.run();
+        reportStatus.observe(showReportStatus);
         contentPane.add(new StatusBar(), BorderLayout.SOUTH);
     }
 

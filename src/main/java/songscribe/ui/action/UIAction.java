@@ -462,7 +462,7 @@ public class UIAction extends AbstractAction implements Disposable {
           - An SVG icon filename
          */
         if (icon.endsWith(".svg")) {
-            var svgIcon = GraphicUtils.getScaledSVGIcon(icon, size, true);
+            var svgIcon = GraphicUtils.getScaledThemedSVGIcon(icon, size);
             putValue(LARGE_ICON_KEY, svgIcon);
         } else {
             var info = UIUtils.getTaggedString(icon);

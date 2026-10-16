@@ -256,17 +256,13 @@ public final class GraphicUtils {
     }
 
     public static FlatSVGIcon getScaledSVGIcon(String filename, int size) {
-        return getScaledSVGIcon(filename, size, false);
+        return getScaledSVGIcon(new FlatSVGIcon("icons/" + filename), size);
     }
 
-    public static FlatSVGIcon getScaledSVGIcon(String filename, int size, boolean isThemed) {
-        var icon = new FlatSVGIcon("icons/" + filename);
-
-        if (isThemed) {
-            icon.setColorFilter(THEME_AWARE_SVG_ICON_FILTER);
-        }
-
-        return getScaledSVGIcon(icon, size);
+    public static FlatSVGIcon getScaledThemedSVGIcon(String filename, int size) {
+        var icon = getScaledSVGIcon(filename, size);
+        icon.setColorFilter(THEME_AWARE_SVG_ICON_FILTER);
+        return icon;
     }
 
     public static FlatSVGIcon getScaledSVGIcon(

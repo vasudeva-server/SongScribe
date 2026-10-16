@@ -26,13 +26,17 @@ import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.ReportStatus;
 import songscribe.util.UIUtils;
 
 /**
  * Shows or hides the Messages panel without moving keyboard focus. {@link MainFrame} must call
- * {@link #setPanelShown} each time the panel is shown or hidden, which keeps the name current.
+ * {@link #setPanelShown} each time the panel is shown or hidden, and {@link #setStatus} each time
+ * the panel's status changes, which keeps the selected state, the tooltip and the icon current.
  */
-public final class ToggleMessagesAction extends UIAction {
+public final class ToggleMessagesAction extends SelectableUIAction {
+
+    private static final int ICON_SIZE = 20;
 
     public static ToggleMessagesAction createAction(MainFrame mainFrame) {
         return new ToggleMessagesAction(mainFrame);
@@ -42,16 +46,28 @@ public final class ToggleMessagesAction extends UIAction {
     private ToggleMessagesAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Strings.get(Strings.ACTION_WINDOW_MESSAGES_SHOW),
+            Strings.get(Strings.ACTION_WINDOW_MESSAGES),
+            null,
+            0,
             "window-messages",
+            Strings.get(Strings.ACTION_WINDOW_MESSAGES_SHOW_TOOLTIP),
             KeyEvent.VK_M, UIUtils.MENU_SHORTCUT_MASK | InputEvent.SHIFT_DOWN_MASK,
             // Shows and hides the panel only; the document is untouched.
             Flag.ENABLED_IN_GRACE_MODE
         );
+
+        setStatus(ReportStatus.EMPTY);
     }
 
     public void setPanelShown(boolean shown) {
-        setName(Strings.get(shown ? Strings.ACTION_WINDOW_MESSAGES_HIDE : Strings.ACTION_WINDOW_MESSAGES_SHOW));
+        setSelected(shown);
+
+        var tooltipKey = shown ? Strings.ACTION_WINDOW_MESSAGES_HIDE_TOOLTIP : Strings.ACTION_WINDOW_MESSAGES_SHOW_TOOLTIP;
+        putValue(SHORT_DESCRIPTION, Strings.get(tooltipKey));
+    }
+
+    public void setStatus(ReportStatus status) {
+        putValue(LARGE_ICON_KEY, status.icon(ICON_SIZE));
     }
 
     @Override

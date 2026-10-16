@@ -35,7 +35,7 @@ public class BarlinePopupButton extends PopupToolbarButton {
 
     public BarlinePopupButton() {
         super(Actions.BARLINE_ACTIONS);
-        setIcon(GraphicUtils.getScaledSVGIcon(ICON, ICON_SIZE_PX, true));
+        setIcon(GraphicUtils.getScaledThemedSVGIcon(ICON, ICON_SIZE_PX));
         UIUtils.setToolTipText(
             this,
             new UIUtils.ToolTipSection(

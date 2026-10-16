@@ -28,9 +28,11 @@ import javax.swing.JPanel;
 import javax.swing.JToolBar;
 import javax.swing.UIManager;
 
+import songscribe.ui.action.Actions;
 import songscribe.ui.component.ModeCycleButton;
 import songscribe.ui.component.StaffAnnotationPopupButton;
 import songscribe.ui.component.ThemeAwareMatteBorder;
+import songscribe.ui.component.ToolbarToggleButton;
 
 /**
  * The main toolbar panel for the application.
@@ -144,6 +146,7 @@ public final class MainToolbarPanel extends JPanel {
         var panel = createToolbarPanel(NO_BORDER);
         var toolbar = new Toolbar();
         toolbar.add(new StaffAnnotationPopupButton());
+        toolbar.add(new ToolbarToggleButton(Actions.TOGGLE_MESSAGES_ACTION));
         panel.add(toolbar);
         return panel;
     }

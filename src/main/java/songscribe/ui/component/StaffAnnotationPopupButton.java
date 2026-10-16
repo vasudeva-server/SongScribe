@@ -29,7 +29,7 @@ public class StaffAnnotationPopupButton extends PopupMenuButton {
 
     public StaffAnnotationPopupButton() {
         super(Actions.STAFF_ANNOTATION_ACTIONS, null);
-        setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
+        setIcon(GraphicUtils.getScaledThemedSVGIcon("plus.svg", 20));
         UIUtils.setToolTipText(
             this,
             new UIUtils.ToolTipSection(
