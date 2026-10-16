@@ -129,10 +129,7 @@ public final class SongIO {
         @Nullable
         private Where where = null;
 
-        @Nullable
-        private String lastTag;
-
-        private final StringBuilder value = new StringBuilder(200);
+        private final LeafTagText leaf = new LeafTagText();
 
         private StaffElementIO.@Nullable StaffElementReader noteReader = null;
         private TempoIO.@Nullable TempoReader tempoReader = null;
@@ -229,6 +226,8 @@ public final class SongIO {
             String qName,
             Attributes attributes
         ) throws SAXException, NewerVersionException {
+            leaf.reset();
+
             if (where == null) {
                 if (qName.equals(XML_SONG) || qName.equals(XML_COMPOSITION_LEGACY)) {
                     try {
@@ -270,8 +269,6 @@ public final class SongIO {
                     startElement11(uri, localName, qName, attributes);
                 }
             }
-
-            value.delete(0, value.length());
         }
 
         public void startElement10(
@@ -300,7 +297,7 @@ public final class SongIO {
                 } else if (qName.equals(XML_TEMPO_CHANGES)) {
                     where = Where.TEMPO_CHANGE;
                 } else {
-                    lastTag = qName;
+                    leaf.open(qName);
                 }
             }
         }
@@ -338,7 +335,7 @@ public final class SongIO {
                         tempoReader = new TempoIO.TempoReader();
                         tempoReader.startElement11(qName);
                     }
-                    default -> lastTag = qName;
+                    default -> leaf.open(qName);
                 }
             }
         }
@@ -416,11 +413,8 @@ public final class SongIO {
                     }
                 }
             } else if (where == Where.SONG) {
-                //noinspection PointlessNullCheck
-                if (lastTag != null && qName.equals(lastTag)) {
-                    var str = value.toString();
-
-                    switch (lastTag) {
+                leaf.close(qName, (tag, str) -> {
+                    switch (tag) {
                         case XML_KEYS -> documentKeyAccidentalCount =
                             DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
                         case XML_KEYTYPE -> documentKeyType = LegacyKeyType.parse(LOG, str);
@@ -431,11 +425,10 @@ public final class SongIO {
                         case XML_INFO -> attribution = str;
                         case XML_FOOTNOTES -> footnotes = str;
                     }
-                }
+                });
             }
 
-            value.delete(0, value.length());
-            lastTag = null;
+            leaf.reset();
         }
 
         public void endElement12(String qName) throws SAXException {
@@ -466,11 +459,8 @@ public final class SongIO {
                     where = Where.SONG;
                 }
             } else if (where == Where.SONG) {
-                //noinspection PointlessNullCheck
-                if (lastTag != null && qName.equals(lastTag)) {
-                    var str = value.toString();
-
-                    switch (lastTag) {
+                leaf.close(qName, (tag, str) -> {
+                    switch (tag) {
                         case XML_KEYS ->
                             documentKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
                         case XML_KEYTYPE -> documentKeyType = LegacyKeyType.parse(LOG, str);
@@ -535,7 +525,7 @@ public final class SongIO {
                         }
                         case XML_LYRICS_DATE -> parseLyricsDate(str);
                     }
-                }
+                });
             } else if (where == Where.VIEW) {
                 if (viewReader == null) {
                     return;
@@ -544,8 +534,7 @@ public final class SongIO {
                 viewReader.endElement11(qName);
             }
 
-            value.delete(0, value.length());
-            lastTag = null;
+            leaf.reset();
         }
 
         @Override
@@ -570,8 +559,8 @@ public final class SongIO {
                 if (tempoReader != null) {
                     tempoReader.characters(ch, start, length);
                 }
-            } else if ((where == Where.SONG) && (lastTag != null)) {
-                value.append(ch, start, length);
+            } else if (where == Where.SONG) {
+                leaf.append(ch, start, length);
             }
         }
 

@@ -25,7 +25,9 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
 
@@ -725,20 +727,49 @@ public final class ScoreViewController {
 
         handleCopy();
 
-        // Clear the selection before removing elements so that action handlers
-        // reacting to SongDidChangeNotification (posted synchronously when the
-        // modification bracket closes) don't query selection indices that no
-        // longer exist on the shrunk line.
-        selectionCoordinator.clearSelection();
+        // No label: the Cut action's op-name (Tier A) names this outermost step.
+        editSelection(null, () -> {
+            deleteElementRange(line, bounds, stranding);
+            return true;
+        });
+    }
 
-        // One bracket for the deletion. The Cut action's op-name (Tier A) names this outermost
-        // step.
-        score.getSong().withModification(() -> deleteElementRange(line, bounds, stranding));
+    /**
+     * The selection is cleared before the bracket closes, because the handlers of
+     * {@link songscribe.message.notification.SongDidChangeNotification} run as it closes and would
+     * otherwise query selection indices that no longer exist on the changed line.
+     *
+     * @param label the undo step's op-name, or {@code null} to keep the op-name of the action
+     *              that runs
+     * @param edit  answers whether it changed the song; when it did not, the selection stays
+     */
+    private void editSelection(@Nullable String label, BooleanSupplier edit) {
+        Supplier<Boolean> body = () -> {
+            var changed = edit.getAsBoolean();
 
-        // Discard saved action states — the song has changed, so restoring
-        // pre-selection states would be stale. Individual action handlers will
-        // re-evaluate their enabled state from the current context.
-        selectionCoordinator.getActionReflector().clearSavedActionStates();
+            if (changed) {
+                selectionCoordinator.clearSelection();
+            }
+
+            return changed;
+        };
+
+        var song = score.getSong();
+        var changed = label == null
+            ? song.withModificationResult(body)
+            : song.withModificationResult(label, body);
+
+        if (changed) {
+            endSelectionEdit();
+        }
+    }
+
+    /**
+     * The saved selected action states are the user's choice and survive the edit: to discard
+     * them would latch both duration action groups empty.
+     */
+    private void endSelectionEdit() {
+        selectionCoordinator.getActionReflector().restoreSelectedActionStates();
         score.deselect();
     }
 
@@ -807,17 +838,16 @@ public final class ScoreViewController {
                 .toList();
             var deleteLabel = OpNames.deleteLabel(selectedTypes);
 
-            // Clear the selection before removing elements so that action handlers
-            // reacting to SongDidChangeNotification (posted synchronously when the
-            // modification bracket closes) don't query selection indices that no
-            // longer exist on the shrunk line.
-            selectionCoordinator.clearSelection();
-
             // deleteElementRange's own bracket nests inside the one opened here, which names
             // the step: the op name is captured only at the outermost bracket.
-            song.withModification(deleteLabel,
-                () -> deleteElementRange(line, bounds, stranding));
-        } else if (selectedTarget != null && targetLine != null) {
+            editSelection(deleteLabel, () -> {
+                deleteElementRange(line, bounds, stranding);
+                return true;
+            });
+            return;
+        }
+
+        if (selectedTarget != null && targetLine != null) {
             deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
             var lineIndex = requireSelectedLine();
@@ -833,11 +863,7 @@ public final class ScoreViewController {
             });
         }
 
-        // Restore the pre-selection selected states but not the enabled states — the song
-        // has changed, so individual action handlers must re-evaluate enablement from the
-        // current context, while the user's chosen duration button survives the delete.
-        selectionCoordinator.getActionReflector().restoreSelectedActionStates();
-        score.deselect();
+        endSelectionEdit();
     }
 
     /**
@@ -1258,27 +1284,10 @@ public final class ScoreViewController {
 
         // One bracket for the whole replace — delete + insert is a single undo
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
-        // closes empty, posts no notification, and the selection stays intact.
-        var outcome = score.getSong().withModificationResult(() -> {
-            var result = tryInsertFragment(line, new StaffElementRun.InsertionTarget.Replacing(effective));
-
-            if (result == FragmentInsertOutcome.INSERTED) {
-                // Clear the selection before the bracket closes so action handlers
-                // reacting to SongDidChangeNotification don't query selection
-                // indices that no longer exist on the reshaped line.
-                selectionCoordinator.clearSelection();
-            }
-
-            return result;
-        });
-
-        if (outcome == FragmentInsertOutcome.INSERTED) {
-            // Discard saved action states — the song has changed, so restoring
-            // pre-selection states would be stale. Individual action handlers will
-            // re-evaluate their enabled state from the current context.
-            selectionCoordinator.getActionReflector().clearSavedActionStates();
-            score.deselect();
-        }
+        // closes empty and posts no notification.
+        editSelection(null, () ->
+            tryInsertFragment(line, new StaffElementRun.InsertionTarget.Replacing(effective))
+                == FragmentInsertOutcome.INSERTED);
     }
 
     @Handler

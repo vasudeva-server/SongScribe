@@ -694,10 +694,10 @@ public abstract class BaseDialog implements Disposable {
             var width = Math.max(packedSize.width, size.width);
             var height = Math.max(packedSize.height, size.height);
             var bounds = new Rectangle(geometry.location(), new Dimension(width, height));
-            var clamped = GraphicUtils.clampToScreen(bounds);
-            dialog.setBounds(clamped);
+            dialog.setBounds(UIUtils.clampToScreen(bounds));
         } else {
-            dialog.setLocation(GraphicUtils.clampToScreen(geometry.location(), dialog.getSize()));
+            var bounds = new Rectangle(geometry.location(), dialog.getSize());
+            dialog.setLocation(UIUtils.clampToScreen(bounds).getLocation());
         }
     }
 

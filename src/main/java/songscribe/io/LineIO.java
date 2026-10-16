@@ -99,12 +99,10 @@ public final class LineIO {
         @Nullable
         private Line line = null;
 
-        @Nullable
-        private String lastTag;
+        private final LeafTagText leaf = new LeafTagText();
 
         @org.jetbrains.annotations.Nullable
         private StaffElementIO.StaffElementReader noteReader = null;
-        private final StringBuilder value = new StringBuilder(20);
 
         // True once any note in any line read so far named a retired accidental that was
         // converted. Accumulated here because noteReader is replaced for each <line>, so
@@ -389,7 +387,6 @@ public final class LineIO {
                 if (qName.equals(XML_LINE)) {
                     where = Where.LINE;
                     line = new Line(song);
-                    lastTag = null;
                     noteReader = new StaffElementIO.StaffElementReader();
                     resetLegacyOffsets();
                     parsedKeyAccidentalCount = 0;
@@ -397,15 +394,14 @@ public final class LineIO {
                 }
             } else if (where == Where.NOTES && noteReader != null) {
                 noteReader.startElement11(qName, attributes);
+            } else if (qName.equals(XML_NOTES)) {
+                where = Where.NOTES;
             } else {
-                if (qName.equals(XML_NOTES)) {
-                    where = Where.NOTES;
-                } else {
-                    lastTag = qName;
-                }
+                leaf.open(qName);
+                return;
             }
 
-            value.delete(0, value.length());
+            leaf.reset();
         }
 
         @Nullable
@@ -450,11 +446,11 @@ public final class LineIO {
                     createBeamsFromPending(line);
                     return line;
                 }
-                //noinspection PointlessNullCheck
-                if (lastTag != null && qName.equals(lastTag)) {
-                    var str = value.toString();
 
-                    switch (lastTag) {
+                var openLine = line;
+
+                leaf.close(qName, (tag, str) -> {
+                    switch (tag) {
                         case XML_KEYS -> parsedKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
                         case XML_KEYTYPE -> parsedKeyType = LegacyKeyType.parse(LOG, str);
                         // Legacy line-compression ratio - nothing reads it; ignore for backwards compatibility
@@ -462,7 +458,7 @@ public final class LineIO {
                         }
                         case XML_TEMPO_CHANGE_YPOS -> legacyTempoChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str);
                         case XML_BEAT_CHANGE_YPOS -> legacyBeatChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str);
-                        case XML_LYRICS_YPOS -> line.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));
+                        case XML_LYRICS_YPOS -> openLine.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));
                         // Legacy line-level ending offset - endings load with no offset; ignore
                         case XML_FSENDING_YPOS -> {
                         }
@@ -478,19 +474,18 @@ public final class LineIO {
                         case XML_FSENDINGS -> parseEndingPairs(str);
                         case XML_TRILLS -> parseTrillPairs(str);
                     }
-                }
+                });
             }
 
-            value.delete(0, value.length());
-            lastTag = null;
+            leaf.reset();
             return null;
         }
 
         public void characters(char[] ch, int start, int length) {
             if (where == Where.NOTES && noteReader != null) {
                 noteReader.characters(ch, start, length);
-            } else if (lastTag != null) {
-                value.append(ch, start, length);
+            } else {
+                leaf.append(ch, start, length);
             }
         }
 
@@ -555,11 +550,6 @@ public final class LineIO {
         @Nullable
         Line getLine() {
             return line;
-        }
-
-        @Nullable
-        String getLastTag() {
-            return lastTag;
         }
 
         @Nullable

@@ -69,10 +69,7 @@ public final class TempoIO {
         private String description = "";
         private boolean hideMetronome = false;
 
-        @Nullable
-        private String lastTag;
-
-        private final StringBuilder value = new StringBuilder(20);
+        private final LeafTagText leaf = new LeafTagText();
 
         public void startElement10(String qName) {
             startElement(qName, XML_TEMPO_CHANGE);
@@ -89,12 +86,10 @@ public final class TempoIO {
                 tempoType = Tempo.DEFAULT_TYPE;
                 description = "";
                 hideMetronome = false;
-                lastTag = null;
+                leaf.reset();
             } else {
-                lastTag = qName;
+                leaf.open(qName);
             }
-
-            value.delete(0, value.length());
         }
 
         // Shared by the v1.0 and v1.1 read paths so an unknown token is rejected identically on both.
@@ -159,11 +154,8 @@ public final class TempoIO {
                 return null;
             }
 
-            //noinspection PointlessNullCheck
-            if (lastTag != null && qName.equals(lastTag)) {
-                var str = value.toString();
-
-                switch (lastTag) {
+            leaf.close(qName, (tag, str) -> {
+                switch (tag) {
                     case XML_POS -> pos10 = Integer.parseInt(str);
                     case XML_VISIBLE_TEMPO -> visibleTempo = Integer.parseInt(str);
                     case XML_TEMPO_TYPE -> tempoType = resolveTempoDuration(str);
@@ -171,17 +163,13 @@ public final class TempoIO {
                     case XML_DONT_SHOW_TEMPO -> hideMetronome = true;
                     default -> { }
                 }
-            }
+            });
 
-            value.delete(0, value.length());
-            lastTag = null;
             return null;
         }
 
         public void characters(char[] ch, int start, int length) {
-            if (lastTag != null) {
-                value.append(ch, start, length);
-            }
+            leaf.append(ch, start, length);
         }
 
         public int getPos10() {

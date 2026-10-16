@@ -20,8 +20,6 @@
 
 package songscribe.ui.selection;
 
-import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -165,10 +163,6 @@ public final class ActionReflector implements Disposable {
             }
         }
 
-        savedActionStates.clear();
-    }
-
-    public void clearSavedActionStates() {
         savedActionStates.clear();
     }
 

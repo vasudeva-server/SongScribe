@@ -27,6 +27,7 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsEnvironment;
 import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
@@ -116,6 +117,14 @@ public final class UIUtils {
     private static final String TOOLTIP_SECTION_SEPARATOR = "<br><br>";
 
     static final int SCREEN_MARGIN_PX = 20;
+
+    private static final double DIALOG_CENTER_HEIGHT_FRACTION = 0.375;
+
+    private static final int PREWARM_DIALOG_WIDTH_PX = 200;
+    private static final int PREWARM_DIALOG_HEIGHT_PX = 100;
+
+    /** Far enough off every screen that the pre-warm dialog is never seen. */
+    private static final int OFFSCREEN_COORDINATE_PX = -10000;
 
     private static final int DOUBLE_CLICK_COUNT = 2;
 
@@ -403,14 +412,22 @@ public final class UIUtils {
         button.setMinimumSize(buttonSize);
     }
 
+    /**
+     * @return {@code null} when {@code screenPoint} is outside the frame's root pane
+     */
     @Nullable
     public static Component getDeepestComponentAt(JFrame frame, Point screenPoint) {
-        var frameLocation = frame.getLocationOnScreen();
-        var relX = screenPoint.x - frameLocation.x;
-        var relY = screenPoint.y - frameLocation.y;
-        return SwingUtilities.getDeepestComponentAt(frame, relX, relY);
+        var rootPane = frame.getRootPane();
+        var point = new Point(screenPoint);
+
+        SwingUtilities.convertPointFromScreen(point, rootPane);
+        return SwingUtilities.getDeepestComponentAt(rootPane, point.x, point.y);
     }
 
+    /**
+     * @return {@code null} when no application frame has focus, or the mouse is outside its
+     *         root pane
+     */
     @Nullable
     public static Component getComponentUnderMouse() {
         var frame = getApplicationFrame();
@@ -419,11 +436,7 @@ public final class UIUtils {
             return null;
         }
 
-        var parent = frame.getRootPane();
-
-        var mousePosition = MouseInfo.getPointerInfo().getLocation();
-        SwingUtilities.convertPointFromScreen(mousePosition, parent);
-        return SwingUtilities.getDeepestComponentAt(parent, mousePosition.x, mousePosition.y);
+        return getDeepestComponentAt(frame, MouseInfo.getPointerInfo().getLocation());
     }
 
     @Nullable
@@ -435,10 +448,12 @@ public final class UIUtils {
             .orElse(null);
     }
 
+    /**
+     * @return {@code component} itself when it is a frame, or {@code null} when it is in no frame
+     */
     @Nullable
     public static JFrame getParentFrame(Component component) {
-        var ancestor = SwingUtilities.getWindowAncestor(component);
-        return (ancestor instanceof JFrame frame) ? frame : null;
+        return getParentWindow(component) instanceof JFrame frame ? frame : null;
     }
 
     @Nullable
@@ -452,19 +467,59 @@ public final class UIUtils {
         return getParentFrame(focusOwner);
     }
 
+    /**
+     * A dialog larger than the usable screen less {@link #SCREEN_MARGIN_PX} on each side is
+     * shrunk to fit.
+     */
     public static void positionDialog(JDialog dialog, @Nullable Component parent) {
         var window = getParentWindow(parent);
         var screen = getScreenBounds(window);
-        var bounds = window != null ? window.getBounds() : screen;
+        var anchor = window != null ? window.getBounds() : screen;
         var size = dialog.getSize();
 
-        var x = bounds.x + (bounds.width - size.width) / 2;
-        var y = bounds.y + bounds.height * 3 / 8 - size.height / 2;
+        var x = anchor.x + (anchor.width - size.width) / 2;
+        var y = anchor.y + (int) Math.round(anchor.height * DIALOG_CENTER_HEIGHT_FRACTION) - size.height / 2;
 
-        x = Math.clamp(x, screen.x + SCREEN_MARGIN_PX, screen.x + screen.width - size.width - SCREEN_MARGIN_PX);
-        y = Math.clamp(y, screen.y + SCREEN_MARGIN_PX, screen.y + screen.height - size.height - SCREEN_MARGIN_PX);
+        var marginedScreen = new Rectangle(screen);
+        marginedScreen.grow(-SCREEN_MARGIN_PX, -SCREEN_MARGIN_PX);
 
-        dialog.setLocation(x, y);
+        dialog.setBounds(clampInto(new Rectangle(x, y, size.width, size.height), marginedScreen));
+    }
+
+    /**
+     * Measured against the usable bounds of the screen that holds the top-left corner, or of the
+     * default screen when no screen holds it. A rectangle larger than that screen is shrunk to
+     * fit.
+     */
+    public static Rectangle clampToScreen(Rectangle bounds) {
+        return clampInto(bounds, usableBounds(configurationAt(bounds.getLocation())));
+    }
+
+    private static Rectangle clampInto(Rectangle bounds, Rectangle screen) {
+        var width = Math.min(bounds.width, screen.width);
+        var height = Math.min(bounds.height, screen.height);
+        var x = Math.clamp(bounds.x, screen.x, screen.x + screen.width - width);
+        var y = Math.clamp(bounds.y, screen.y, screen.y + screen.height - height);
+
+        return new Rectangle(x, y, width, height);
+    }
+
+    private static GraphicsConfiguration configurationAt(Point point) {
+        for (var device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices()) {
+            var configuration = device.getDefaultConfiguration();
+
+            if (configuration.getBounds().contains(point)) {
+                return configuration;
+            }
+        }
+
+        return defaultConfiguration();
+    }
+
+    private static GraphicsConfiguration defaultConfiguration() {
+        return GraphicsEnvironment.getLocalGraphicsEnvironment()
+            .getDefaultScreenDevice()
+            .getDefaultConfiguration();
     }
 
     public static @Nullable Window getParentWindow(@Nullable Component parent) {
@@ -485,12 +540,10 @@ public final class UIUtils {
     static Rectangle getScreenBounds(@Nullable Window window) {
         var configuration = window == null ? null : window.getGraphicsConfiguration();
 
-        if (configuration == null) {
-            configuration = GraphicsEnvironment.getLocalGraphicsEnvironment()
-                .getDefaultScreenDevice()
-                .getDefaultConfiguration();
-        }
+        return usableBounds(configuration == null ? defaultConfiguration() : configuration);
+    }
 
+    private static Rectangle usableBounds(GraphicsConfiguration configuration) {
         var bounds = configuration.getBounds();
         var insets = Toolkit.getDefaultToolkit().getScreenInsets(configuration);
 
@@ -535,13 +588,13 @@ public final class UIUtils {
     public static void preWarmDialogPeer(Component parent) {
         SwingUtilities.invokeLater(() -> {
             try {
-                var ancestor = SwingUtilities.getWindowAncestor(parent);
+                var frame = getParentFrame(parent);
 
-                if (!(ancestor instanceof Frame)) {
+                if (frame == null) {
                     return;
                 }
 
-                var dummy = getJDialog((Frame) ancestor);
+                var dummy = getJDialog(frame);
 
                 SwingUtilities.invokeLater(dummy::dispose);
             } catch (Exception ignored) {
@@ -553,10 +606,10 @@ public final class UIUtils {
     private static JDialog getJDialog(Frame ancestor) {
         var dummy = new JDialog(ancestor, "Pre-warm", false);
         dummy.setResizable(false);
-        dummy.setSize(200, 100);
+        dummy.setSize(PREWARM_DIALOG_WIDTH_PX, PREWARM_DIALOG_HEIGHT_PX);
 
         // Critical order: set location *and* make sure it's offscreen before any realization
-        dummy.setLocation(-10000, -10000);
+        dummy.setLocation(OFFSCREEN_COORDINATE_PX, OFFSCREEN_COORDINATE_PX);
 
         // Optional but helps on some platforms: pack first (forces some peer init without showing)
         dummy.pack();

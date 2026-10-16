@@ -355,32 +355,4 @@ public final class GraphicUtils {
             point.getX() + dxSs / lengthSs * halfWidthSs,
             point.getY() + dySs / lengthSs * halfWidthSs);
     }
-
-    /** If no screen contains the point, the default screen is used. */
-    public static Point clampToScreen(Point location, Dimension windowSize) {
-        var clamped = clampToScreen(new Rectangle(location, windowSize));
-        return clamped.getLocation();
-    }
-
-    public static Rectangle clampToScreen(Rectangle bounds) {
-        var graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
-        var screen = graphicsEnvironment.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
-
-        for (var device : graphicsEnvironment.getScreenDevices()) {
-            var deviceBounds = device.getDefaultConfiguration().getBounds();
-
-            if (deviceBounds.contains(bounds.getLocation())) {
-                screen = deviceBounds;
-                break;
-            }
-        }
-
-        var width = Math.min(bounds.width, screen.width);
-        var height = Math.min(bounds.height, screen.height);
-        var clampedX = Math.clamp(bounds.x, screen.x, screen.x + screen.width - width);
-        var clampedY = Math.clamp(bounds.y, screen.y, screen.y + screen.height - height);
-
-        return new Rectangle(clampedX, clampedY, width, height);
-    }
-
 }

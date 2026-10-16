@@ -215,15 +215,13 @@ public final class StaffElementIO {
         @Nullable
         private StaffElement element = null;
 
-        @Nullable
-        private String lastTag;
+        private final LeafTagText leaf = new LeafTagText();
 
         @org.jetbrains.annotations.Nullable
         private TempoIO.TempoReader tempoReader = null;
 
         @org.jetbrains.annotations.Nullable
         private AnnotationIO.AnnotationReader annotationReader = null;
-        private final StringBuilder value = new StringBuilder(20);
 
         @Nullable
         private Where where;
@@ -277,7 +275,7 @@ public final class StaffElementIO {
 
         public boolean startElement10(String qName, Attributes attributes) throws SAXException {
             if (qName.equals(XML_NOTE)) {
-                lastTag = null;
+                leaf.reset();
                 where = Where.ELEMENT;
                 trillFlagged = false;
                 droppedLyric = false;
@@ -292,14 +290,15 @@ public final class StaffElementIO {
 
                 element = resolveElementType(type).newInstance();
             } else {
-                lastTag = qName;
+                leaf.open(qName);
             }
 
-            value.delete(0, value.length());
             return false;
         }
 
         public void startElement11(String qName, Attributes attributes) throws SAXException {
+            leaf.reset();
+
             if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader == null) {
                     return;
@@ -313,7 +312,6 @@ public final class StaffElementIO {
 
                 annotationReader.startElement11(qName);
             } else if (qName.equals(XML_NOTE)) {
-                lastTag = null;
                 where = Where.ELEMENT;
                 trillFlagged = false;
                 droppedLyric = false;
@@ -344,7 +342,6 @@ public final class StaffElementIO {
                         lyricSyllabic = "";
                         lyricText = "";
                         lyricExtend = Lyric.Extend.NONE;
-                        lastTag = null;
                     }
                     case XML_DYNAMIC -> {
                         if (element != null) {
@@ -371,22 +368,18 @@ public final class StaffElementIO {
                             ));
                         } else {
                             // Legacy text-content format — defer to endElement11
-                            lastTag = qName;
+                            leaf.open(qName);
                         }
                     }
-                    default -> lastTag = qName;
+                    default -> leaf.open(qName);
                 }
             } else if (where == Where.LYRIC) {
-                if (qName.equals(XML_SYLLABIC)) {
-                    lastTag = qName;
-                } else if (qName.equals(XML_EXTEND_TAG)) {
+                if (qName.equals(XML_EXTEND_TAG)) {
                     lyricExtend = parseExtendType(attributes.getValue(XML_TYPE));
                 } else {
-                    lastTag = qName;
+                    leaf.open(qName);
                 }
             }
-
-            value.delete(0, value.length());
         }
 
         @Nullable
@@ -394,7 +387,6 @@ public final class StaffElementIO {
             return endElement11(qName);
         }
 
-        @SuppressWarnings("StatementWithEmptyBody")
         @Nullable
         public StaffElement endElement11(String qName) throws SAXException {
             if (where == Where.TEMPO_CHANGE) {
@@ -450,71 +442,73 @@ public final class StaffElementIO {
                     }
 
                     where = Where.ELEMENT;
-                } else //noinspection PointlessNullCheck
-                    if (lastTag != null && qName.equals(lastTag)) {
-                    var str = value.toString();
-
-                    if (lastTag.equals(XML_SYLLABIC)) {
-                        lyricSyllabic = str;
-                    } else if (lastTag.equals(XML_LYRIC_TEXT)) {
-                        lyricText = str;
-                    }
+                } else {
+                    leaf.close(qName, (tag, str) -> {
+                        if (tag.equals(XML_SYLLABIC)) {
+                            lyricSyllabic = str;
+                        } else if (tag.equals(XML_LYRIC_TEXT)) {
+                            lyricText = str;
+                        }
+                    });
                 }
             } else if (where == Where.ELEMENT) {
-                if (element == null) {
+                var openElement = element;
+
+                if (openElement == null) {
                     return null;
                 }
+
                 if (qName.equals(XML_NOTE)) {
-                    if (stemForced && element instanceof NoteElement note) {
+                    if (stemForced && openElement instanceof NoteElement note) {
                         note.setStem(new Stem.Forced(stemUp ? Direction.UP : Direction.DOWN));
                     }
 
-                    return element;
+                    return openElement;
                 }
-                //noinspection PointlessNullCheck
-                if (lastTag != null && qName.equals(lastTag)) {
-                    var str = value.toString();
 
-                    if (lastTag.equals(XML_XPOS)) {
-                        // The stored layout position of a v1.1/v1.2 file. An element carries no
-                        // position; layout re-spaces every line after load.
-                    } else if (lastTag.equals(XML_DOTTED)) {
-                        // A legacy file may write dots on an element that takes none; they
-                        // have nowhere to go.
-                        if (element instanceof Dottable dottable) {
-                            dottable.setDots(Dots.of(DocumentValidation.parseIntOrThrow(LOG, lastTag, str)));
-                        }
-                    } else if (element instanceof NoteElement note && applyNoteTag(note, lastTag, str)) {
-                        // A tag only a note carries, written onto the note. A legacy file may
-                        // write one on an element that is not a note; it has nowhere to go.
-                    } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)
-                        || lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
-                        // Legacy manual-adjustment offsets — not supported; ignored.
-                    } else if (lastTag.equals(XML_UPPER)) {
-                        stemUp = true;
-                    } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)
-                        || lastTag.equals(XML_SYLLABLE_RELATION_MOVEMENT)
-                        || lastTag.equals(XML_FORCE_SYLLABLE)) {
-                        // Obsolete per-element nudge fields — silently discarded.
-                    } else if (lastTag.equals(XML_TRILL)) {
-                        // Legacy per-element trill tag — record the flag; LineIO coalesces into Trill spans.
-                        trillFlagged = true;
-                    } else if (lastTag.equals(XML_FERMATA)) {
-                        DocumentValidation.attachUnique(LOG, element, new FermataAttachment());
-                    } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
-                        stemForced = true;
-                    } else if (lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)) {
-                        // Ignored: the partial beam stub direction is automatic.
-                    } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        DocumentValidation.attachUnique(LOG, element, new BeatChangeAttachment(
-                            BeatChange.fromLegacyName(str)));
-                    }
-                }
+                leaf.close(qName, (tag, str) -> applyElementTag(openElement, tag, str));
             }
 
-            value.delete(0, value.length());
-            lastTag = null;
+            leaf.reset();
             return null;
+        }
+
+        @SuppressWarnings("StatementWithEmptyBody")
+        private void applyElementTag(StaffElement element, String tag, String str) throws SAXException {
+            if (tag.equals(XML_XPOS)) {
+                // The stored layout position of a v1.1/v1.2 file. An element carries no
+                // position; layout re-spaces every line after load.
+            } else if (tag.equals(XML_DOTTED)) {
+                // A legacy file may write dots on an element that takes none; they
+                // have nowhere to go.
+                if (element instanceof Dottable dottable) {
+                    dottable.setDots(Dots.of(DocumentValidation.parseIntOrThrow(LOG, tag, str)));
+                }
+            } else if (element instanceof NoteElement note && applyNoteTag(note, tag, str)) {
+                // A tag only a note carries, written onto the note. A legacy file may
+                // write one on an element that is not a note; it has nowhere to go.
+            } else if (tag.equals(XML_GLISSANDO_X1_TRANSLATE)
+                || tag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
+                // Legacy manual-adjustment offsets — not supported; ignored.
+            } else if (tag.equals(XML_UPPER)) {
+                stemUp = true;
+            } else if (tag.equals(XML_SYLLABLE_MOVEMENT)
+                || tag.equals(XML_SYLLABLE_RELATION_MOVEMENT)
+                || tag.equals(XML_FORCE_SYLLABLE)) {
+                // Obsolete per-element nudge fields — silently discarded.
+            } else if (tag.equals(XML_TRILL)) {
+                // Legacy per-element trill tag — record the flag; LineIO coalesces into Trill spans.
+                trillFlagged = true;
+            } else if (tag.equals(XML_FERMATA)) {
+                DocumentValidation.attachUnique(LOG, element, new FermataAttachment());
+            } else if (tag.equals(XML_STEM_DIRECTION_AUTO)) {
+                stemForced = true;
+            } else if (tag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)) {
+                // Ignored: the partial beam stub direction is automatic.
+            } else if (tag.equals(XML_BEAT_CHANGE)) {
+                DocumentValidation.attachUnique(LOG, element, new BeatChangeAttachment(
+                    BeatChange.fromLegacyName(str)));
+            }
         }
 
         private boolean applyNoteTag(NoteElement note, String tag, String str) throws SAXException {
@@ -591,9 +585,8 @@ public final class StaffElementIO {
                 if (annotationReader != null) {
                     annotationReader.characters(ch, start, length);
                 }
-            } else if (lastTag != null &&
-                (where == Where.ELEMENT || where == Where.LYRIC)) {
-                value.append(ch, start, length);
+            } else if (where == Where.ELEMENT || where == Where.LYRIC) {
+                leaf.append(ch, start, length);
             }
         }
 

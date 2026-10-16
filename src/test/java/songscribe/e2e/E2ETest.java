@@ -657,7 +657,6 @@ public abstract class E2ETest {
     protected void altDrag(Point startPoint, Point endPoint) {
         GuiActionRunner.execute(() -> {
             var frame = MainFrame.getInstance();
-            var frameLocation = frame.getLocationOnScreen();
             var modifiers = InputEvent.ALT_DOWN_MASK
                 | InputEvent.BUTTON1_DOWN_MASK;
             var now = System.currentTimeMillis();
@@ -669,17 +668,15 @@ public abstract class E2ETest {
                 return;
             }
 
-            var startLocal = SwingUtilities.convertPoint(frame,
-                startPoint.x - frameLocation.x, startPoint.y - frameLocation.y,
-                component);
+            var startLocal = new Point(startPoint);
+            SwingUtilities.convertPointFromScreen(startLocal, component);
             component.dispatchEvent(new MouseEvent(
                 component, MouseEvent.MOUSE_PRESSED, now, modifiers,
                 startLocal.x, startLocal.y, 1, false,
                 MouseEvent.BUTTON1));
 
-            var endLocal = SwingUtilities.convertPoint(frame,
-                endPoint.x - frameLocation.x, endPoint.y - frameLocation.y,
-                component);
+            var endLocal = new Point(endPoint);
+            SwingUtilities.convertPointFromScreen(endLocal, component);
             component.dispatchEvent(new MouseEvent(
                 component, MouseEvent.MOUSE_DRAGGED, now, modifiers,
                 endLocal.x, endLocal.y, 0, false,
@@ -700,14 +697,11 @@ public abstract class E2ETest {
      */
     private void dispatchSyntheticClick(Point screenPoint, int modifierMask) {
         GuiActionRunner.execute(() -> {
-            var frame = MainFrame.getInstance();
-            var frameLocation = frame.getLocationOnScreen();
-            var component = UIUtils.getDeepestComponentAt(frame, screenPoint);
+            var component = UIUtils.getDeepestComponentAt(MainFrame.getInstance(), screenPoint);
 
             if (component != null) {
-                var local = SwingUtilities.convertPoint(frame,
-                    screenPoint.x - frameLocation.x, screenPoint.y - frameLocation.y,
-                    component);
+                var local = new Point(screenPoint);
+                SwingUtilities.convertPointFromScreen(local, component);
                 var modifiers = modifierMask | InputEvent.BUTTON1_DOWN_MASK;
                 var now = System.currentTimeMillis();
 

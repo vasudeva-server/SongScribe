@@ -887,6 +887,15 @@ public final class Song implements Disposable {
     }
 
     /**
+     * The label is captured only if this is the outermost bracket, as on
+     * {@link #withModification(String, Runnable)}. {@code body} carries the same recording
+     * obligation stated on {@link #withModification(Runnable)}.
+     */
+    public <T> T withModificationResult(String label, Supplier<T> body) {
+        return modifications.withModificationResult(label, body);
+    }
+
+    /**
      * The label is captured only if this is the outermost bracket: a labeled bracket nested
      * inside an open one never replaces the op-name the outermost bracket captured.
      * {@code body} carries the same recording obligation stated on

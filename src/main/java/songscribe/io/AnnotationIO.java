@@ -96,10 +96,7 @@ public final class AnnotationIO {
         private @Nullable AboveBelow placement = null;
         private double userYOffsetSs = 0;
 
-        @Nullable
-        private String lastTag;
-
-        private final StringBuilder value = new StringBuilder(20);
+        private final LeafTagText leaf = new LeafTagText();
 
         public void startElement11(String qName) {
             if (qName.equals(XML_ANNOTATION)) {
@@ -108,12 +105,10 @@ public final class AnnotationIO {
                 alignment = null;
                 placement = null;
                 userYOffsetSs = 0;
-                lastTag = null;
+                leaf.reset();
             } else {
-                lastTag = qName;
+                leaf.open(qName);
             }
-
-            value.delete(0, value.length());
         }
 
         @Nullable
@@ -123,11 +118,12 @@ public final class AnnotationIO {
                 return build();
             }
 
-            var tag = lastTag;
+            if (!inAnnotation) {
+                leaf.reset();
+                return null;
+            }
 
-            if (tag != null && inAnnotation && qName.equals(tag)) {
-                var str = value.toString();
-
+            leaf.close(qName, (tag, str) -> {
                 switch (tag) {
                     case XML_NAME -> text = str;
                     case XML_ALIGNMENT -> {
@@ -167,10 +163,8 @@ public final class AnnotationIO {
                         }
                     }
                 }
-            }
+            });
 
-            value.delete(0, value.length());
-            lastTag = null;
             return null;
         }
 
@@ -194,9 +188,7 @@ public final class AnnotationIO {
         }
 
         public void characters(char[] ch, int start, int length) {
-            if (lastTag != null) {
-                value.append(ch, start, length);
-            }
+            leaf.append(ch, start, length);
         }
     }
 }

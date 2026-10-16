@@ -266,6 +266,13 @@ public final class ModificationSession {
     }
 
     /**
+     * A labeled bracket nested inside an open one never replaces the outermost bracket's op-name.
+     */
+    public <T> T withModificationResult(String label, Supplier<T> body) {
+        return inBracket(label, body);
+    }
+
+    /**
      * A body that throws closes through {@link #closeBracket}, so no rule can replace its
      * exception with one of its own.
      */

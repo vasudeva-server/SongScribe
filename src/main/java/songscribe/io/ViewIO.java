@@ -71,10 +71,7 @@ public final class ViewIO {
 
         private static final Logger LOG = LoggerFactory.getLogger(ViewReader.class);
 
-        @Nullable
-        private String lastTag;
-
-        private final StringBuilder value = new StringBuilder(40);
+        private final LeafTagText leaf = new LeafTagText();
         private final Map<FontKey, StringFont> stringFonts = new EnumMap<>(FontKey.class);
         private final Map<String, Consumer<String>> setters = new HashMap<>();
 
@@ -96,27 +93,21 @@ public final class ViewIO {
         }
 
         public void startElement11(String qName) {
-            lastTag = qName;
-            value.delete(0, value.length());
+            leaf.open(qName);
         }
 
         public void endElement11(String qName) {
-            //noinspection PointlessNullCheck
-            if (lastTag != null && qName.equals(lastTag)) {
-                var setter = setters.get(lastTag);
-                if (setter != null) {
-                    setter.accept(value.toString());
-                }
-            }
+            leaf.close(qName, (tag, text) -> {
+                var setter = setters.get(tag);
 
-            value.delete(0, value.length());
-            lastTag = null;
+                if (setter != null) {
+                    setter.accept(text);
+                }
+            });
         }
 
         public void characters(char[] ch, int start, int length) {
-            if (lastTag != null) {
-                value.append(ch, start, length);
-            }
+            leaf.append(ch, start, length);
         }
 
         /**
