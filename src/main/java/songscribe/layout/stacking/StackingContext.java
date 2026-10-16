@@ -39,7 +39,6 @@ public class StackingContext {
     private final Map<StaffElement, ElementColumn> columnsByElement;
     private final Line line;
     private final LayoutResultBuilder builder;
-    private double lowestNoteBotSs = Staff.STAFF_HEIGHT_SS;
     // Starts at the staff bottom (STAFF_HALF_SS, middle-relative) so an empty line contributes no
     // below-staff content.
     private double botContentExtentSs = Staff.STAFF_HALF_SS;
@@ -68,16 +67,6 @@ public class StackingContext {
 
     public LayoutResultBuilder getBuilder() {
         return builder;
-    }
-
-    public double getLowestNoteBotSs() {
-        return lowestNoteBotSs;
-    }
-
-    public void updateLowestNoteBotSs(double botSs) {
-        if (botSs > lowestNoteBotSs) {
-            lowestNoteBotSs = botSs;
-        }
     }
 
     public double getBotContentExtentSs() {

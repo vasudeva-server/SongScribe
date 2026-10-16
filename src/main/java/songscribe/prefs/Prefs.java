@@ -121,7 +121,7 @@ public final class Prefs {
         // those steps matters. Saved once here rather than by each step, so a startup
         // that changes several things writes the file once.
         if (new PrefsUpgrade(store, defaults, systemDefaultKeys).apply(OLD_PROPS_FILE)) {
-            saveQuietly();
+            writeToFile();
         }
     }
 
@@ -461,11 +461,6 @@ public final class Prefs {
         if (property != null) {
             property.notifyObservers();
         }
-    }
-
-    /** Posts no notification, for construction before any subscribers exist. */
-    private void saveQuietly() {
-        writeToFile();
     }
 
     private void writeToFile() {

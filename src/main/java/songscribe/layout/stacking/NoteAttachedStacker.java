@@ -307,10 +307,6 @@ public class NoteAttachedStacker {
             extents.ySet(Direction.UP, noteheadFootprint, topSs);
             extents.ySet(Direction.DOWN, noteheadFootprint, botSs);
 
-            var noteheadCenterYSs = ElementSeat.seatSs(element);
-            context.updateLowestNoteBotSs(
-                noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
-
             context.updateBotContentExtentSs(botSs);
         }
     }

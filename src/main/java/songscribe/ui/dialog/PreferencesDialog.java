@@ -432,7 +432,7 @@ public class PreferencesDialog extends BaseDialog {
             );
 
             // Applying the volume is a consequence of the change, not a second copy of it.
-            bindings().onNotify(volume, () -> MidiController.setPlaybackVolume(volume.get().percent()));
+            bindings().onNotify(volume, () -> MidiController.setPlaybackVolume(volume.get()));
         }
 
         private JPanel createFeedbackSection() {

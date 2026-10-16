@@ -55,8 +55,7 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
     private final SongSettingsFontTab fontTab = new SongSettingsFontTab(this);
     private final SongSettingsTitleTab textTab = new SongSettingsTitleTab(this);
     private final SongSettingsAttributionTab attributionTab = new SongSettingsAttributionTab(this);
-
-    private final SongSettingsMusicTab musicTab;
+    private final SongSettingsMusicTab musicTab = new SongSettingsMusicTab(this);
 
     // What this opening is showing, kept because the commit needs the two font roles no tab
     // edits — Bangla and footnote — carried through untouched. Read only between populate()
@@ -69,7 +68,6 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
         var tabbedContent = createTabbedContent();
         addTab(textTab);
         addTab(attributionTab);
-        musicTab = new SongSettingsMusicTab(this);
         addTab(musicTab);
         addTab(fontTab);
 

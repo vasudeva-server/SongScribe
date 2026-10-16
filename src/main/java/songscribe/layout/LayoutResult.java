@@ -386,7 +386,7 @@ public final class LayoutResult {
     // Built on staffBottomYSsInLine() so the hit-test row rides the same painted frame as the
     // baseline LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs would put the
     // clickable row above the visible text on any line short enough to hit the floor.
-    double lyricAreaBaseYSs() {
+    private double lyricAreaBaseYSs() {
         return staffBottomYSsInLine() + lyricAnchorBelowStaffSs() + LineSpacing.LYRICS_ROW_MARGIN_SS;
     }
 

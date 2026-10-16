@@ -62,6 +62,39 @@ public final class MidiController {
 
     private static final String SOUNDFONT_RESOURCE = "/soundfonts/FluidR3_GM.sf2";
 
+    private static final int MIDI_CHANNEL_COUNT = 16;
+    private static final int MIDI_DATA_MAX = 127;
+    private static final int GENERAL_MIDI_BANK = 0;
+    private static final int DEFAULT_VOLUME = 100;
+    private static final int CENTER_PAN = 64;
+    private static final int DEFAULT_EXPRESSION = 110;
+    private static final int DEFAULT_REVERB_SEND = 35;
+    private static final int DEFAULT_CHORUS_SEND = 10;
+    private static final float FULL_PERCENT = 100f;
+
+    // General MIDI System On, a universal non-real-time SysEx message from the MIDI 1.0 specification.
+    private static final byte[] GENERAL_MIDI_SYSTEM_ON =
+            {(byte) 0xF0, 0x7E, 0x7F, 0x09, 0x01, (byte) 0xF7};
+
+    /**
+     * The controller numbers of the MIDI 1.0 Control Change message, as General MIDI uses them.
+     */
+    private enum ControlChange {
+        BANK_SELECT_MSB(0),
+        BANK_SELECT_LSB(32),
+        VOLUME(7),
+        PAN(10),
+        EXPRESSION(11),
+        REVERB_SEND(91),
+        CHORUS_SEND(93);
+
+        private final int number;
+
+        ControlChange(int number) {
+            this.number = number;
+        }
+    }
+
     public static void openMidi() {
         var soundbank = loadBundledSoundbank();
 
@@ -217,39 +250,33 @@ public final class MidiController {
     private static void initChannels(Receiver receiver) {
         try {
             var gmOn = new SysexMessage();
-            gmOn.setMessage(
-                    new byte[]{(byte) 0xF0, 0x7E, 0x7F, 0x09, 0x01, (byte) 0xF7},
-                    6
-            );
+            gmOn.setMessage(GENERAL_MIDI_SYSTEM_ON, GENERAL_MIDI_SYSTEM_ON.length);
             receiver.send(gmOn, NO_TIMESTAMP);
 
-            for (var ch = 0; ch < 16; ch++) {
-                initChannel(receiver, ch, 100, 64, 110, 35, 10);
+            for (var channel = 0; channel < MIDI_CHANNEL_COUNT; channel++) {
+                initChannel(receiver, channel);
             }
         } catch (InvalidMidiDataException e) {
             LOG.warn("Failed to initialize MIDI channels", e);
         }
     }
 
-    private static void initChannel(
-            Receiver receiver, int ch,
-            int volume, int pan, int expression,
-            int reverbSend, int chorusSend
-    ) throws InvalidMidiDataException {
-        cc(receiver, ch, 0, 0);           // Bank select MSB (GM bank 0)
-        cc(receiver, ch, 32, 0);          // Bank select LSB
-        cc(receiver, ch, 7, volume);       // Volume
-        cc(receiver, ch, 10, pan);         // Pan
-        cc(receiver, ch, 11, expression);  // Expression
-        cc(receiver, ch, 91, reverbSend);  // Reverb send
-        cc(receiver, ch, 93, chorusSend);  // Chorus send
+    private static void initChannel(Receiver receiver, int channel)
+            throws InvalidMidiDataException {
+        cc(receiver, channel, ControlChange.BANK_SELECT_MSB, GENERAL_MIDI_BANK);
+        cc(receiver, channel, ControlChange.BANK_SELECT_LSB, GENERAL_MIDI_BANK);
+        cc(receiver, channel, ControlChange.VOLUME, DEFAULT_VOLUME);
+        cc(receiver, channel, ControlChange.PAN, CENTER_PAN);
+        cc(receiver, channel, ControlChange.EXPRESSION, DEFAULT_EXPRESSION);
+        cc(receiver, channel, ControlChange.REVERB_SEND, DEFAULT_REVERB_SEND);
+        cc(receiver, channel, ControlChange.CHORUS_SEND, DEFAULT_CHORUS_SEND);
     }
 
-    private static void cc(Receiver receiver, int ch, int controller, int value)
-            throws InvalidMidiDataException {
+    private static void cc(
+            Receiver receiver, int channel, ControlChange controller, int value
+    ) throws InvalidMidiDataException {
         var msg = new ShortMessage();
-        msg.setMessage(ShortMessage.CONTROL_CHANGE, ch, controller,
-                Math.clamp(value, 0, 127));
+        msg.setMessage(ShortMessage.CONTROL_CHANGE, channel, controller.number, value);
         receiver.send(msg, NO_TIMESTAMP);
     }
 
@@ -263,16 +290,16 @@ public final class MidiController {
         }
     }
 
-    public static void setPlaybackVolume(int percent) {
+    public static void setPlaybackVolume(PlaybackVolume volume) {
         if (midiReceiver == null) {
             return;
         }
 
-        var midiValue = Math.round(Math.clamp(percent, 50, 100) / 100f * 127);
+        var midiValue = Math.round(volume.percent() / FULL_PERCENT * MIDI_DATA_MAX);
 
         try {
-            for (var ch = 0; ch < 16; ch++) {
-                cc(midiReceiver, ch, 7, midiValue);
+            for (var channel = 0; channel < MIDI_CHANNEL_COUNT; channel++) {
+                cc(midiReceiver, channel, ControlChange.VOLUME, midiValue);
             }
         } catch (InvalidMidiDataException e) {
             LOG.warn("Failed to set playback volume", e);
@@ -290,7 +317,7 @@ public final class MidiController {
 
         try {
             var msg = new ShortMessage();
-            msg.setMessage(ShortMessage.PROGRAM_CHANGE, 0, Math.clamp(program, 0, 127), 0);
+            msg.setMessage(ShortMessage.PROGRAM_CHANGE, 0, Math.clamp(program, 0, MIDI_DATA_MAX), 0);
             midiReceiver.send(msg, NO_TIMESTAMP);
         } catch (InvalidMidiDataException e) {
             LOG.warn("Failed to set playback instrument", e);

@@ -49,7 +49,6 @@ public enum PlaybackVolume implements PrefsValue {
         this.labelKey = labelKey;
     }
 
-    /** Within the range {@link MidiController#setPlaybackVolume} accepts. */
     public int percent() {
         return percent;
     }

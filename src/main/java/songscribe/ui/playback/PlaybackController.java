@@ -356,7 +356,7 @@ public final class PlaybackController {
     }
 
     public static void applyVolumeFromPrefs() {
-        MidiController.setPlaybackVolume(Prefs.getChoice(PrefsKey.PLAYBACK_VOLUME, PlaybackVolume.class).percent());
+        MidiController.setPlaybackVolume(Prefs.getChoice(PrefsKey.PLAYBACK_VOLUME, PlaybackVolume.class));
     }
 
     public static void applyPrefsDuringPlayback() {

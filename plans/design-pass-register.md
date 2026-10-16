@@ -200,12 +200,16 @@ the reason for it is still in hand.
   process-global: extract a `StartupErrorQueue` that `MainFrame` owns an
   instance of; move overlay ownership onto `OverlayHost`/`ScoreView` so a
   discarded view takes its overlays with it.
-- **→ Pass 25.** `PreviewElementManager` subscribes through
-  `PreviewElementManager.initialize()`, called from `MainFrame.initFrame()`
-  beside `Actions.initialize` and `PlaybackController.initialize`, rather than
-  from a `static {}` block. Bus wiring no longer depends on class-load order,
-  and a headless conversion — which builds a score view but never hovers — does
-  not subscribe a preview handler at all.
+- **→ Pass 25.** `PreviewElementManager` subscribes in its constructor, and
+  `SongScribe.buildMainWindow` (`SongScribe.java:210`) constructs the one
+  instance and drops it, since the bus holds it strongly. A headless conversion
+  never calls `buildMainWindow`, so it subscribes no preview handler. The
+  instance exists only to be subscribed: all of its state — `hover`,
+  `currentMouseLine`, `currentMouseXSs` — is `private static`, and 29 static
+  methods, called from 12 files, read and write it. That is the state of a
+  singleton with no singleton to own it. Make it instance state of one owned
+  instance, per `guides/conventions/singletons.md`, or move it to the owner the
+  overlay finding above names, so a discarded view takes its hover state with it.
 - **→ Pass 26, then Pass 23.** `PreferencesDialog`'s instrument cache
   (`ensureInstrumentsLoaded`, `getInstrumentStrings`, `getInstrumentPrograms`,
   `resetInstrumentsForTesting`) is the open synthesizer's state, living on a
@@ -354,6 +358,36 @@ the reason for it is still in hand.
   `accidental-load.musicxml`. Their subject is not a span.
 - **→ Pass 12.** `TupletValidator.validateFrom` has no direct test; `TupletBeatRuleTest`
   reaches it.
+- **→ Pass 18.** `ElementColumn.setXSs` is package-private, and five `layout`
+  methods write a column's X through it: `LayoutEngine.placeColumnsHorizontally`
+  writes the solved X, then `LayoutEngine.positionTerminalFlushRight` and
+  `LayoutEngine.applyHorizontalNudges` move it after the solve, and
+  `InsertionSpacingCalculator.calculateInsertion` and
+  `projectedWidthWithLastShiftSs` set it on columns of their own. Three test
+  fixtures write it too (`EndingBracketGeometryTest`, `LyricLayoutBuilderTest`,
+  `HairpinEndpointsTest`). The open question is whether the flush-right snap and
+  the nudges belong inside the solve, so a column's X is written once by one
+  owner, or whether X stays mutable across passes with that order stated as a
+  contract.
+- **→ Pass 18.** `layout/stacking/StackingContext` carries `botContentExtentSs`, a
+  running maximum that only `NoteAttachedStacker` writes (`seedNoteBounds`,
+  `seedTieArcIntoExtents`, `updateBelowStaffContentExtent`) and only
+  `VerticalStackingCalculator.calculate` reads, once, after every stacker has run.
+  The note-attached stacker owns the value, so it reports it itself and
+  `StackingContext` holds only the read-only inputs: columns, line and builder.
+  `plans/design-findings-fixes.md` deletes `lowestNoteBotSs`, which nothing read.
+- **→ Pass 24.** `Actions` holds about 70 `public static` non-final fields that
+  `Actions.initialize(MainFrame)` fills, under four suppressions: `NullAway.Init`,
+  `StaticVariableMayNotBeInitialized`, `StaticNonFinalField` and
+  `StaticVariableUsedBeforeInitialization`. A field read before `initialize()`
+  is null while its type says it cannot be. That is the *constructible before
+  usable* lifecycle defect in `design.md`.
+- **→ Pass 16.** `HeaderMapper` holds ten `head*` fields and `subtitle` as
+  scratch state: `mapMovement`, `mapIdentification` and `mapCredit` fill them, and
+  `applyHeadMetadata` folds them into one `SongMetadata`. The comment banner over
+  the group and the label comments on single fields (`// Composition date`) are
+  the sign of a missing type: an accumulator for `SongMetadata`'s components that
+  the mapping methods write into and that builds the record once.
 
 ## Blockers
 
