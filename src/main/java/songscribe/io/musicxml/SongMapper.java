@@ -68,9 +68,8 @@ final class SongMapper {
             // a non-terminal barline.
             song.installTerminalAfterParsing();
 
-            // Likewise for the key invariant: the mappers set line keys under suspended tracking,
-            // so the per-mutation propagation never ran for any of them, and the file can hold a
-            // key change that draws nothing.
+            // Likewise for the key invariant: the file can leave line 0 with no key of its own,
+            // and can hold a key change that draws nothing.
             song.keyInheritance().settleAfterParsing();
 
             // Grace-host pairing is only settled once every <slide> has been resolved, so

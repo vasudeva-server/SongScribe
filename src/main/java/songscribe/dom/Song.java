@@ -223,11 +223,6 @@ public final class Song implements Disposable {
         subscription = new MessageSubscription(this);
     }
 
-    public Song(SongData data) {
-        loadFrom(data);
-        subscription = new MessageSubscription(this);
-    }
-
     public static Song newParsingStub() {
         return new Song(Stub.INSTANCE);
     }

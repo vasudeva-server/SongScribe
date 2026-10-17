@@ -88,8 +88,8 @@ public final class KeyInheritance {
      * Distinct from {@link Line#getRunningKey()}: {@link Line#setKey}'s no-op normalization needs
      * the inherited value, not the line's own.
      *
-     * @return null when nothing precedes it — line 0, a line not in this song, or any line while a
-     *         load is still in progress
+     * @return null when nothing precedes it — line 0 or a line not in this song — and for any line
+     *         while a load whose line 0 holds no key of its own is still in progress
      */
     @Nullable
     Key inheritedKeyOf(Line line) {
@@ -389,10 +389,7 @@ public final class KeyInheritance {
     }
 
     /**
-     * File readers build lines under suspended mutation tracking, so the per-mutation
-     * propagation in {@link Song#applyChange} never ran for any of them.
-     *
-     * <p>Must be called while mutation tracking is still suspended, so the fix-up is silent — no
+     * Must be called while mutation tracking is still suspended, so the fix-up is silent — no
      * notification, no undo entry and no {@code modified} flag.
      *
      * <p>Line 0 has nothing to inherit from, so a document whose first line establishes no key of

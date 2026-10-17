@@ -234,8 +234,7 @@ public final class RangeQueries {
     /**
      * {@code null} when the range is ineligible. A single selected element is read as the
      * glissando's target (its source is the element before it), a pair as source and target in
-     * order. Removing an existing glissando is never blocked, because a MusicXML import can
-     * place one where adding is refused.
+     * order. Removing an existing glissando is never blocked.
      */
     public static @Nullable Integer glissandoSourceIndex(ElementSelection range) {
         var line = range.line();

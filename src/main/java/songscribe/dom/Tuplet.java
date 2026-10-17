@@ -139,34 +139,23 @@ public final class Tuplet extends Span<StaffElement> {
     }
 
     /**
-     * Decides what happens to this tuplet when {@code change} lands: the group is removed by
-     * any structural change strictly inside its bracket, and kept by everything else.
-     * <p>
-     * A tuplet is a rhythmic claim about exactly the elements between its endpoints, so its
-     * survival depends on its interior, not only on its endpoints the way a tie's or a beam's
-     * does. An insertion after the anchor and no later than the end element adds time the
-     * group did not account for; a deletion overlapping the bracket takes time away; and a
-     * replacement any of whose pairs rewrites a written duration inside it, or an in-place
-     * modification that does — the distinction {@link ElementField#DURATION_AFFECTING} draws —
-     * leaves the group rhythmically invalid. An insertion at the anchor's own
-     * index, or just past the end element, stays outside and leaves the group alone.
-     * <p>
-     * A replacement's pairs are judged one at a time, and one unbalancing pair is enough to
-     * drop the group; pairs outside the bracket are ignored. Only a pair touching a
-     * duration-carrying element counts. A tuplet may contain a
-     * barline or a breath mark, which contribute no time to the group, so swapping one of
-     * those for another non-duration element cannot unbalance it. Past that gate, any change
-     * of element type or dot count drops the group. That is deliberately broader than "the
-     * written duration changed": a note swapped for a rest of the same value keeps the group's
-     * total time but can starve it of the pitched notes {@link TupletValidator} demands, so it
-     * goes too. The user re-brackets what they meant.
-     * <p>
-     * A modification that writes {@link ElementField#FERMATA} on an element inside the tuplet,
-     * endpoints included, removes it for a reason of its own: a fermata leaves the group's
-     * timing indefinite. The sweep runs before the change lands, and a
-     * {@link ElementChange.Modification} names only the fields it rewrites, so this arm cannot
-     * tell adding a fermata from removing one. It does not need to: a kept tuplet never holds a
-     * fermata, so every fermata write inside one is an addition.
+     * Decides what happens to this tuplet when {@code change} lands. A tuplet is a rhythmic
+     * claim about exactly the elements between its endpoints, so a change inside its bracket
+     * that alters the group's time removes it, and every other change keeps it:
+     * <ul>
+     *   <li>An insertion after the anchor and no later than the end element removes it, unless
+     *       the inserted element is a grace note, which adds no time. An insertion at the
+     *       anchor's own index, or just past the end element, keeps it.</li>
+     *   <li>A deletion that overlaps the bracket removes it, unless every element it deletes is
+     *       a grace note strictly inside the bracket.</li>
+     *   <li>A replacement removes it when a pair inside the bracket replaces or is replaced by
+     *       a duration element, and the pair differs in element type or dot count. A note
+     *       swapped for a rest of the same value removes it too, because it can leave fewer
+     *       pitched notes than {@link TupletValidator} demands.</li>
+     *   <li>A modification of an element inside the bracket, endpoints included, removes it when
+     *       it writes {@link ElementField#FERMATA}, because a fermata leaves the group's timing
+     *       indefinite, or a field of {@link ElementField#DURATION_AFFECTING}.</li>
+     * </ul>
      *
      * @param change the pending change, not yet applied to {@code change.line()}
      * @return a {@link SpanOutcome.Remove} whose reason is
@@ -179,10 +168,13 @@ public final class Tuplet extends Span<StaffElement> {
         var range = range();
 
         return switch (change) {
-            case ElementChange.Insertion insertion ->
-                interiorChangedWhen(range.begin() < insertion.index() && insertion.index() <= range.end());
+            case ElementChange.Insertion insertion -> interiorChangedWhen(
+                range.begin() < insertion.index()
+                    && insertion.index() <= range.end()
+                    && !insertion.inserted().getType().isGraceNote());
 
-            case ElementChange.Deletion deletion -> interiorChangedWhen(range.overlaps(deletion.range()));
+            case ElementChange.Deletion deletion -> interiorChangedWhen(
+                range.overlaps(deletion.range()) && !deletesOnlyInteriorGraceNotes(deletion, range));
 
             case ElementChange.Replacement replacement -> {
                 var line = replacement.line();
@@ -228,6 +220,14 @@ public final class Tuplet extends Span<StaffElement> {
         }
 
         return oldType != newType || Dottable.dotsOf(oldElement) != Dottable.dotsOf(newElement);
+    }
+
+    private static boolean deletesOnlyInteriorGraceNotes(ElementChange.Deletion deletion, ElementRange range) {
+        var deleted = deletion.range();
+
+        return range.begin() < deleted.begin()
+            && deleted.end() < range.end()
+            && deletion.deletedElements().stream().allMatch(element -> element.getType().isGraceNote());
     }
 
     public TupletGrade getGrade() {

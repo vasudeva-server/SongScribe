@@ -49,6 +49,7 @@ import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.dottedQuaver;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.quaverRest;
 import static songscribe.dom.StaffElementFactory.singleBarline;
@@ -57,8 +58,9 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * The sweep every edit runs through {@link Tuplet#outcomeFor}: a structural change strictly inside
  * a tuplet's bracket, or a change to a written duration inside it, removes the tuplet and reports
  * the reason, and so does a fermata written anywhere from the anchor to the end. Every other edit
- * keeps it, including an insertion at the anchor's index or just past the end element, and a swap
- * of one element that carries no time for another. Also {@link Tuplet#performedTicks}, which
+ * keeps it, including an insertion at the anchor's index or just past the end element, a swap of
+ * one element that carries no time for another, and an insertion or a deletion of grace notes
+ * only, strictly inside the bracket. Also {@link Tuplet#performedTicks}, which
  * scales a written duration to the time it is performed in.
  */
 class TupletTest extends UnitTest {
@@ -84,6 +86,14 @@ class TupletTest extends UnitTest {
     private static final int BARLINE_INDEX = 2;
 
     private static final ElementRange BARLINE_TRIPLET = new ElementRange(1, 4);
+
+    /**
+     * The grace fixture: a quaver, then the triplet's anchor, a grace note, and two more quavers,
+     * the last of which ends the triplet, with one quaver after it.
+     */
+    private static final int GRACE_INDEX = 2;
+
+    private static final ElementRange GRACE_TRIPLET = new ElementRange(1, 4);
 
     /** The duplet fixture: two quavers, under one duplet. */
     private static final ElementRange DUPLET_RANGE = new ElementRange(0, 1);
@@ -162,6 +172,8 @@ class TupletTest extends UnitTest {
                 TupletTest::notesFixture, line -> line.addElement(END_INDEX, quaver())),
             interiorRemoval("deleting an interior member",
                 TupletTest::notesFixture, line -> line.removeRange(ElementRange.single(INTERIOR_INDEX))),
+            interiorRemoval("deleting a grace note together with the note after it",
+                TupletTest::graceFixture, line -> line.removeRange(new ElementRange(GRACE_INDEX, GRACE_INDEX + 1))),
             interiorRemoval("deleting only the anchor",
                 TupletTest::notesFixture, line -> line.removeRange(ElementRange.single(ANCHOR_INDEX))),
             interiorRemoval("deleting only the end",
@@ -190,6 +202,10 @@ class TupletTest extends UnitTest {
                 TupletTest::notesFixture, line -> line.addElement(ANCHOR_INDEX, quaver())),
             new KeptCase("an insertion just past the end element",
                 TupletTest::notesFixture, line -> line.addElement(PAST_END_INDEX, quaver())),
+            new KeptCase("a grace note inserted strictly inside it",
+                TupletTest::notesFixture, line -> line.addElement(INTERIOR_INDEX, graceQuaver())),
+            new KeptCase("deleting only a grace note strictly inside it",
+                TupletTest::graceFixture, line -> line.removeRange(ElementRange.single(GRACE_INDEX))),
             new KeptCase("deleting an element before the bracket",
                 TupletTest::notesFixture, line -> line.removeRange(ElementRange.single(BEFORE_INDEX))),
             new KeptCase("deleting the element just past the end",
@@ -291,6 +307,10 @@ class TupletTest extends UnitTest {
 
     private static Fixture barlineFixture() {
         return fixtureOf(BARLINE_TRIPLET, quaver(), quaver(), singleBarline(), quaver(), quaver(), quaver());
+    }
+
+    private static Fixture graceFixture() {
+        return fixtureOf(GRACE_TRIPLET, quaver(), quaver(), graceQuaver(), quaver(), quaver(), quaver());
     }
 
     /** A song of one line of {@code elements}, holding a triplet of quavers over {@code range}. */
