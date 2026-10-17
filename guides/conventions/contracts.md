@@ -89,9 +89,9 @@ BLOCKS_OUTPUT,
 
 ## Full contracts
 
-**A full contract stays only where a test is derived from it**, which means a
-test of one of the three kinds that *The testing floor* in
-`~/.claude/guides/design.md` allows. A test derives from a method when
+**A method gets a full contract when it makes a promise that the design cannot
+enforce and that is one of the three kinds that *The testing floor* in
+`~/.claude/guides/design.md` allows.** Its tests derive from that contract. A test derives from a method when
 it calls the method itself, or names the method as what it asserts — a sweep test
 that drives `Hairpin.outcomeFor` through edits derives from it. A test that only
 reaches the method on the way to something else does not. The full contract states every
