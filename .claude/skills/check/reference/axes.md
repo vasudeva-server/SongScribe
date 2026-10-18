@@ -1,16 +1,17 @@
 # The Four Review Axes
 
-Four agents, one per axis. Design and Contract & API run on **fable at low
-effort**; Correctness & Efficiency and Test Conformance run on **sonnet**.
+Four agents, one per axis. Design and Contract & API inherit the session's
+model and effort; Correctness & Efficiency and Test Conformance run on
+**sonnet**.
 
-The two fable axes are the ones where a smaller model reliably returns a
+The two inherited axes are the ones where a smaller model reliably returns a
 plausible-sounding workaround instead of the actual cause, or a contract
 paraphrased out of the method body instead of a promise. Those are the two
 failures this skill exists to avoid.
 
 | Axis | Model | Input | Covers |
 |---|---|---|---|
-| Des | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
+| Design | inherit | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
 | Contract & API | inherit | production scope, plus the doc scope when it is non-empty | clauses a caller does not need; missing preconditions, null meanings, reasons and class-level facts; full contracts where tests derive; promises duplicated into prose; naming; signature quality; test-only surface |
 | Correctness & Efficiency | sonnet | production scope | real defects, null contracts, repeated or redundant work |
 | Test Conformance | sonnet | test scope and its production counterparts | should each test exist at all, and does it exercise what the contract promises |
@@ -26,7 +27,7 @@ do not paraphrase it away.
 > Read these two files in full before reporting anything; they govern how every
 > finding is written and what may be proposed:
 >
-> - `check-findings.md`
+> - `.claude/skills/check/reference/check-findings.md`
 > - `.claude/skills/check/reference/design-flaws.md`
 >
 > Read `~/.claude/guides/design.md` before reporting. Each of its

@@ -56,9 +56,8 @@ final class HeaderMapper {
 
     // The document fonts recovered from <defaults> (<word-font> → ANNOTATION,
     // <lyric-font> → LYRICS), the title/subtitle credits, and the <miscellaneous>
-    // sub-attribution-font/-size fields (→ SUB_ATTRIBUTION). The caller owns the
-    // instance and hands it to SongLoadResult.Success; this class only writes into it.
-    private final DocumentFonts documentFonts;
+    // sub-attribution-font/-size fields (→ SUB_ATTRIBUTION).
+    private final DocumentFonts documentFonts = DocumentFonts.defaultFonts();
 
     // The head-metadata fields below are accumulated from <movement-*>, <identification> and the
     // subtitle credit, then assembled into one SongMetadata at the end of the mapping (see
@@ -105,13 +104,18 @@ final class HeaderMapper {
     @Nullable
     private Integer subAttributionFontSize = null;
 
-    private HeaderMapper(Song song, DocumentFonts documentFonts) {
+    private HeaderMapper(Song song) {
         this.song = song;
-        this.documentFonts = documentFonts;
     }
 
-    static void map(ScorePartwise score, Song song, DocumentFonts documentFonts) throws SAXException {
-        new HeaderMapper(song, documentFonts).mapScore(score);
+    /**
+     * @return the document's fonts; a role the document names no font for keeps its
+     *     {@link DocumentFonts#defaultFonts()} value
+     */
+    static DocumentFonts map(ScorePartwise score, Song song) throws SAXException {
+        var mapper = new HeaderMapper(song);
+        mapper.mapScore(score);
+        return mapper.documentFonts;
     }
 
     /**

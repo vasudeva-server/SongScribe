@@ -21,12 +21,16 @@ package songscribe.io;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
 
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
+
+import songscribe.dom.SongLoad;
+import songscribe.dom.StrandedKeyChangeException;
 
 /**
  * Loads a {@link songscribe.dom.Song} from a file without requiring a {@code ScoreView}.
@@ -40,33 +44,44 @@ public final class SongLoader {
     private SongLoader() {}
 
     /**
-     * Parses a SongScribe file and returns a {@link SongLoadResult}.
-     *
-     * @param file the .mssw file to load
-     * @return a {@link SongLoadResult.Success} on success, or one of the
-     *         {@link SongLoadResult.Failure} variants on error
+     * @param file a {@code .mssw} document
+     * @return {@link SongLoadResult.Success}; {@link SongLoadResult.NewerVersion} for a document
+     *     whose version is newer than this program reads; {@link SongLoadResult.ParseError} for
+     *     one that is not well formed, has no {@code <song>} or {@code <composition>} element,
+     *     has no readable {@code version} attribute on that element, or carries a value damaged
+     *     beyond reading; {@link SongLoadResult.StrandedKeyChange};
+     *     {@link SongLoadResult.IoError} when the file cannot be read
      */
     public static SongLoadResult load(File file) {
         try {
-            var parser = PARSER_FACTORY.newSAXParser();
-            var reader = new SongIO.DocumentReader();
-            parser.parse(file, reader);
-            var invalidLyricsDate = reader.getInvalidLyricsDate();
-            var warnings = new ArrayList<LoadWarning>();
-
-            if (invalidLyricsDate != null) {
-                warnings.add(new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate));
-            }
-
-            return SongLoadResult.Success.settled(reader.getSong(), reader.getDocumentFonts(), warnings);
+            return read(new InputSource(file.toURI().toString()));
         } catch (SongIO.NewerVersionException e) {
             return new SongLoadResult.NewerVersion(file, e);
         } catch (SAXException e) {
             return new SongLoadResult.ParseError(file, e);
         } catch (IOException e) {
             return new SongLoadResult.IoError(file, e);
-        } catch (ParserConfigurationException e) {
-            return new SongLoadResult.ParseError(file, new SAXException("Failed to create SAX parser", e));
+        } catch (StrandedKeyChangeException e) {
+            return new SongLoadResult.StrandedKeyChange(file, e);
         }
+    }
+
+    private static SongLoadResult.Success read(InputSource source)
+        throws SAXException, IOException, StrandedKeyChangeException {
+        SAXParser parser;
+
+        try {
+            parser = PARSER_FACTORY.newSAXParser();
+        } catch (ParserConfigurationException e) {
+            throw new SAXException("Failed to create SAX parser", e);
+        }
+
+        var loaded = SongLoad.<LegacyBuild, SAXException, IOException>run(song -> {
+            var reader = new SongIO.DocumentReader(song);
+            parser.parse(source, reader);
+            return reader.finishBuild();
+        });
+
+        return SongLoadResult.Success.loaded(loaded);
     }
 }

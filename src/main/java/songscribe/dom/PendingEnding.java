@@ -25,20 +25,17 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * An ending as a reader found it in a file, judged by {@link Ending#spanning}.
  *
- * @param anchor    in a line of the song being read
- * @param end       in the anchor's line at or after the anchor
- * @param xOffsetSs in staff spaces, positive rightward
- * @param yOffsetSs in staff spaces, positive downward
+ * @param anchor in a line of the song being read
+ * @param end    in the anchor's line at or after the anchor
  */
 public record PendingEnding(
     StaffElement anchor,
     StaffElement end,
-    double xOffsetSs,
-    double yOffsetSs
+    UserOffset offset
 ) implements PendingSpan<Ending> {
 
     @Override
     public Spanning<Ending> spanning(Line line, ElementRange range) {
-        return Ending.spanning(line, range);
+        return Ending.spanning(line, range).adjusting(ending -> ending.setUserOffset(offset));
     }
 }

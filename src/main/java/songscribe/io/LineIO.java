@@ -32,21 +32,18 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
-import songscribe.Strings;
-import songscribe.dom.Beam;
-import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.NoteElement;
+import songscribe.dom.PendingBeam;
 import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingHairpin;
+import songscribe.dom.PendingMarks;
+import songscribe.dom.PendingTie;
+import songscribe.dom.PendingTrill;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
-import songscribe.dom.Spanning;
-import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.dom.Tie;
-import songscribe.dom.Trill;
 import songscribe.dom.TupletGrade;
+import songscribe.dom.UserOffset;
 import songscribe.util.StringUtils;
 
 public final class LineIO {
@@ -55,11 +52,6 @@ public final class LineIO {
     static final String XML_KEYS = "keys";
     static final String XML_KEYTYPE = "keytype";
     static final String XML_NOTE_DIST_CHANGE = "notedistchange";
-    static final String XML_LYRICS_YPOS = "lyricsypos";
-    static final String XML_FSENDING_YPOS = "fsendingypos";
-    static final String XML_TEMPO_CHANGE_YPOS = "tempochangeypos";
-    static final String XML_BEAT_CHANGE_YPOS = "beatchangeypos";
-    static final String XML_TRILL_YPOS = "trillypos";
     static final String XML_BEAMINGS = "beamings";
     static final String XML_TIES = "ties";
     static final String XML_TRIPLETS = "triplets"; // the old version of triplets
@@ -90,6 +82,9 @@ public final class LineIO {
         }
     }
 
+    /**
+     * Each list of pending marks is complete once parsing is.
+     */
     public static class LineReader {
 
         private static final Logger LOG = LoggerFactory.getLogger(LineReader.class);
@@ -122,31 +117,28 @@ public final class LineIO {
 
         private final List<PendingHairpin> pendingHairpinData = new ArrayList<>();
 
-        private record TrillPair(int anchor, int end, int yOffsetSs) {}
+        private record TrillPair(int anchor, int end) {}
 
         private final List<TrillPair> pendingTrillPairs = new ArrayList<>();
 
+        private final List<PendingTrill> pendingTrillData = new ArrayList<>();
+
         private final List<Integer> pendingTieAnchors = new ArrayList<>();
 
-        private record HairpinEntry(int anchor, int end, double yOffsetSs) {}
+        private final List<PendingTie> pendingTieData = new ArrayList<>();
+
+        private record HairpinEntry(int anchor, int end) {}
 
         private final EnumMap<Hairpin.Kind, List<HairpinEntry>> pendingHairpinEntries =
             new EnumMap<>(Hairpin.Kind.class);
-
-        // Legacy Y position fields — populated from format v1 XML tags and retrieved
-        // via getLegacyOffsets() before this reader moves to the next line.
-        private int legacyTempoChangeYPosPx;
-        private int legacyBeatChangeYPosPx;
-        private int legacyTrillYPosPx;
 
         // The <keys> and <keytype> tags arrive as two separate elements, and neither half is a
         // key on its own, so they are held until </line> and turned into one Key there.
         private int parsedKeyAccidentalCount = 0;
         private @Nullable LegacyKeyType parsedKeyType = null;
 
-        public LineReader(Song song) {
+        LineReader(Song song) {
             this.song = song;
-            resetLegacyOffsets();
         }
 
         private void applyParsedKey(Line line) throws SAXException {
@@ -159,16 +151,6 @@ public final class LineIO {
 
             var keyType = parsedType != null ? parsedType : LegacyKeyType.NONE;
             line.setKey(keyType.keyFor(LOG, accidentalCount));
-        }
-
-        private void resetLegacyOffsets() {
-            legacyTempoChangeYPosPx = LegacyLineOffsets.DEFAULTS.tempoChangeYPosPx();
-            legacyBeatChangeYPosPx = LegacyLineOffsets.DEFAULTS.beatChangeYPosPx();
-            legacyTrillYPosPx = LegacyLineOffsets.DEFAULTS.trillYPosPx();
-        }
-
-        LegacyLineOffsets getLegacyOffsets() {
-            return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyTrillYPosPx);
         }
 
         public boolean sawLegacyAccidental() {
@@ -202,6 +184,8 @@ public final class LineIO {
 
         private final List<BeamPair> pendingBeamPairs = new ArrayList<>();
 
+        private final List<PendingBeam> pendingBeamData = new ArrayList<>();
+
         private static void forEachIndexPair(String str, SegmentConsumer consumer) {
             forEachSegment(str, (begin, end) -> {
                 var firstComma = str.indexOf(',', begin);
@@ -215,19 +199,11 @@ public final class LineIO {
             forEachIndexPair(str, (anchor, end) -> pendingBeamPairs.add(new BeamPair(anchor, end)));
         }
 
-        /**
-         * A range the beam rule refuses is dropped with a log line, not reported to the user.
-         */
         private void createBeamsFromPending(Line line) throws SAXException {
             for (var pair : pendingBeamPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair.anchor(), pair.end(), line.elementCount(), "beam");
 
-                switch (Beam.spanning(line, new ElementRange(pair.anchor(), pair.end()))) {
-                    case Spanning.Spanned<Beam>(var beam, _) -> beam.addTo();
-                    case Spanning.Refused<Beam> refused -> LOG.warn(
-                        "Corrupt document: dropping beam {}..{}: {}",
-                        pair.anchor(), pair.end(), Strings.get(refused.reasonKey()));
-                }
+                pendingBeamData.add(new PendingBeam(line.getElement(pair.anchor()), line.getElement(pair.end())));
             }
 
             pendingBeamPairs.clear();
@@ -237,14 +213,7 @@ public final class LineIO {
             for (var anchorIndex : pendingTieAnchors) {
                 DocumentValidation.requireIndexInRange(LOG, anchorIndex, anchorIndex, line.elementCount(), "tie");
 
-                var element = line.getElement(anchorIndex);
-
-                if (element instanceof NoteElement anchor && Tie.canAnchor(anchor)) {
-                    line.addTie(anchor);
-                } else {
-                    LOG.warn("Corrupt document: dropping tie on element {} that cannot carry one: {}",
-                        anchorIndex, element);
-                }
+                pendingTieData.add(new PendingTie(line.getElement(anchorIndex)));
             }
 
             pendingTieAnchors.clear();
@@ -263,7 +232,8 @@ public final class LineIO {
                         LOG, entry.anchor(), entry.end(), line.elementCount(), label);
 
                     pendingHairpinData.add(new PendingHairpin(
-                        kind, line.getElement(entry.anchor()), line.getElement(entry.end()), 0, entry.yOffsetSs()));
+                        kind, line.getElement(entry.anchor()), line.getElement(entry.end()),
+                        UserOffset.NONE));
                 }
             }
 
@@ -274,7 +244,7 @@ public final class LineIO {
             forEachIndexPair(str, (anchor, _) -> pendingTieAnchors.add(anchor));
         }
 
-        private record TupletSegment(int anchor, int end, int grade, double yOffsetSs) {}
+        private record TupletSegment(int anchor, int end, int grade) {}
 
         private final List<TupletSegment> pendingTupletSegments = new ArrayList<>();
 
@@ -283,31 +253,21 @@ public final class LineIO {
         private void parseTupletData(String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
-                var grade = 3;
-                var yOffsetSs = 0.0;
+                var grade = TupletGrade.TRIPLET.number();
 
                 var data = segment.data();
 
                 if (data != null) {
-                    var parts = data.split(",");
+                    var gradeText = data.split(",")[0];
 
                     try {
-                        grade = Integer.parseInt(parts[0]);
+                        grade = Integer.parseInt(gradeText);
                     } catch (NumberFormatException _) {
-                        LOG.warn("Corrupt document: malformed tuplet grade: '{}', using default {}", parts[0], grade);
-                    }
-
-                    if (parts.length > 1) {
-                        try {
-                            yOffsetSs = Double.parseDouble(parts[1]);
-                        } catch (NumberFormatException e) {
-                            LOG.warn("Corrupt document: malformed tuplet yOffsetSs: '{}', using default {}", parts[1], yOffsetSs);
-                            yOffsetSs = 0.0;
-                        }
+                        LOG.warn("Corrupt document: malformed tuplet grade: '{}', using default {}", gradeText, grade);
                     }
                 }
 
-                pendingTupletSegments.add(new TupletSegment(segment.a(), segment.b(), grade, yOffsetSs));
+                pendingTupletSegments.add(new TupletSegment(segment.a(), segment.b(), grade));
             });
         }
 
@@ -324,57 +284,24 @@ public final class LineIO {
                 }
 
                 pendingTupletData.add(new PendingTuplet(
-                    line.getElement(segment.anchor()), line.getElement(segment.end()), grade, null,
-                    segment.yOffsetSs()));
+                    line.getElement(segment.anchor()), line.getElement(segment.end()), grade, null, 0));
             }
 
             pendingTupletSegments.clear();
         }
 
-        /**
-         * Offsets are in the units the document stores. Complete once parsing is.
-         */
-        public List<PendingTuplet> pendingTuplets() {
-            return List.copyOf(pendingTupletData);
+        PendingMarks pendingMarks() {
+            return new PendingMarks(
+                pendingTupletData, pendingEndingData, pendingHairpinData, pendingBeamData, pendingTrillData,
+                pendingTieData);
         }
 
-        /**
-         * Complete once parsing is.
-         */
-        public List<PendingEnding> pendingEndings() {
-            return List.copyOf(pendingEndingData);
-        }
-
-        /**
-         * Vertical offsets are in the units the document stores. Complete once parsing is.
-         */
-        public List<PendingHairpin> pendingHairpins() {
-            return List.copyOf(pendingHairpinData);
-        }
-
-        /**
-         * Only {@code y} is read: SongScribe has no horizontal shift of a hairpin end.
-         */
         private void parseHairpinEntries(Hairpin.Kind kind, String str) {
             var entries = pendingHairpinEntries.computeIfAbsent(kind, _ -> new ArrayList<>());
 
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
-                var y = 0.0;
-
-                var data = segment.data();
-
-                // The vertical offset is the third field of x1,x2,y, so a data portion with two
-                // commas carries one.
-                if (data != null && data.indexOf(',') != data.lastIndexOf(',')) {
-                    try {
-                        y = Double.parseDouble(data.substring(data.lastIndexOf(',') + 1));
-                    } catch (NumberFormatException ignored) {
-                        LOG.warn("Corrupt document: malformed hairpin offset '{}', using zero", data);
-                    }
-                }
-
-                entries.add(new HairpinEntry(segment.a(), segment.b(), y));
+                entries.add(new HairpinEntry(segment.a(), segment.b()));
             });
         }
 
@@ -388,7 +315,6 @@ public final class LineIO {
                     where = Where.LINE;
                     line = new Line(song);
                     noteReader = new StaffElementIO.StaffElementReader();
-                    resetLegacyOffsets();
                     parsedKeyAccidentalCount = 0;
                     parsedKeyType = null;
                 }
@@ -436,8 +362,6 @@ public final class LineIO {
                 if (qName.equals(XML_LINE)) {
                     where = null;
                     applyParsedKey(line);
-                    // Ties before beams: Beam.spanning refuses a beam over a tied pair, so the
-                    // beam is what a conflicting file loses, never the tie.
                     createTiesFromPendingAnchors(line);
                     createEndingsFromPendingPairs(line);
                     createTrillsFromPendingPairs(line);
@@ -447,8 +371,6 @@ public final class LineIO {
                     return line;
                 }
 
-                var openLine = line;
-
                 leaf.close(qName, (tag, str) -> {
                     switch (tag) {
                         case XML_KEYS -> parsedKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
@@ -456,13 +378,6 @@ public final class LineIO {
                         // Legacy line-compression ratio - nothing reads it; ignore for backwards compatibility
                         case XML_NOTE_DIST_CHANGE -> {
                         }
-                        case XML_TEMPO_CHANGE_YPOS -> legacyTempoChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str);
-                        case XML_BEAT_CHANGE_YPOS -> legacyBeatChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str);
-                        case XML_LYRICS_YPOS -> openLine.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));
-                        // Legacy line-level ending offset - endings load with no offset; ignore
-                        case XML_FSENDING_YPOS -> {
-                        }
-                        case XML_TRILL_YPOS -> legacyTrillYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TRILL_YPOS, str);
                         case XML_BEAMINGS -> parseBeamPairs(str);
                         case XML_TIES -> parseTiePairs(str);
                         // Slurs are not supported - ignored for backwards compatibility
@@ -493,28 +408,18 @@ public final class LineIO {
             for (var pair : pendingEndingPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "ending");
 
-                pendingEndingData.add(new PendingEnding(line.getElement(pair[0]), line.getElement(pair[1]), 0, 0));
+                pendingEndingData.add(new PendingEnding(line.getElement(pair[0]), line.getElement(pair[1]), UserOffset.NONE));
             }
 
             pendingEndingPairs.clear();
         }
 
-        /**
-         * A range the trill rule refuses is dropped with a log line, not reported to the user.
-         */
         private void createTrillsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTrillPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair.anchor(), pair.end(), line.elementCount(), "trill");
 
-                switch (Trill.spanning(line, new ElementRange(pair.anchor(), pair.end()))) {
-                    case Spanning.Spanned<Trill>(var trill, _) -> {
-                        trill.setUserYOffsetSs(pair.yOffsetSs());
-                        trill.addTo();
-                    }
-                    case Spanning.Refused<Trill> refused -> LOG.warn(
-                        "Corrupt document: dropping trill {}..{}: {}",
-                        pair.anchor(), pair.end(), Strings.get(refused.reasonKey()));
-                }
+                pendingTrillData.add(new PendingTrill(
+                    line.getElement(pair.anchor()), line.getElement(pair.end()), 0));
             }
 
             pendingTrillPairs.clear();
@@ -530,20 +435,18 @@ public final class LineIO {
 
                 if (last.end() == elementIndex - 1) {
                     pendingTrillPairs.set(
-                        pendingTrillPairs.size() - 1, new TrillPair(last.anchor(), elementIndex, last.yOffsetSs()));
+                        pendingTrillPairs.size() - 1, new TrillPair(last.anchor(), elementIndex));
                     return;
                 }
             }
 
-            pendingTrillPairs.add(new TrillPair(elementIndex, elementIndex, 0));
+            pendingTrillPairs.add(new TrillPair(elementIndex, elementIndex));
         }
 
         private void parseTrillPairs(String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
-                var data = segment.data();
-                var yOffsetSs = (data == null) ? 0 : Integer.parseInt(data);
-                pendingTrillPairs.add(new TrillPair(segment.a(), segment.b(), yOffsetSs));
+                pendingTrillPairs.add(new TrillPair(segment.a(), segment.b()));
             });
         }
 

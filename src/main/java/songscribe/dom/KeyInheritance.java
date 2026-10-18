@@ -245,14 +245,14 @@ public final class KeyInheritance {
 
     /**
      * Recorded as a {@link LineKeyChange} in the same batch, so undo puts the line back to
-     * inheriting. Skipped while mutation tracking is suspended: a file reader adds its lines one
-     * at a time, and a key guessed here would stand, because {@link #rebuildAfterParsing()} leaves
-     * a line that already has one alone.
+     * inheriting. Skipped during a load, which does not enforce edit invariants: a file reader
+     * adds its lines one at a time, and a key guessed here would stand, because
+     * {@link #rebuildAfterParsing()} leaves a line that already has one alone.
      */
     private void repairLineZeroKey(@Nullable Key startingKeyBefore) {
         var lines = song.getLines();
 
-        if (lines.isEmpty() || song.isMutationTrackingSuspended()) {
+        if (lines.isEmpty() || !song.enforcesEditInvariants()) {
             return;
         }
 
@@ -389,8 +389,7 @@ public final class KeyInheritance {
     }
 
     /**
-     * Must be called while mutation tracking is still suspended, so the fix-up is silent — no
-     * notification, no undo entry and no {@code modified} flag.
+     * Must be called during a load.
      *
      * <p>Line 0 has nothing to inherit from, so a document whose first line establishes no key of
      * its own falls back to {@link Key#DEFAULT}. Every reader is expected to have put the key its
@@ -398,9 +397,6 @@ public final class KeyInheritance {
      * anywhere, not the route by which a stated one arrives.
      */
     void rebuildAfterParsing() {
-        // Emptied rather than overwritten: Song.loadFrom replaces the line list wholesale, without
-        // a LineDeletion per line, so entries for the lines it discarded have nothing else to take
-        // them out and would keep those lines reachable for the rest of the song's life.
         inheritedKeys.clear();
 
         var lines = song.getLines();
@@ -421,24 +417,35 @@ public final class KeyInheritance {
     }
 
     /**
-     * One of the two places the stranded-key-change rule is enforced: an edit reaches only what
-     * its own key move strands, so only a read sees a stranding an older document holds.
-     * Removing a stranded key change leaves the chain {@link #rebuildAfterParsing()} settled
-     * intact, so no second pass is owed.
+     * An edit reaches only what its own key move strands, so only a load sees a stranding a
+     * document holds.
      */
-    private void removeStrandedKeyChanges() {
-        for (var line : song.getLines()) {
-            line.deleteRanges(line.redundantKeyChangeRanges(line.getRunningKey()));
+    private void rejectStrandedKeyChanges() throws StrandedKeyChangeException {
+        var lines = song.getLines();
+
+        for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
+            var line = lines.get(lineIndex);
+
+            if (!line.redundantKeyChangeRanges(line.getRunningKey()).isEmpty()) {
+                throw new StrandedKeyChangeException(lineIndex + 1);
+            }
         }
     }
 
     /**
-     * One call because the order is not the reader's to choose: the stranding repair reads each
-     * line's running key, which only the inheritance pass settles. Must be called while mutation
-     * tracking is still suspended, so it is silent.
+     * Afterwards every inherited key is settled, and no line holds a key of its own equal to the
+     * key it inherits. The steps are one call because the collapse and the stranding check read
+     * the inherited keys the rebuild settles. Records nothing, because the collapse of a line's
+     * key loses no information. A song that holds a stranded key change is refused with
+     * {@link StrandedKeyChangeException}. Must be called during a load.
      */
-    public void settleAfterParsing() {
+    void settleAfterParsing() throws StrandedKeyChangeException {
         rebuildAfterParsing();
-        removeStrandedKeyChanges();
+        collapseLineKeysMatchingInheritance();
+        rejectStrandedKeyChanges();
+    }
+
+    private void collapseLineKeysMatchingInheritance() {
+        song.getLines().forEach(Line::normalizeKey);
     }
 }

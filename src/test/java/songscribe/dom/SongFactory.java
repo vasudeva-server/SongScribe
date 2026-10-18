@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -32,6 +33,7 @@ import songscribe.engraving.StaffPosition;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.keyChange;
 import static songscribe.dom.StaffElementFactory.minimRest;
@@ -149,6 +151,10 @@ public final class SongFactory {
      * @return the song, every note holding a {@link ChainedAccidental}
      */
     public static Song compactSong(Key startingKey, String... notations) {
+        return buildSong(compactBuilders(startingKey, notations));
+    }
+
+    private static LineBuilder[] compactBuilders(Key startingKey, String... notations) {
         var builders = new LineBuilder[notations.length];
 
         for (var lineIndex = 0; lineIndex < notations.length; lineIndex++) {
@@ -164,18 +170,100 @@ public final class SongFactory {
             };
         }
 
-        return buildSong(builders);
+        return builders;
     }
 
     /**
-     * An empty line of a real song, for a fixture that needs the song's repeat structure
-     * but edits its line directly, outside any modification bracket.
+     * What a test's build hands {@link SongLoad#run}: the pending marks over the lines it built.
      *
-     * <p>Mutation tracking stays suspended for the rest of the test, so a test edits the line as
-     * a fixture builder does. {@link songscribe.UnitTest#detachedLine()} cannot stand in: its song is a mock
-     * that knows no repeat section, so {@link Ending#spanning} would refuse every ending on it.
-     * A test that exercises a bracket's close builds its song with {@link #compactSong} and edits
-     * it inside {@link Song#withModification}.
+     * @param marks the marks the load stages place
+     */
+    public record LoadBuild(PendingMarks marks) implements SongLoad.SongBuild.Built {}
+
+    /**
+     * Loads a song of the lines {@code builders} populate through {@link SongLoad#run}, with no
+     * pending marks, so the load stages run over the raw song as a reader leaves it.
+     *
+     * @param builders one per line, in song order
+     * @return the loaded song, its report, and the build
+     * @throws StrandedKeyChangeException when a line holds a key change that restates the key in effect
+     */
+    public static SongLoad.LoadedSong<LoadBuild> loadSong(LineBuilder... builders)
+        throws StrandedKeyChangeException {
+        return loadSongWithMarks(song -> noMarks(), builders);
+    }
+
+    /**
+     * Loads the song {@link #compactSong} would build, through {@link SongLoad#run}, with no
+     * pending marks.
+     *
+     * @param startingKey the key the first line establishes
+     * @param notations   one compact notation per line, in song order
+     * @return the loaded song, its report, and the build
+     * @throws StrandedKeyChangeException when a line holds a key change that restates the key in effect
+     */
+    public static SongLoad.LoadedSong<LoadBuild> loadCompactSong(Key startingKey, String... notations)
+        throws StrandedKeyChangeException {
+        return loadCompactSong(song -> noMarks(), startingKey, notations);
+    }
+
+    /**
+     * Loads the song {@link #compactSong} would build, through {@link SongLoad#run}, with the pending
+     * marks {@code marksOf} names over the song's elements.
+     *
+     * @param marksOf     names the marks over the lines, which exist once it is called
+     * @param startingKey the key the first line establishes
+     * @param notations   one compact notation per line, in song order
+     * @return the loaded song, its report, and the build
+     * @throws StrandedKeyChangeException when a line holds a key change that restates the key in effect
+     */
+    public static SongLoad.LoadedSong<LoadBuild> loadCompactSong(
+        Function<Song, PendingMarks> marksOf, Key startingKey, String... notations
+    ) throws StrandedKeyChangeException {
+        return loadSongWithMarks(marksOf, compactBuilders(startingKey, notations));
+    }
+
+    /**
+     * @param marksOf names the marks over the lines, which exist once it is called
+     */
+    private static SongLoad.LoadedSong<LoadBuild> loadSongWithMarks(
+        Function<Song, PendingMarks> marksOf, LineBuilder... builders
+    ) throws StrandedKeyChangeException {
+        return SongLoad.<LoadBuild, RuntimeException, RuntimeException>run(song -> {
+            addLines(song, builders);
+
+            return new LoadBuild(marksOf.apply(song));
+        });
+    }
+
+    /**
+     * Adds to {@code song}, in order, one line for each of {@code builders}. A builder's elements
+     * are added before its line is, so no builder runs with its line as the song's last.
+     *
+     * @param song     a song in a load, as {@link SongLoad.SongBuild#build} receives it
+     * @param builders one per line, in song order
+     */
+    public static void addLines(Song song, LineBuilder... builders) {
+        for (var builder : builders) {
+            var line = new Line(song);
+            builder.build(line);
+            song.addLine(line);
+        }
+    }
+
+    /** Marks of every kind, none of them present. */
+    public static PendingMarks noMarks() {
+        return new PendingMarks(List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+    }
+
+    /**
+     * An empty line of a real song, for a fixture that needs the song's repeat structure.
+     *
+     * <p>A test edits the line as a fixture builder does, inside
+     * {@link Song#withoutMutationTracking}. {@link songscribe.UnitTest#detachedLine()} cannot
+     * stand in: its song is a mock that knows no repeat section, so {@link Ending#spanning} would
+     * refuse every ending on it. A test that exercises a bracket's close edits the line inside
+     * {@link Song#withModification}.
      *
      * <p>An empty line follows the returned one, so the returned line is never the song's last.
      * On the last line, {@link Line#addElement(StaffElement)} inserts in front of a trailing
@@ -192,11 +280,7 @@ public final class SongFactory {
         var notations = Stream.concat(Arrays.stream(precedingNotations), Stream.of(EMPTY_LINE, EMPTY_LINE))
             .toArray(String[]::new);
 
-        var song = compactSong(Key.NO_ACCIDENTALS, notations);
-
-        song.beginSuspendMutationTracking();
-
-        return song.getLine(precedingNotations.length);
+        return compactSong(Key.NO_ACCIDENTALS, notations).getLine(precedingNotations.length);
     }
 
     /**
@@ -212,9 +296,8 @@ public final class SongFactory {
     }
 
     /**
-     * The first line of a song of {@code length} quavers, with mutation tracking suspended for the
-     * rest of the test, as {@link #editableLine} leaves it. A test that adds spans to the line
-     * directly, outside any bracket, uses this line.
+     * The first line of a song of {@code length} quavers, for a test that edits the line as
+     * {@link #editableLine} states.
      *
      * <p>An empty line follows the returned one, so the returned line is never the song's last.
      *
@@ -222,11 +305,7 @@ public final class SongFactory {
      * @return the first line of the song, holding {@code length} quavers
      */
     public static Line lineOfQuavers(int length) {
-        var song = compactSong(Key.NO_ACCIDENTALS, quaverNotation(length), EMPTY_LINE);
-
-        song.beginSuspendMutationTracking();
-
-        return song.getLine(0);
+        return compactSong(Key.NO_ACCIDENTALS, quaverNotation(length), EMPTY_LINE).getLine(0);
     }
 
     /**
@@ -263,7 +342,7 @@ public final class SongFactory {
      *       next; a {@code ~} after the song's last note ties it with nothing following</li>
      *   <li>{@code |}, {@code |:}, {@code :|} — a plain barline, a left repeat, a right repeat</li>
      *   <li>{@code R} — a crotchet rest; {@code R2} — a minim rest; {@code B} — a breath mark;
-     *       {@code Q} — a quaver</li>
+     *       {@code Q} — a quaver; {@code F} — a final double bar line</li>
      *   <li>{@code K:<name>} — a key change establishing {@link Key#valueOf(String) Key.valueOf(name)}</li>
      * </ul>
      *
@@ -285,6 +364,7 @@ public final class SongFactory {
                 case "R" -> line.addElement(crotchetRest());
                 case "R2" -> line.addElement(minimRest());
                 case "B" -> line.addElement(breathMark());
+                case "F" -> line.addElement(finalDoubleBarline());
                 case QUAVER_TOKEN -> line.addElement(quaver());
                 case "~" -> {
                     if (previousNote != null) {

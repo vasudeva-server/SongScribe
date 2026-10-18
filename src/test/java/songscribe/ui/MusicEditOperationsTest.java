@@ -38,6 +38,7 @@ import songscribe.ui.selection.RangeQueries.HairpinResolution;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
 import static songscribe.dom.SongFactory.lineOfQuavers;
+import static songscribe.dom.SpanFactory.addWithoutTracking;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.quaver;
@@ -89,8 +90,7 @@ class MusicEditOperationsTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("neighborCases")
     void testACrescendoFlushWithTheSelectionExtendsWhileADiminuendoAddsOnTheSameLine(NeighborCase testCase) {
-        var line = lineOfQuavers(LINE_LENGTH);
-        hairpinOver(line, Hairpin.Kind.CRESCENDO, testCase.crescendo()).addTo();
+        var line = lineWithCrescendo(testCase.crescendo(), new ElementRange(0, LINE_LENGTH - 1));
 
         assertThat(resolve(line, testCase.selection(), Hairpin.Kind.CRESCENDO))
             .isInstanceOf(HairpinResolution.Extend.class);
@@ -173,7 +173,7 @@ class MusicEditOperationsTest extends UnitTest {
     /** A line of quavers long enough for {@code extent}, holding a crescendo over {@code crescendo}. */
     private static Line lineWithCrescendo(ElementRange crescendo, ElementRange extent) {
         var line = lineOfQuavers(extent.end() + 1);
-        hairpinOver(line, Hairpin.Kind.CRESCENDO, crescendo).addTo();
+        addWithoutTracking(line.getSong(), () -> hairpinOver(line, Hairpin.Kind.CRESCENDO, crescendo));
         return line;
     }
 }

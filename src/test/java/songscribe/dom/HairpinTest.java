@@ -247,7 +247,7 @@ class HairpinTest extends UnitTest {
             new RefusedCase("absorbing a crescendo that brings the range over a diminuendo is refused",
                 () -> {
                     var line = lineOfQuavers(ABSORBING.end() + 1);
-                    hairpinOver(line, Hairpin.Kind.CRESCENDO, ABSORBED).addTo();
+                    addCrescendo(line, ABSORBED);
                     addDiminuendo(line, BETWEEN);
                     return line;
                 },
@@ -347,10 +347,10 @@ class HairpinTest extends UnitTest {
      */
     private static Line lineWithUnmergedChain() {
         var line = lineOfQuavers(CHAIN_LINE_LENGTH);
-        hairpinOver(line, Hairpin.Kind.CRESCENDO, CHAIN_FIRST).addTo();
+        addCrescendo(line, CHAIN_FIRST);
         addDiminuendo(line, CHAIN_DIMINUENDO);
-        hairpinOver(line, Hairpin.Kind.CRESCENDO, CHAIN_SECOND).addTo();
-        line.deleteRange(line.effectiveRange(CHAIN_DELETED));
+        addCrescendo(line, CHAIN_SECOND);
+        line.getSong().withoutMutationTracking(() -> line.deleteRange(line.effectiveRange(CHAIN_DELETED)));
 
         assertThat(line.spanRegistry().findSpans(Hairpin.class)).extracting(Hairpin::range)
             .as("the arrangement leaves both crescendos apart")
@@ -362,7 +362,7 @@ class HairpinTest extends UnitTest {
     /** A line of quavers long enough for {@code candidate}, holding a crescendo over {@code existing}. */
     private static Line lineWithCrescendo(ElementRange existing, ElementRange candidate) {
         var line = lineOfQuavers(candidate.end() + 1);
-        hairpinOver(line, Hairpin.Kind.CRESCENDO, existing).addTo();
+        addCrescendo(line, existing);
         return line;
     }
 
@@ -373,8 +373,16 @@ class HairpinTest extends UnitTest {
         return line;
     }
 
+    private static void addCrescendo(Line line, ElementRange range) {
+        addHairpin(line, Hairpin.Kind.CRESCENDO, range);
+    }
+
     private static void addDiminuendo(Line line, ElementRange range) {
-        hairpinOver(line, Hairpin.Kind.DIMINUENDO, range).addTo();
+        addHairpin(line, Hairpin.Kind.DIMINUENDO, range);
+    }
+
+    private static void addHairpin(Line line, Hairpin.Kind kind, ElementRange range) {
+        addWithoutTracking(line.getSong(), () -> hairpinOver(line, kind, range));
     }
 
     private static Spanning.Refused<Hairpin> refusal(String reasonKey, Spanning.Cause cause) {

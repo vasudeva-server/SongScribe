@@ -30,10 +30,10 @@ import songscribe.error.RuntimeError;
  *
  * <p>The terminal policy: a {@code FINAL_DOUBLE_BARLINE} exists only in the terminal position,
  * and the auto-maintained terminal may not be removed, only replaced by another valid terminal
- * type (the exemption {@link #replaceTerminal} relies on). The policy is not enforced while
- * mutation tracking is suspended, while this class is maintaining the invariant, or during a
- * replay, because a load and a replay pass through states that violate the invariant on the way
- * to one that holds.
+ * type (the exemption {@link #replaceTerminal} relies on). The policy is not enforced while the
+ * song does not enforce edit invariants, while this class is maintaining the invariant, or during
+ * a replay, because a load, a suspension and a replay pass through states that violate the
+ * invariant on the way to one that holds.
  */
 public final class TerminalMaintainer {
 
@@ -60,9 +60,8 @@ public final class TerminalMaintainer {
     }
 
     /**
-     * Must be called inside an open modification bracket with
-     * {@link ModificationSession#withAutoMaintenance} raised so the terminal policy does not
-     * reject the internally-driven mutations.
+     * Must be called inside an open modification bracket, in the song's auto-maintenance scope,
+     * so the terminal policy does not reject the internally-driven mutations.
      */
     public void maintainOnLastLineChange(@Nullable Line previousLastLine, Line newLastLine) {
         var outgoingTerminalType = outgoingTerminalType(previousLastLine, newLastLine);
@@ -102,7 +101,7 @@ public final class TerminalMaintainer {
     }
 
     /**
-     * Must be called while mutation tracking is still suspended, so the fix-up is silent. A no-op
+     * Must be called during a load. A no-op
      * when the last line already ends with a valid terminal, so a span ending on that barline
      * keeps its exact element reference.
      */
@@ -174,7 +173,7 @@ public final class TerminalMaintainer {
     }
 
     private boolean isPolicyBypassed() {
-        return song.isMutationTrackingSuspended()
+        return !song.enforcesEditInvariants()
             || song.isInAutoMaintenance()
             || song.isReplaying();
     }

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.DoubleSupplier;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
@@ -38,7 +39,6 @@ import songscribe.lint.Linter;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
-import songscribe.message.SongData;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
@@ -197,20 +197,30 @@ public final class Song implements Disposable {
     private boolean modified;
 
     // Held rather than inlined so the depth counters and the accumulated batch cannot be
-    // reached except through the API that keeps them balanced.
-    private final ModificationSession modifications = new ModificationSession(this);
+    // reached except through the API that keeps them balanced. Not final: endLoad replaces the
+    // load's session with an edit session.
+    private ModificationSession modifications;
+
+    // While on, Line mutation guards are bypassed so the song can auto-maintain the terminal
+    // invariant without triggering the guards that protect against user-driven invariant
+    // violations. Nested because the maintenance paths nest: removeLine calls addLine to
+    // repopulate an emptied song, and the inner call must not disarm the guards the outer one is
+    // still relying on.
+    private final NestingCounter autoMaintenance = new NestingCounter();
 
     private final TerminalMaintainer terminal = new TerminalMaintainer(this);
 
     private final TempoResolver tempoResolver = new TempoResolver(this);
 
-    // This song's own linter. Initialized here so every constructor, the parsing stub's
-    // included, creates it before anything can build a LintingNotification for this song.
+    // This song's own linter. Initialized here so every constructor, the load's included,
+    // creates it before anything can build a LintingNotification for this song.
     private final Linter linter = new Linter(this);
 
     private final MessageSubscription subscription;
 
     public Song() {
+        this(EditSession::new);
+
         // Tracking is suspended so that setup changes post no SongDidChangeNotification to global
         // subscribers before this Song is installed in any ScoreView.
         withoutMutationTracking(() -> {
@@ -219,18 +229,29 @@ public final class Song implements Disposable {
             initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             lines.add(initialLine);
         });
+    }
 
+    /**
+     * A song with no lines, in a load until {@link #endLoad}: a change records nothing for undo
+     * and posts nothing, and a reported change goes into the load's report.
+     */
+    static Song newInLoad() {
+        return new Song(LoadSession::new);
+    }
+
+    private Song(Function<Song, ModificationSession> session) {
+        modifications = session.apply(this);
         subscription = new MessageSubscription(this);
     }
 
-    public static Song newParsingStub() {
-        return new Song(Stub.INSTANCE);
-    }
-
-    private enum Stub { INSTANCE }
-
-    private Song(Stub ignored) {
-        subscription = new MessageSubscription(this);
+    /**
+     * Must be called once, on a song from {@link #newInLoad}. Afterwards the song is open for
+     * editing.
+     */
+    ChangeReport endLoad() {
+        var report = modifications.endLoad();
+        modifications = new EditSession(this);
+        return report;
     }
 
     /**
@@ -246,56 +267,7 @@ public final class Song implements Disposable {
         modified = false;
     }
 
-    /**
-     * Posts no notification; the caller ({@code ScoreView.setSong}) posts a
-     * {@link songscribe.message.notification.DocumentDidLoadNotification} once the song is
-     * installed.
-     *
-     * <p>Must run under suspended mutation tracking: the fields are assigned directly, outside
-     * any mutation bracket.
-     */
-    public void loadFrom(SongData data) {
-        metadata = new SongMetadata(
-            data.title(),
-            data.number(),
-            data.place(),
-            data.date(),
-            data.composer(),
-            data.lyricist(),
-            data.lyricsSource(),
-            data.arrangement(),
-            data.unofficialTranslation(),
-            data.subtitle(),
-            data.wordsDate()
-        );
 
-        // A legacy .mssw file may carry no <tempo> element, so the parsed value is nullable.
-        var loadedTempo = data.tempo();
-        tempo = loadedTempo != null ? loadedTempo : new Tempo();
-        underLyrics = normalizeUnderLyrics(data.underLyrics());
-        banglaLyrics = normalizeBanglaLyrics(data.banglaLyrics());
-        translatedLyrics = normalizeTranslatedLyrics(data.translatedLyrics());
-        footnotes = normalizeFootnotes(data.footnotes());
-
-        rowHeightAdjustmentSs = data.rowHeightAdjustmentSs();
-        lineWidthSs = data.lineWidthSs();
-
-        lines.clear();
-
-        var loadedLines = data.lines();
-
-        lines.addAll(loadedLines);
-
-        // Parsing runs under suspended tracking, so no key change reached the per-mutation
-        // propagation hook. A legacy file also predates the rule that no key change restates the
-        // key in effect before it, so that repair belongs to reading rather than to any edit.
-        keyInheritance.settleAfterParsing();
-
-        hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
-        formatVersion = data.formatVersion();
-
-        modified = false;
-    }
 
     public Tempo getTempo() {
         return tempo;
@@ -678,8 +650,8 @@ public final class Song implements Disposable {
     /**
      * When the insertion makes {@code line} the new last line, the terminal invariant transfers to
      * it, so the last element of the last line is always a valid terminal. The transfer is skipped
-     * when mutation tracking is suspended, so test setup can install lines with arbitrary
-     * terminals.
+     * during a load or while mutation tracking is suspended, so test setup can install lines with
+     * arbitrary terminals.
      *
      * <p>A tie on the last note of a line ends at the start of the next line, so the insertion can
      * move the end of a tie crossing out of the line before {@code line} or out of {@code line};
@@ -693,10 +665,10 @@ public final class Song implements Disposable {
         var willBecomeNewLast = index == lines.size();
         var previousLastLine = lines.isEmpty() ? null : lines.getLast();
 
-        withModification(() -> modifications.withAutoMaintenance(() -> {
+        withModification(() -> autoMaintenance.during(() -> {
             applyChange(new LineInsertion(index, line), () -> lines.add(index, line));
 
-            if (willBecomeNewLast && !isMutationTrackingSuspended() && !isReplaying()) {
+            if (willBecomeNewLast && enforcesEditInvariants() && !isReplaying()) {
                 terminal.maintainOnLastLineChange(previousLastLine, line);
             }
         }));
@@ -705,8 +677,8 @@ public final class Song implements Disposable {
     /**
      * A normally-tracked removal always leaves the song with at least one line: removing the sole
      * line inserts a fresh empty one, and removing the last line installs the terminal on the new
-     * last line. Both are skipped when mutation tracking is suspended or while replaying, which
-     * legitimately pass through a transient zero-line state.
+     * last line. Both are skipped during a load, when mutation tracking is suspended, or while
+     * replaying, which legitimately pass through a transient zero-line state.
      *
      * <p>The removed line keeps its elements, and they keep pointing at it, so undo can put it
      * back unchanged. A tie ending on the removed line's first note is untied first
@@ -717,7 +689,7 @@ public final class Song implements Disposable {
         var deletedLine = lines.get(index);
         var wasLast = index == lines.size() - 1;
 
-        withModification(() -> modifications.withAutoMaintenance(() -> {
+        withModification(() -> autoMaintenance.during(() -> {
             // Recorded before the deletion, so reverse-order undo puts the line back before it
             // re-ties the anchor.
             if (deletedLine.elementCount() > 0) {
@@ -729,7 +701,7 @@ public final class Song implements Disposable {
                 () -> lines.remove(index)
             );
 
-            if (wasLast && !isMutationTrackingSuspended() && !isReplaying()) {
+            if (wasLast && enforcesEditInvariants() && !isReplaying()) {
                 if (!lines.isEmpty()) {
                     terminal.maintainOnLastLineChange(null, lines.getLast());
                 } else {
@@ -740,20 +712,12 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Must be called while mutation tracking is still suspended, so the fix-up is silent. A no-op
+     * Must be called during a load. A no-op
      * when the last line already ends with a valid terminal, so a span ending on that barline
      * keeps its exact element reference.
      */
-    public void installTerminalAfterParsing() {
+    void installTerminalAfterParsing() {
         terminal.installAfterParsing();
-    }
-
-    /**
-     * A reader calls this once its grace-host pairs are settled. Runs silently whether or not
-     * tracking is suspended, because the legacy reader calls it after tracking has resumed.
-     */
-    public void repairGraceHostMelismasAfterParsing() {
-        withoutMutationTracking(() -> lines.forEach(Line::repairGraceHostMelismas));
     }
 
     static StaffElement newTerminalElement(ElementType type) {
@@ -806,8 +770,15 @@ public final class Song implements Disposable {
         return modifications.isMutationTrackingSuspended();
     }
 
+    /**
+     * @see ModificationSession#enforcesEditInvariants
+     */
+    public boolean enforcesEditInvariants() {
+        return modifications.enforcesEditInvariants();
+    }
+
     boolean isInAutoMaintenance() {
-        return modifications.isInAutoMaintenance();
+        return autoMaintenance.isOn();
     }
 
     public boolean isReplaying() {
@@ -824,13 +795,7 @@ public final class Song implements Disposable {
     }
 
     public <T> T withoutMutationTrackingResult(Supplier<T> body) {
-        modifications.beginSuspendMutationTracking();
-
-        try {
-            return body.get();
-        } finally {
-            modifications.endSuspendMutationTracking();
-        }
+        return modifications.withoutMutationTrackingResult(body);
     }
 
     /**
@@ -844,23 +809,12 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Only for a suspension scope that crosses methods, as in the two file readers; otherwise use
-     * {@link #withoutMutationTracking(Runnable)}.
-     */
-    public void beginSuspendMutationTracking() {
-        modifications.beginSuspendMutationTracking();
-    }
-
-    public void endSuspendMutationTracking() {
-        modifications.endSuspendMutationTracking();
-    }
-
-    /**
-     * Executes {@code body} inside a modification bracket, then posts a single
+     * During an edit, executes {@code body} inside a modification bracket, then posts a single
      * {@link SongDidChangeNotification} with all accumulated mutations. The bracket is
      * closed even if {@code body} throws, without running the modification rules over the
      * half-applied edit. Brackets nest; the notification fires only when the outermost one
-     * closes.
+     * closes. During a load, {@code body} runs with no bracket, and nothing is recorded or
+     * posted.
      *
      * <p>Every state change {@code body} makes must be recorded as a {@link Mutation} in this
      * bracket's batch, through {@link #applyChange} or a {@code Line} helper wrapping it. Undo
@@ -871,7 +825,8 @@ public final class Song implements Disposable {
      * through the typed tracked helper {@code Line.removeInvalidatedSpan} dispatches to, so the
      * proper removal mutation lands in the batch.
      *
-     * @invariant every state change made inside the bracket is recorded as a mutation in its batch
+     * @invariant during an edit, every state change made inside the bracket is recorded as a
+     *     mutation in its batch
      */
     public void withModification(Runnable body) {
         modifications.withModification(body);
@@ -908,14 +863,10 @@ public final class Song implements Disposable {
         modifications.postWithModification(message);
     }
 
-    public void postWithModification(String label, Message message) {
-        modifications.postWithModification(label, message);
-    }
-
     /**
      * Applies a single mutation within an open modification bracket: runs {@code mutator},
-     * then records {@code mutation} in the accumulated batch. Under suspended tracking the
-     * mutator runs and nothing is recorded.
+     * then records {@code mutation} in the accumulated batch. During a load or under a
+     * suspension the mutator runs and nothing is recorded.
      *
      * <p>Every mutation that can move a key — a line's own key, a mid-line key change, or a
      * line insertion or deletion that shifts what a line inherits — brings the
@@ -931,11 +882,12 @@ public final class Song implements Disposable {
      * {@link ElementField#ACCIDENTAL} modification of its note, inside the same bracket. The
      * walk runs after the key invariant because it reads the keys the invariant maintains. It
      * does not run on a replay of undo or redo, which applies the restamps the batch already
-     * recorded, nor under suspended tracking, where nothing is recorded, which leaves a file
-     * reader's notes for the load pass and makes grace mode's untracked insertion walk itself.
+     * recorded, nor during a load or under a suspension, where nothing is recorded, which leaves
+     * a file reader's notes for the load stages and makes grace mode's untracked insertion walk
+     * itself.
      *
      * @throws IllegalStateException if mutation tracking is on and no modification bracket is
-     *     open; under suspended tracking no bracket is required
+     *     open; during a load or under a suspension no bracket is required
      * @see ModificationSession#applyChange
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
@@ -945,7 +897,7 @@ public final class Song implements Disposable {
 
         keyInheritance.maintainInvariant(mutation, startingKeyBefore);
 
-        if (isReplaying() || isMutationTrackingSuspended()) {
+        if (isReplaying() || !enforcesEditInvariants()) {
             return;
         }
 
@@ -962,17 +914,15 @@ public final class Song implements Disposable {
     }
 
     /**
-     * A freshly parsed song needs this once. It is read under suspended mutation tracking, where
-     * no chain walk runs, so its notes are {@link AccidentalState.Chosen Chosen} where the file
-     * writes an accidental and {@link AccidentalState.Adopting Adopting} where it is bare, while
-     * every edit afterwards assumes a note on a line holds a {@link ChainedAccidental}.
-     * The walk reads each line's running key, so the inherited keys must be settled first — see
-     * {@link KeyInheritance#rebuildAfterParsing()}.
+     * A song in a load runs no chain walk, so its notes are {@link AccidentalState.Chosen Chosen}
+     * where the file writes an accidental and {@link AccidentalState.Adopting Adopting} where it is
+     * bare, while every edit afterwards assumes a note on a line holds a
+     * {@link ChainedAccidental}.
      *
      * <p>The stamps are recorded nowhere — no mutation, no undo entry — because they establish the
      * state the document is read in rather than editing it.
      */
-    public void stampAccidentalsAfterParsing() {
+    void stampAccidentalsAfterParsing() {
         AccidentalChain.walkSong(this).forEach(AccidentalChain.Restamp::stamp);
     }
 

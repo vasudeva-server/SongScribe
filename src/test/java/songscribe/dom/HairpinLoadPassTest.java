@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,7 +32,7 @@ import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.SongFactory.compactSong;
+import static songscribe.dom.SongFactory.loadCompactSong;
 
 /**
  * {@link SpanLoadPass#run}: the one place a read hairpin becomes a {@link Hairpin}. A pending
@@ -76,12 +77,11 @@ class HairpinLoadPassTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("addedCases")
-    void testAPendingHairpinIsAddedWithItsKindAndBothOffsets(AddedCase testCase) {
-        var song = songOf(PITCH + " " + PITCH + " " + PITCH);
-        var line = song.getLine(LINE);
-        var report = settle(song, List.of(pending(testCase.kind(), line, SPAN)));
+    void testAPendingHairpinIsAddedWithItsKindAndBothOffsets(AddedCase testCase) throws StrandedKeyChangeException {
+        var loaded = load(PITCH + " " + PITCH + " " + PITCH, line -> List.of(pending(testCase.kind(), line, SPAN)));
+        var line = loaded.song().getLine(LINE);
 
-        assertThat(report.isEmpty()).isTrue();
+        assertThat(loaded.report().isEmpty()).isTrue();
         assertThat(line.spanRegistry().findSpans(Hairpin.class)).singleElement().satisfies(hairpin -> {
             assertThat(hairpin.getKind()).isEqualTo(testCase.kind());
             assertThat(hairpin.range()).isEqualTo(SPAN);
@@ -97,13 +97,12 @@ class HairpinLoadPassTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("droppedCases")
-    void testAPendingHairpinTheFactoryRefusesIsDroppedWithItsReason(DroppedCase testCase) {
-        var song = songOf(testCase.notation());
-        var line = song.getLine(LINE);
-        var report = settle(song, List.of(pending(Hairpin.Kind.CRESCENDO, line, SPAN)));
+    void testAPendingHairpinTheFactoryRefusesIsDroppedWithItsReason(DroppedCase testCase)
+        throws StrandedKeyChangeException {
+        var loaded = load(testCase.notation(), line -> List.of(pending(Hairpin.Kind.CRESCENDO, line, SPAN)));
 
-        assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
-        assertThat(report.changes()).containsExactly(new ReportedChange(
+        assertThat(loaded.song().getLine(LINE).spanRegistry().findSpans(Hairpin.class)).isEmpty();
+        assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
             Strings.REPORT_HAIRPINS_REMOVED,
             Strings.get(testCase.refusalKey()),
             new LineRange(LINE, LINE)));
@@ -118,18 +117,18 @@ class HairpinLoadPassTest extends UnitTest {
 
     @ParameterizedTest(name = "{0} first")
     @MethodSource("oppositeKindOrders")
-    void testOfTwoOverlappingPendingHairpinsOfOppositeKindsTheLaterIsDropped(Hairpin.Kind first) {
-        var song = songOf(FOUR_NOTES);
-        var line = song.getLine(LINE);
+    void testOfTwoOverlappingPendingHairpinsOfOppositeKindsTheLaterIsDropped(Hairpin.Kind first)
+        throws StrandedKeyChangeException {
         var second = first.opposite();
 
-        var report = settle(song, List.of(pending(first, line, SPAN), pending(second, line, OVERLAPPING_SPAN)));
+        var loaded = load(FOUR_NOTES,
+            line -> List.of(pending(first, line, SPAN), pending(second, line, OVERLAPPING_SPAN)));
 
-        assertThat(line.spanRegistry().findSpans(Hairpin.class)).singleElement().satisfies(hairpin -> {
+        assertThat(loaded.song().getLine(LINE).spanRegistry().findSpans(Hairpin.class)).singleElement().satisfies(hairpin -> {
             assertThat(hairpin.getKind()).isEqualTo(first);
             assertThat(hairpin.range()).isEqualTo(SPAN);
         });
-        assertThat(report.changes()).containsExactly(new ReportedChange(
+        assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
             Strings.REPORT_HAIRPINS_REMOVED,
             Strings.get(Strings.REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP),
             new LineRange(LINE, LINE)));
@@ -139,18 +138,21 @@ class HairpinLoadPassTest extends UnitTest {
         return Stream.of(Hairpin.Kind.values());
     }
 
-    /** A song whose {@link #LINE} is {@code notation}, behind a line of one note. */
-    private static Song songOf(String notation) {
-        return compactSong(Key.NO_ACCIDENTALS, LEADING_LINE, notation);
-    }
-
-    /** Settles {@code song} with {@code hairpins} as the only pending spans the reader found. */
-    private static ChangeReport settle(Song song, List<PendingHairpin> hairpins) {
-        return new ParsedSong(song, List.of(), List.of(), hairpins, List.of()).settle();
+    /**
+     * Loads a song whose {@link #LINE} is {@code notation}, behind a line of one note, with the
+     * hairpins {@code hairpinsOn} names over that line as the only marks the reader found.
+     */
+    private static SongLoad.LoadedSong<SongFactory.LoadBuild> load(
+        String notation, Function<Line, List<PendingHairpin>> hairpinsOn
+    ) throws StrandedKeyChangeException {
+        return loadCompactSong(
+            song -> new PendingMarks(
+                List.of(), List.of(), hairpinsOn.apply(song.getLine(LINE)), List.of(), List.of(), List.of()),
+            Key.NO_ACCIDENTALS, LEADING_LINE, notation);
     }
 
     private static PendingHairpin pending(Hairpin.Kind kind, Line line, ElementRange range) {
         return new PendingHairpin(
-            kind, line.getElement(range.begin()), line.getElement(range.end()), X_OFFSET_SS, Y_OFFSET_SS);
+            kind, line.getElement(range.begin()), line.getElement(range.end()), new UserOffset(X_OFFSET_SS, Y_OFFSET_SS));
     }
 }

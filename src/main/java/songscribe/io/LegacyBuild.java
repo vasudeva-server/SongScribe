@@ -19,23 +19,15 @@
  */
 package songscribe.io;
 
-import songscribe.dom.DocumentScale;
+import java.util.List;
+
+import songscribe.dom.PendingMarks;
+import songscribe.font.DocumentFonts;
 
 /**
- * Load-time carrier for the three line-level Y position fields that exist only in format v1
- * documents. Discarded after migration completes.
+ * What the legacy {@code .mssw} reader hands back to the load.
  */
-record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int trillYPosPx) {
-
-    private static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;
-
-    private static final double TRILL_DEFAULT_Y_SS = -3.375;
-
-    // Tempo's default of 0 also serves as the "unset" sentinel: legacy files that omit the
-    // tempo tag are treated as having no tempo offset to migrate (see FormatMigrator).
-    static final LegacyLineOffsets DEFAULTS = new LegacyLineOffsets(
-        0,
-        DocumentScale.ssToPx(BEAT_CHANGE_DEFAULT_Y_SS).positionPx(),
-        DocumentScale.ssToPx(TRILL_DEFAULT_Y_SS).positionPx()
-    );
+record LegacyBuild(
+    PendingMarks marks, DocumentFonts fonts, List<LoadWarning> warnings
+) implements ReaderBuild {
 }

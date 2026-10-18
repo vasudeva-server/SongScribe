@@ -36,18 +36,21 @@ import songscribe.Strings;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
-import songscribe.dom.ParsedSong;
 import songscribe.dom.PartialDate;
+import songscribe.dom.PendingBeam;
+import songscribe.dom.PendingEnding;
+import songscribe.dom.PendingMarks;
+import songscribe.dom.PendingTie;
 import songscribe.dom.RecordedChange;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
-import songscribe.message.SongData;
 import songscribe.util.DateUtils;
 
 public final class SongIO {
@@ -84,14 +87,11 @@ public final class SongIO {
     private static final String XML_UNDERLYRICS = "underlyrics";
     private static final String XML_TRANSLATED_LYRICS = "translatedlyrics";
     private static final String XML_BANGLA_LYRICS = "banglalyrics";
-    private static final String XML_LINE_WIDTH = "linewidth";
-    private static final String XML_ROW_HEIGHT = "rowheight";
     private static final String XML_PLACE = "place";
     private static final String XML_YEAR = "year";
     private static final String XML_MONTH = "month";
     private static final String XML_DAY = "day";
     private static final String XML_LYRICS_DATE = "lyricsDate";
-    private static final String XML_INFO_STARTY = "rightinfostarty";
 
     // version 1.3
     private static final String XML_UNOFFICIAL_TRANSLATION =
@@ -105,7 +105,6 @@ public final class SongIO {
     private static final String XML_LYRICIST = "lyricist";
     private static final String XML_LYRICS_SOURCE = "lyricssource";
     private static final String XML_ARRANGEMENT = "arrangement";
-    private static final String XML_ATTRIBUTION_Y_OFFSET = "attributionyoffset";
 
     // version 2.9 — subtitle
     private static final String XML_SUBTITLE = "subtitle";
@@ -126,6 +125,8 @@ public final class SongIO {
         private static final String BY_PREFIX = "by ";
         private static final int CURRENT_FORMAT_VERSION = 3;
 
+        private static final FormatVersion FIRST_ATTRIBUTION_TAGS_VERSION = new FormatVersion(2, 8);
+
         @Nullable
         private Where where = null;
 
@@ -137,10 +138,7 @@ public final class SongIO {
         private ViewIO.@Nullable ViewReader viewReader = null;
         private int majorVersion = 0, minorVersion = 0;
 
-        // Stub Song that gets attached to every parsed Line during XML parsing,
-        // then repopulated via loadFrom(data) in getSong() once parsing completes.
-        @Nullable
-        private Song parsingSong = null;
+        private final Song song;
 
         @Nullable
         private Tempo tempo = null;
@@ -175,12 +173,15 @@ public final class SongIO {
         // drift apart from it.
         private int documentKeyAccidentalCount = Key.DEFAULT.accidentalCount();
         private LegacyKeyType documentKeyType = LegacyKeyType.forKey(Key.DEFAULT);
-        private double attributionUserYOffsetSs = 0;
-        private double rowHeightAdjustmentSs = 0;
-        private double lineWidthSs = PageModel.getDefaultLineWidthSs();
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
-        private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
+
+        /**
+         * @param song empty, and in a load
+         */
+        public DocumentReader(Song song) {
+            this.song = song;
+        }
 
         private Key documentKey() throws SAXException {
             return documentKeyType.keyFor(LOG, documentKeyAccidentalCount);
@@ -198,16 +199,6 @@ public final class SongIO {
 
             if (firstLine.getKey() == null) {
                 firstLine.setKey(documentKey());
-            }
-        }
-
-        /**
-         * @param song the song {@link Song#loadFrom} has just populated, with mutation tracking
-         *             still suspended
-         */
-        private static void collapseLineKeysMatchingInheritance(Song song) {
-            for (var line : song.getLines()) {
-                line.setKey(line.getKey());
             }
         }
 
@@ -230,8 +221,13 @@ public final class SongIO {
 
             if (where == null) {
                 if (qName.equals(XML_SONG) || qName.equals(XML_COMPOSITION_LEGACY)) {
+                    var version = attributes.getValue(XML_VERSION);
+
+                    if (version == null) {
+                        throw new SAXException("The <" + qName + "> element has no version attribute.");
+                    }
+
                     try {
-                        var version = attributes.getValue(XML_VERSION);
                         var dotIndex = version.indexOf('.');
                         majorVersion = Integer.parseInt(
                             version.substring(0, dotIndex)
@@ -241,8 +237,6 @@ public final class SongIO {
                         );
                         where = Where.SONG;
 
-                        parsingSong = newSuspendedStubSong();
-
                         if (majorVersion == ORIGINAL_MAJOR_VERSION && minorVersion == ORIGINAL_MINOR_VERSION) {
                             noteReader = new StaffElementIO.StaffElementReader();
                             tempoReader = new TempoIO.TempoReader();
@@ -250,7 +244,7 @@ public final class SongIO {
                             (majorVersion == ORIGINAL_MAJOR_VERSION && minorVersion > ORIGINAL_MINOR_VERSION) ||
                             (majorVersion == MAX_READABLE_MAJOR_VERSION && minorVersion <= MAX_READABLE_MINOR_VERSION)
                         ) {
-                            lineReader = new LineIO.LineReader(parsingSong);
+                            lineReader = new LineIO.LineReader(song);
                             viewReader = new ViewIO.ViewReader();
                         } else {
                             throw new NewerVersionException();
@@ -278,12 +272,12 @@ public final class SongIO {
             Attributes attributes
         ) throws SAXException {
             if (where == Where.NOTES) {
-                if (noteReader == null || parsingSong == null) {
+                if (noteReader == null) {
                     return;
                 }
 
                 if (noteReader.startElement10(qName, attributes)) {
-                    parsedLines.add(new Line(parsingSong));
+                    parsedLines.add(new Line(song));
                 }
             } else if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader == null) {
@@ -368,13 +362,9 @@ public final class SongIO {
 
                 if (note != null) {
                     if (parsedLines.isEmpty()) {
-                        if (parsingSong == null) {
-                            return;
-                        }
-
                         // v1.0 carries no per-line key; the auto-created line takes the document
                         // key at the end of the load, with every other keyless first line.
-                        parsedLines.add(new Line(parsingSong));
+                        parsedLines.add(new Line(song));
                     }
 
                     parsedLines.getLast().addElement(note);
@@ -445,7 +435,6 @@ public final class SongIO {
 
                 if (l != null) {
                     parsedLines.add(l);
-                    parsedLegacyOffsets.put(l, lineReader.getLegacyOffsets());
                 }
             } else if (where == Where.TEMPO) {
                 if (tempoReader == null) {
@@ -507,22 +496,8 @@ public final class SongIO {
                         case XML_ARRANGEMENT -> arrangement = Boolean.parseBoolean(str);
                         case XML_FOOTNOTES -> footnotes = str;
                         case XML_INFO -> attribution = str;
-                        // Still read XML_INFO_STARTY from older files for the pixel→ss migration;
-                        // new files (≥ 2.8) do not write it.
-                        case XML_INFO_STARTY -> parseVersionedDouble(str);
-                        case XML_ROW_HEIGHT -> rowHeightAdjustmentSs =
-                            parseVersionedDouble(str);
-                        case XML_LINE_WIDTH -> lineWidthSs =
-                            parseVersionedDouble(str);
                         case XML_DYNAMIC_LAYOUT -> hasBeenDynamicallyLaidOut =
                             Boolean.parseBoolean(str);
-                        case XML_ATTRIBUTION_Y_OFFSET -> {
-                            try {
-                                attributionUserYOffsetSs = Double.parseDouble(str);
-                            } catch (NumberFormatException e) {
-                                LOG.warn("Corrupt document: malformed attributionyoffset: '{}', using default", str);
-                            }
-                        }
                         case XML_LYRICS_DATE -> parseLyricsDate(str);
                     }
                 });
@@ -570,138 +545,96 @@ public final class SongIO {
         }
 
         /**
-         * Call it once, after parsing completes. A lyric whose number names no script is dropped
+         * Must be called once, after the parse. A lyric whose number names no script is dropped
          * rather than refusing the document.
+         *
+         * @throws SAXException when the document had no {@code <song>} or {@code <composition>}
+         *     element, or its document key is damaged
          */
-        public ParsedSong getSong() throws SAXException {
+        LegacyBuild finishBuild() throws SAXException {
+            if (noteReader == null && lineReader == null) {
+                throw new SAXException("The document has no <song> or <composition> element.");
+            }
+
             if (isLegacyAttributionFile()) {
                 parseLegacyAttributionBlob();
             }
 
-            var ctx = new MigrationContext();
+            var ctx = new MigrationContext(song);
             ctx.lines = parsedLines;
-            ctx.legacyLineOffsets = parsedLegacyOffsets;
-            ctx.lineWidthSs = lineWidthSs;
-            ctx.rowHeightAdjustmentSs = rowHeightAdjustmentSs;
             ctx.majorVersion = majorVersion;
             ctx.minorVersion = minorVersion;
             ctx.lyrics = lyrics;
-            ctx.pendingTuplets = lineReader != null ? lineReader.pendingTuplets() : List.of();
-            ctx.pendingHairpins = lineReader != null ? lineReader.pendingHairpins() : List.of();
 
             MigrationPipeline.runPreAssembly(ctx);
-
-            // Line 0 has nothing to inherit from, so it takes the document-level key when the
-            // file gave it none of its own. Done before the lines reach the Song, because that
-            // is where a line's key still stands alone: once installed, Line.setKey would
-            // normalize this away against a key the line does not yet inherit.
             applyDocumentKeyToFirstLine(ctx.lines);
 
-            var formatVersion = CURRENT_FORMAT_VERSION;
-
-            var data = new SongData(
-                tempo,
-                number,
+            song.setMetadata(new SongMetadata(
                 title,
+                number,
                 place,
                 PartialDate.of(year, month, day),
-                underLyrics,
-                banglaLyrics,
-                translatedLyrics,
                 composer,
                 lyricist,
                 lyricsSource,
                 arrangement,
-                footnotes,
                 unofficialTranslation,
-                ctx.rowHeightAdjustmentSs,
-                ctx.lineWidthSs,
-                ctx.lines,
-                hasBeenDynamicallyLaidOut,
-                formatVersion,
                 subtitle,
                 wordsDate
-            );
+            ));
 
-            // Repopulating the stub keeps the Line.song references already established during
-            // parsing. Mutation tracking stays suspended (from newSuspendedStubSong) through
-            // loadFrom so that line-level setters during reload bypass the bracket check.
-            if (parsingSong == null) {
-                throw new IllegalStateException("parsingSong was not initialized");
+            if (tempo != null) {
+                song.setTempo(tempo);
             }
 
-            var song = parsingSong;
+            song.setUnderLyrics(underLyrics);
+            song.setBanglaLyrics(banglaLyrics);
+            song.setTranslatedLyrics(translatedLyrics);
+            song.setFootnotes(footnotes);
+            ctx.lines.forEach(song::addLine);
+            song.setHasBeenDynamicallyLaidOut(hasBeenDynamicallyLaidOut);
+            song.setFormatVersion(CURRENT_FORMAT_VERSION);
 
-            try {
-                song.loadFrom(data);
-                collapseLineKeysMatchingInheritance(song);
-                if (attributionUserYOffsetSs != 0) {
-                    song.getAttributionElement().setUserYOffsetSs(attributionUserYOffsetSs);
-                }
-            } finally {
-                song.endSuspendMutationTracking();
-            }
-
-            ctx.song = song;
             MigrationPipeline.runPostAssembly(ctx);
 
-            var readerEntries = new ArrayList<RecordedChange>();
-
             if (accidentalsConverted()) {
-                readerEntries.add(ParsedSong.accidentalsConvertedEntry());
+                song.report(RecordedChange.accidentalsConverted());
             }
 
-            // Only a lineReader reads lyrics: a v1.0 document keeps its lyrics at song level,
-            // where the legacy lyrics import places them.
+            var warnings = new ArrayList<LoadWarning>();
+
+            if (invalidLyricsDate != null) {
+                warnings.add(new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate));
+            }
+
+            var marks = new PendingMarks(List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
+
+            // Only a lineReader reads lyrics and line-level marks: a v1.0 document keeps its
+            // lyrics at song level, where the legacy lyrics import places them, and carries no
+            // marks.
             if (lineReader != null) {
                 for (var line : lineReader.linesThatDroppedLyrics()) {
-                    readerEntries.add(ParsedSong.lyricDroppedEntry(line));
+                    song.report(RecordedChange.lyricDropped(line));
                 }
+
+                marks = lineReader.pendingMarks();
             }
 
-            return new ParsedSong(
-                song,
-                ctx.pendingTuplets,
-                lineReader != null ? lineReader.pendingEndings() : List.of(),
-                ctx.pendingHairpins,
-                readerEntries);
+            return new LegacyBuild(marks, getDocumentFonts(), warnings);
         }
 
-        /**
-         * Must be called after parsing completes.
-         */
-        public DocumentFonts getDocumentFonts() {
+        private DocumentFonts getDocumentFonts() {
             return viewReader != null
                 ? viewReader.getDocumentFonts()
                 : DocumentFonts.defaultFonts();
         }
 
-        /**
-         * Returns {@code null} when the tag was absent or valid.
-         */
-        @Nullable
-        public String getInvalidLyricsDate() {
-            return invalidLyricsDate;
-        }
-
-        /**
-         * Suspension is released in {@link #getSong()} after the final {@code loadFrom}.
-         */
-        private static Song newSuspendedStubSong() {
-            var stub = Song.newParsingStub();
-            stub.beginSuspendMutationTracking();
-            return stub;
-        }
-
-        private double parseVersionedDouble(String str) {
-            return (majorVersion >= 2 && minorVersion >= 1)
-                ? Double.parseDouble(str)
-                : Integer.parseInt(str);
-        }
-
-        // True when the file predates the discrete attribution tags (< 2.8).
         private boolean isLegacyAttributionFile() {
-            return majorVersion < 2 || (majorVersion == 2 && minorVersion < 8);
+            return version().isBefore(FIRST_ATTRIBUTION_TAGS_VERSION);
+        }
+
+        private FormatVersion version() {
+            return new FormatVersion(majorVersion, minorVersion);
         }
 
         // True when the file is so old that place/date were only in the attribution blob.

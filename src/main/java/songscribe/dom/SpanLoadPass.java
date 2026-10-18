@@ -28,7 +28,8 @@ import org.slf4j.LoggerFactory;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
- * Turns the endings and hairpins a reader found into the song's spans, or drops them.
+ * Turns the endings, hairpins, beams and trills a reader found into the song's spans, or drops
+ * them.
  *
  * <p>The one place a {@link PendingSpan} becomes a span, by the same factory rule the editor and
  * the paste ask. A span that rule refuses is dropped, and nothing is repaired into something the
@@ -47,10 +48,9 @@ final class SpanLoadPass {
      *
      * <p>Each pending span is judged in order by its kind's factory ({@link PendingSpan#spanning})
      * over the range from its anchor's index to its end's index in the anchor's line. A span the
-     * factory returns takes the pending span's two offsets as its
-     * {@link LineElement#getUserXOffsetSs()} and {@link LineElement#getUserYOffsetSs()}, and is
-     * added to that line with {@link Span#addTo}, which merges a hairpin with each hairpin of its
-     * kind already there that it overlaps or touches. One the factory refuses is dropped. Adding a
+     * factory returns is added to that line with {@link Span#addTo}, which merges a hairpin with
+     * each hairpin of its kind already there that it overlaps or touches. One the factory refuses
+     * is dropped. Adding a
      * span changes no element, so every later pending span's indices are the ones the reader
      * built. Because the spans are judged in order and the factory sees the spans already added, of
      * two pending endings that overlap or sit back to back, and of two pending hairpins of opposite
@@ -63,23 +63,22 @@ final class SpanLoadPass {
      * the pass rejects it rather than reporting it.
      *
      * @param song         the song being loaded, whose lines hold every anchor and end
-     * @param pendingSpans the endings or hairpins the reader found in {@code song}. Each one's
-     *                     anchor sits in a line of {@code song}, and its end sits in the same line
-     *                     at or after the anchor
-     * @param report       the report a drop is recorded into
+     * @param pendingSpans the endings, hairpins, beams or trills the reader found in {@code song}.
+     *                     Each one's anchor sits in a line of {@code song}, and its end sits in the
+     *                     same line at or after the anchor
      * @throws IllegalArgumentException if a pending span's anchor sits in no line of
      *     {@code song}, or its end does not sit in the anchor's line at or after the anchor
      * @effects adds a span to its anchor's line for every pending span not dropped; records to
-     *     {@code report}, in the order of {@code pendingSpans}, every pending span the pass
+     *     the load's report, in the order of {@code pendingSpans}, every pending span the pass
      *     dropped, as {@link Spanning.Refused#reportedAt} states it on the span's line
      */
-    static void run(Song song, List<? extends PendingSpan<?>> pendingSpans, ChangeReport.Builder report) {
+    static void run(Song song, List<? extends PendingSpan<?>> pendingSpans) {
         for (var pending : pendingSpans) {
-            place(song, pending, report);
+            place(song, pending);
         }
     }
 
-    private static <S extends Span<?>> void place(Song song, PendingSpan<S> pending, ChangeReport.Builder report) {
+    private static <S extends Span<?>> void place(Song song, PendingSpan<S> pending) {
         var anchor = pending.anchor();
         var line = anchor.getParentLine();
         var lineIndex = line == null ? null : song.indexOfLine(line);
@@ -91,17 +90,13 @@ final class SpanLoadPass {
         var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(pending.end()));
 
         switch (pending.spanning(line, range)) {
-            case Spanning.Spanned(var span, _) -> {
-                span.setUserXOffsetSs(pending.xOffsetSs());
-                span.setUserYOffsetSs(pending.yOffsetSs());
-                span.addTo();
-            }
+            case Spanning.Spanned(var span, _) -> span.addTo();
 
             case Spanning.Refused<S> refused -> {
                 LOG.warn("Load pass: dropped an ill-formed span ({}) over elements {}-{} of line {} ({})",
                     refused.headingKey(), range.begin(), range.end(), lineIndex, refused.reasonKey());
 
-                report.record(refused.reportedAt(ChangeLines.on(line)));
+                song.report(refused.reportedAt(ChangeLines.on(line)));
             }
         }
     }

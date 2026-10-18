@@ -11,6 +11,7 @@ Read `ChangeReport` first.
 - `ReportedChange`
 - `LineRange`
 - `ModificationRule`
+- `SongLoad`
 - `ReportPanel`
 
 ## Rules
@@ -19,5 +20,5 @@ Read `ChangeReport` first.
   load that made it, never through a confirmation or an alert of its own, because the Messages
   panel is the one place the user learns what the song changed.
 - Remove a span that the user did not directly request with `Span.removeReported`.
-- Report no removal that loses no information, such as a stranded key change or a span merged
-  into a neighbor of the same kind.
+- Report no removal that loses no information, such as a stranded key change an edit removes or
+  a span merged into a neighbor of the same kind.

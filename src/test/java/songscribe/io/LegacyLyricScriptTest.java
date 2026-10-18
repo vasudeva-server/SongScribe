@@ -37,7 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * A legacy {@code .mssw} lyric whose number names no script is dropped, the song loads, and the
  * load's report holds one entry for the line that lost it. The rule is the one
  * {@code LyricScriptRoundTripTest} states for MusicXML: both readers report it through
- * {@code ParsedSong.lyricDroppedEntry}.
+ * {@code RecordedChange.lyricDropped}.
  */
 class LegacyLyricScriptTest extends UnitTest {
 

@@ -71,21 +71,20 @@ final class TupletLoadPass {
      * @param pendingTuplets the tuplets the reader found in {@code song}. Each one's anchor and
      *                       end sit in the same line of {@code song}, the end at or after the
      *                       anchor, and no two overlap
-     * @param report         the report the pass records into
      * @effects adds a {@link Tuplet} to its anchor's line for every pending tuplet not dropped;
-     *     records to {@code report}, in document order, every pending tuplet the pass dropped
+     *     records to the load's report, in document order, every pending tuplet the pass dropped
      *     and every one it updated, that is, added with a derived ratio; a pending tuplet added
      *     with its stated ratio is not recorded
      */
-    static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport.Builder report) {
-        var counts = placeTuplets(song, pendingTuplets, report);
+    static void run(Song song, List<PendingTuplet> pendingTuplets) {
+        var counts = placeTuplets(song, pendingTuplets);
 
         if (!counts.isEmpty()) {
             LOG.info("Tuplet load pass: {} dropped, {} updated", counts.dropped(), counts.updated());
         }
     }
 
-    private static Counts placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport.Builder report) {
+    private static Counts placeTuplets(Song song, List<PendingTuplet> pendingTuplets) {
         var startLineIndex = song.firstNonEmptyLineIndex();
 
         if (startLineIndex == null) {
@@ -104,7 +103,7 @@ final class TupletLoadPass {
         for (var sited : TupletValidator.sitesFrom(
             song, new ElementLocation(startLineIndex, 0), (line, index) -> pendingAnchoredAt(byAnchor, line, index))
         ) {
-            switch (place(sited, report)) {
+            switch (place(song, sited)) {
                 case DROPPED -> dropped++;
                 case UPDATED -> updated++;
                 case STATED -> {
@@ -121,7 +120,7 @@ final class TupletLoadPass {
         STATED
     }
 
-    private static Placement place(TupletValidator.Sited<PendingTuplet> sited, ChangeReport.Builder report) {
+    private static Placement place(Song song, TupletValidator.Sited<PendingTuplet> sited) {
         var pending = sited.tuplet();
         var site = sited.site();
         var where = ChangeLines.on(site.line());
@@ -133,7 +132,7 @@ final class TupletLoadPass {
 
         return switch (spanning) {
             case Spanning.Refused<Tuplet> refused -> {
-                report.record(refused.reportedAt(where));
+                song.report(refused.reportedAt(where));
                 yield Placement.DROPPED;
             }
 
@@ -145,7 +144,7 @@ final class TupletLoadPass {
                     yield Placement.STATED;
                 }
 
-                report.record(new RecordedChange(
+                song.report(new RecordedChange(
                     Strings.REPORT_TUPLETS_UPDATED,
                     Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), tuplet.getRatio().normalNotes()),
                     where));

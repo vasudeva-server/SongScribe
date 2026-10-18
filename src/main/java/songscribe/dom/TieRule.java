@@ -35,7 +35,7 @@ import songscribe.message.mutation.Mutation;
  * ({@link Tie#between}) and the tie {@link Tie#holds() holds}. A tie that stays also removes any
  * beam that holds both of its notes, since the tie wins. It judges every tied note of the lines
  * an edit touched and of the line before each, since a tie from that line can end in the touched
- * one. A tie loaded from a file is trusted, because a load records nothing for the rule to judge.
+ * one. A tie loaded from a file is judged by the same {@link Tie#judge}, in the tie load stage.
  */
 final class TieRule implements ModificationRule {
 
@@ -88,35 +88,20 @@ final class TieRule implements ModificationRule {
                 continue;
             }
 
-            var reached = Tie.endAfter(line, i);
-            var tie = reached == null ? null : Tie.between(anchor, reached.element());
+            switch (Tie.judge(line, i)) {
+                case Tie.Judgment.Holds() -> {
+                    // The tie wins over a beam: tied notes are never beamed together.
+                    var beam = Tie.beamHoldingBoth(line, i);
 
-            if (tie != null && tie.holds()) {
-                // The tie wins over a beam: tied notes are never beamed together.
-                var beam = Tie.beamHoldingBoth(line, i);
-
-                if (beam != null) {
-                    beam.removeReported(Strings.REPORT_REASON_BEAM_TIED_NOTES);
+                    if (beam != null) {
+                        beam.removeReported(Strings.REPORT_REASON_BEAM_TIED_NOTES);
+                    }
                 }
-
-                continue;
+                case Tie.Judgment.Broken broken -> {
+                    report.record(broken.entry());
+                    line.removeTie(anchor);
+                }
             }
-
-            var reasonKey = tie == null
-                ? Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE
-                : Strings.REPORT_REASON_TIE_NOT_HELD;
-
-            report.record(new RecordedChange(
-                Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), changeLines(line, reached)));
-            line.removeTie(anchor);
         }
-    }
-
-    private static ChangeLines changeLines(Line line, Tie.@Nullable Reached reached) {
-        if (reached == null) {
-            return ChangeLines.on(line);
-        }
-
-        return new ChangeLines(line, reached.line());
     }
 }

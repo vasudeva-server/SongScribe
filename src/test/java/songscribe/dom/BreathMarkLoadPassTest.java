@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import java.util.List;
-
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -33,24 +31,26 @@ import songscribe.dom.SongFactory.LineBuilder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
  * What {@link BreathMarkLoadPass#run} promises about a freshly parsed song: every breath mark
  * that does not follow a duration element is removed, a run of consecutive breath marks keeps at
- * most its first, each removal is reported against the line it stood on, and the pass leaves no mutation behind for undo to see.
+ * most its first, and each removal is reported against the line it stood on.
  */
 class BreathMarkLoadPassTest extends UnitTest {
 
-    /** The elements the pass leaves behind, in the order they end up in. */
-    private static final int REMAINING_ELEMENT_COUNT = 7;
+    /** The elements the pass leaves behind, the song's own final bar line included. */
+    private static final int REMAINING_ELEMENT_COUNT = 8;
     private static final int REMAINING_BREATH_MARK_AFTER_NOTE_INDEX = 3;
     private static final int REMAINING_FIRST_OF_CONSECUTIVE_PAIR_INDEX = 5;
 
     /** A line index of the song under test that holds the breath marks, after zero, one or two lines. */
     @ParameterizedTest(name = "line {0}")
     @ValueSource(ints = {0, 1, 2})
-    void testRunDropsEveryBreathMarkNotFollowingADurationElementAndEmitsNoMutation(int lineIndex) {
+    void testEveryBreathMarkNotFollowingADurationElementIsRemovedAndReportedOnItsLine(int lineIndex)
+        throws StrandedKeyChangeException {
         var builders = new LineBuilder[lineIndex + 1];
 
         for (var i = 0; i < lineIndex; i++) {
@@ -68,12 +68,13 @@ class BreathMarkLoadPassTest extends UnitTest {
             line.addElement(breathMark());       // first of a consecutive pair, follows a note — kept
             line.addElement(breathMark());       // second of the pair, follows a breath mark — removed
             line.addElement(crotchet());
+            line.addElement(finalDoubleBarline());
         };
 
-        var song = SongFactory.buildSong(builders);
-        var report = new ParsedSong(song, List.of(), List.of(), List.of(), List.of()).settle();
+        var loaded = SongFactory.loadSong(builders);
+        var song = loaded.song();
 
-        assertThat(report.changes()).containsExactly(
+        assertThat(loaded.report().changes()).containsExactly(
             removedOn(lineIndex),
             removedOn(lineIndex),
             removedOn(lineIndex)
@@ -83,8 +84,6 @@ class BreathMarkLoadPassTest extends UnitTest {
         assertThat(line.elementCount()).isEqualTo(REMAINING_ELEMENT_COUNT);
         assertThat(line.getElement(REMAINING_BREATH_MARK_AFTER_NOTE_INDEX).getType().isBreathMark()).isTrue();
         assertThat(line.getElement(REMAINING_FIRST_OF_CONSECUTIVE_PAIR_INDEX).getType().isBreathMark()).isTrue();
-
-        assertThat(song.isModified()).isFalse();
     }
 
     /** The entry the pass records for a breath mark that stood on line {@code lineIndex}. */

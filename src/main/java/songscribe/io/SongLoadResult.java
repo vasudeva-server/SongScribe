@@ -27,8 +27,9 @@ import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
 import songscribe.dom.ChangeReport;
-import songscribe.dom.ParsedSong;
 import songscribe.dom.Song;
+import songscribe.dom.SongLoad;
+import songscribe.dom.StrandedKeyChangeException;
 import songscribe.font.DocumentFonts;
 
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
@@ -46,13 +47,9 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             warnings = List.copyOf(warnings);
         }
 
-        /**
-         * Both readers end here, so the load passes run on every route a file is opened by.
-         */
-        public static Success settled(ParsedSong parsed, DocumentFonts fonts, List<LoadWarning> warnings) {
-            var report = parsed.settle();
-
-            return new Success(parsed.song(), fonts, warnings, report);
+        public static Success loaded(SongLoad.LoadedSong<? extends ReaderBuild> loaded) {
+            var built = loaded.built();
+            return new Success(loaded.song(), built.fonts(), built.warnings(), loaded.report());
         }
     }
 
@@ -64,6 +61,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             SongLoadResult.WrongSoftware,
             SongLoadResult.UnsupportedFileFormat,
             SongLoadResult.InvalidFileFormat,
+            SongLoadResult.StrandedKeyChange,
             SongLoadResult.UnsupportedVersion {
         File file();
     }
@@ -96,8 +94,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
     }
 
     /**
-     * The result for a {@code .musicxml}/{@code .xml} document that cannot be read as this
-     * program's format.
+     * The result for a {@code .musicxml}/{@code .xml} or {@code .mssw} document that cannot be
+     * read as this program's format.
      */
     record InvalidFileFormat(File file, String detail) implements Failure {
 
@@ -105,6 +103,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             return "Invalid file format: " + detail;
         }
     }
+
+    record StrandedKeyChange(File file, StrandedKeyChangeException cause) implements Failure {}
 
     /**
      * The file names SongScribe as its writer but carries a version
@@ -123,6 +123,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             case WrongSoftware e -> throw new IOException(WrongSoftware.message(e.software()));
             case UnsupportedFileFormat e -> throw new IOException(UnsupportedFileFormat.message(e.extension()));
             case InvalidFileFormat e -> throw new IOException(InvalidFileFormat.message(e.detail()));
+            case StrandedKeyChange e -> throw new IOException(e.cause().getMessage(), e.cause());
             case UnsupportedVersion e -> throw new IOException(
                 "Unsupported SongScribe version: " + e.version());
         };

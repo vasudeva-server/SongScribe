@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.StrandedKeyChangeException;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongLoadResult;
 
@@ -49,11 +50,9 @@ public final class MusicXmlReader {
      * When the document carries no {@code <defaults>} font block, the result's fonts default to
      * {@link songscribe.font.DocumentFonts#defaultFonts()}.
      */
-    public static SongLoadResult.Success read(InputSource source) throws IOException, SAXException {
-        var documentFonts = DocumentFonts.defaultFonts();
-        var parsed = SongMapper.map(MusicXmlSerializer.unmarshal(source), documentFonts);
-
-        return SongLoadResult.Success.settled(parsed, documentFonts, List.of());
+    public static SongLoadResult.Success read(InputSource source)
+        throws IOException, SAXException, StrandedKeyChangeException {
+        return SongLoadResult.Success.loaded(SongMapper.map(MusicXmlSerializer.unmarshal(source)));
     }
 
     /**
@@ -61,7 +60,8 @@ public final class MusicXmlReader {
      * mid-parse as a parse error, and {@link songscribe.io.SongFileLoader} maps "not there" and
      * "damaged" to different results. Opening it here is also what closes it.
      */
-    public static SongLoadResult.Success read(File file) throws IOException, SAXException {
+    public static SongLoadResult.Success read(File file)
+        throws IOException, SAXException, StrandedKeyChangeException {
         try (var stream = new FileInputStream(file)) {
             var source = new InputSource(stream);
             // The location travels with the stream so the parser can still resolve

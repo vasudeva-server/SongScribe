@@ -44,8 +44,7 @@ final class LeadingBarLoadPass {
      * Removes each bar line that stands first in {@code song}, until its first element is not a
      * bar line or is its terminal, and records what it removed.
      *
-     * @param song   the song to settle, immediately after parsing and before it is installed
-     * @param report the report the pass records into
+     * @param song the song to settle, immediately after parsing and before it is installed
      * @invariant afterwards {@link SongStart#leadingBar} answers {@code null} for {@code song}
      * @invariant the song's terminal is never removed
      * @invariant every element left on the song's lines sounds in the key it sounded in before
@@ -56,14 +55,13 @@ final class LeadingBarLoadPass {
      *     take it. When it does, the pass first sets that key change's key as the line's own key
      *     ({@link Line#setKey}), so where several bar lines stand first the line ends in the key
      *     of the last key change removed. The line leaves off in the key it left off in before,
-     *     so no other line's key moves and no key change is stranded. The removal runs the span
-     *     sweep: a span with an endpoint on a removed element, such as an ending that starts on
-     *     the bar line, is removed with it, and that removal is not recorded to {@code report},
-     *     because the load runs with mutation tracking suspended and the sweep's report is silent
-     *     then. Records to {@code report} one {@link SongStart#removedEntry} per bar line removed,
-     *     naming the line it was on and whether the removal moved a key, in the order of removal
+     *     so no other line's key moves and no key change is stranded. A span with an endpoint on a
+     *     removed element, such as an ending that starts on the bar line, is removed with it
+     * @effects records to the load's report one {@link SongStart#removedEntry} per bar line
+     *     removed, naming the line it was on and whether the removal moved a key, in the order of
+     *     removal, each before the entries of the spans its removal takes
      */
-    static void run(Song song, ChangeReport.Builder report) {
+    static void run(Song song) {
         var removedCount = 0;
         var leadingBar = SongStart.leadingBar(song);
 
@@ -78,8 +76,8 @@ final class LeadingBarLoadPass {
                 line.setKey(movedKey);
             }
 
+            song.report(SongStart.removedEntry(line, movedKey));
             line.removeRange(removed.range());
-            report.record(SongStart.removedEntry(line, movedKey));
             removedCount++;
             leadingBar = SongStart.leadingBar(song);
         }

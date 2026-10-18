@@ -23,12 +23,12 @@ package songscribe;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.function.Supplier;
 import javax.swing.UIManager;
 import javax.xml.parsers.SAXParserFactory;
 
@@ -40,7 +40,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
-import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import songscribe.dom.Annotation;
@@ -53,6 +52,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.StrandedKeyChangeException;
 import songscribe.error.RuntimeErrorTestHelper;
 import songscribe.font.DocumentFonts;
 import songscribe.font.SourceSans3Font;
@@ -220,7 +220,7 @@ public abstract class UnitTest {
         if (musicXmlFile != null) {
             try {
                 return MusicXmlReader.read(musicXmlFile);
-            } catch (IOException | SAXException e) {
+            } catch (IOException | SAXException | StrandedKeyChangeException e) {
                 throw new IllegalStateException("Fixture '" + fixtureName + "' failed to load", e);
             }
         }
@@ -242,9 +242,9 @@ public abstract class UnitTest {
     public static final double UNCONSTRAINED_LINE_WIDTH_SS = 10_000.0;
 
     /**
-     * Creates a minimal Song mock with mutation tracking suspended and both
-     * {@code withModification} overloads (plain and labeled) and {@code applyChange}
-     * delegating directly to the runnable. Shared by
+     * Creates a minimal Song mock that does not enforce the edit invariants, with both
+     * {@code withModification} overloads (plain and labeled), both {@code withoutMutationTracking}
+     * forms and {@code applyChange} delegating directly to the runnable. Shared by
      * {@link #detachedLine()} and
      * {@link songscribe.ui.selection.ReflectionTestHelper}.
      *
@@ -261,17 +261,22 @@ public abstract class UnitTest {
     @SuppressWarnings("ReturnOfNull")
     public static Song minimalSongMock() {
         var songMock = mock(Song.class);
-        when(songMock.isMutationTrackingSuspended()).thenReturn(true);
         when(songMock.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
         when(songMock.getLineWidthSs()).thenReturn(new Ss(UNCONSTRAINED_LINE_WIDTH_SS));
         // An unstubbed mock reports script 0, which no lyric ever carries, so every lyric on
         // every fixture element would read as absent to layout and to the editor.
         when(songMock.getActiveScript()).thenReturn(Song.Script.LATIN);
         when(songMock.keyInheritance()).thenReturn(mock(KeyInheritance.class));
+        // The edit invariants hold across a song's line list, which a mock does not have.
+        when(songMock.enforcesEditInvariants()).thenReturn(false);
         doAnswer(answerVoid(Runnable::run))
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(answerVoid((String label, Runnable body) -> body.run()))
             .when(songMock).withModification(any(String.class), any(Runnable.class));
+        doAnswer(answerVoid(Runnable::run))
+            .when(songMock).withoutMutationTracking(any(Runnable.class));
+        doAnswer(invocation -> invocation.<Supplier<?>>getArgument(0).get())
+            .when(songMock).withoutMutationTrackingResult(any());
         // Every element primitive posts its mutation through Song.applyChange, which is the
         // only place that runs a mutator, since Line.applyChange forwards to it unconditionally.
         doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> mutator.run()))
@@ -376,18 +381,5 @@ public abstract class UnitTest {
         line.addElement(note);
         note.addAttachment(new AnnotationAttachment(new Annotation(text)));
         return line;
-    }
-
-    /** Parses a composition XML string into a Song via the SAX document reader, settled as a load settles it. */
-    public static Song parseXml(String xml) throws Exception {
-        var parser = SAXParserFactory.newInstance().newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
-
-        var parsed = reader.getSong();
-
-        parsed.settle();
-
-        return parsed.song();
     }
 }

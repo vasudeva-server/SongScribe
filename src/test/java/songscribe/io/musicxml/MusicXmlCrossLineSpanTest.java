@@ -221,10 +221,7 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
                 dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_REST_OR_BREATH_MARK)),
             new DroppedMarkCase("a beam mark on a rest",
                 eighthRest(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)) + middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END)), 2,
-                new ReportedChange(
-                    Strings.REPORT_BEAMS_REMOVED,
-                    Strings.get(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT),
-                    FIRST_LINE_RANGE))
+                dropped(Strings.REPORT_BEAMS_REMOVED, Strings.REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT))
         );
     }
 

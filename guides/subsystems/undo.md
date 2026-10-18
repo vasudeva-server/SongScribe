@@ -5,6 +5,8 @@ Read `ModificationSession` first.
 ## Membership
 
 - `ModificationSession`
+- `EditSession`
+- `LoadSession`
 - `Mutation`
 - `ModificationRule`
 - `ModificationRules`

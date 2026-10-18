@@ -32,7 +32,7 @@ import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.SongFactory.compactSong;
+import static songscribe.dom.SongFactory.loadCompactSong;
 import static songscribe.dom.SpanFactory.TRIPLET_NORMAL_NOTES;
 import static songscribe.dom.SpanFactory.ratioOf;
 
@@ -87,13 +87,11 @@ class TupletLoadPassTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("addedCases")
-    void testAPendingTupletIsAddedWithItsRatioAndOffset(AddedCase testCase) {
-        var song = songOfThreeNotes();
-        var line = song.getLine(LINE);
+    void testAPendingTupletIsAddedWithItsRatioAndOffset(AddedCase testCase) throws StrandedKeyChangeException {
+        var loaded = loadWithTuplet(testCase.statedRatio());
+        var line = loaded.song().getLine(LINE);
 
-        var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
-
-        assertThat(report.changes()).isEqualTo(testCase.expectedReport());
+        assertThat(loaded.report().changes()).isEqualTo(testCase.expectedReport());
         assertThat(line.spanRegistry().findSpans(Tuplet.class)).singleElement().satisfies(tuplet -> {
             assertThat(tuplet.getRatio().normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES);
             assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS);
@@ -118,13 +116,12 @@ class TupletLoadPassTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("droppedCases")
-    void testAPendingTupletTheValidatorRejectsIsDroppedWithItsReason(DroppedCase testCase) {
-        var song = songOfThreeNotes();
-        var line = song.getLine(LINE);
+    void testAPendingTupletTheValidatorRejectsIsDroppedWithItsReason(DroppedCase testCase)
+        throws StrandedKeyChangeException {
+        var loaded = loadWithTuplet(testCase.statedRatio());
+        var line = loaded.song().getLine(LINE);
 
-        var report = settle(song, pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS));
-
-        assertThat(report.changes()).containsExactly(new ReportedChange(
+        assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
             Strings.REPORT_TUPLETS_REMOVED,
             Strings.get(testCase.reasonKey()),
             lineRange()));
@@ -138,19 +135,22 @@ class TupletLoadPassTest extends UnitTest {
         );
     }
 
-    /** A song whose {@link #LINE} holds {@link #THREE_NOTES}, behind a line of one note. */
-    private static Song songOfThreeNotes() {
-        return compactSong(Key.NO_ACCIDENTALS, LEADING_LINE, THREE_NOTES);
+    /**
+     * Loads a song whose {@link #LINE} holds {@link #THREE_NOTES}, behind a line of one note, with
+     * one pending tuplet over {@link #SPAN} as the only mark the reader found.
+     */
+    private static SongLoad.LoadedSong<SongFactory.LoadBuild> loadWithTuplet(@Nullable TupletNormalTime statedRatio)
+        throws StrandedKeyChangeException {
+        return loadCompactSong(
+            song -> new PendingMarks(
+                List.of(pendingOver(song.getLine(LINE), statedRatio, Y_OFFSET_SS)),
+                List.of(), List.of(), List.of(), List.of(), List.of()),
+            Key.NO_ACCIDENTALS, LEADING_LINE, THREE_NOTES);
     }
 
     /** The range every report entry of this class names: the line under test. */
     private static LineRange lineRange() {
         return new LineRange(LINE, LINE);
-    }
-
-    /** Settles {@code song} with {@code tuplet} as the only pending span the reader found. */
-    private static ChangeReport settle(Song song, PendingTuplet tuplet) {
-        return new ParsedSong(song, List.of(tuplet), List.of(), List.of(), List.of()).settle();
     }
 
     private static PendingTuplet pendingOver(Line line, @Nullable TupletNormalTime statedRatio, double yOffsetSs) {

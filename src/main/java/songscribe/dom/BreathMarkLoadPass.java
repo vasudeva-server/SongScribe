@@ -46,25 +46,23 @@ final class BreathMarkLoadPass {
      * settled everything before it, so a run of consecutive breath marks keeps at most its
      * first: the second follows a breath mark, never a duration element.
      *
-     * @param song   the song to settle, immediately after parsing and before it is installed
-     * @param report the report the pass records into
+     * @param song the song to settle, immediately after parsing and before it is installed
      * @invariant afterwards every breath mark in {@code song} stands immediately after a
      *     pitched note or a rest, the invariant {@link StaffElementRun#canInsertRunAt} states
-     * @effects each removal goes through {@link Line#removeElement}, which runs the span sweep:
-     *     a tuplet that holds the removed mark is removed with it, and that removal is not
-     *     recorded to {@code report}, because the load runs with mutation tracking suspended
-     *     and the sweep's report is silent then; records to {@code report}, in document order,
-     *     each breath mark removed, with an entry that names the line the breath mark was on
+     * @effects a tuplet that holds a removed mark is removed with it
+     * @effects records to the load's report, in document order, each breath mark removed, with an
+     *     entry that names the line the breath mark was on, before the entries of the spans its
+     *     removal takes
      */
-    static void run(Song song, ChangeReport.Builder report) {
-        var removedCount = removeUnhostedBreathMarks(song, report);
+    static void run(Song song) {
+        var removedCount = removeUnhostedBreathMarks(song);
 
         if (removedCount > 0) {
             LOG.info("Breath mark load pass: {} removed", removedCount);
         }
     }
 
-    private static int removeUnhostedBreathMarks(Song song, ChangeReport.Builder report) {
+    private static int removeUnhostedBreathMarks(Song song) {
         var removedCount = 0;
 
         for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
@@ -73,12 +71,12 @@ final class BreathMarkLoadPass {
 
             while (i < line.elementCount()) {
                 if (line.getElement(i).getType().isBreathMark() && !line.isDurationAt(i - 1)) {
-                    line.removeElement(i);
-                    removedCount++;
-                    report.record(new RecordedChange(
+                    song.report(new RecordedChange(
                         Strings.REPORT_BREATH_MARKS_REMOVED,
                         Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
                         ChangeLines.on(line)));
+                    line.removeElement(i);
+                    removedCount++;
                 } else {
                     i++;
                 }

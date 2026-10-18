@@ -59,9 +59,12 @@ import songscribe.dom.Line;
 import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
-import songscribe.dom.ParsedSong;
+import songscribe.dom.PendingBeam;
 import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingHairpin;
+import songscribe.dom.PendingMarks;
+import songscribe.dom.PendingTie;
+import songscribe.dom.PendingTrill;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.RecordedChange;
 import songscribe.dom.Slide;
@@ -76,6 +79,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletNormalTime;
+import songscribe.dom.UserOffset;
 import songscribe.io.DocumentValidation;
 import songscribe.io.ReadAnnotation;
 
@@ -100,9 +104,9 @@ import songscribe.io.ReadAnnotation;
  * hairpin and a volta may not.
  *
  * <p><b>Damaged marks.</b> This writer pairs every span mark it emits, so a mark that does not
- * pair is damage. The pass that meets a damaged mark drops it, keeps the notes it sat on, adds
- * one entry to the reader's report entries and reads on, so a file damaged in one span still
- * opens and the user sees what was dropped.
+ * pair is damage. The pass that meets a damaged mark drops it, keeps the notes it sat on, reports
+ * it through {@link Song#report} and reads on, so a file damaged in one span still opens and the
+ * user sees what was dropped.
  *
  * <p>A {@link Line} is committed to the song only once its elements are complete, so
  * {@code Line.addElement} appends in document order instead of inserting before a valid
@@ -224,33 +228,35 @@ final class MeasureMapper {
     private Integer lineStartMeasureIndex = null;
 
     // True once any note's <accidental> token was a retired legacy token converted to its
-    // replacement. One report entry stands for every conversion, so map adds it once the walk is
-    // over, after every entry the walk made.
+    // replacement. One report entry stands for every conversion, so map reports it once the walk
+    // is over.
     private boolean accidentalsConverted = false;
 
-    // Every line on which a note lost a <lyric> whose number names no script, once each, in the
-    // order the walk reached them. Each gets one report entry, which map adds after the
-    // accidentals-converted entry.
+    // Every line on which a note lost a <lyric> whose number names no script, once each. Each
+    // gets one report entry, which map reports once the walk is over.
     private final Set<Line> linesThatDroppedLyrics = new LinkedHashSet<>();
 
     // Every tuplet bracket the walk has closed, with no stated ratio when the file states
-    // none; carried to the load passes in the ParsedSong — a mapper cannot build a Tuplet, since
-    // the beat a stated-less ratio derives from may still change in a later measure while the
-    // walk is mid-part.
+    // none; carried to the load stages in the PendingMarks — a mapper cannot build a Tuplet,
+    // since the beat a stated-less ratio derives from may still change in a later measure while
+    // the walk is mid-part.
     private final List<PendingTuplet> pendingTuplets = new ArrayList<>();
 
     // Every ending the walk paired a number="1" start with a number="2" stop; carried to the load
-    // passes in the ParsedSong — a mapper does not build an Ending, since whether the range is
-    // well formed is the span load pass's question, not the walk's.
+    // stages in the PendingMarks — a mapper does not build an Ending, since whether the range is
+    // well formed is a load stage's question, not the walk's.
     private final List<PendingEnding> pendingEndings = new ArrayList<>();
 
-    // Every hairpin the walk paired a wedge start with a stop; carried to the load passes in the
-    // ParsedSong — a mapper does not build a Hairpin, since whether the range is well formed, and
-    // whether it merges with another, is the span load pass's question, not the walk's.
+    // Every hairpin the walk paired a wedge start with a stop; carried to the load stages in the
+    // PendingMarks — a mapper does not build a Hairpin, since whether the range is well formed,
+    // and whether it merges with another, is a load stage's question, not the walk's.
     private final List<PendingHairpin> pendingHairpins = new ArrayList<>();
 
-    // Every report entry the walk made, one per damaged mark it dropped, in the order it made them.
-    private final List<RecordedChange> readerEntries = new ArrayList<>();
+    private final List<PendingBeam> pendingBeams = new ArrayList<>();
+
+    private final List<PendingTrill> pendingTrills = new ArrayList<>();
+
+    private final List<PendingTie> pendingTies = new ArrayList<>();
 
     // The features the document declares; decides which per-note attributes the walk honors.
     private final Set<SupportedFeature> features;
@@ -261,10 +267,14 @@ final class MeasureMapper {
     }
 
     /**
-     * A damaged span mark does not refuse the document: it is dropped and reported. Nor does a
-     * {@code <lyric>} whose number names no script: each line that lost one is reported once.
+     * A damaged span mark does not refuse the document: it is dropped and reported through
+     * {@link Song#report}. Nor does a {@code <lyric>} whose number names no script: each line
+     * that lost one is reported once.
+     *
+     * @return every tuplet, ending, hairpin, beam, trill and tie the file pairs, unjudged, each on
+     *     a line of {@code song} and each offset in staff spaces
      */
-    static ParsedSong map(ScorePartwise score, Song song, Set<SupportedFeature> features)
+    static PendingMarks map(ScorePartwise score, Song song, Set<SupportedFeature> features)
         throws SAXException {
         var mapper = new MeasureMapper(song, features);
         var part = ProxyMusicAccess.firstPart(score);
@@ -274,15 +284,20 @@ final class MeasureMapper {
         }
 
         if (mapper.accidentalsConverted) {
-            mapper.readerEntries.add(ParsedSong.accidentalsConvertedEntry());
+            song.report(RecordedChange.accidentalsConverted());
         }
 
         for (var line : mapper.linesThatDroppedLyrics) {
-            mapper.readerEntries.add(ParsedSong.lyricDroppedEntry(line));
+            song.report(RecordedChange.lyricDropped(line));
         }
 
-        return new ParsedSong(
-            song, mapper.pendingTuplets, mapper.pendingEndings, mapper.pendingHairpins, mapper.readerEntries);
+        return new PendingMarks(
+            mapper.pendingTuplets,
+            mapper.pendingEndings,
+            mapper.pendingHairpins,
+            mapper.pendingBeams,
+            mapper.pendingTrills,
+            mapper.pendingTies);
     }
 
     private void mapPart(ScorePartwise.Part part) throws SAXException {
@@ -305,8 +320,6 @@ final class MeasureMapper {
         resolveMetronomes(sites);
         resolveHairpins(sites);
         resolveSlides(notes);
-        // Ties before beams: Beam.spanning refuses a beam over a tied pair, so a file that beams
-        // two tied notes loses the beam, which only changes the look, and keeps the tie.
         resolveTies(notes);
         resolveBeams(notes);
         resolveTuplets(notes);
@@ -621,7 +634,7 @@ final class MeasureMapper {
 
                         if (open != null && anchor != null && end != null) {
                             // The writer states no horizontal offset for an ending.
-                            pendingEndings.add(new PendingEnding(anchor, end, 0, open.yOffsetSs()));
+                            pendingEndings.add(new PendingEnding(anchor, end, new UserOffset(0, open.yOffsetSs())));
                         } else {
                             dropDamaged(Strings.REPORT_ENDINGS_REMOVED, Damage.NO_START, at(end));
                         }
@@ -1038,7 +1051,7 @@ final class MeasureMapper {
         var start = open.start();
 
         pendingHairpins.add(new PendingHairpin(
-            start.kind(), open.opener().element(), end, start.xOffsetSs(), start.yOffsetSs()));
+            start.kind(), open.opener().element(), end, new UserOffset(start.xOffsetSs(), start.yOffsetSs())));
     }
 
     // The per-note range-span passes each run over the part's whole note list in document order
@@ -1098,27 +1111,9 @@ final class MeasureMapper {
         dropDangling(Strings.REPORT_BEAMS_REMOVED, open);
     }
 
-    /**
-     * A run {@link Beam#spanning} refuses is damaged.
-     */
     private void closeBeam(OpenBeam open, NoteSite end) {
-        if (!pairsOnOneLine(Strings.REPORT_BEAMS_REMOVED, open, end)) {
-            return;
-        }
-
-        var begin = open.opener();
-
-        if (markedNote(begin) == null || markedNote(end) == null) {
-            dropDamaged(Strings.REPORT_BEAMS_REMOVED, Damage.WRONG_ELEMENT, through(open, end));
-            return;
-        }
-
-        var line = end.line();
-        var range = new ElementRange(line.getElementIndex(begin.element()), line.getElementIndex(end.element()));
-
-        switch (Beam.spanning(line, range)) {
-            case Spanning.Spanned<Beam>(var beam, _) -> beam.addTo();
-            case Spanning.Refused<Beam> refused -> drop(refused.reportedAt(through(open, end)));
+        if (pairsOnOneLine(Strings.REPORT_BEAMS_REMOVED, open, end)) {
+            pendingBeams.add(new PendingBeam(open.opener().element(), end.element()));
         }
     }
 
@@ -1127,18 +1122,9 @@ final class MeasureMapper {
      */
     private void resolveTies(List<NoteSite> notes) {
         for (var note : notes) {
-            if (!NoteMapper.startsTie(note.pmNote())) {
-                continue;
+            if (NoteMapper.startsTie(note.pmNote())) {
+                pendingTies.add(new PendingTie(note.element()));
             }
-
-            var anchor = markedNote(note);
-
-            if (anchor == null || !Tie.canAnchor(anchor)) {
-                dropDamaged(Strings.REPORT_TIES_REMOVED, Damage.WRONG_ELEMENT, at(note.element()));
-                continue;
-            }
-
-            note.line().addTie(anchor);
         }
     }
 
@@ -1259,24 +1245,10 @@ final class MeasureMapper {
     }
 
     /**
-     * A pair {@link Trill#spanning} refuses is damaged.
-     *
      * @param open a trill whose opener is on the line {@code end} is on
      */
     private void closeTrill(OpenTrill open, NoteSite end) {
-        var line = end.line();
-        var range = new ElementRange(line.getElementIndex(open.opener().element()), line.getElementIndex(end.element()));
-
-        switch (Trill.spanning(line, range)) {
-            case Spanning.Spanned<Trill>(var trill, _) -> {
-                if (open.yOffsetSs() != 0) {
-                    trill.setUserYOffsetSs(open.yOffsetSs());
-                }
-
-                trill.addTo();
-            }
-            case Spanning.Refused<Trill> refused -> drop(refused.reportedAt(through(open, end)));
-        }
+        pendingTrills.add(new PendingTrill(open.opener().element(), end.element(), open.yOffsetSs()));
     }
 
     private boolean pairsOnOneLine(String headingKey, OpenMark open, NoteSite end) {
@@ -1310,7 +1282,7 @@ final class MeasureMapper {
 
     private void drop(RecordedChange entry) {
         LOG.warn("Dropping a damaged mark: {}", entry);
-        readerEntries.add(entry);
+        song.report(entry);
     }
 
     /**

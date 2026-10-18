@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
 import static songscribe.dom.SongFactory.editableLine;
 import static songscribe.dom.SongFactory.lineOfQuavers;
+import static songscribe.dom.SpanFactory.addWithoutTracking;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.quaver;
@@ -325,9 +326,12 @@ class LineSpansTest extends UnitTest {
         HairpinDeletionCase testCase
     ) {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        testCase.hairpins().forEach(placed -> hairpinOver(line, placed.kind(), placed.range()).addTo());
+        var song = line.getSong();
+        testCase.hairpins().forEach(placed ->
+            addWithoutTracking(song, () -> hairpinOver(line, placed.kind(), placed.range())));
 
-        testCase.deletions().forEach(deleted -> line.deleteRange(line.effectiveRange(deleted)));
+        song.withoutMutationTracking(() ->
+            testCase.deletions().forEach(deleted -> line.deleteRange(line.effectiveRange(deleted))));
 
         assertThat(placedHairpins(line)).containsExactlyInAnyOrderElementsOf(testCase.expected());
     }
@@ -379,12 +383,16 @@ class LineSpansTest extends UnitTest {
     @Test
     void testTheJoinedHairpinCarriesTheFirstOnesOffsets() {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        var first = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
-        first.setUserYOffsetSs(FIRST_HAIRPIN_Y_OFFSET_SS);
-        first.addTo();
-        hairpinOver(line, Hairpin.Kind.CRESCENDO, ONE_ELEMENT_ON).addTo();
+        var song = line.getSong();
+        addWithoutTracking(song, () -> {
+            var first = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
+            first.setUserYOffsetSs(FIRST_HAIRPIN_Y_OFFSET_SS);
 
-        deleteElement(line, DELETED_INDEX);
+            return first;
+        });
+        addWithoutTracking(song, () -> hairpinOver(line, Hairpin.Kind.CRESCENDO, ONE_ELEMENT_ON));
+
+        song.withoutMutationTracking(() -> deleteElement(line, DELETED_INDEX));
 
         assertThat(line.spanRegistry().getSpans()).singleElement()
             .isInstanceOfSatisfying(Hairpin.class,
@@ -394,10 +402,10 @@ class LineSpansTest extends UnitTest {
     @Test
     void testAHairpinWhoseEndpointsBothSurviveADeletionIsLeftAsItIs() {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        var hairpin = hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING);
-        hairpin.addTo();
+        var song = line.getSong();
+        var hairpin = addWithoutTracking(song, () -> hairpinOver(line, Hairpin.Kind.CRESCENDO, EXISTING));
 
-        deleteElement(line, DELETED_INDEX);
+        song.withoutMutationTracking(() -> deleteElement(line, DELETED_INDEX));
 
         assertThat(line.spanRegistry().getSpans())
             .as("the same hairpin, not a copy of it")
@@ -442,7 +450,6 @@ class LineSpansTest extends UnitTest {
         var line = testCase.line().get();
         var song = line.getSong();
         add(line, testCase.newSpan(), testCase.extent());
-        song.endSuspendMutationTracking();
 
         ReportRecorder.whileRecording(reports -> {
             song.withModification(() -> line.deleteRange(line.effectiveRange(testCase.extent())));
@@ -480,9 +487,11 @@ class LineSpansTest extends UnitTest {
     private static Line lineWithRepeatSplits() {
         var line = editableLine();
 
-        for (var i = 0; i < ENDING_LINE_LENGTH; i++) {
-            line.addElement(elementAt(i));
-        }
+        line.getSong().withoutMutationTracking(() -> {
+            for (var i = 0; i < ENDING_LINE_LENGTH; i++) {
+                line.addElement(elementAt(i));
+            }
+        });
 
         return line;
     }
@@ -539,7 +548,8 @@ class LineSpansTest extends UnitTest {
     }
 
     private static void add(Line line, BiFunction<StaffElement, StaffElement, Span<?>> newSpan, ElementRange range) {
-        newSpan.apply(line.getElement(range.begin()), line.getElement(range.end())).addTo();
+        addWithoutTracking(line.getSong(),
+            () -> newSpan.apply(line.getElement(range.begin()), line.getElement(range.end())));
     }
 
     /** The extents of every span on {@code line} of the case's kind, in no defined order. */

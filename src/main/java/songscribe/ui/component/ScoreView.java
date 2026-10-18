@@ -401,6 +401,9 @@ public final class ScoreView
             var lineWidthInches = DocumentScale.ssToInches(success.song().getLineWidthSs().value());
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
+                // Disposed here because no view will ever own it: a song left subscribed keeps
+                // handling broadcast commands until the garbage collector clears it.
+                success.song().dispose();
                 result = new SongLoadResult.LineWidthTooLarge(file, lineWidthInches, PageModel.MAX_LINE_WIDTH_INCHES);
             }
         }
@@ -473,6 +476,18 @@ public final class ScoreView
                 var fileName = file.getName();
                 OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_MUSICXML_INVALID, fileName);
                 LOG.error("Refused to open '{}': invalid MusicXML ({})", fileName, e.detail());
+                yield false;
+            }
+            case SongLoadResult.StrandedKeyChange e -> {
+                var fileName = file.getName();
+                OptionDialogs.showErrorMessage(
+                    null,
+                    Strings.ALERT_TITLE_FILE_ERROR,
+                    Strings.ALERT_KEY_CHANGE_STRANDED,
+                    fileName,
+                    e.cause().lineNumber()
+                );
+                LOG.error("Refused to open '{}': {}", fileName, e.cause().getMessage());
                 yield false;
             }
             case SongLoadResult.UnsupportedFileFormat e -> {

@@ -152,10 +152,12 @@ class SpanCopyTest extends UnitTest {
 
     /** An ending over the whole of {@code line}, to which it adds a note, a right repeat and two notes. */
     private static Ending endingOnLine(Line line) {
-        line.addElement(crotchet());
-        line.addElement(repeatRight());
-        line.addElement(crotchet());
-        line.addElement(crotchet());
+        line.getSong().withoutMutationTracking(() -> {
+            line.addElement(crotchet());
+            line.addElement(repeatRight());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
+        });
 
         return endingOver(line, wholeRangeOf(line));
     }

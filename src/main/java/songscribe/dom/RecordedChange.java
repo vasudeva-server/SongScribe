@@ -21,6 +21,8 @@ package songscribe.dom;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
+
 /**
  * One change the song made on its own, as a recorder hands it to a {@link ChangeReport.Builder}
  * while an edit or a load runs.
@@ -32,4 +34,25 @@ import org.jspecify.annotations.Nullable;
  * @param headingKey a {@code Strings} key whose value is plain text
  * @param where      {@code null} only for a change with no place in the song
  */
-public record RecordedChange(String headingKey, String description, @Nullable ChangeLines where) { }
+public record RecordedChange(String headingKey, String description, @Nullable ChangeLines where) {
+
+    /**
+     * One entry stands for every accidental conversion in the file.
+     */
+    public static RecordedChange accidentalsConverted() {
+        return new RecordedChange(
+            Strings.REPORT_ACCIDENTALS_CONVERTED,
+            Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
+            null);
+    }
+
+    /**
+     * Each line that lost a lyric gets one entry, however many it lost.
+     */
+    public static RecordedChange lyricDropped(Line line) {
+        return new RecordedChange(
+            Strings.REPORT_LYRICS_REMOVED,
+            Strings.get(Strings.REPORT_LYRICS_DETAIL),
+            ChangeLines.on(line));
+    }
+}

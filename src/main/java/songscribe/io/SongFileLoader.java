@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.FileExtensions;
+import songscribe.dom.StrandedKeyChangeException;
 import songscribe.io.musicxml.MusicXmlReader;
 import songscribe.util.FileUtils;
 
@@ -42,53 +43,63 @@ public final class SongFileLoader {
 
     private SongFileLoader() {}
 
-    /*
-     * Open-dispatch, keyed on the file's extension (matched case-insensitively):
-     *
-     * .mssw goes to the unchanged legacy SongLoader path, which yields Success, IoError,
-     * ParseError or NewerVersion.
-     *
-     * .musicxml and .xml go to MusicXmlReader.read. That reader rejects a root element other than
-     * <score-partwise>, and a version that is missing, unparseable or below 4.0, with an
-     * InvalidFormatException; and before mapping anything, the <software> value is judged by
-     * SoftwareProvenance.check, which raises the two exceptions the catch clauses below map.
-     * Otherwise it returns
-     * Success, carrying the tuplet load report if there is one. The catch clauses below map those
-     * exceptions plus SAXException and IOException onto the corresponding SongLoadResult cases.
-     *
-     * The final clause is a backstop, not a mapping: a RuntimeException out of the reader is a bug
-     * in the mappers — most plausibly a null read off the generated ProxyMusic graph, which NullAway
-     * cannot check (see the ProxyMusicAccess class comment). It is logged at error with its stack
-     * trace so the bug stays findable, then reported as a damaged file, because taking the whole
-     * application down is the wrong answer to a file the user merely tried to open.
-     *
-     * Anything else (.pdf, .txt, no extension, …) falls through to the final return, the only
-     * producer of UnsupportedFileFormat, which names the extension.
+    /**
+     * @return by the file's extension, matched case-insensitively:
+     *     <ul>
+     *     <li>{@code .mssw}: what {@link SongLoader#load} returns for it.
+     *     <li>{@code .musicxml} or {@code .xml}: {@link SongLoadResult.Success};
+     *         {@link SongLoadResult.InvalidFileFormat} for a root element other than
+     *         {@code <score-partwise>}, or a MusicXML version that is missing, unparseable or
+     *         older than the one this program writes; otherwise, whatever the content,
+     *         {@link SongLoadResult.WrongSoftware} for a document another program wrote and
+     *         {@link SongLoadResult.UnsupportedVersion} for one written by a SongScribe version
+     *         this program does not read; {@link SongLoadResult.StrandedKeyChange};
+     *         {@link SongLoadResult.ParseError} for a document that is not well formed or holds a
+     *         value damaged beyond reading; {@link SongLoadResult.IoError} when the file cannot be
+     *         read.
+     *     <li>any other extension, or none: {@link SongLoadResult.UnsupportedFileFormat}, naming
+     *         the extension.
+     *     </ul>
+     *     A reader that fails on a defect in this program, not in the file, gives
+     *     {@link SongLoadResult.ParseError}.
      */
     public static SongLoadResult load(File file) {
-        if (FileUtils.hasExtension(file, FileExtensions.SONGWRITER)) {
-            return SongLoader.load(file);
-        }
-
-        if (FileUtils.hasExtension(file, FileExtensions.MUSICXML, FileExtensions.XML)) {
-            try {
-                return MusicXmlReader.read(file);
-            } catch (MusicXmlReader.ForeignSoftwareException e) {
-                return new SongLoadResult.WrongSoftware(file, e.software());
-            } catch (MusicXmlReader.UnsupportedVersionException e) {
-                return new SongLoadResult.UnsupportedVersion(file, e.version());
-            } catch (MusicXmlReader.InvalidFormatException e) {
-                return new SongLoadResult.InvalidFileFormat(file, e.detail());
-            } catch (SAXException e) {
-                return new SongLoadResult.ParseError(file, e);
-            } catch (IOException e) {
-                return new SongLoadResult.IoError(file, e);
-            } catch (RuntimeException e) {
-                LOG.error("Unexpected failure reading MusicXML file '{}'", file.getName(), e);
-                return new SongLoadResult.ParseError(file, new SAXException("Unexpected reader failure", e));
+        try {
+            if (FileUtils.hasExtension(file, FileExtensions.SONGWRITER)) {
+                return SongLoader.load(file);
             }
+
+            if (FileUtils.hasExtension(file, FileExtensions.MUSICXML, FileExtensions.XML)) {
+                return loadMusicXml(file);
+            }
+        } catch (RuntimeException e) {
+            // A RuntimeException out of a reader or its load is a bug — for MusicXML most
+            // plausibly a null read off the generated ProxyMusic graph, which NullAway cannot
+            // check. It is logged with its stack trace so the bug stays findable, and reported as
+            // a damaged file, because taking the application down is the wrong answer to a file
+            // the user merely tried to open.
+            LOG.error("Unexpected failure reading file '{}'", file.getName(), e);
+            return new SongLoadResult.ParseError(file, new SAXException("Unexpected reader failure", e));
         }
 
         return new SongLoadResult.UnsupportedFileFormat(file, FileUtils.getExtension(file.getName()));
+    }
+
+    private static SongLoadResult loadMusicXml(File file) {
+        try {
+            return MusicXmlReader.read(file);
+        } catch (MusicXmlReader.ForeignSoftwareException e) {
+            return new SongLoadResult.WrongSoftware(file, e.software());
+        } catch (MusicXmlReader.UnsupportedVersionException e) {
+            return new SongLoadResult.UnsupportedVersion(file, e.version());
+        } catch (MusicXmlReader.InvalidFormatException e) {
+            return new SongLoadResult.InvalidFileFormat(file, e.detail());
+        } catch (StrandedKeyChangeException e) {
+            return new SongLoadResult.StrandedKeyChange(file, e);
+        } catch (SAXException e) {
+            return new SongLoadResult.ParseError(file, e);
+        } catch (IOException e) {
+            return new SongLoadResult.IoError(file, e);
+        }
     }
 }

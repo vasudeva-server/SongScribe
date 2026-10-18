@@ -157,7 +157,7 @@ class EndingTest extends UnitTest {
     @MethodSource("acceptedCases")
     void testSpanningAcceptsAnEndingOverAWellFormedRange(AcceptedCase testCase) {
         var line = testCase.newLine().get();
-        var span = testCase.arrange().apply(line);
+        var span = arranged(line, testCase.arrange());
 
         assertThat(Ending.spanning(line, span)).isInstanceOf(Spanning.Spanned.class);
     }
@@ -166,9 +166,14 @@ class EndingTest extends UnitTest {
     @MethodSource("refusedCases")
     void testSpanningNamesTheReasonAndCauseItRefusesTheRange(RefusedCase testCase) {
         var line = testCase.newLine().get();
-        var span = testCase.arrange().apply(line);
+        var span = arranged(line, testCase.arrange());
 
         assertThat(Ending.spanning(line, span)).isEqualTo(testCase.refusal());
+    }
+
+    /** Runs {@code arrange} as a fixture builder does, outside any modification bracket. */
+    private static ElementRange arranged(Line line, Function<Line, ElementRange> arrange) {
+        return line.getSong().withoutMutationTrackingResult(() -> arrange.apply(line));
     }
 
     /** A fixture anchored on a note or a rest: anchor, a right repeat, content, an end note. */
@@ -241,14 +246,9 @@ class EndingTest extends UnitTest {
         return () -> editableLine(earlierLine);
     }
 
-    /** The first line of a song whose second line is {@code laterLine}, with tracking suspended. */
+    /** The first line of a song whose second line is {@code laterLine}. */
     private static Supplier<Line> lineBefore(String laterLine) {
-        return () -> {
-            var song = compactSong(Key.NO_ACCIDENTALS, "", laterLine);
-            song.beginSuspendMutationTracking();
-
-            return song.getLine(0);
-        };
+        return () -> compactSong(Key.NO_ACCIDENTALS, "", laterLine).getLine(0);
     }
 
     /** A line of a real song whose elements are {@code anchor} through {@code end}, in a song of one line. */

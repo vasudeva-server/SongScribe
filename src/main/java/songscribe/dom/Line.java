@@ -176,6 +176,14 @@ public final class Line implements EditableRun {
     }
 
     /**
+     * Afterwards this line holds no key of its own equal to the key it inherits, under the same
+     * recording rule as {@link #setKey}.
+     */
+    void normalizeKey() {
+        setKey(key);
+    }
+
+    /**
      * Total, deliberately: a line that establishes no key and has nothing to inherit from — line 0
      * before it is keyed, a line removed from its song, or any line while a file is loading — is
      * in {@link Key#DEFAULT}.
@@ -510,10 +518,10 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Nothing here judges the tie: the tie rule ({@link TieRule}) does.
+     * Nothing here judges the tie: {@link Tie#judge} does, for an edit and for a load.
      *
-     * @param anchor a note of this line that can carry a tie ({@link Tie#canAnchor}); a file
-     *     reader asks that first and drops a tie on any other note; while the song is replaying,
+     * @param anchor a note of this line that can carry a tie ({@link Tie#canAnchor}); while the
+     *     song is replaying,
      *     the note the replayed record names, whichever line holds it at that point of the replay
      */
     public void addTie(NoteElement anchor) {

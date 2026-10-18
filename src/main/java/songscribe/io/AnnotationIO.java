@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Annotation;
-import songscribe.dom.DocumentScale;
 
 public final class AnnotationIO {
 
@@ -34,7 +33,6 @@ public final class AnnotationIO {
     static final String XML_ANNOTATION = "annotation";
     static final String XML_NAME = "name";
     static final String XML_ALIGNMENT = "alignment";
-    private static final String XML_YPOS = "ypos";
 
     /**
      * File-format numbers: changing one changes what existing documents mean.
@@ -42,9 +40,6 @@ public final class AnnotationIO {
     private static final float LEGACY_LEFT = 0.0f;
     private static final float LEGACY_CENTER = 0.5f;
     private static final float LEGACY_RIGHT = 1.0f;
-
-    // version 2.1
-    private static final String XML_USER_Y_OFFSET = "useryoffset";
 
     // version 2.5 (annotation-placement-refactor)
     private static final String XML_PLACEMENT = "placement";
@@ -86,15 +81,10 @@ public final class AnnotationIO {
 
         private static final Logger LOG = LoggerFactory.getLogger(AnnotationReader.class);
 
-        // Staff-space coordinate of the legacy Annotation.ABOVE pixel constant
-        private static final double LEGACY_ABOVE_SS = -2.0;
-        private static final double LEGACY_ABOVE_PX = DocumentScale.PIXELS_PER_STAFF_SPACE * LEGACY_ABOVE_SS;
-
         private boolean inAnnotation = false;
         private String text = "";
         private @Nullable LeftCenterRight alignment = null;
         private @Nullable AboveBelow placement = null;
-        private double userYOffsetSs = 0;
 
         private final LeafTagText leaf = new LeafTagText();
 
@@ -104,7 +94,6 @@ public final class AnnotationIO {
                 text = "";
                 alignment = null;
                 placement = null;
-                userYOffsetSs = 0;
                 leaf.reset();
             } else {
                 leaf.open(qName);
@@ -140,28 +129,6 @@ public final class AnnotationIO {
                             LOG.warn("Corrupt document: malformed placement: '{}', using default", str);
                         }
                     }
-                    case XML_YPOS -> {
-                        // ypos is a legacy int pixel field. ypos <= 0 was above the staff, which is
-                        // the default placement. ypos and LEGACY_ABOVE_PX are both pixels, and the
-                        // pixel delta is deliberately stored into the staff-space userYOffsetSs:
-                        // converting the units would shift legacy documents.
-                        try {
-                            var ypos = Integer.parseInt(str);
-
-                            if (ypos > 0) {
-                                userYOffsetSs += ypos - LEGACY_ABOVE_PX;
-                            }
-                        } catch (NumberFormatException e) {
-                            LOG.warn("Corrupt document: malformed ypos: '{}', using default", str);
-                        }
-                    }
-                    case XML_USER_Y_OFFSET -> {
-                        try {
-                            userYOffsetSs = Double.parseDouble(str);
-                        } catch (NumberFormatException e) {
-                            LOG.warn("Corrupt document: malformed userYOffset: '{}', using default", str);
-                        }
-                    }
                 }
             });
 
@@ -184,7 +151,7 @@ public final class AnnotationIO {
             var readPlacement = placement == null ? Annotation.DEFAULT_PLACEMENT : placement;
 
             return new ReadAnnotation(
-                new Annotation(text, readAlignment, readPlacement), userYOffsetSs);
+                new Annotation(text, readAlignment, readPlacement), 0);
         }
 
         public void characters(char[] ch, int start, int length) {

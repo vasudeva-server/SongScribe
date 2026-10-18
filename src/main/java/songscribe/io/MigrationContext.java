@@ -20,41 +20,33 @@
 package songscribe.io;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.dom.PendingHairpin;
-import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 
 /**
  * Mutable carrier threaded through {@link MigrationPipeline}.
  *
- * <p>{@link #song} is populated only before the post-assembly phase; pre-assembly
- * migrations must not depend on it.
+ * <p>{@link #song} holds no lines until the post-assembly phase, so a pre-assembly migration
+ * reads {@link #lines}.
  */
 final class MigrationContext {
 
-    List<Line> lines = new ArrayList<>();
-    Map<Line, LegacyLineOffsets> legacyLineOffsets = new HashMap<>();
-    List<PendingTuplet> pendingTuplets = List.of();
-    List<PendingHairpin> pendingHairpins = List.of();
+    final Song song;
 
-    double lineWidthSs;
-    double rowHeightAdjustmentSs;
+    List<Line> lines = new ArrayList<>();
 
     int majorVersion;
     int minorVersion;
 
     String lyrics = "";
 
-    @Nullable Song song;
+    MigrationContext(Song song) {
+        this.song = song;
+    }
 
     boolean isBefore(int major, int minor) {
-        return majorVersion < major || (majorVersion == major && minorVersion < minor);
+        return new FormatVersion(majorVersion, minorVersion).isBefore(new FormatVersion(major, minor));
     }
 }

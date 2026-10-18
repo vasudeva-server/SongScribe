@@ -19,319 +19,94 @@
  */
 package songscribe.dom;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.undo.UndoController;
 
 /**
- * The mutation-recording state machine of a {@link Song}: bracket, suspension, replay and
- * auto-maintenance modes, each depth-counted so nesting is safe. A replay judges nothing, so an
- * undo or a redo always delivers an empty report.
+ * The recording policy of a {@link Song}: what a change to the song leaves behind — an undo entry,
+ * a {@link songscribe.message.notification.SongDidChangeNotification}, a report entry, or
+ * nothing.
  *
- * <p>Suspension and replay are not interchangeable: suspension records nothing, so it leaves no
- * undo entry, no modified flag and no report, while a replay still records, and only stops the
- * companion side-work its batch already carries. The outermost bracket alone decides what counts
- * as one edit.
+ * <p>A song holds one session at a time, and the session decides which policy every change
+ * follows:
+ *
+ * <ul>
+ * <li>{@link EditSession} is the policy of a song open for editing: a change is recorded into a
+ * modification bracket, and the outermost bracket delivers the edit as one undo entry with its
+ * report.
+ * <li>{@link LoadSession} is the policy of a song being built from a file: a change records
+ * nothing for undo and posts nothing, and every reported change goes into the one report of the
+ * load.
+ * </ul>
+ *
+ * <p>Only one policy has {@link #replay}, {@link #postWithModification} and {@link #endLoad}. An
+ * undo or a redo replays, and a post coalesces the edits its subscribers make, so both exist only
+ * for a song open for editing; only a load ends a load. Each of the three throws
+ * {@link IllegalStateException} in the policy that lacks it, because no caller of that policy has
+ * a use for it.
  */
-public final class ModificationSession {
+sealed abstract class ModificationSession permits EditSession, LoadSession {
 
-    private final Song song;
+    abstract boolean isModifying();
 
-    // Modification bracket depth counter. Mutations and reported changes are accumulated
-    // while > 0 and flushed as a single SongDidChangeNotification when depth returns to 0.
-    private int modificationDepth = 0;
+    abstract boolean isMutationTrackingSuspended();
 
-    // Suspension depth counter. While > 0, mutations apply but nothing is recorded:
-    // applyChange runs the mutator without requiring an open bracket, and report records
-    // nothing. The file readers (SongMapper.map and SongIO) hold it for the whole of a
-    // load, and test setup holds it to populate lines without recording undo history.
-    private int suspensionDepth = 0;
-
-    // Replay depth counter. While > 0, undo/redo is mechanically re-applying a
-    // recorded mutation batch: mutations are still recorded into the open
-    // bracket, but companion side-work (auto-maintenance, span invalidation,
-    // merging) is suppressed and the Line terminal guards are bypassed, because
-    // the recorded batch already contains every change.
-    private int replayDepth = 0;
-
-    // While positive, Line mutation guards are bypassed so Song can auto-maintain
-    // the terminal invariant without triggering the guards that protect against
-    // user-driven invariant violations. Depth-counted because the maintenance
-    // paths nest: removeLine calls addLine to repopulate an emptied song, and the
-    // inner call must not disarm the guards the outer one is still relying on.
-    private int autoMaintenanceDepth = 0;
-
-    // Non-null exactly while a bracket is open. EDT-only, no synchronization.
-    private @Nullable OpenEdit openEdit = null;
-
-    private final ModificationRules rules = new ModificationRules();
-
-    private static final class OpenEdit {
-
-        // The explicit bracket label, or the Tier-A pending op-name held by UndoController,
-        // resolved when the outermost bracket opened; null selects the type-based label.
-        private final @Nullable String opName;
-
-        // Mutable: each removal a modification rule records is appended while the rules run.
-        private final List<Mutation> batch = new ArrayList<>();
-
-        private final ChangeReport.Builder report;
-
-        OpenEdit(Song song, @Nullable String opName) {
-            this.opName = opName;
-            this.report = new ChangeReport.Builder(song);
-        }
-    }
-
-    ModificationSession(Song song) {
-        this.song = song;
-    }
-
-    public boolean isModifying() {
-        return modificationDepth > 0;
-    }
-
-    public boolean isMutationTrackingSuspended() {
-        return suspensionDepth > 0;
-    }
-
-    public boolean isReplaying() {
-        return replayDepth > 0;
-    }
-
-    boolean isInAutoMaintenance() {
-        return autoMaintenanceDepth > 0;
-    }
+    abstract boolean isReplaying();
 
     /**
-     * Re-entrant: {@link Song#removeLine} nests an {@link Song#addLine} call.
+     * While {@code true}, every change leaves the song in a state an edited song may hold. While
+     * {@code false}, during a load or a suspension, the song may pass through states that an
+     * edited song may not hold, and nothing repairs them as they arise.
      */
-    void withAutoMaintenance(Runnable body) {
-        autoMaintenanceDepth++;
-
-        try {
-            body.run();
-        } finally {
-            autoMaintenanceDepth--;
-        }
-    }
+    abstract boolean enforcesEditInvariants();
 
     /**
      * The caller asserts that this run owes no undo entry of its own: it is not a user edit, or
      * its entry is recorded elsewhere or must not exist. An edit that owes its own entry goes
      * through {@link #withModification(Runnable)}.
      */
-    public void withoutMutationTracking(Runnable body) {
-        beginSuspendMutationTracking();
-
-        try {
-            body.run();
-        } finally {
-            endSuspendMutationTracking();
-        }
-    }
+    abstract void withoutMutationTracking(Runnable body);
 
     /**
-     * Only for a suspension scope that crosses methods, as in the two file readers; otherwise use
-     * {@link #withoutMutationTracking(Runnable)}.
+     * Carries the assertion stated on {@link #withoutMutationTracking(Runnable)}.
      */
-    public void beginSuspendMutationTracking() {
-        suspensionDepth++;
+    abstract <T extends @Nullable Object> T withoutMutationTrackingResult(Supplier<T> body);
+
+    void replay(Runnable body) {
+        throw unsupported("replay");
     }
 
-    public void endSuspendMutationTracking() {
-        if (suspensionDepth <= 0) {
-            throw new IllegalStateException("No matching beginSuspendMutationTracking");
-        }
+    abstract void withModification(Runnable body);
 
-        suspensionDepth--;
+    abstract void withModification(String label, Runnable body);
+
+    abstract <T> T withModificationResult(Supplier<T> body);
+
+    abstract <T> T withModificationResult(String label, Supplier<T> body);
+
+    void postWithModification(Message message) {
+        throw unsupported("postWithModification");
     }
 
-    public void replay(Runnable body) {
-        withReplay(() -> inBracket(null, asSupplier(body)));
-    }
-
-    /**
-     * Companion side-work must not re-run, because the replayed batch already carries it, and
-     * the {@link Line} terminal guards must accept the intermediate states a replay passes
-     * through.
-     */
-    private void withReplay(Runnable body) {
-        replayDepth++;
-
-        try {
-            body.run();
-        } finally {
-            replayDepth--;
-        }
-    }
-
-    private void beginModification(@Nullable String explicitLabel) {
-        if (modificationDepth == 0) {
-            // explicitLabel is the Tier-B name from the labeled withModification overload;
-            // otherwise the Tier-A name that UIAction.actionPerformed left pending in UndoController.
-            openEdit = new OpenEdit(song, explicitLabel != null ? explicitLabel : UndoController.getPendingOpName());
-        }
-
-        modificationDepth++;
-    }
-
-    /**
-     * The one statement of when the modification rules ({@link ModificationRules}) run: once per
-     * edit, just before the outermost bracket closes, so the removals they record undo with the
-     * edit. They do not run on an empty batch (so never while tracking is suspended, as in a file
-     * load), inside a replay, or when the body threw, because that edit stopped part way.
-     */
-    private void endModification() {
-        var edit = requireOpenEdit("endModification");
-
-        try {
-            if (modificationDepth == 1 && !edit.batch.isEmpty() && owesRules()) {
-                // A copy: each removal a rule records is appended to the live batch.
-                rules.apply(song, List.copyOf(edit.batch), edit.report);
-            }
-        } finally {
-            closeBracket();
-        }
-    }
-
-    private void closeBracket() {
-        var edit = requireOpenEdit("closeBracket");
-        modificationDepth--;
-
-        if (modificationDepth == 0) {
-            openEdit = null;
-            deliver(edit);
-        }
-    }
-
-    /**
-     * The one place an edit is delivered. A non-empty report never comes with an empty batch,
-     * because the report travels with the batch. Runs even when the body or a rule throws, so no
-     * batch or report outlives its bracket.
-     */
-    private void deliver(OpenEdit edit) {
-        if (edit.batch.isEmpty()) {
-            return;
-        }
-
-        song.setModified(true);
-        // Wrap-and-transfer ownership: the notification constructor stores the list
-        // directly, and the edit holding the only other reference has been dropped, so
-        // wrapping once here spares the notification a defensive copy.
-        var mutations = Collections.unmodifiableList(edit.batch);
-        MessageCenter.post(new SongDidChangeNotification(mutations, song, edit.report.build(), edit.opName));
-    }
-
-    private boolean owesRules() {
-        return !isReplaying();
-    }
-
-    private OpenEdit requireOpenEdit(String operation) {
-        var edit = openEdit;
-
-        if (edit == null) {
-            throw new IllegalStateException(operation + " called outside a modification bracket");
-        }
-
-        return edit;
-    }
-
-    /**
-     * The bracket closes even if {@code body} throws, without running the modification rules over
-     * the half-applied edit.
-     */
-    public void withModification(Runnable body) {
-        inBracket(null, asSupplier(body));
-    }
-
-    /**
-     * A labeled bracket nested inside an open one never replaces the outermost bracket's op-name.
-     */
-    public void withModification(String label, Runnable body) {
-        inBracket(label, asSupplier(body));
-    }
-
-    public <T> T withModificationResult(Supplier<T> body) {
-        return inBracket(null, body);
-    }
-
-    /**
-     * A labeled bracket nested inside an open one never replaces the outermost bracket's op-name.
-     */
-    public <T> T withModificationResult(String label, Supplier<T> body) {
-        return inBracket(label, body);
-    }
-
-    /**
-     * A body that throws closes through {@link #closeBracket}, so no rule can replace its
-     * exception with one of its own.
-     */
-    private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, Supplier<T> body) {
-        beginModification(explicitLabel);
-        T result;
-
-        try {
-            result = body.get();
-        } catch (Throwable thrown) {
-            closeBracket();
-            throw thrown;
-        }
-
-        endModification();
-        return result;
-    }
-
-    private static Supplier<@Nullable Void> asSupplier(Runnable body) {
-        return () -> {
-            body.run();
-            return null;
-        };
-    }
-
-    /**
-     * The mutations that subscribers make in response coalesce into one
-     * {@link SongDidChangeNotification}.
-     */
-    public void postWithModification(Message message) {
-        withModification(() -> MessageCenter.post(message));
-    }
-
-    public void postWithModification(String label, Message message) {
-        withModification(label, () -> MessageCenter.post(message));
-    }
-
-    public void applyChange(Mutation mutation, Runnable mutator) {
-        // Suspended tracking (e.g. a file load): the state change applies but nothing is
-        // recorded, so no SongDidChangeNotification fires mid-load. Suspension also lifts the
-        // bracket requirement below — a load runs no bracket at all.
-        if (isMutationTrackingSuspended()) {
-            mutator.run();
-            return;
-        }
-
-        var edit = requireOpenEdit("applyChange");
-        mutator.run();
-        edit.batch.add(mutation);
-    }
+    abstract void applyChange(Mutation mutation, Runnable mutator);
 
     /**
      * @param change names lines of this session's song
      */
-    public void report(RecordedChange change) {
-        if (isMutationTrackingSuspended()) {
-            return;
-        }
+    abstract void report(RecordedChange change);
 
-        requireOpenEdit("report").report.record(change);
+    /**
+     * Must be called once.
+     */
+    ChangeReport endLoad() {
+        throw unsupported("endLoad");
+    }
+
+    private IllegalStateException unsupported(String operation) {
+        return new IllegalStateException(operation + " called on " + getClass().getSimpleName());
     }
 }

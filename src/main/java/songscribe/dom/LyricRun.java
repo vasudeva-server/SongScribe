@@ -837,7 +837,7 @@ public interface LyricRun extends StaffElementRun {
      * <p>Convergence is {@link #syncGraceHostMelisma}'s, so a repaired file lands in exactly the
      * state editing would have produced, and a second load is a no-op.
      *
-     * <p>Intended for the load path. Mutation tracking must be suspended so the repair is silent.
+     * <p>Must be called during a load.
      */
     default void repairGraceHostMelismas() {
         for (var index = 0; index < elementCount(); index++) {

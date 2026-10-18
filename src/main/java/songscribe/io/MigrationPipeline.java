@@ -21,11 +21,6 @@ package songscribe.io;
 
 import java.util.List;
 
-import songscribe.dom.Line;
-import songscribe.dom.DocumentScale;
-import songscribe.dom.Song;
-import songscribe.util.LoadStage;
-
 /**
  * Ordered, two-phase migration of a parsed song from any legacy {@code .mssw} format to
  * the current one.
@@ -39,31 +34,17 @@ final class MigrationPipeline {
     // be imported by LegacyLyricsImporter instead.
     static final int PER_NOTE_LYRIC_VERSION = 6;
 
-    // Minimum linewidth value that can only be a pixel measurement, not staff spaces.
-    // Used to detect v2.1–2.2 files written by a buggy writer that stored linewidth
-    // as px floats instead of ss despite the format declaring ss storage from v2.1.
-    // Valid ss values are well below this; observed buggy px values are 700+.
-    static final double LEGACY_LINE_WIDTH_PX_MIN = 400.0;
-
     // Stages that run before the Song is assembled, in declaration order. Each is gated on the
-    // file's format version, except the line-width fix, which is gated on the value itself.
+    // file's format version.
     static final List<LoadStage<MigrationContext>> PRE_ASSEMBLY = List.of(
-        versioned(2, 0, ctx -> FormatMigrator.migrate(ctx.lines, ctx.legacyLineOffsets, 1)),
-        versioned(2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
-        versioned(2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
-        versioned(2, 1, FormatMigrator::migratePixelsToStaffSpace),
-        LoadStage.when(
-            ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,
-            ctx -> ctx.lineWidthSs /= DocumentScale.PIXELS_PER_STAFF_SPACE));
+        versioned(2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)));
 
-    // Stages that run once ctx.song is set. Only the legacy-lyrics import is conditional; the
-    // grace-host melisma repair and syllabic backfill run for every file.
+    // Stages that run once the song holds its lines. The legacy-lyrics import is the only one,
+    // and it runs only for a file that predates per-note lyrics.
     static final List<LoadStage<MigrationContext>> POST_ASSEMBLY = List.of(
         LoadStage.when(
             ctx -> !ctx.lyrics.isBlank() && ctx.isBefore(2, PER_NOTE_LYRIC_VERSION),
-            MigrationPipeline::applyLegacyLyrics),
-        MigrationPipeline::applyGraceHostMelismaRepair,
-        MigrationPipeline::applySyllabicBackfill);
+            MigrationPipeline::applyLegacyLyrics));
 
     private MigrationPipeline() {
     }
@@ -73,30 +54,7 @@ final class MigrationPipeline {
     }
 
     private static void applyLegacyLyrics(MigrationContext ctx) {
-        LegacyLyricsImporter.importLegacyLyrics(requireSong(ctx).getLines(), ctx.lyrics);
-    }
-
-    // Runs before the syllabic backfill, which reads the syllabic chain in element order and so
-    // must see syllables at their final positions.
-    private static void applyGraceHostMelismaRepair(MigrationContext ctx) {
-        requireSong(ctx).repairGraceHostMelismasAfterParsing();
-    }
-
-    // Normalize stored syllabic values to match relation-chain derivation. Required
-    // for legacy files that may carry only locally-consistent values from the read
-    // path or no <syllabic> at all (LegacyLyricsImporter / pre-syllabic XML).
-    private static void applySyllabicBackfill(MigrationContext ctx) {
-        requireSong(ctx).getLines().forEach(Line::backfillSyllabic);
-    }
-
-    // Post-assembly stages run only after getSong sets ctx.song; a null here is a
-    // programming error (the pipeline was driven out of order), not a bad input.
-    private static Song requireSong(MigrationContext ctx) {
-        if (ctx.song == null) {
-            throw new IllegalStateException("post-assembly stage ran before the song was assembled");
-        }
-
-        return ctx.song;
+        LegacyLyricsImporter.importLegacyLyrics(ctx.song.getLines(), ctx.lyrics);
     }
 
     static void runPreAssembly(MigrationContext ctx) {

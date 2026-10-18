@@ -26,6 +26,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
@@ -143,6 +144,55 @@ public final class Tie {
         StaffElement element() {
             return line.getElement(index);
         }
+    }
+
+    /**
+     * Whether a tie stays: the one judgment of a tie that an edit leaves and of a tie a file
+     * holds.
+     */
+    sealed interface Judgment {
+
+        record Holds() implements Judgment { }
+
+        /**
+         * @param reasonKey a {@code Strings} key whose value is plain text
+         * @param where     the anchor's line, and the line of the element the tie's walk reaches
+         *                  when it reaches one
+         */
+        record Broken(String reasonKey, ChangeLines where) implements Judgment {
+
+            RecordedChange entry() {
+                return new RecordedChange(Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), where);
+            }
+        }
+    }
+
+    /**
+     * Must be asked only after every restamp has landed, so that every note has a sounding
+     * alteration to compare ({@link #holds()}).
+     *
+     * @param line        a line of its song
+     * @param anchorIndex the index in {@code line} of a note tied to the next
+     * @return {@link Judgment.Holds} when the element the tie's walk reaches ({@link #endAfter})
+     *     is a note a tie can end on ({@link #between}) and the tie {@link #holds() holds};
+     *     otherwise {@link Judgment.Broken} with {@link Strings#REPORT_REASON_TIE_NO_FOLLOWING_NOTE}
+     *     when no tie can end on what the walk reaches, or {@link Strings#REPORT_REASON_TIE_NOT_HELD}
+     *     when the tie does not hold
+     */
+    static Judgment judge(Line line, int anchorIndex) {
+        var reached = endAfter(line, anchorIndex);
+        var tie = reached == null ? null : between(line.noteAt(anchorIndex), reached.element());
+
+        if (tie != null && tie.holds()) {
+            return new Judgment.Holds();
+        }
+
+        var reasonKey = tie == null
+            ? Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE
+            : Strings.REPORT_REASON_TIE_NOT_HELD;
+        var where = reached == null ? ChangeLines.on(line) : new ChangeLines(line, reached.line());
+
+        return new Judgment.Broken(reasonKey, where);
     }
 
     static @Nullable Reached endAfter(Line line, int anchorIndex) {

@@ -17,6 +17,7 @@ Read `KeyChangeElement` first.
 - `CautionaryKeySignature`
 - `KeyEditFitCalculator`
 - `LeadingBarLoadPass`
+- `StrandedKeyChangeException`
 - `KeyChangeAction`
 - `KeyChangeDialogController`
 
@@ -27,8 +28,8 @@ Read `KeyChangeElement` first.
 - Derive which lines a key move reaches (inherited keys re-derived, lines a view re-solves,
   key changes stranded, lines measured before a commit) from the one enumeration of key-moving
   changes, because a second enumeration disagrees silently.
-- Remove a stranded key change in every edit that moves a key and again when reading a file,
-  because neither covers the other.
+- Remove a stranded key change in every edit that moves a key, and reject a file that holds
+  one, because neither covers the other.
 - Ask the placement predicate whether a position accepts a key change, and keep every position
   rule out of command availability, because an unavailable position must show as an insertion
   marker that disappears.

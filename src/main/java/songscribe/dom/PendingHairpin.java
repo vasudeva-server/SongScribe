@@ -25,21 +25,18 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * A hairpin as a reader found it in a file, judged by {@link Hairpin#spanning}.
  *
- * @param anchor    in a line of the song being read
- * @param end       in the anchor's line at or after the anchor
- * @param xOffsetSs in staff spaces, positive rightward
- * @param yOffsetSs in staff spaces, positive downward
+ * @param anchor in a line of the song being read
+ * @param end    in the anchor's line at or after the anchor
  */
 public record PendingHairpin(
     Hairpin.Kind kind,
     StaffElement anchor,
     StaffElement end,
-    double xOffsetSs,
-    double yOffsetSs
+    UserOffset offset
 ) implements PendingSpan<Hairpin> {
 
     @Override
     public Spanning<Hairpin> spanning(Line line, ElementRange range) {
-        return Hairpin.spanning(line, kind, range);
+        return Hairpin.spanning(line, kind, range).adjusting(hairpin -> hairpin.setUserOffset(offset));
     }
 }

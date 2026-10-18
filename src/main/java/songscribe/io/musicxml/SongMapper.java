@@ -19,28 +19,37 @@
  */
 package songscribe.io.musicxml;
 
+import java.util.List;
+
 import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.SAXException;
 
-import songscribe.dom.ParsedSong;
-import songscribe.dom.Song;
+import songscribe.dom.PendingMarks;
+import songscribe.dom.SongLoad;
+import songscribe.dom.StrandedKeyChangeException;
 import songscribe.font.DocumentFonts;
+import songscribe.io.LoadWarning;
+import songscribe.io.ReaderBuild;
 import songscribe.util.Utils;
 
 /**
- * Turns an unmarshalled {@link ScorePartwise} graph into a {@link ParsedSong}.
+ * Turns an unmarshalled {@link ScorePartwise} graph into a loaded song.
  *
  * <p>Takes no {@code File}: it never learns where the bytes came from. A caller that needs a
  * document name in a message passes a {@code String}.
  */
 final class SongMapper {
 
+    private record Build(PendingMarks marks, DocumentFonts fonts, List<LoadWarning> warnings)
+        implements ReaderBuild {
+    }
+
     private SongMapper() {
     }
 
-    static ParsedSong map(
-        MusicXmlSerializer.ParsedDocument document, DocumentFonts documentFonts
-    ) throws SAXException {
+    static SongLoad.LoadedSong<? extends ReaderBuild> map(
+        MusicXmlSerializer.ParsedDocument document
+    ) throws SAXException, StrandedKeyChangeException {
         checkFormat(document);
 
         var score = document.score();
@@ -51,35 +60,12 @@ final class SongMapper {
         // passes here and reports the corruption a mapper finds.
         HeaderMapper.checkProvenance(score);
 
-        var song = Song.newParsingStub();
-        ParsedSong parsed;
+        return SongLoad.run(song -> {
+            var fonts = HeaderMapper.map(score, song);
+            var marks = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
 
-        // A load records no mutations, posts no notification and sets no modified flag.
-        // begin/end rather than withoutMutationTracking(Runnable) because the mappers
-        // throw a checked SAXException, which a Runnable cannot carry.
-        song.beginSuspendMutationTracking();
-
-        try {
-            HeaderMapper.map(score, song, documentFonts);
-            parsed = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
-
-            // Restore the terminal invariant while tracking is still suspended so the fix-ups
-            // are silent: a damaged or partial file may leave the last line ending in a note or
-            // a non-terminal barline.
-            song.installTerminalAfterParsing();
-
-            // Likewise for the key invariant: the file can leave line 0 with no key of its own,
-            // and can hold a key change that draws nothing.
-            song.keyInheritance().settleAfterParsing();
-
-            // Grace-host pairing is only settled once every <slide> has been resolved, so
-            // the melisma repair runs over the finished song rather than per note.
-            song.repairGraceHostMelismasAfterParsing();
-        } finally {
-            song.endSuspendMutationTracking();
-        }
-
-        return parsed;
+            return new Build(marks, fonts, List.of());
+        });
     }
 
     private static void checkFormat(

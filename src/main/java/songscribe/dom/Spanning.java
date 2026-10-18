@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import songscribe.Strings;
 
@@ -34,6 +35,17 @@ import songscribe.Strings;
  * range absorbs.
  */
 public sealed interface Spanning<S extends Span<?>> permits Spanning.Spanned, Spanning.Refused {
+
+    /**
+     * @return this answer, its span, when there is one, changed by {@code adjust}
+     */
+    default Spanning<S> adjusting(Consumer<? super S> adjust) {
+        if (this instanceof Spanned<S>(var span, _)) {
+            adjust.accept(span);
+        }
+
+        return this;
+    }
 
     /**
      * @param span     built but not added to its line

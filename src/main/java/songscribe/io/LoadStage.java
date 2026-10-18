@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.util;
+package songscribe.io;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -27,12 +27,9 @@ import java.util.function.Predicate;
  * One step that runs on a load, over a context that every step of the run reads and writes.
  * A stage sees the context as the stages before it left it, and runs unconditionally unless
  * made through {@link #when}.
- *
- * <p>Lives in {@code util} because both {@code io} and {@code dom} use it, and {@code dom} does
- * not depend on {@code io}.
  */
 @FunctionalInterface
-public interface LoadStage<C> {
+interface LoadStage<C> {
 
     void apply(C context);
 

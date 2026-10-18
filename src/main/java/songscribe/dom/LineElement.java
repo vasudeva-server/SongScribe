@@ -53,6 +53,11 @@ public abstract class LineElement {
         this.userYOffsetSs = userYOffsetSs;
     }
 
+    void setUserOffset(UserOffset offset) {
+        setUserXOffsetSs(offset.xSs());
+        setUserYOffsetSs(offset.ySs());
+    }
+
     /**
      * Every route that copies one element's state onto another ends up here, so a field added to
      * this class is carried by all of them and no route can omit it.

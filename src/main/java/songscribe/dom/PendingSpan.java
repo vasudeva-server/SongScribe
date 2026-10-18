@@ -23,13 +23,13 @@ package songscribe.dom;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
- * A span as a reader found it in a file, before the load pass has judged it.
+ * A span as a reader found it in a file, before the load has judged it.
  * <p>
  * A reader records what the file said here, and {@link SpanLoadPass#run} turns each pending span
  * into a span on its anchor's line or drops it. A pending span is not a span: nothing outside the
  * load path sees one.
  */
-public sealed interface PendingSpan<S extends Span<?>> permits PendingEnding, PendingHairpin {
+public sealed interface PendingSpan<S extends Span<?>> permits PendingBeam, PendingEnding, PendingHairpin, PendingTrill {
 
     /**
      * @return in a line of the song being read
@@ -42,14 +42,7 @@ public sealed interface PendingSpan<S extends Span<?>> permits PendingEnding, Pe
     StaffElement end();
 
     /**
-     * @return in staff spaces, positive rightward
+     * @return a spanned span carries the user offsets the file gave this span
      */
-    double xOffsetSs();
-
-    /**
-     * @return in staff spaces, positive downward
-     */
-    double yOffsetSs();
-
     Spanning<S> spanning(Line line, ElementRange range);
 }
