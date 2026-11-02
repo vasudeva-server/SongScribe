@@ -75,7 +75,7 @@ class UnbalancedFineCheckTest extends UnitTest {
         var violations = new UnbalancedFineCheck().check(song);
 
         assertThat(LintSongs.found(song, violations))
-            .containsExactlyElementsOf(LintSongs.expected(
+            .containsExactlyInAnyOrderElementsOf(LintSongs.expected(
                 LintMark.FlaggedAnnotation.class, testCase.reasons(), testCase.notationArray()));
     }
 

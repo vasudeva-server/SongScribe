@@ -21,7 +21,9 @@
 package songscribe.lint;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 
+import songscribe.dom.ElementLocation;
 import songscribe.dom.Song;
 import songscribe.message.notification.LintingNotification;
 
@@ -51,6 +53,9 @@ public final class Linter {
             }
         }
 
+        // List.sort is stable, so findings on one element keep the declaration order of their rules.
+        findings.sort(Comparator.comparing(finding -> song.locationOf(finding.mark().element()),
+                                           ElementLocation.SONG_ORDER));
         report = new LintReport(findings);
     }
 

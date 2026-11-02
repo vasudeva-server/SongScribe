@@ -492,6 +492,28 @@ public final class Song implements Disposable {
         return indexOfLine(line) != null;
     }
 
+    /**
+     * @param location a location in this song
+     */
+    public StaffElement elementAt(ElementLocation location) {
+        return lines.get(location.lineIndex()).getElement(location.elementIndex());
+    }
+
+    /**
+     * @param element an element in one of this song's lines
+     * @throws IllegalArgumentException when {@code element} is in no line of this song
+     */
+    public ElementLocation locationOf(StaffElement element) {
+        var line = element.requireParentLine();
+        var lineIndex = indexOfLine(line);
+
+        if (lineIndex == null) {
+            throw new IllegalArgumentException("element is in no line of this song: " + element);
+        }
+
+        return new ElementLocation(lineIndex, line.getElementIndex(element));
+    }
+
     public boolean isEmpty() {
         return lines.isEmpty() || lines.stream().allMatch(Line::isEmpty);
     }

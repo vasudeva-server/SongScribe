@@ -51,7 +51,7 @@ import static songscribe.lint.LintSongs.sung;
  */
 class MissingLyricCheckTest extends UnitTest {
 
-    /** A song and the marks the check must report on it, in song order. */
+    /** A song and the marks the check must report on it. */
     private record Scenario(Song song, List<LintMark.MissingLyric> expected) {
     }
 
@@ -70,7 +70,7 @@ class MissingLyricCheckTest extends UnitTest {
 
         var violations = new MissingLyricCheck().check(scenario.song());
 
-        assertThat(violations).extracting(Violation::mark).containsExactlyElementsOf(scenario.expected());
+        assertThat(violations).extracting(Violation::mark).containsExactlyInAnyOrderElementsOf(scenario.expected());
         assertThat(violations).allSatisfy(violation -> {
             assertThat(violation.heading()).isEqualTo(Strings.get(Strings.LINT_LYRICS_MISSING));
             assertThat(violation.description()).isEqualTo(Strings.get(Strings.LINT_REASON_LYRIC_MISSING));
@@ -84,6 +84,8 @@ class MissingLyricCheckTest extends UnitTest {
             new LyricCase("the inner notes of a melisma are not flagged", MissingLyricCheckTest::melisma),
             new LyricCase("the inner notes of a hyphen run are not flagged", MissingLyricCheckTest::hyphenRun),
             new LyricCase("a chain across a line break is not flagged", MissingLyricCheckTest::chainAcrossLineBreak),
+            new LyricCase("after a chain across a line break, only the bare slot is flagged",
+                MissingLyricCheckTest::bareSlotAfterChainAcrossLineBreak),
             new LyricCase("the host of a paired grace note is not flagged",
                 MissingLyricCheckTest::pairedGraceNoteHost),
             new LyricCase("the note a tie from the note before it reaches is not flagged",
@@ -214,6 +216,16 @@ class MissingLyricCheckTest extends UnitTest {
         var secondLine = List.<StaffElement>of(crotchet(), sung(Song.Script.LATIN, "le", Lyric.Extend.NONE, Lyric.Syllabic.END));
 
         return new Scenario(songOfLines(firstLine, secondLine), List.of());
+    }
+
+    private static Scenario bareSlotAfterChainAcrossLineBreak() {
+        var bare = crotchet();
+        var firstLine = List.<StaffElement>of(sung(Song.Script.LATIN, "ha", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN));
+        var secondLine = List.<StaffElement>of(
+            crotchet(), sung(Song.Script.LATIN, "le", Lyric.Extend.NONE, Lyric.Syllabic.END), bare);
+
+        return new Scenario(songOfLines(firstLine, secondLine),
+                            List.of(new LintMark.MissingLyric(bare, Song.Script.LATIN)));
     }
 
     private static Scenario pairedGraceNoteHost() {

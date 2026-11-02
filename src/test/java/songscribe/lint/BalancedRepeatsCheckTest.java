@@ -32,8 +32,9 @@ import songscribe.UnitTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The findings {@link BalancedRepeatsCheck} makes from the {@code RepeatSections} model, one row
- * for each kind: a closer with no open section, an opener never closed, and a nested opener. The
+ * The findings {@link BalancedRepeatsCheck} makes from the {@code RepeatSections} model: none for
+ * a balanced song, and one row for each kind of finding: a closer with no open section, an opener
+ * never closed, and a nested opener. The
  * repeat rules themselves are stated by {@code RepeatSectionsTest}. A bar the check must flag
  * ends in {@code !} in the notation.
  */
@@ -64,12 +65,15 @@ class BalancedRepeatsCheckTest extends UnitTest {
         var violations = new BalancedRepeatsCheck().check(song);
 
         assertThat(LintSongs.found(song, violations))
-            .containsExactlyElementsOf(
+            .containsExactlyInAnyOrderElementsOf(
                 LintSongs.expected(LintMark.Flagged.class, testCase.reasons(), testCase.notation()));
     }
 
     static Stream<RepeatCase> repeatCases() {
         return Stream.of(
+            new RepeatCase("a balanced song gives no finding",
+                "A |: A :| A",
+                List.of()),
             new RepeatCase("a closer after its section is closed is flagged as not opened",
                 "|: A :| A :|!",
                 List.of(NOT_OPENED)),

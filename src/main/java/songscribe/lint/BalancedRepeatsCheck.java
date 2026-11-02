@@ -21,7 +21,6 @@
 package songscribe.lint;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import songscribe.Strings;
@@ -45,14 +44,11 @@ import songscribe.dom.Song;
  */
 final class BalancedRepeatsCheck implements LintCheck {
 
-    private static final Comparator<ElementLocation> SONG_ORDER =
-        Comparator.comparingInt(ElementLocation::lineIndex).thenComparingInt(ElementLocation::elementIndex);
-
     /**
      * Finds every unbalanced repeat in {@code song}.
      *
      * @param song the song to examine; read only
-     * @return the violations, in the song order of the bars they flag
+     * @return the violations
      * @invariant a balanced song, and a song with no repeat, gives no violation
      * @invariant every violation's mark is a {@link LintMark.Flagged} on a bar for which
      *     {@code ElementType.closesRepeat()} or {@code ElementType.opensRepeatSection()} holds
@@ -60,32 +56,19 @@ final class BalancedRepeatsCheck implements LintCheck {
     @Override
     public List<Violation> check(Song song) {
         var sections = RepeatSections.of(song);
-        var flags = new ArrayList<Flag>();
-        addFlags(flags, sections.unopenedClosers(), Strings.LINT_REASON_REPEAT_NOT_OPENED);
-        addFlags(flags, sections.nestedOpeners(), Strings.LINT_REASON_REPEAT_NESTED);
-        addFlags(flags, sections.unclosedOpeners(), Strings.LINT_REASON_REPEAT_NOT_CLOSED);
+        var violations = new ArrayList<Violation>();
+        addViolations(violations, song, sections.unopenedClosers(), Strings.LINT_REASON_REPEAT_NOT_OPENED);
+        addViolations(violations, song, sections.nestedOpeners(), Strings.LINT_REASON_REPEAT_NESTED);
+        addViolations(violations, song, sections.unclosedOpeners(), Strings.LINT_REASON_REPEAT_NOT_CLOSED);
 
-        // A stable sort, so two flags on one :|: keep the order they were added in.
-        flags.sort(Comparator.comparing(Flag::location, SONG_ORDER));
-
-        return flags.stream().map(flag -> flag.toViolation(song)).toList();
+        return violations;
     }
 
-    /** One bar to flag, with the {@code Strings} key of the reason. */
-    private record Flag(ElementLocation location, String reasonKey) {
-
-        Violation toViolation(Song song) {
-            var element = song.getLine(location.lineIndex()).getElement(location.elementIndex());
-
-            return new Violation(Strings.get(Strings.LINT_REPEATS_UNBALANCED),
-                                 Strings.get(reasonKey),
-                                 new LintMark.Flagged(element));
-        }
-    }
-
-    private static void addFlags(List<Flag> flags, List<ElementLocation> locations, String reasonKey) {
+    private static void addViolations(List<Violation> violations, Song song, List<ElementLocation> locations, String reasonKey) {
         for (var location : locations) {
-            flags.add(new Flag(location, reasonKey));
+            violations.add(new Violation(Strings.get(Strings.LINT_REPEATS_UNBALANCED),
+                                         Strings.get(reasonKey),
+                                         new LintMark.Flagged(song.elementAt(location))));
         }
     }
 }

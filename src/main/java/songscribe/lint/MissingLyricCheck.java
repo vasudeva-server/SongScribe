@@ -20,6 +20,7 @@
 
 package songscribe.lint;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import songscribe.Strings;
@@ -55,24 +56,17 @@ final class MissingLyricCheck implements LintCheck {
      * Finds every slot that the active script leaves without a syllable.
      *
      * @param song the song to examine; read only
-     * @return the violations in the song order of their slots; empty only when every slot of the
-     *     song is sung in the active script
+     * @return the violations; empty only when every slot of the song is sung in the active script
      * @invariant every violation's mark is a {@link LintMark.MissingLyric} whose script is the
      *     song's active script
      * @invariant a slot gets at most one violation
      */
     @Override
     public List<Violation> check(Song song) {
-        var found = new SongOrderedViolations();
-        checkScript(song, song.getActiveScript(), found);
-
-        return found.inSongOrder();
-    }
-
-    private static void checkScript(Song song, Song.Script script, SongOrderedViolations found) {
+        var script = song.getActiveScript();
         var heading = Strings.get(Strings.LINT_LYRICS_MISSING);
         var description = Strings.get(Strings.LINT_REASON_LYRIC_MISSING);
-        var lineStartPosition = 0;
+        var found = new ArrayList<Violation>();
         var openIntoLine = false;
 
         for (var line : song.getLines()) {
@@ -96,15 +90,14 @@ final class MissingLyricCheck implements LintCheck {
                 }
 
                 if (lyric == null && isUnsungSlot(line, index)) {
-                    var violation = new Violation(heading, description, new LintMark.MissingLyric(element, script));
-                    found.add(lineStartPosition + index, violation);
+                    found.add(new Violation(heading, description, new LintMark.MissingLyric(element, script)));
                 }
 
                 index++;
             }
-
-            lineStartPosition += line.elementCount();
         }
+
+        return found;
     }
 
     private static boolean isUnsungSlot(Line line, int index) {

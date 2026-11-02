@@ -44,7 +44,10 @@ public final class LintReport {
 
     private final Map<StaffElement, List<LintMark>> marksByElement = new IdentityHashMap<>();
 
-    public LintReport(List<LintFinding> findings) {
+    /**
+     * @param findings in the order {@link #findings()} states
+     */
+    LintReport(List<LintFinding> findings) {
         this.findings = List.copyOf(findings);
 
         for (var finding : this.findings) {
@@ -59,6 +62,10 @@ public final class LintReport {
         marksByElement.replaceAll((_, marks) -> List.copyOf(marks));
     }
 
+    /**
+     * @return in the song order of the elements the findings mark, line first; findings on one
+     *     element in the declaration order of their {@link LintRule}s
+     */
     public List<LintFinding> findings() {
         return findings;
     }

@@ -49,10 +49,8 @@ final class LeadingBarCheck implements LintCheck {
             return List.of();
         }
 
-        var bar = song.getLine(location.lineIndex()).getElement(location.elementIndex());
-
         return List.of(new Violation(Strings.get(Strings.LINT_BAR_LEADING),
                                      Strings.get(Strings.REPORT_REASON_LEADING_BAR),
-                                     new LintMark.Flagged(bar)));
+                                     new LintMark.Flagged(song.elementAt(location))));
     }
 }

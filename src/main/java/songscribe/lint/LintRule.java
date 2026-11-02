@@ -30,8 +30,8 @@ import songscribe.dom.Song;
  * A rule the song as it is now must keep. Every breach is an error: there is no severity, and
  * what a breach blocks comes from the rule's {@link Flag flags}.
  *
- * <p>A lint rule only reads the song. Declaration order is the
- * order of the findings in a {@link LintReport}.
+ * <p>A lint rule only reads the song. Declaration order is the order of the findings on one
+ * element in a {@link LintReport}.
  */
 public enum LintRule {
 

@@ -31,12 +31,9 @@ import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.ChangeReport;
 import songscribe.dom.ReportedChange;
+import songscribe.dom.SongFactory;
 import songscribe.dom.StaffElementFactory;
-import songscribe.lint.LintFinding;
-import songscribe.lint.LintMark;
 import songscribe.lint.LintReport;
-import songscribe.lint.LintRule;
-import songscribe.lint.Violation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,8 +45,7 @@ class ReportStatusTest extends UnitTest {
     private static final ChangeReport ONE_CHANGE = new ChangeReport(
         List.of(new ReportedChange(Strings.REPORT_BEAMS_REMOVED, "", null)));
 
-    private static final LintReport ONE_FINDING = new LintReport(List.of(new LintFinding(
-        LintRule.BALANCED_REPEATS, new Violation("", "", new LintMark.Flagged(StaffElementFactory.singleBarline())))));
+    private static final LintReport ONE_FINDING = lintedReport(line -> line.addElement(StaffElementFactory.singleBarline()));
 
     private record StatusCase(String description, LintReport lint, ChangeReport changes, ReportStatus expected) {
 
@@ -82,5 +78,12 @@ class ReportStatusTest extends UnitTest {
     void testCasesCoverEveryStatus() {
         assertThat(statusCases().map(StatusCase::expected).distinct())
             .containsExactlyInAnyOrder(ReportStatus.values());
+    }
+
+    private static LintReport lintedReport(SongFactory.LineBuilder line) {
+        var linter = SongFactory.buildSong(line).getLinter();
+        linter.lint();
+
+        return linter.getReport();
     }
 }

@@ -118,12 +118,8 @@ public final class ReportPanel extends JPanel {
 
     private static final int SEPARATOR_THICKNESS = 1;
 
-    private static final int BEFORE_FIRST_LINE = -1;
-
-    private static final int LINE_START = 0;
-
-    private static final Comparator<Row> SONG_ORDER = Comparator.comparing(
-        Row::position, Comparator.comparingInt(Position::lineIndex).thenComparingInt(Position::elementIndex));
+    private static final Comparator<ReportedChange> CHANGE_ORDER = Comparator.comparing(
+        ReportedChange::where, Comparator.nullsFirst(Comparator.comparingInt(LineRange::firstIndex)));
 
     private final MainFrame mainFrame;
     private final DefaultListModel<Row> model = new DefaultListModel<>();
@@ -225,30 +221,23 @@ public final class ReportPanel extends JPanel {
     }
 
     /**
-     * Rows at one position keep the order of their report.
+     * Change rows at one line keep the order of their report.
      */
     private void showRows(Song song) {
         var selected = list.getSelectedValue();
-        var changeRows = new ArrayList<Row>();
+        var rows = new ArrayList<Row>();
 
-        for (var change : changeReport.changes()) {
-            changeRows.add(changeRow(change));
-        }
+        // Stream.sorted is stable on an ordered stream.
+        changeReport.changes().stream().sorted(CHANGE_ORDER).map(ReportPanel::changeRow).forEach(rows::add);
 
         var lintReport = song.getLinter().getReport();
-        var lintRows = new ArrayList<Row>();
 
         for (var finding : lintReport.findings()) {
-            lintRows.add(lintRow(finding));
+            rows.add(lintRow(song, finding));
         }
 
-        // List.sort is stable, so rows at one position keep the order of their report.
-        changeRows.sort(SONG_ORDER);
-        lintRows.sort(SONG_ORDER);
-
         model.clear();
-        model.addAll(changeRows);
-        model.addAll(lintRows);
+        model.addAll(rows);
         status.set(ReportStatus.of(lintReport, changeReport));
 
         // An edit dismisses the lint callout, which clears the selection, so a restored lint row
@@ -266,27 +255,23 @@ public final class ReportPanel extends JPanel {
         var heading = Strings.get(change.headingKey());
         var where = change.where();
 
-        if (where == null) {
-            return new ChangeRow(heading, null, change.description(), new Position(BEFORE_FIRST_LINE, LINE_START));
-        }
+        var location = where == null ? null : lineLocation(where);
 
-        return new ChangeRow(
-            heading, lineLocation(where), change.description(), new Position(where.firstIndex(), LINE_START));
+        return new ChangeRow(heading, location, change.description());
     }
 
     /**
-     * {@code finding} is from the current lint report.
+     * {@code finding} is from the current lint report of {@code song}.
      */
-    private static Row lintRow(LintFinding finding) {
+    private static Row lintRow(Song song, LintFinding finding) {
         var mark = finding.mark();
-        var element = mark.element();
-        var line = element.requireParentLine();
-        var lineIndex = line.index();
-        var elementIndex = line.getElementIndex(element);
+        var elementLocation = song.locationOf(mark.element());
 
         // Indices are 0-based in the model and shown 1-based, as the user counts them.
-        var location = Strings.get(Strings.REPORT_LOCATION_ELEMENT, lineIndex + 1, elementIndex + 1);
-        return new LintRow(finding.heading(), location, finding.description(), new Position(lineIndex, elementIndex), mark);
+        var location = Strings.get(Strings.REPORT_LOCATION_ELEMENT,
+                                   elementLocation.lineIndex() + 1,
+                                   elementLocation.elementIndex() + 1);
+        return new LintRow(finding.heading(), location, finding.description(), mark);
     }
 
     private static String lineLocation(LineRange range) {
@@ -308,24 +293,14 @@ public final class ReportPanel extends JPanel {
         @Nullable String location();
 
         String description();
-
-        Position position();
     }
 
     /**
      * @param location {@code null} for a change with no place
      */
-    private record ChangeRow(String heading, @Nullable String location, String description, Position position)
-        implements Row { }
+    private record ChangeRow(String heading, @Nullable String location, String description) implements Row { }
 
-    private record LintRow(String heading, String location, String description, Position position, LintMark mark)
-        implements Row { }
-
-    /**
-     * @param lineIndex    0-based; {@value #BEFORE_FIRST_LINE} for a change with no place
-     * @param elementIndex 0-based; {@value #LINE_START} for a change
-     */
-    private record Position(int lineIndex, int elementIndex) { }
+    private record LintRow(String heading, String location, String description, LintMark mark) implements Row { }
 
     /**
      * Each text gets a new document: once a document holds text needing complex layout (such as a

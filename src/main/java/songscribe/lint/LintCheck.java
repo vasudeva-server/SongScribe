@@ -20,12 +20,9 @@
 
 package songscribe.lint;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 
 /**
  * The algorithm of one {@link LintRule}.
@@ -33,42 +30,9 @@ import songscribe.dom.StaffElement;
 @FunctionalInterface
 interface LintCheck {
 
+    /**
+     * @param song the song to examine; read only
+     * @return every violation of the rule in {@code song}, in any order
+     */
     List<Violation> check(Song song);
-
-    @FunctionalInterface
-    interface ElementVisitor {
-
-        void visit(StaffElement element, int position);
-    }
-
-    static void walk(Song song, ElementVisitor visitor) {
-        var position = 0;
-
-        for (var line : song.getLines()) {
-            for (var element : line.getElements()) {
-                visitor.visit(element, position);
-                position++;
-            }
-        }
-    }
-
-    /** Hands violations found out of song order back in song order. */
-    final class SongOrderedViolations {
-
-        private record Positioned(int position, Violation violation) {
-        }
-
-        private final List<Positioned> found = new ArrayList<>();
-
-        void add(int position, Violation violation) {
-            found.add(new Positioned(position, violation));
-        }
-
-        List<Violation> inSongOrder() {
-            return found.stream()
-                        .sorted(Comparator.comparingInt(Positioned::position))
-                        .map(Positioned::violation)
-                        .toList();
-        }
-    }
 }

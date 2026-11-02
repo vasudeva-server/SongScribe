@@ -76,8 +76,7 @@ final class UnbalancedFineCheck implements LintCheck {
      * {@code song}.
      *
      * @param song the song to examine; read only
-     * @return the violations, in the song order of the elements they flag; violations on one
-     *     element come in the order of the list in the class description
+     * @return the violations
      * @invariant a song with no Fine and no reference gives no violation
      * @invariant a Fine on a bar before the last element, followed later by a reference, gives
      *     no violation, and neither does that reference
@@ -85,9 +84,6 @@ final class UnbalancedFineCheck implements LintCheck {
     @Override
     public List<Violation> check(Song song) {
         return new Pass(lastElementOf(song)).run(song);
-    }
-
-    private record WaitingFine(StaffElement element, int position) {
     }
 
     private enum Problem {
@@ -108,8 +104,8 @@ final class UnbalancedFineCheck implements LintCheck {
     private static final class Pass {
 
         private final @Nullable StaffElement lastElement;
-        private final SongOrderedViolations found = new SongOrderedViolations();
-        private final List<WaitingFine> unreferencedFines = new ArrayList<>();
+        private final List<Violation> found = new ArrayList<>();
+        private final List<StaffElement> unreferencedFines = new ArrayList<>();
         private boolean fineSeen = false;
 
         Pass(@Nullable StaffElement lastElement) {
@@ -117,16 +113,18 @@ final class UnbalancedFineCheck implements LintCheck {
         }
 
         List<Violation> run(Song song) {
-            LintCheck.walk(song, this::visit);
-
-            for (var fine : unreferencedFines) {
-                flag(fine.element(), fine.position(), Problem.NOT_REFERENCED);
+            for (var line : song.getLines()) {
+                line.getElements().forEach(this::visit);
             }
 
-            return found.inSongOrder();
+            for (var fine : unreferencedFines) {
+                flag(fine, Problem.NOT_REFERENCED);
+            }
+
+            return found;
         }
 
-        private void visit(StaffElement element, int position) {
+        private void visit(StaffElement element) {
             var attachment = element.findAttachment(AnnotationAttachment.class);
 
             if (attachment == null) {
@@ -136,37 +134,37 @@ final class UnbalancedFineCheck implements LintCheck {
             var text = attachment.getAnnotation().text();
 
             if (text.strip().equalsIgnoreCase(FINE_TEXT)) {
-                visitFine(element, position);
+                visitFine(element);
             } else if (REFERENCE_PATTERN.matcher(text).find()) {
-                visitReference(element, position);
+                visitReference(element);
             }
         }
 
-        private void visitFine(StaffElement element, int position) {
+        private void visitFine(StaffElement element) {
             fineSeen = true;
-            unreferencedFines.add(new WaitingFine(element, position));
+            unreferencedFines.add(element);
 
             if (!element.getType().isBar()) {
-                flag(element, position, Problem.NOT_ON_BAR);
+                flag(element, Problem.NOT_ON_BAR);
             }
 
             if (element == lastElement) {
-                flag(element, position, Problem.ON_LAST_BAR);
+                flag(element, Problem.ON_LAST_BAR);
             }
         }
 
-        private void visitReference(StaffElement element, int position) {
+        private void visitReference(StaffElement element) {
             if (!fineSeen) {
-                flag(element, position, Problem.REFERENCE_WITHOUT_FINE);
+                flag(element, Problem.REFERENCE_WITHOUT_FINE);
             }
 
             unreferencedFines.clear();
         }
 
-        private void flag(StaffElement element, int position, Problem problem) {
-            found.add(position, new Violation(Strings.get(problem.headingKey),
-                                              Strings.get(problem.reasonKey),
-                                              new LintMark.FlaggedAnnotation(element)));
+        private void flag(StaffElement element, Problem problem) {
+            found.add(new Violation(Strings.get(problem.headingKey),
+                                    Strings.get(problem.reasonKey),
+                                    new LintMark.FlaggedAnnotation(element)));
         }
     }
 
