@@ -251,7 +251,9 @@ public final class ReportPanel extends JPanel {
         model.addAll(lintRows);
         status.set(ReportStatus.of(lintReport, changeReport));
 
-        if (selected != null) {
+        // An edit dismisses the lint callout, which clears the selection, so a restored lint row
+        // would only scroll the score and flash the callout.
+        if (selected instanceof ChangeRow) {
             var index = model.indexOf(selected);
 
             if (index >= 0) {
