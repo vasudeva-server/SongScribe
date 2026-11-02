@@ -1,13 +1,12 @@
-Language-neutral principles — contracts, contract-driven testing, signature
-quality — live in `~/.claude/rules/development.md` (global). This file holds
-only project-specific mechanics.
+Language-neutral principles live in the global rules under `~/.claude/rules/`.
+This file holds only project-specific mechanics.
 
 ## Development Scripts
 
-- Compile: run `./scripts/compile.sh --test`, which builds both trees. Never use `./gradlew`, `gradle`, `javac`, or `java -cp`. Outputs SUCCESS/FAILURE. Fix errors before proceeding. Include `--test` on every change: with the suite dormant, compiling the test tree is the always-on check that nothing still pins a member you deleted or renamed. `clean` is available for a from-scratch build.
-- Run: Use `./scripts/run.sh` directly via Bash — flags: `--log-level=debug|info|warn|error|trace`, `--truncate-log`. UI debug features: prefix with `DEBUG=1`. NEVER execute without user permission.
+- Compile: run `./scripts/compile.sh --test`, which builds both trees. Never use `./gradlew`, `gradle`, `javac`, or `java -cp`. Outputs SUCCESS/FAILURE. Outside `/execute-plan`, compile after each change and fix errors before proceeding. In a phase that `/execute-plan` runs, compile only in the plan's gate phase. Always include `--test`: with the suite dormant, compiling the test tree is the always-on check that nothing still pins a member you deleted or renamed. `clean` is available for a from-scratch build.
+- Run: Use `./scripts/run.sh` directly via Bash — flags: `--log-level=debug|info|warn|error|trace`, `--truncate-log`. UI debug features: prefix with `DEBUG=1`. Ask the user before you run it.
 - Tests: always `./scripts/test.sh` (never `./gradlew test`). **Name the test classes covering what you just wrote or changed** — `./scripts/test.sh SomeTest AnotherTest`. The whole suite is the user's to start; ask before running it yourself. There is no form that runs both suites, so reaching e2e always takes typing `e2e`, and any e2e run requires user approval. Run unit before e2e. See the usage header in `scripts/test.sh` for targets and flags; it validates them and prints the corrected command when a target is wrong. Do not compile first: `./scripts/test.sh` builds both trees itself, on the same Gradle goal `./scripts/compile.sh --test` uses.
-  - Failures: read output for error info/location. Do NOT rerun with flags. Never assume pre-existing — do NOT stash to check. Fix before new changes.
+  - Failures: read output for error info/location. Do not rerun with flags. Never assume a failure is pre-existing, and do not stash to check. Fix it before new changes.
 
 ## Unused Imports
 

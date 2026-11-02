@@ -1,4 +1,4 @@
-MANDATORY: Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. `rg`, `grep`, `Read` and `Glob` are the fallbacks — reach for them only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable.
+Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. `rg`, `grep`, `Read` and `Glob` are the fallbacks — reach for them only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable.
 
 Whenever you are about to determine the set of places a symbol is used — method, field, or class — start with `jet_brains_find_referencing_symbols`.
 

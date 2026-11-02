@@ -146,7 +146,7 @@ redesign of working code is a worse outcome than silence.
 
 A design finding is a finding in its own right. Report it **above the symptoms
 it explains**, after any concrete production bug. It follows *How to Write
-Findings* and adds three things:
+Findings* and adds four things:
 
 1. **The symptoms it accounts for.** List them, so the reader can see that one
    change replaces several separate fixes. Where tests are involved, say which
@@ -238,9 +238,10 @@ active path in the meantime.
 where the thumb hides most easily. Do not label the choice by size — "Larger
 refactor" against "Just the quick fixes" decides the question in the labels,
 before the user has read a word of either. Name what each option *does*: "Give
-the interval type its own shape" against "Leave both definitions in place." Put
-the fix first, mark it recommended when you recommend it, and make sure the
-declining option states what it leaves behind rather than what it saves.
+the interval type its own shape" against "Leave both definitions in place." Do
+not mark an option recommended, and do not order the options by preference, per
+`~/.claude/rules/base.md`. Make sure the declining option states what it leaves
+behind rather than what it saves.
 
 If the user declines the design fix, do **not** quietly fall back to papering
 over its symptoms, or to writing the workaround tests anyway. Say which of the

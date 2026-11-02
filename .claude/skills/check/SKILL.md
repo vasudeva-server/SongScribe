@@ -63,30 +63,30 @@ first, then resolve the remaining token as the scope.
 - **Empty** → Mode A (working-tree diff).
 - **A git commit-ish** → Mode C (commit). Before treating a non-empty argument
   as a package or file, test whether it is a commit: run
-  `/opt/homebrew/bin/git rev-parse --verify --quiet "$ARGUMENTS^{commit}"`. If
+  `git rev-parse --verify --quiet "$ARGUMENTS^{commit}"`. If
   that succeeds, and the argument is not also an existing file or directory
   path, use Mode C.
 - **Anything else** → Mode B (package or file).
 
 ### Mode A: Git Diff (default)
 
-- Run `/opt/homebrew/bin/git diff` (or `/opt/homebrew/bin/git diff HEAD` if
+- Run `git diff` (or `git diff HEAD` if
   there are staged changes) to get the diff.
 - **If there are no uncommitted changes**, fall back to the branch's own commits
   — everything this branch has added since it forked from `develop`:
   - Determine the base ref: use `develop` if
-    `/opt/homebrew/bin/git rev-parse --verify --quiet develop` succeeds,
+    `git rev-parse --verify --quiet develop` succeeds,
     otherwise `origin/develop`.
   - List the branch's commits with
-    `/opt/homebrew/bin/git log --oneline <base>..HEAD`. The two-dot form lists
+    `git log --oneline <base>..HEAD`. The two-dot form lists
     only commits reachable from `HEAD` but not from the base, so commits that
     came from `develop` are excluded automatically — this stays correct even if
     the branch was rebased onto `develop` during development.
-  - Get the cumulative diff with `/opt/homebrew/bin/git diff <base>...HEAD`
+  - Get the cumulative diff with `git diff <base>...HEAD`
     (three dots — diff against the merge base, not against the tip of
     `develop`).
   - Get the list of changed file paths with
-    `/opt/homebrew/bin/git diff --name-only <base>...HEAD`. Exclude deleted
+    `git diff --name-only <base>...HEAD`. Exclude deleted
     files.
   - If `HEAD` is `develop` itself, or the commit list is empty, review the most
     recently modified files that the user mentioned or edited earlier in this
@@ -94,11 +94,11 @@ first, then resolve the remaining token as the scope.
 - **Also collect untracked files.** `git diff` never shows untracked files, so a
   brand-new file the user hasn't `git add`ed yet is otherwise invisible even
   though it is squarely part of "what changed." Run
-  `/opt/homebrew/bin/git status --porcelain --untracked-files=all` and take
+  `git status --porcelain --untracked-files=all` and take
   every path marked `??` under `src/` (any extension — production code, tests,
   and resources alike). Read each one in full (Serena's
-  `jet_brains_get_symbols_overview` / `jet_brains_find_symbol` for `.java` and
-  `.kt`, plain `Read` otherwise) and add it to the review target alongside the
+  `jet_brains_get_symbols_overview` / `jet_brains_find_symbol` for `.java`,
+  plain `Read` otherwise) and add it to the review target alongside the
   diffed files. For these there is no diff hunk; the whole file is the target.
 
 ### Mode B: Package or File Review
@@ -109,13 +109,13 @@ The token can be:
   `songscribe.` prefix is implicit and must not be included. Production code
   lives at `src/main/java/songscribe/<dots-to-slashes>`; tests at
   `src/test/java/songscribe/<dots-to-slashes>`.
-- A **file path or class name** (contains `/`, or ends in `.java` / `.kt`, or
+- A **file path or class name** (contains `/`, or ends in `.java`, or
   names a class such as `StringUtilsTest`) — used as-is.
 
 Resolution steps:
 
 1. Convert the argument to a filesystem path as described above.
-2. If the path is a directory, collect all source files (`.java`, `.kt`)
+2. If the path is a directory, collect all `.java` source files
    recursively.
 3. If the path is a file, use just that file.
 4. Read the full content of each file using Serena's
@@ -126,17 +126,17 @@ Resolution steps:
 
 ### Mode C: Commit Review
 
-- Run `/opt/homebrew/bin/git show <commit>` to get the diff for the review
+- Run `git show <commit>` to get the diff for the review
   target.
-- Run `/opt/homebrew/bin/git diff-tree --no-commit-id --name-only -r <commit>`
+- Run `git diff-tree --no-commit-id --name-only -r <commit>`
   to get the list of changed file paths. Exclude deleted files.
 
 ### Partitioning the resolved scope
 
 After resolving the scope in any mode, split it into three subsets:
 
-- **Production scope** — all non-test source files (`.java`, `.kt` that do not
-  end in `Test.java`).
+- **Production scope** — all `.java` source files that do not end in
+  `Test.java`.
 - **Test scope** — all `*Test.java` files.
 - **Doc scope** — every changed `guides/**/*.md` and `plans/*.md`, plus every
   file in `guides/subsystems/` or `guides/concepts/` that names a type in the
@@ -242,7 +242,7 @@ guides above.
 ### Every question names the finding it comes from
 
 **Open the question text with the finding's number from
-`plans/check-findings.md`**, e.g. "Finding 3". Do NOT restate the finding
+`plans/check-findings.md`**, e.g. "Finding 3". Do not restate the finding
 in the question. This applies to every AskUserQuestion this phase sends: 
 clarifying questions, questionable findings, and the approval list alike.
 
@@ -283,9 +283,9 @@ get it confirmed before writing it.
    fix would have been a workaround around the declined flaw — another parameter
    or cache in production code, another mock or test-only accessor in a test —
    leave it and say so in the summary rather than adding debt.
-4. **Compile and test.** Any change under `src/main/` or `src/test/` requires
-   `./scripts/compile.sh`; then re-run the relevant `./scripts/test.sh <target>`
-   (unit only) to confirm green.
+4. **Compile and test.** After any change under `src/main/` or `src/test/`, run
+   the relevant `./scripts/test.sh <target>` (unit only), which builds both trees
+   itself. Where no test class covers the change, run `./scripts/compile.sh --test`.
 5. **Summarize** what was fixed, leading with the design and contract changes if
    any were approved, then grouped by axis. Write the summary in plain language
    per `check-findings.md` — for each fix, say what the code or test did before, what
@@ -364,7 +364,8 @@ get it confirmed before writing it.
 5. **Fix.** After approval, fix the approved issues, following the guides read at
    the start of this phase for any contract or test work. If a design fix was
    declined, apply only the fixes that stand on their own and say which ones you
-   left undone because their only fix would have been a workaround. Any change
-   under `src/main/` or `src/test/` requires `./scripts/compile.sh`; then re-run
-   the relevant `./scripts/test.sh <target>` (unit only) to confirm green.
+   left undone because their only fix would have been a workaround. After any
+   change under `src/main/` or `src/test/`, run the relevant
+   `./scripts/test.sh <target>` (unit only), which builds both trees itself.
+   Where no test class covers the change, run `./scripts/compile.sh --test`.
    Briefly summarize what changed, in the same plain language.

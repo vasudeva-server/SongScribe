@@ -40,7 +40,8 @@ introducing any other abbreviation.
 
 Always use braces for `if`, `else`, `for`, `while`, and `do` statements, even if the body is a single statement. This improves readability and  prevents bugs when adding new statements later.
 
-```java// Bad — no braces
+```java
+// Bad — no braces
 if (condition) doSomething();
     
 // Good — braces
@@ -144,7 +145,7 @@ public void setMode(Mode mode);
 
 ## Initialize static fields
 
-Explicityly initialize static fields whenever possible, do not rely on the compiler default.
+Explicitly initialize static fields whenever possible, do not rely on the compiler default.
 
 ```java
 private static int lastMouseScreenXPx = 0;
@@ -180,7 +181,7 @@ flags any other unknown tag.
 
 ## Signature Rules for Contracts
 
-From the global rules (`~/.claude/rules/development.md`), in Java terms:
+In Java terms:
 
 - **More than four parameters: a `record` parameter object is required.** Not
   a style preference — past four params a call site cannot be read against its

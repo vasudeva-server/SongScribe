@@ -28,7 +28,7 @@ Any other arguments are passed through to the application.
 
 ## Compiling and testing
 
-- `./scripts/compile.sh` — compile. No flags, no pipes, no additions.
+- `./scripts/compile.sh --test` — compile both trees. No other flags, no pipes, no additions.
 - `./scripts/test.sh` — run tests. See `.claude/rules/development.md` and
   `guides/conventions/testing-e2e.md` for targets and conventions.
 
@@ -38,7 +38,7 @@ This is a native macOS Swing app with no headless/browser automation surface
 available in this environment. There is no reliable way to drive or
 screenshot it programmatically here. To confirm a UI change:
 
-1. Compile with `./scripts/compile.sh`.
+1. Compile with `./scripts/compile.sh --test`.
 2. Launch with `./scripts/run.sh` in the background and ask the user to
    exercise the change themselves, or describe the exact steps for them to
    follow.

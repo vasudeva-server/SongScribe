@@ -482,15 +482,15 @@ Judged against the contract's clauses, never against the implementation.
 
 ### Level
 
-17. **Wrong level** — the rubric is in `testing-common.md`. E2E proves *wiring*,
+15. **Wrong level** — the rubric is in `testing-common.md`. E2E proves *wiring*,
     one test per path, never per case; a behavior that can be asserted with the
     singleton mocked is not an e2e case. A trivial getter, a pure data holder, or
     pure display wiring is **none**.
-18. This axis audits unit tests and never runs the e2e suite.
+16. This axis audits unit tests and never runs the e2e suite.
 
 ### Constants
 
-19. **A production constant's literal redeclared in test code** is a finding. The
+17. **A production constant's literal redeclared in test code** is a finding. The
     question it raises is whether the contract should name the constant — not
     whether the field should be widened. See the constants rule in Axis 2.
 

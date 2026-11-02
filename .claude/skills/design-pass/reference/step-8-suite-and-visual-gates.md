@@ -2,8 +2,8 @@
 
 Every snapshot in steps 2 through 7 builds and runs the classes it touched, or
 that state is unverified. This step is the **full-suite gate**: run
-`./scripts/compile.sh --test`, then `./scripts/test.sh <the target's test
-classes>`. A contract or type change here can break a caller in another package,
+`./scripts/test.sh <the target's test classes>`, which builds both trees
+itself. A contract or type change here can break a caller in another package,
 which is what the whole suite is for — and the whole suite is not yours to start.
 
 **Ask the user to run it, and wait.** The whole suite is the user's to start.

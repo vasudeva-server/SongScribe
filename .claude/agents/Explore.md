@@ -9,6 +9,12 @@ tools:
   - LS
   - WebFetch
   - WebSearch
+  - mcp__serena__jet_brains_find_symbol
+  - mcp__serena__jet_brains_find_referencing_symbols
+  - mcp__serena__jet_brains_get_symbols_overview
+  - mcp__serena__jet_brains_find_declaration
+  - mcp__serena__jet_brains_find_implementations
+  - mcp__serena__jet_brains_type_hierarchy
 ---
 
 Locate files and symbols in this codebase without modifying them, and report

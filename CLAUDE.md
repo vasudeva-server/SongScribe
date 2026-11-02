@@ -35,7 +35,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 ### Required Reading by Task
 
-**MANDATORY:** If a task touches any area below — even tangentially — read the linked guide first; these subsystems have project-specific conventions that override language and framework defaults.
+Before a task that touches an area below, read the linked guide; these subsystems have project-specific conventions that override language and framework defaults.
 
 - **Accidentals** — the chain walk, the five note states, or the accidental actions: [Accidentals](guides/subsystems/accidentals.md).
 - **Writing or changing a method, class, or package contract** — any new or changed nontrivial API: [Contracts](guides/conventions/contracts.md).
@@ -69,6 +69,6 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **Disposing an object, or writing a class that registers itself with anything process-global** (`Disposable`, `dispose()`, a constructor-side `MessageCenter.subscribe`): [Lifecycle](guides/conventions/lifecycle.md).
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
 - **LilyPond source**: If the user mentions LilyPond source, it is found at ~/Developer/projects/lilypond/lily/.
-- **ABC corpus** — If the user mention the "abc corpus", that refers to the .abc files in the numbered directories in `~/Documents/Centre/Music/SongScribe songs/ABC`.
+- **ABC corpus** — If the user mentions the "abc corpus", that refers to the .abc files in the numbered directories in `~/Documents/Centre/Music/SongScribe songs/ABC`.
 - **Naming a code boundary, or using "seam" for anything in this codebase**: [Vocabulary](guides/conventions/vocabulary.md).
 - **A git operation that references a base branch** — diff, checkout, rebase, or PR creation: [Branch Topology](guides/conventions/branch-topology.md).

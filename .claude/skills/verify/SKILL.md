@@ -15,7 +15,7 @@ See `.claude/skills/run/SKILL.md` for how to launch the app.
 
 ## What "verified" means for this project
 
-- `./scripts/compile.sh` returns `SUCCESS`.
+- `./scripts/compile.sh --test` returns `SUCCESS`.
 - `./scripts/test.sh` passes for any changed/added tests (unit before e2e;
   e2e requires user approval — see `.claude/rules/development.md`).
 - For UI-visible changes, either the user exercises the change themselves in
