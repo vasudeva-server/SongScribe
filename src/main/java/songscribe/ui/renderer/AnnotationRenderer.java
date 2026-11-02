@@ -35,10 +35,9 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
- * Renders text annotations attached to notes. An annotation that a lint finding names
- * ({@link LineInvariants.ElementLint#annotationFlagged()}) keeps its own color and gets a squiggle
- * in {@link ScoreView#getLintColor()}, its ink top {@value #SQUIGGLE_GAP_DOC_PX} document pixels
- * below the text baseline.
+ * Renders text annotations attached to notes. An annotation that a lint finding names keeps its
+ * own color and gets a squiggle in {@link ScoreView#getLintColor()}, its ink top
+ * {@value #SQUIGGLE_GAP_DOC_PX} document pixels below the text baseline.
  */
 public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
 

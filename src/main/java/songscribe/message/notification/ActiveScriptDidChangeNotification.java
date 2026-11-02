@@ -23,7 +23,7 @@ package songscribe.message.notification;
 import songscribe.dom.Song;
 
 /**
- * Posted by {@link Song#setActiveScript} when the song's active script changes.
+ * The notification that the song's active script changed.
  */
 public class ActiveScriptDidChangeNotification extends LintingNotification {
 

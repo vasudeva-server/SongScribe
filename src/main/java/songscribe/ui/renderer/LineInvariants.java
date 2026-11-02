@@ -265,9 +265,7 @@ public final class LineInvariants {
     }
 
     /**
-     * The one statement of where a "?" is drawn: the renderer draws by it, through
-     * {@link #lintOn}, and the pointer code hit-tests by it. Layout lays out the active script
-     * only, so a "?" stands only for a mark in the script the lyric row shows.
+     * A "?" is drawn only for a mark in the script the lyric row shows.
      *
      * @param layoutResult the layout of the line that holds the mark's element
      * @return the placeholder, or {@code null} when no "?" is drawn for the mark
@@ -291,7 +289,7 @@ public final class LineInvariants {
     }
 
     /**
-     * Does not include grace-cancel coloring (handled in LineRenderer).
+     * Does not include grace-cancel coloring.
      */
     public Color getElementColor(int elementIndex) {
         var facts = positionFacts(elementIndex);
@@ -403,7 +401,7 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns a new, mutable set, for the caller to add its own playing and selection facts to.
+     * Returns a new, mutable set.
      */
     private EnumSet<ColorPriority> positionFacts(int elementIndex) {
         var facts = EnumSet.noneOf(ColorPriority.class);

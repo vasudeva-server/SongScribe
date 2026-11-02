@@ -83,12 +83,11 @@ import songscribe.util.LogUtils;
 import songscribe.util.UIUtils;
 
 /**
- * In-place lyric editor overlay parented to {@link ScoreView}, editing the active-script lyric
- * of a single {@link StaffElement}.
+ * In-place lyric editor overlay, editing the active-script lyric of a single
+ * {@link StaffElement}.
  *
  * <p>Invariant: while the editor is active, no external code path may mutate the song or fire any
- * toolbar keystroke. This is enforced by {@code DISABLE_WHEN_EDITING_TEXT} on every toolbar
- * {@code UIAction}; {@code LyricEditorActionAuditTest} locks the whitelist.
+ * toolbar keystroke.
  */
 public final class LyricEditor extends MyJTextField {
 

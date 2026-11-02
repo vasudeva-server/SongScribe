@@ -68,8 +68,7 @@ public final class MutationReplayer {
 
     /**
      * Undoes the edit that recorded {@code mutations}, restoring {@code song} and its fonts
-     * to the state they held immediately before it: the records are inverted in reverse
-     * order, inside one {@link Song#replay}.
+     * to the state they held immediately before it.
      *
      * <p>Exactly inverts {@link #redoBatch}: applying one and then the other to the same
      * batch, in either order, leaves the document as it was.
@@ -78,8 +77,8 @@ public final class MutationReplayer {
      * @param fonts     the holder of that song's document fonts
      * @param mutations the whole batch of one edit, whose effect is the song's most recent
      *                  unreplayed change
-     * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
-     *     that {@link Song#replay} posts, carrying the inverse changes
+     * @effects posts one {@link songscribe.message.notification.SongDidChangeNotification},
+     *     carrying the inverse changes
      * @throws RuntimeException if a record cannot be applied — an index it names no longer
      *                          exists, or an element it names is gone. This means the batch
      *                          was replayed out of turn, incompletely, or against the wrong
@@ -97,8 +96,7 @@ public final class MutationReplayer {
 
     /**
      * Redoes the edit that recorded {@code mutations}, restoring {@code song} and its fonts
-     * to the state they held immediately after it: the records are re-applied in forward
-     * order, inside one {@link Song#replay}.
+     * to the state they held immediately after it.
      *
      * <p>Exactly inverts {@link #undoBatch}, and takes the same preconditions, except that
      * the song must be in the state that immediately <em>precedes</em> the edit.
@@ -107,8 +105,8 @@ public final class MutationReplayer {
      * @param fonts     the holder of that song's document fonts
      * @param mutations the whole batch of one edit, whose effect is the song's next
      *                  unreplayed change
-     * @effects posts the {@link songscribe.message.notification.SongDidChangeNotification}
-     *     that {@link Song#replay} posts, carrying the re-applied changes
+     * @effects posts one {@link songscribe.message.notification.SongDidChangeNotification},
+     *     carrying the re-applied changes
      * @throws RuntimeException under the conditions given for {@link #undoBatch}
      */
     public static void redoBatch(Song song, FontTarget fonts, List<Mutation> mutations) {

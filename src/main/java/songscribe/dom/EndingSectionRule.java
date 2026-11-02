@@ -53,10 +53,9 @@ final class EndingSectionRule implements ModificationRule {
     /**
      * {@inheritDoc}
      *
-     * @effects when {@code batch} holds a mutation that can change a repeat section, removes,
-     *     through {@link Span#removeReported} with
-     *     {@link Strings#REPORT_REASON_ENDING_NO_OPEN_SECTION}, every ending in the song
-     *     whose split closes no open repeat section
+     * @effects when {@code batch} holds a mutation that can change a repeat section, removes
+     *     every ending in the song whose split closes no open repeat section, and reports each
+     *     removal with {@link Strings#REPORT_REASON_ENDING_NO_OPEN_SECTION}
      */
     @Override
     public void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {

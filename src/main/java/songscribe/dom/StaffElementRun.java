@@ -235,20 +235,18 @@ public interface StaffElementRun {
     }
 
     /**
-     * Whether the element at {@code index} may be replaced in place by an element of type
-     * {@code incoming} — clicked through with another element in note entry, which swaps the new
-     * element in and keeps the index.
+     * Whether the element at {@code index} may be replaced in place, keeping its index, by an
+     * element of type {@code incoming}.
      *
      * <p>Two things are refused whatever {@code incoming} is, both because they are half of a
      * pair that only means anything whole: a <b>grace note</b>, which belongs to the host that
-     * follows it, and either half of a <b>key change and the barline it sits behind</b>, which
-     * {@link #effectiveBegin} deletes whole for the same reason.
+     * follows it, and either half of a <b>key change and the barline it sits behind</b>.
      *
      * <p>A <b>bar line</b> — an {@code incoming} whose {@link ElementType#isBar()} is true — is
      * also refused where it would stand first in the song ({@link SongStart}): at the song-start
      * slot, or on the host of a paired grace note at that slot. A replacement by anything but a
      * pitched note takes the paired grace note in front of it along, so the bar line would then
-     * stand where the grace note stood; {@link #effectiveBegin} is that reach.
+     * stand where the grace note stood.
      *
      * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
      * the element's place, while an insertion lands in front of it.
@@ -258,8 +256,8 @@ public interface StaffElementRun {
      *                 protect and the caller's own bounds decide what happens next
      * @param incoming the type of the element that would take the place of the one at
      *                 {@code index}
-     * @return {@code true} when note entry may write an element of type {@code incoming} over the
-     *     element at {@code index}
+     * @return {@code true} when an element of type {@code incoming} may replace the element at
+     *     {@code index}
      */
     default boolean canReplaceElementAt(int index, ElementType incoming) {
         if (!hasIndex(index)) {

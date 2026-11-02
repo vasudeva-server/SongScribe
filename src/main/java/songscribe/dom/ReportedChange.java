@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
  * One entry of a finished {@link ChangeReport}: a change the song made on its own, as the user
  * is told about it.
  *
- * <p>It holds no model object, so it can outlive any change to the song.
+ * <p>It can outlive any change to the song.
  *
  * @param headingKey a {@code Strings} key whose value is plain text
  * @param where      as the song stood when the report was built, or {@code null} for a change

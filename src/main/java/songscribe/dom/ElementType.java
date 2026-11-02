@@ -423,9 +423,8 @@ public enum ElementType {
     }
 
     /**
-     * Wider than {@link #closesRepeat()}: a {@code ||} and a final barline end every open
-     * section without sending playback back, so a {@code :|} after them finds no section to play
-     * back to unless another bar opens one.
+     * Wider than {@link #closesRepeat()}: also true for a {@code ||} and a final barline, which
+     * end every open section without sending playback back.
      */
     public boolean closesRepeatSection() {
         return closesRepeat() || this == DOUBLE_BARLINE || this == FINAL_DOUBLE_BARLINE;

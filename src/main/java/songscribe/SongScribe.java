@@ -195,9 +195,7 @@ public final class SongScribe {
     }
 
     /**
-     * Every process that builds the main window builds it here, including the end-to-end suite.
-     *
-     * <p>Requires {@link UIUtils#initMinimalTheme} to have run. Call it once per process: a
+     * Requires {@link UIUtils#initMinimalTheme} to have run. Call it once per process: a
      * second call would replace the bus under the listeners the first one subscribed. Whatever
      * runs before this must not post or subscribe.
      */

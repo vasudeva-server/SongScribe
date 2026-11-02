@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.Message;
 
 /**
- * Posted by {@link songscribe.ui.ZoomController} to both request and report a zoom change.
+ * Both requests and reports a zoom change.
  * <p>
  * {@code ScoreView} applies the change from a handler at {@link #APPLY_PRIORITY}. Any other
  * listener MUST use a priority strictly less than {@link #APPLY_PRIORITY} (a bare

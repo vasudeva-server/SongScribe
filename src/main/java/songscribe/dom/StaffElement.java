@@ -106,16 +106,9 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
      * Copies all cloneable state from {@code source} onto this element,
      * replacing the existing state while preserving this element's identity.
      * <p>
-     * This is the field list for the state a staff element holds itself; the base state travels
-     * through {@link #copyBaseStateFrom} and the subtype's through the
-     * {@link #copySubtypeStateFrom} this ends by calling, so each class owns exactly one list
-     * and none of the three can be reached without the other two.
-     * {@link #clone()} builds a bare element
-     * and copies through here rather than through a copy constructor of its own, so there is
-     * one field list per class and no second one to drift from it. Undo replay of an
-     * {@code ElementModification} restores in place through this method — a
-     * swap via {@code setElement} would leave stale references inside span
-     * records still sitting on the undo/redo stacks.
+     * Identity is preserved because undo replay restores an element in place through this
+     * method: a swap would leave stale references inside span records still sitting on the undo
+     * and redo stacks.
      * <p>
      * Final so that every subtype's state travels by that one route: an override could copy
      * the subtype's fields and leave the base ones behind.

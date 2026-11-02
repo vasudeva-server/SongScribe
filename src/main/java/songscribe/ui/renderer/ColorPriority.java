@@ -27,7 +27,7 @@ import java.util.EnumSet;
  * one item, the one declared first decides.
  * <p>
  * <b>The declaration order is the priority.</b> Do not reorder the constants unless a new
- * priority is intended; {@link #decide} reads nothing but that order.
+ * priority is intended.
  * <p>
  * Selection outranks hover and lint because the selection is what the next Delete removes.
  */

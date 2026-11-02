@@ -41,8 +41,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
  * Renders per-element lyric syllable text beneath the staff, and the {@link LintMark.MissingLyric}
- * "?" in the placeholder box {@link LineInvariants#lintOn} names, so the mark stands exactly
- * where the missing syllable would.
+ * "?" exactly where the missing syllable would stand.
  * <p>
  * Draws outside the staff-space paint transform, in pixel space, so that a rendered syllable lands
  * on the same baseline as the inline lyric editor overlaid on it: drawing through the staff-space

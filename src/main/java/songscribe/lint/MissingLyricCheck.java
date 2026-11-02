@@ -32,17 +32,14 @@ import songscribe.dom.Song;
  * The check of {@link LintRule#MISSING_LYRIC}: in the active script, every slot is sung on some
  * syllable.
  *
- * <p>A <em>slot</em> is an element a syllable can go on ({@code StaffElement.canBearSyllable}): a
- * note or a grace note, but not the host of a paired grace note, whose syllable is the grace
- * note's. A slot is sung on a syllable when any of these holds for the script:
+ * <p>A <em>slot</em> is an element a syllable can go on: a note or a grace note, but not the host
+ * of a paired grace note, whose syllable is the grace note's. A slot is sung on a syllable when any of these holds for the script:
  *
  * <ul>
  *   <li>it holds a lyric for the script, a melisma carrier included;</li>
  *   <li>a lyric span covers it: a melisma, or a word whose next syllable stands on a later note,
- *       runs over it ({@link LyricRun#lyricSpanEnd}). A span crosses a line break and stops at a
- *       repeat;</li>
- *   <li>a tie from the note before it reaches it ({@code NoteElement.incomingTie()}), so it
- *       continues a note already sung.</li>
+ *       runs over it. A span crosses a line break and stops at a repeat;</li>
+ *   <li>a tie from the note before it reaches it, so it continues a note already sung.</li>
  * </ul>
  *
  * <p>Only the active script is checked, because the score shows and edits that script only. A

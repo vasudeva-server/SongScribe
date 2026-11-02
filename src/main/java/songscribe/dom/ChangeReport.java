@@ -52,13 +52,12 @@ public record ChangeReport(List<ReportedChange> changes) {
     /**
      * The collector of one edit's or one load's report: the only place a change is recorded.
      *
-     * <p>A builder belongs to one song. {@link #build()} resolves recorded lines to indices only
-     * then, because a line added or removed in front of a recorded line moves its index.
+     * <p>A builder belongs to one song.
      *
      * <p>EDT-only, like the model it reports on; no locking.
      *
      * @invariant every line a recorded entry names is still a line of the song when
-     *     {@link #build()} runs: no edit or load records a change on a line and then removes it
+     *     {@link #build()} runs
      */
     public static final class Builder {
 

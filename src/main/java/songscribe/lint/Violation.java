@@ -21,9 +21,8 @@
 package songscribe.lint;
 
 /**
- * One thing a {@link LintCheck} found wrong with the song, before it is tied to its rule. A
- * violation has exactly one mark. The view shows the heading and description as they are and
- * never interprets them.
+ * One thing a {@link LintCheck} found wrong with the song, before it is tied to its rule. The
+ * heading and description are display text, shown as given.
  */
 public record Violation(String heading, String description, LintMark mark) {
 }

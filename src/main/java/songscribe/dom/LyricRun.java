@@ -202,10 +202,6 @@ public interface LyricRun extends StaffElementRun {
         repairNeighborsAfterInsertion(insertedIndex, insertedRun);
     }
 
-    /**
-     * Across a range in which a word ends, what stands before it and what stands after it are
-     * different words, so no word may close up over it once it is gone.
-     */
     default Set<Song.Script> scriptsWithWordEndIn(ElementRange range) {
         var scripts = EnumSet.noneOf(Song.Script.class);
 
@@ -286,8 +282,7 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * Writes the element directly, outside any bracket — the caller is responsible for any
-     * required modification bracket.
+     * The caller supplies any modification bracket the write requires.
      */
     private void backfillSyllabicAt(int index, Song.Script script) {
         var element = getElement(index);
@@ -419,8 +414,7 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * {@code text} is never blank here: {@link #writeLyricForScript} routes a blank non-carrier
-     * syllable to {@link #removeLyricForScript} first.
+     * {@code text} is not blank.
      */
     private static boolean storesSameLyric(@Nullable Lyric existing, String text,
             Lyric.Extend extend, Lyric.@Nullable Syllabic syllabic, boolean compound) {
@@ -629,7 +623,7 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * The end of a lyric span on one run, as {@link #lyricSpanEnd} finds it.
+     * The end of a lyric span on one run.
      *
      * @param lastCoveredIndex the index of the last element the span covers, or one less than
      *     where the walk started when it covers none

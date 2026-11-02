@@ -24,18 +24,17 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 
 /**
- * The rule that no bar line stands first in the song, and the one place it is stated.
+ * The rule that no bar line stands first in the song.
  *
  * <p>The song's terminal is exempt. A song with no other element holds only its terminal, and
  * that song is valid.
  *
  * <p>A removed bar line's key change moves onto the line: a bar line removed from the song start
- * takes the mid-line key change behind it with it, and that key becomes the own key of the line
- * ({@link Line#setKey}), so every element after the pair sounds in the key it did before.
- * {@link #keyBehind} answers which key moves.
+ * takes the mid-line key change behind it with it, and that key becomes the own key of the line,
+ * so every element after the pair sounds in the key it did before. {@link #keyBehind} answers
+ * which key moves.
  *
- * <p>An edit cannot put a bar line first, and a load or a paste removes one; a deletion can still
- * leave one, which the model accepts and the lint rule that reads {@link #leadingBar} flags.
+ * <p>The rule is not an invariant of the model: a deletion can leave a bar line first.
  */
 public final class SongStart {
 

@@ -154,12 +154,12 @@ public final class Line implements EditableRun {
      * would silently fail to reach this line or anything past it.
      *
      * <p>Records a {@link LineKeyChange} carrying the normalized value, and posts nothing when the
-     * normalized value is the one the line already holds. The key in effect on the lines that
-     * follow is {@link Song}'s to bring up to date, driven by that record.
+     * normalized value is the one the line already holds. The running key of the lines that
+     * follow is brought up to date with it.
      *
      * @param key the key to establish here, or null to inherit
-     * @effects posts the {@link LineKeyChange} through {@link #applyChange}, under
-     *     {@link Song#applyChange}'s bracket rule
+     * @effects this line's own key is the normalized value; what is recorded, and what is thrown
+     *     outside a bracket, is {@link Song#applyChange}'s promise
      */
     public void setKey(@Nullable Key key) {
         var normalized = key != null && key.equals(song.keyInheritance().inheritedKeyOf(this)) ? null : key;

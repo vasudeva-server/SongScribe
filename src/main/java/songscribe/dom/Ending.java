@@ -130,10 +130,7 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * The one statement of the section rule; {@link #spanning} and {@link EndingSectionRule}
-     * both apply it.
-     *
-     * <p>In {@code |: |: :| :|} a split at the last {@code :|} closes the outer section, so an
+     * In {@code |: |: :| :|} a split at the last {@code :|} closes the outer section, so an
      * ending there is legal. The nested {@code |:} is an error of the song's repeats, not of the
      * ending.
      */

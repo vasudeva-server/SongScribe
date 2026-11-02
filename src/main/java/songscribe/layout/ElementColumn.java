@@ -313,8 +313,9 @@ public final class ElementColumn {
     }
 
     /**
-     * Null if the element carries none in the script this column was built for. Every later pass
-     * reads the lyric from the column, so it stays on the script the width was measured for.
+     * Null if the element carries none in the script this column was built for. Read the lyric
+     * from here rather than from the element, so it stays on the script the width was measured
+     * for.
      */
     public @Nullable Lyric getLyric() {
         return lyric != null ? lyric.lyric() : null;

@@ -168,8 +168,7 @@ public final class UIUtils {
     }
 
     /**
-     * All three are plain text: {@link #toolTipHtml} escapes them, so a {@code <}, {@code >} or
-     * {@code &} shows as itself.
+     * All three are plain text: a {@code <}, {@code >} or {@code &} shows as itself.
      *
      * @param accelerator {@code null} for none
      */

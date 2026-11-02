@@ -31,8 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * The one model of a song's repeat sections: which bar opens the section each right repeat
- * closes, and which repeat bars are left unmatched. Playback, the section rule of {@link Ending}
- * and the lint rule for balanced repeats all read it, so they agree by construction.
+ * closes, and which repeat bars are left unmatched.
  *
  * <p>An <em>opener</em> is a bar that {@link ElementType#opensRepeatSection() opens a section}
  * ({@code |:} or {@code :|:}); a <em>right repeat</em> {@link ElementType#closesRepeat() closes
@@ -47,10 +46,9 @@ import org.jspecify.annotations.Nullable;
  *       closer.</li>
  *   <li>A {@code ||} closes every open section, as a final barline does.</li>
  *   <li>A {@code :|:} first closes the open section as a right repeat, then opens a new one.</li>
- *   <li>A song whose first element is a {@code :|} or {@code :|:} (flagged by the
- *       {@code LEADING_BAR} lint rule, {@link SongStart}) closes the song-start section: a
- *       {@link Section} with a {@code null} opener, not unmatched, whose {@link #sectionStart} is
- *       the bar itself.</li>
+ *   <li>A song whose first element is a {@code :|} or {@code :|:} closes the song-start section:
+ *       a {@link Section} with a {@code null} opener, not unmatched, whose {@link #sectionStart}
+ *       is the bar itself.</li>
  *   <li>An opener that comes while a section is open is nested; it still opens a section, which
  *       the next right repeat closes.</li>
  *   <li>An opener whose section a closing bar or the end of the song ends first is never closed,

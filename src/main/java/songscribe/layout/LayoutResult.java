@@ -335,7 +335,7 @@ public final class LayoutResult {
     }
 
     /**
-     * The placeholder takes no space, and a renderer decides whether to draw it.
+     * The placeholder takes no space.
      *
      * @return null when the element has a syllable or cannot bear one
      */
@@ -570,7 +570,7 @@ public final class LayoutResult {
 
         /**
          * The drawn box of the decoration, with nothing added. For a {@link Sloped} tuplet bracket
-         * the box does not follow the tilt; the hit registry gives a tuplet its own shape.
+         * the box does not follow the tilt.
          */
         default Rectangle2D.Double inkRectSs() {
             return new Rectangle2D.Double(xSs(), ySs(), widthSs(), heightSs());

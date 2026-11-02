@@ -32,18 +32,15 @@ import songscribe.dom.Song;
 /**
  * The check of {@link LintRule#BALANCED_REPEATS}: every repeat section is opened once and
  * closed once, by repeats, and no section opens inside another. What opens, closes and nests a
- * section is {@link RepeatSections}' rule, which playback reads too.
+ * section is {@link RepeatSections}' rule.
  *
  * <p>Each violation carries the heading {@link Strings#LINT_REPEATS_UNBALANCED} and the mark
  * {@link LintMark.Flagged} on the offending bar:
  *
  * <ul>
- *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_OPENED} on each of
- *       {@link RepeatSections#unopenedClosers()}.</li>
- *   <li>{@link Strings#LINT_REASON_REPEAT_NESTED} on each of
- *       {@link RepeatSections#nestedOpeners()}.</li>
- *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_CLOSED} on each of
- *       {@link RepeatSections#unclosedOpeners()}.</li>
+ *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_OPENED} on each closer with no open section.</li>
+ *   <li>{@link Strings#LINT_REASON_REPEAT_NESTED} on each opener inside an open section.</li>
+ *   <li>{@link Strings#LINT_REASON_REPEAT_NOT_CLOSED} on each opener never closed.</li>
  * </ul>
  */
 final class BalancedRepeatsCheck implements LintCheck {

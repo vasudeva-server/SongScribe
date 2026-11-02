@@ -46,15 +46,12 @@ final class SpanLoadPass {
      * Adds to {@code song} every pending span that is well formed, and records every one it
      * dropped.
      *
-     * <p>Each pending span is judged in order by its kind's factory ({@link PendingSpan#spanning})
-     * over the range from its anchor's index to its end's index in the anchor's line. A span the
-     * factory returns is added to that line with {@link Span#addTo}, which merges a hairpin with
-     * each hairpin of its kind already there that it overlaps or touches. One the factory refuses
-     * is dropped. Adding a
-     * span changes no element, so every later pending span's indices are the ones the reader
-     * built. Because the spans are judged in order and the factory sees the spans already added, of
-     * two pending endings that overlap or sit back to back, and of two pending hairpins of opposite
-     * kinds that share more than one element, the pass drops the later.
+     * <p>A pending span is well formed when its kind's factory ({@link PendingSpan#spanning})
+     * accepts its range, judged against the spans already added. A hairpin merges with each
+     * hairpin of its kind already there that it overlaps or touches. Of two pending endings that
+     * overlap or sit back to back, and of two pending hairpins of opposite kinds that share more
+     * than one element, the pass drops the later. Every pending span's indices are the ones the
+     * reader built.
      *
      * <p>No reader records a span whose anchor and end are on different lines: the MusicXML reader
      * drops a span still open when its line ends, and the legacy format stores each span as a pair

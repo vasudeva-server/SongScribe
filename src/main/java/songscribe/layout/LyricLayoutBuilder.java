@@ -111,10 +111,8 @@ public final class LyricLayoutBuilder {
      * languages, held in the document but never shown alongside the one the user picked, so they
      * produce no boxes, no connectors and no second row to make space for.
      * <p>
-     * {@code activeScript} stamps the boxes and connectors this emits. The lyrics themselves come
-     * off the columns, which {@link ElementColumnBuilder} already resolved for that script and
-     * measured the cached syllable widths against, so text and widths cannot come from different
-     * scripts.
+     * {@code activeScript} stamps the boxes and connectors this emits. The lyrics come off
+     * {@code columns}, which must be built for {@code activeScript}.
      *
      * @param columns                per-element columns in line order (X positions already finalized)
      * @param activeScript            the script to lay out, from {@link songscribe.dom.Song#getActiveScript()}

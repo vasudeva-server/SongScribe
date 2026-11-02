@@ -252,8 +252,8 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Pure measurement: the line and the fragment elements are never mutated. The solve reads the
-     * line in the keys the edit leaves it in. A {@code null} {@code lyricRenderMetrics} falls back
+     * Pure measurement: the line and the fragment elements are never mutated. The line is measured
+     * in the keys the edit leaves it in. A {@code null} {@code lyricRenderMetrics} falls back
      * to syllable-less columns.
      */
     public static FragmentInsertionResult calculateFragmentInsertion(

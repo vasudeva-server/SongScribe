@@ -26,8 +26,7 @@ import songscribe.message.Message;
 /**
  * The notification that a song's lint inputs changed.
  *
- * <p>Its constructor lints the song, so every subscriber reads the current report whatever its
- * priority.
+ * <p>Every subscriber reads the current report, whatever its priority.
  *
  * <p>EDT only, as the song and its linter are.
  */

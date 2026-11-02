@@ -32,8 +32,7 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * The tooltip of one lint mark, shown on request rather than by the pointer. The tooltip manager
- * shows a tooltip only for a mouse event, so this owns its own popup; {@link LintCalloutController}
- * decides when it shows.
+ * shows a tooltip only for a mouse event, so this owns its own popup.
  */
 final class LintCallout {
 

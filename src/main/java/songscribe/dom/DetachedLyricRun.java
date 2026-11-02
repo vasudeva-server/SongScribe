@@ -52,9 +52,6 @@ public record DetachedLyricRun(List<StaffElement> elements) implements LyricRun 
         return elements.size();
     }
 
-    /**
-     * A detached run is in no song; where a fragment lands is the destination line's question.
-     */
     @Override
     public boolean isSongStartAt(int index) {
         return false;

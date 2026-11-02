@@ -24,12 +24,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 
 /**
- * One change the song made on its own, as a recorder hands it to a {@link ChangeReport.Builder}
- * while an edit or a load runs.
- *
- * <p>A change names lines, never elements, and by {@link Line} object rather than index: line
- * numbers are resolved only when the report is built ({@link ChangeReport.Builder#build()}), so a
- * line added or removed later in the same edit does not make the entry wrong.
+ * One change the song made on its own during an edit or a load, before its report is built.
  *
  * @param headingKey a {@code Strings} key whose value is plain text
  * @param where      {@code null} only for a change with no place in the song

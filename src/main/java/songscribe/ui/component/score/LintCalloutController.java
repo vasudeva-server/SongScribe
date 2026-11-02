@@ -46,11 +46,10 @@ import songscribe.ui.component.ScoreView;
  * shows: the callout hides the hover tooltip, and a hover onto a mark dismisses the callout.
  * <p>
  * A callout hidden for any reason but a change of the selection is dismissed: this posts a
- * {@link LintCalloutWasDismissedNotification}, so the panel clears the selection that showed it.
+ * {@link LintCalloutWasDismissedNotification}.
  *
  * <h2>Lifecycle</h2>
- * Process-lifetime, as the {@link ScoreView} that owns it is, so it does not implement
- * {@code songscribe.lifecycle.Disposable}.
+ * Process-lifetime; never disposed.
  */
 public final class LintCalloutController {
 
@@ -86,14 +85,18 @@ public final class LintCalloutController {
         }
     }
 
-    /** Hides both tooltips before the zoom moves the items they point at. */
+    /**
+     * Runs at {@link ZoomDidChangeNotification#BEFORE_APPLY_PRIORITY} so that both tooltips hide
+     * before the zoom moves the items they point at.
+     */
     @Handler(priority = ZoomDidChangeNotification.BEFORE_APPLY_PRIORITY)
     public void zoomDidChange(ZoomDidChangeNotification message) {
         hideAll();
     }
 
     /**
-     * The tooltip manager asks for a new hover tooltip only when the pointer moves.
+     * Both tooltips hide on a lint, because the tooltip manager asks for a new hover tooltip only
+     * when the pointer moves.
      */
     @Handler
     public void linting(LintingNotification message) {

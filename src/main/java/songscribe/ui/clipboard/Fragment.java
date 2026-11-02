@@ -231,15 +231,13 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
      * reconciliation all read the element list, and each of them must see the run that actually
      * lands.
      *
-     * <p>What goes with the key change is {@link StaffElementRun}'s to say, asked of this
-     * fragment as the run it is — so a pasted pair is resolved by the rule that resolves a
-     * deleted one, and neither has to be kept in step with the other by hand. In practice that is
-     * the barline in front of it, which {@link #capture} widens a captured range back over
-     * precisely so this fragment holds both.
+     * <p>A key change goes together with the element that deleting it would also remove, in
+     * practice the barline in front of it, so a pasted pair is resolved by the rule that resolves
+     * a deleted one.
      *
      * <p>A span with an endpoint on a removed element cannot be drawn, so it goes with it. The
      * user did not ask to lose it, so the reduction names it in
-     * {@link Reduction#strandedSpans}, for the paste to report. An ending can be hit,
+     * {@link Reduction#strandedSpans}. An ending can be hit,
      * and so can a tuplet that ends on a barline; a beam and a hairpin cannot, because their
      * endpoints are notes.
      *
@@ -327,8 +325,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
 
         /**
          * For a paste that lands at the start of the song, where no bar line may stand
-         * ({@link SongStart}). The drop names the key of the last key change it left out, for
-         * the paste to move onto the destination line ({@link SongStart#keyBehind}).
+         * ({@link SongStart}). The drop names the key of the last key change it left out.
          */
         public LeadingBarDrop withoutLeadingBars() {
             var leadingBars = fragment.leadingBarRanges();
@@ -359,8 +356,8 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
     /**
      * What {@link Reduction#withoutLeadingBars} leaves of a fragment, and the key it moves.
      *
-     * @param movedKey the key the paste makes the destination line's own; {@code null} when the
-     *     drop left out no key change
+     * @param movedKey the key of the last key change the drop left out; {@code null} when it left
+     *     out none
      */
     public record LeadingBarDrop(Reduction reduction, @Nullable Key movedKey) {
     }

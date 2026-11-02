@@ -37,9 +37,7 @@ import com.formdev.flatlaf.ui.FlatUIUtils;
  * <p>
  * A new tooltip is asked for its size before it is in any window, so it has no graphics
  * configuration and its text is measured at 1x, then painted at 2x on a 2x screen with
- * different glyph widths: a long line paints wider or narrower than it measured. Until a tooltip
- * is in a window, this UI measures it under the graphics configuration of the component it
- * belongs to.
+ * different glyph widths: a long line paints wider or narrower than it measured.
  */
 public final class ScreenScaleToolTipUI extends FlatToolTipUI {
 

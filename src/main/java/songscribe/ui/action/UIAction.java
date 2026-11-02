@@ -813,9 +813,6 @@ public class UIAction extends AbstractAction implements Disposable {
             && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION));
     }
 
-    /**
-     * The notification's construction has already linted the song.
-     */
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void linting(LintingNotification message) {
         updateEnabledState();

@@ -27,11 +27,9 @@ import songscribe.dom.StaffElementRun.ElementRange;
 /**
  * Removes every bar line that stands first in a freshly parsed song.
  *
- * <p>No bar line stands first in the song — the rule {@link SongStart} states, which every edit
- * that writes an element keeps. The pass removes each such bar line and reports the line it was
- * on. A key change behind the bar line goes with it, and the key it set becomes the line's own
- * key first, so the song sounds as the file wrote it. Nothing else is moved or repaired into a
- * place the file did not say.
+ * <p>The rule is the one {@link SongStart} states. A key change behind a removed bar line goes
+ * with it, and the song still sounds as the file wrote it; nothing else is moved or repaired into
+ * a place the file did not say.
  */
 final class LeadingBarLoadPass {
 
@@ -49,14 +47,12 @@ final class LeadingBarLoadPass {
      * @invariant the song's terminal is never removed
      * @invariant every element left on the song's lines sounds in the key it sounded in before
      *     the pass
-     * @effects each removal takes the bar line's effective range
-     *     ({@link StaffElementRun#effectiveRange}) through {@link Line#removeRange}, so a key
-     *     change that sits behind the bar line goes with it, as a deletion of the bar line would
-     *     take it. When it does, the pass first sets that key change's key as the line's own key
-     *     ({@link Line#setKey}), so where several bar lines stand first the line ends in the key
-     *     of the last key change removed. The line leaves off in the key it left off in before,
-     *     so no other line's key moves and no key change is stranded. A span with an endpoint on a
-     *     removed element, such as an ending that starts on the bar line, is removed with it
+     * @effects a key change that sits behind a removed bar line is removed with it, and its key
+     *     becomes the line's own key; where several bar lines stand first, the line's own key is
+     *     that of the last key change removed. No other line's key moves and no key change is
+     *     stranded
+     * @effects a span with an endpoint on a removed element, such as an ending that starts on the
+     *     bar line, is removed with it
      * @effects records to the load's report one {@link SongStart#removedEntry} per bar line
      *     removed, naming the line it was on and whether the removal moved a key, in the order of
      *     removal, each before the entries of the spans its removal takes

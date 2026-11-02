@@ -22,13 +22,11 @@ package songscribe.dom;
 /**
  * The lines a finished change entry names, as zero-based line indices into the song.
  *
- * <p>{@link ChangeReport.Builder#build()} is the only producer. The indices describe the song as
- * the edit or load that produced the report left it, and say nothing about it after any later
- * edit.
+ * <p>The indices describe the song as the edit or load that produced the report left it, and say
+ * nothing about it after any later edit.
  *
  * @param firstIndex the index of the line the change starts on
  * @param lastIndex  the index of the line the change ends on
- * @invariant {@code firstIndex <= lastIndex}; the record does not check it, because its only
- *     producer guarantees it
+ * @invariant {@code firstIndex <= lastIndex}; the record does not check it
  */
 public record LineRange(int firstIndex, int lastIndex) { }

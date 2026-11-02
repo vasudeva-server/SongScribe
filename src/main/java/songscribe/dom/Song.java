@@ -109,8 +109,7 @@ public final class Song implements Disposable {
 
     /**
      * A script a song's lyrics are written in. The application holds a {@code Script}, never a
-     * lyric number, which exists only in a file; only {@code songscribe.io.LyricNumbers} converts
-     * between the two.
+     * lyric number, which exists only in a file.
      */
     public enum Script {
         LATIN,

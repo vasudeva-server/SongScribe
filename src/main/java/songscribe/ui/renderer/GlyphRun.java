@@ -29,8 +29,7 @@ import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
- * A SMuFL line segment glyph tiled {@code count} times along one baseline, as a trill's wavy
- * extension or the lint squiggle under a flagged annotation's text is drawn.
+ * A SMuFL line segment glyph tiled {@code count} times along one baseline.
  * <p>
  * The run is never stretched or squeezed to fit a span, so a span that is not a whole number of
  * glyphs wide leaves a gap, and a span narrower than one glyph is overflowed. All coordinates are

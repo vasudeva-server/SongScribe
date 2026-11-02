@@ -84,14 +84,12 @@ import songscribe.util.UIUtils;
  *
  * <p>The list draws on two sources with different lifetimes, and an update to one never clears
  * the rows of the other: the lint report is a state, the last {@link ChangeReport} an event that
- * every {@link SongDidChangeNotification} and load replaces (an undo or redo carries an empty
- * one).
+ * every edit, undo, redo and load replaces (an undo or redo leaves none).
  *
  * <p>A selected lint row always has its tooltip on screen: the selection clears when the score
  * dismisses the tooltip, when the panel is hidden, and when the pointer leaves the list.
  *
- * <p>It lives for the process, so it registers with the bus for the process and is never
- * disposed.
+ * <p>It lives for the process and is never disposed.
  */
 public final class ReportPanel extends JPanel {
 
@@ -275,8 +273,7 @@ public final class ReportPanel extends JPanel {
     }
 
     /**
-     * The finding is from the current lint report: every {@link LintingNotification} lints the
-     * song as it is built, and no handler changes the song before this panel reads the report.
+     * {@code finding} is from the current lint report.
      */
     private static Row lintRow(LintFinding finding) {
         var mark = finding.mark();

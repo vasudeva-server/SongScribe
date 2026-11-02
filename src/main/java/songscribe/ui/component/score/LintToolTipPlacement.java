@@ -30,8 +30,8 @@ import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 
 /**
- * Where the tooltip of a lint mark goes. The hover tooltip and the callout are both placed here,
- * so a mark's tooltip shows at the same place whichever of the two shows it.
+ * Where the tooltip of a lint mark goes. A mark's tooltip shows at the same place whether the
+ * hover tooltip or the callout shows it.
  * <p>
  * The rule, in this order:
  * <ol>
@@ -42,8 +42,6 @@ import javax.swing.SwingUtilities;
  *       its edges, such as the menu bar and the Dock. This is the area the tooltip manager keeps
  *       a tooltip inside, so the manager never moves a tooltip placed here.</li>
  * </ol>
- * {@link #arrange} is the rule as arithmetic, with no Swing; {@link #place} reads the screen,
- * builds the tooltip and measures it.
  */
 final class LintToolTipPlacement {
 

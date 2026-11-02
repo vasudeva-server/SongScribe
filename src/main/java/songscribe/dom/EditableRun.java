@@ -52,26 +52,22 @@ public interface EditableRun extends LyricRun {
     }
 
     /**
-     * Inserts {@code run} at {@code index} as one run: adds the elements in order and repairs
-     * the seams the run breaks on either side.
+     * Inserts {@code run} at {@code index} as one run, and repairs the seams the run breaks on
+     * either side.
      *
      * <p><b>This is the whole of a multi-element insertion, and it exists so that no caller
-     * assembles one out of parts.</b> The steps are not independent — {@link
-     * LyricRun#repairNeighborsBeforeInsertion} reads pre-insertion indices, so it must run before
-     * the first {@link #addElement}, and {@link LyricRun#repairNeighborsAfterInsertion} reads
-     * the run's first element where it landed, so it must run after the last. A caller that
-     * open-codes the sequence can leave out a step, and leaving one out shows up as a glissando
-     * pointing at a barline or a word hyphenated into an empty note, neither of which fails
-     * anywhere near the insertion.
+     * assembles one out of parts.</b> The repairs depend on the order of the insertion steps; a
+     * caller that open-codes the sequence can leave out a step, and leaving one out shows up as a
+     * glissando pointing at a barline or a word hyphenated into an empty note, neither of which
+     * fails anywhere near the insertion.
      *
      * @param index the index the first element lands at, {@code 0..}{@link #elementCount()}
      * @param run the elements to insert, in the order they land; must not be empty
      * @invariant {@code index} satisfies {@link #canInsertElementAt}, so no insertion lands
      *     between a mid-line key change and its barline, or between a paired grace note and
      *     its host
-     * @effects inserts the elements and applies the neighbor repairs to this run, each through
-     *     the primitives and {@link #modifyElement}, so an implementor that records gets one
-     *     record per step
+     * @effects this run holds the elements of {@code run} from {@code index}, with the neighbor
+     *     repairs applied
      */
     default void insertRun(int index, List<? extends StaffElement> run) {
         repairNeighborsBeforeInsertion(index, run);
@@ -92,12 +88,10 @@ public interface EditableRun extends LyricRun {
      * note alone leaves its host an ordinary note with no lyric.
      * <p>
      * The range is the one {@link StaffElementRun#effectiveRange} widened, so the breath mark
-     * directly after the caller's elements goes with them. Nothing past the widened range goes:
-     * no path puts a second breath mark behind the first, since a breath mark stands only
-     * directly after a duration element.
+     * directly after the caller's elements goes with them. Nothing past the widened range goes.
      * <p>
-     * This is the deletion an edit performs. {@link #removeRange} and {@link #removeElement} are
-     * the primitives beneath it, and repair nothing.
+     * This is the deletion an edit performs; {@link #removeRange} and {@link #removeElement}
+     * repair nothing.
      * <p>
      * Deleting several ranges on one run means working from the last to the first: removing an
      * earlier range shifts the indices of every later one. {@link #deleteRanges} discharges that.
@@ -119,8 +113,8 @@ public interface EditableRun extends LyricRun {
      *     rest, a barline, a breath mark or a key change changes no lyric, and one standing
      *     beside the range does not stop the two repairs above
      * @invariant the note in front of the range keeps no glissando into it
-     * @effects removes the elements through one {@link #removeRange} and applies the repairs
-     *     through {@link #modifyElement}; an implementor that records gets one record per step
+     * @effects removes the elements {@code effectiveRange} covers and applies the repairs the
+     *     invariants state
      */
     default void deleteRange(EffectiveRange effectiveRange) {
         var range = effectiveRange.range();
@@ -135,16 +129,12 @@ public interface EditableRun extends LyricRun {
     }
 
     /**
-     * Deletes every range in {@code ranges} through {@link #deleteRange}, working from the last to
-     * the first so that no removal invalidates the indices of one still to come.
-     *
-     * <p>The ordering is the obligation {@link #deleteRange} states and
-     * {@link StaffElementRun#redundantKeyChangeRanges(Key)} repeats, discharged once here rather
-     * than at each caller: a caller that walks the list forward corrupts every range after the
-     * first, and nothing in the types says so.
+     * Deletes every range in {@code ranges} as {@link #deleteRange} deletes one; no removal
+     * invalidates the indices of a range still to come.
      *
      * @param ranges the ranges to delete, ascending and pairwise disjoint
-     * @effects one {@link #deleteRange} per range, last to first
+     * @effects removes every range in {@code ranges}, with the repairs {@link #deleteRange}
+     *     states for each
      */
     default void deleteRanges(List<EffectiveRange> ranges) {
         for (var i = ranges.size() - 1; i >= 0; i--) {

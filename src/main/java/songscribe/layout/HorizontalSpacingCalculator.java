@@ -543,11 +543,7 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Negative when the syllable starts left of the notehead. Single source of truth for where a
-     * grace lyric sits: {@link LyricLayoutBuilder} adds it to the grace's X to place the box, and
-     * the extent methods below derive the neighbour reservations from the same formula. The
-     * reservation passes the ideal {@link #idealGraceHostUnionWidthSs}; the placement runs after
-     * the solve and passes the union actually produced.
+     * Negative when the syllable starts left of the notehead.
      * <p>
      * The grace and its host are one unioned column for lyric layout, the union width wide. A pair
      * that carries its own melisma ({@link PairMelisma#CARRIED}) draws an extender at least
@@ -641,9 +637,6 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * The widths are given rather than read off the grace so a caller can supply a per-script box
-     * width.
-     *
      * @param firstGraphemeWidthSs measured in the font the syllable is drawn in
      */
     public record GraceSyllable(

@@ -208,9 +208,7 @@ public record PasteSpanReconciliation(
      * entry names, resolves through the span's anchor element's own line, so the elements
      * must already sit where they will finally sit. Every span is judged against the destination
      * as it stood before any fragment span was added, so no fragment span is judged against
-     * another. Refusing a span that was never added is also what keeps this rule free of any
-     * mutation of its own: there is nothing for the paste's bracket to record, so the paste's
-     * single undo step covers the refusal by construction.
+     * another.
      *
      * @param line The destination line, with the fragment's elements already inserted and
      *             none of its spans added

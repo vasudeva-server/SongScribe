@@ -1286,7 +1286,7 @@ final class MeasureMapper {
     }
 
     /**
-     * Every element read here and in {@link #at} sits on a line of the song.
+     * Every element this reads sits on a line of the song.
      */
     private static ChangeLines through(OpenMark open, NoteSite end) {
         return new ChangeLines(

@@ -33,9 +33,8 @@ import songscribe.message.mutation.ElementField;
 import songscribe.util.LogUtils;
 
 /**
- * The hyphen-chain and melisma-chain operations an open {@link LyricEditor} session performs on
- * one script of one {@link Line}. Reads or writes only the model, so it can be exercised
- * without a Swing component.
+ * The hyphen-chain and melisma-chain operations on one script of one {@link Line}. Reads or
+ * writes only the model.
  *
  * <p><b>Bracketing:</b> only {@link #buildBackwardChain} opens its own modification bracket —
  * it is the whole of what the {@code _} keystroke writes. Every other mutating method here must

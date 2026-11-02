@@ -36,8 +36,8 @@ final class LeadingBarCheck implements LintCheck {
      * Finds the bar line that stands first in {@code song}, if one does.
      *
      * @param song the song to examine; read only
-     * @return no violation when {@link SongStart#leadingBar} answers {@code null}; otherwise one
-     *     violation with the heading {@link Strings#LINT_BAR_LEADING}, the description
+     * @return no violation when no bar line stands first in the song; otherwise one violation
+     *     with the heading {@link Strings#LINT_BAR_LEADING}, the description
      *     {@link Strings#REPORT_REASON_LEADING_BAR}, and a {@link LintMark.Flagged} mark on that
      *     bar line
      */

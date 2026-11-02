@@ -58,13 +58,12 @@ final class TupletLoadPass {
     /**
      * Adds to {@code song} every pending tuplet that can stand, and records what it did.
      *
-     * <p>Each pending tuplet is judged leniently, under
-     * {@link TupletValidator.Strictness#LENIENT}: the beat barrier and the structural boundary
-     * constrain creation, not a document that already exists. A stated ratio is judged by
-     * {@link Tuplet#spanningStated}, and an absent one is derived by {@link Tuplet#spanning}, each
-     * at the beat in effect at the tuplet's anchor. A tuplet that passes takes the pending
-     * tuplet's offset as its {@link LineElement#getUserYOffsetSs()} and is added to its anchor's
-     * line. One that is refused is dropped.
+     * <p>Each pending tuplet is judged under {@link TupletValidator.Strictness#LENIENT}: the beat
+     * barrier and the structural boundary constrain creation, not a document that already exists.
+     * A stated ratio stands when {@link Tuplet#spanningStated} accepts it, and an absent one is
+     * the ratio {@link Tuplet#spanning} derives, each at the beat in effect at the tuplet's anchor.
+     * An added tuplet takes the pending tuplet's offset as its
+     * {@link LineElement#getUserYOffsetSs()}.
      *
      * @param song           the song to add the tuplets to, immediately after parsing and before
      *                       it is installed

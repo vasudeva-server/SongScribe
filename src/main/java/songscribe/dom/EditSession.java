@@ -228,8 +228,8 @@ final class EditSession extends ModificationSession {
     }
 
     /**
-     * A body that throws closes through {@link #closeBracket}, so no rule can replace its
-     * exception with one of its own.
+     * A body that throws closes the bracket, and no rule can replace its exception with one of
+     * its own.
      */
     private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, Supplier<T> body) {
         beginModification(explicitLabel);

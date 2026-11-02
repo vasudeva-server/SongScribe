@@ -172,9 +172,6 @@ class LineSelectionHandler {
     }
 
     /**
-     * A "?" has no region in the hit registry: layout places a placeholder under every slot
-     * lacking a syllable, but the lint report decides which are drawn, and layout never reads it.
-     *
      * @return {@code null} when the point is not over a "?" or this component has no line laid out
      */
     @Nullable MissingLyricHit hitTestMissingLyricViewPoint(Point viewPoint) {
@@ -209,8 +206,8 @@ class LineSelectionHandler {
     }
 
     /**
-     * The "?" comes first because it stands in the lyric row, and a lyric outranks every other
-     * target.
+     * When the point is on both a "?" and a region, the "?" wins, because it stands in the lyric
+     * row and a lyric outranks every other target.
      *
      * @param region       {@code null} means the point is on no region, or this component has no
      *                     line laid out

@@ -58,8 +58,8 @@ public final class PasteModeManager implements InsertionPointMode.Client {
 
     /**
      * Paste adds nothing to the rules the mode applies for every client. Whether the fragment
-     * fits, the breath-mark rule and the song-start rule are decided by
-     * {@code tryInsertFragment} once a point is chosen, and their refusals are retryable.
+     * fits, the breath-mark rule and the song-start rule are decided once a point is chosen, not
+     * here, and their refusals are retryable.
      */
     @Override
     public boolean acceptsInsertionIndex(Line line, int index) {

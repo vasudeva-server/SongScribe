@@ -20,15 +20,14 @@
 package songscribe.dom;
 
 /**
- * The lines a recorded change was made on, named by the {@link Line} objects themselves so the
- * place stays right whatever else the same edit or load does to the song before its report is
- * built.
+ * The lines a recorded change was made on. The place stays right whatever else the same edit or
+ * load does to the song before its report is built.
  *
  * @param first the line the change starts on
  * @param last  the line the change ends on
  * @invariant {@code first} and {@code last} are lines of one song
  * @invariant {@code last} is {@code first} or a later line of the song; the record does not
- *     check it, because every producer guarantees it
+ *     check it
  */
 public record ChangeLines(Line first, Line last) {
 

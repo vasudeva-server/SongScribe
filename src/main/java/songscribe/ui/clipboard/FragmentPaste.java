@@ -53,8 +53,7 @@ public final class FragmentPaste {
      * caller's open modification bracket, and reports every span the paste removes or leaves out.
      *
      * <p>Every span the paste adds is the one its kind's factory built where the fragment
-     * landed, carrying the fragment span's user state. {@link PasteSpanReconciliation#settle}
-     * states the rule.
+     * landed, carrying the fragment span's user state.
      *
      * <p>The fragment's elements and spans are taken as they are: a fresh instantiation, which
      * this paste consumes, already reduced by {@link Fragment#withoutRedundantKeyChanges} for the
@@ -71,14 +70,15 @@ public final class FragmentPaste {
      * @param reduction the fragment to land, and the spans its key-change reduction left out
      * @throws IllegalStateException if the song has neither an open modification bracket nor
      *     suspended mutation tracking
-     * @effects within the caller's bracket: removes the stranded key changes on every line the
-     *     fragment's key reaches; removes each destination span the paste straddles, reported
-     *     with {@link PasteSpanReconciliation.LostSpan#reasonKey}; deletes {@code target}'s
-     *     range when it has one; inserts the fragment's elements at {@code target}'s insert
-     *     index; records through {@link songscribe.dom.Song#report} one entry per span of
-     *     {@link Fragment.Reduction#strandedSpans} and one per entry of
-     *     {@link PasteSpanReconciliation.Settlement#reports}; adds every span of
-     *     {@link PasteSpanReconciliation.Settlement#spansToAdd}
+     * @effects the stranded key changes are gone from every line the fragment's key reaches
+     * @effects each destination span the paste straddles is removed
+     * @effects {@code target}'s range, when it has one, is deleted, and the fragment's elements
+     *     stand at {@code target}'s insert index
+     * @effects the open bracket's change report holds one entry per span of
+     *     {@link Fragment.Reduction#strandedSpans}, one per destination span removed, and one per
+     *     fragment span the paste leaves out
+     * @effects every fragment span the paste keeps is on {@code line}, as its kind's factory
+     *     built it
      * @invariant a stranded span's entry names {@code line} when some element it covered landed,
      *     and has no place when none did
      */

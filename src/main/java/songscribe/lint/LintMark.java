@@ -26,16 +26,12 @@ import songscribe.dom.StaffElement;
 /**
  * Where a lint finding sits in the score, and what the score view draws there.
  *
- * <p>Two consumers switch over this type, drawing ({@code LineInvariants}) and geometry
- * ({@code LineSelectionHandler}), neither with a {@code default} branch, so a new kind fails to
- * compile in both until it is drawn and placed.
- *
  * <p>Only a {@link Flagged} mark competes for its element's color, where playing, selection and
- * hover each win over the lint color ({@code ColorPriority}).
+ * hover each win over the lint color.
  */
 public sealed interface LintMark {
 
-    /** Held as the object, not an index, so the mark stays on its element when an edit moves it. */
+    /** The mark stays on this element when an edit moves it. */
     StaffElement element();
 
     record Flagged(StaffElement element) implements LintMark {

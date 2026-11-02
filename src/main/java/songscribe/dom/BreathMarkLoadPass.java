@@ -42,13 +42,12 @@ final class BreathMarkLoadPass {
      * Removes every breath mark in {@code song} that does not follow a duration element, and
      * records what it removed.
      *
-     * <p>Each breath mark is judged against the element in front of it once the pass has
-     * settled everything before it, so a run of consecutive breath marks keeps at most its
-     * first: the second follows a breath mark, never a duration element.
+     * <p>Of a run of consecutive breath marks, at most the first stays: the second follows a
+     * breath mark, never a duration element.
      *
      * @param song the song to settle, immediately after parsing and before it is installed
      * @invariant afterwards every breath mark in {@code song} stands immediately after a
-     *     pitched note or a rest, the invariant {@link StaffElementRun#canInsertRunAt} states
+     *     pitched note or a rest
      * @effects a tuplet that holds a removed mark is removed with it
      * @effects records to the load's report, in document order, each breath mark removed, with an
      *     entry that names the line the breath mark was on, before the entries of the spans its

@@ -98,25 +98,24 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     }
 
     /**
-     * Adds this span to its line's span registry, first displacing whatever same-kind spans
-     * this kind's {@link #displacement()} says it may not coexist with.
+     * Adds this span to its line, removing whatever same-kind spans this kind's
+     * {@link #displacement()} says it may not coexist with.
      * <p>
-     * Each displacement is its own recorded mutation, emitted before this span's addition so
-     * undo restores the displaced spans after removing this one. Displacement is skipped while
-     * {@link Song#isReplaying()}: the recorded batch already carries the companion mutations,
-     * and re-deriving them would apply them twice.
+     * Undo of the addition restores the displaced spans. While {@link Song#isReplaying()},
+     * nothing is displaced: the recorded batch already carries the companion mutations, and
+     * re-deriving them would apply them twice.
      * <p>
-     * An absorbing displacement widens this span's endpoints over the same-kind spans it absorbs
-     * before it is added, which is what a merge is. A hairpin from {@link Hairpin#spanning},
+     * An absorbing displacement widens this span's endpoints over the same-kind spans it absorbs,
+     * which is what a merge is. A hairpin from {@link Hairpin#spanning},
      * added before any other span joins its line, already covers the range its absorption
      * reaches, so the displacement moves neither of its endpoints and only removes the hairpins
      * it absorbs.
      *
-     * @effects posts one {@link SpanRemoval} per displaced span, then a {@link SpanAddition} for
-     *     this span, through the line's song, and appends this span to the registry; under
-     *     {@link Displacement#REPLACE_OVERLAPPING}, each displaced span is also reported, through
-     *     {@link #removeReported} with {@link Strings#REPORT_REASON_REPLACED}; what is
-     *     recorded, and what is thrown outside a bracket, is {@link Song#applyChange}'s promise
+     * @effects records one {@link SpanRemoval} per displaced span, then a {@link SpanAddition}
+     *     for this span; afterwards the line holds this span and none of the displaced ones;
+     *     under {@link Displacement#REPLACE_OVERLAPPING}, each displaced span is also reported
+     *     with {@link Strings#REPORT_REASON_REPLACED}; what is recorded, and what is thrown
+     *     outside a bracket, is {@link Song#applyChange}'s promise
      * @throws IllegalStateException under the conditions {@link #line} throws
      */
     public final void addTo() {
@@ -151,18 +150,17 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * removal, and is a no-op otherwise. Requires that the span's anchor is in a line.
      * <p>
      * The no-op is a promise, not an accident: a second call finds nothing left to remove and
-     * records nothing. A caller that cannot cheaply tell whether an earlier step
-     * already removed the span — a sweep that doomed it, a merge that subsumed it, the paste
-     * reconciliation — may therefore call this unconditionally. A raw list removal would drop
-     * the span with no record and make undo of the enclosing operation lossy, which is why
-     * this is the only route out.
+     * records nothing. A caller that cannot cheaply tell whether an earlier step already removed
+     * the span may therefore call this unconditionally. A raw list removal would drop the span
+     * with no record and make undo of the enclosing operation lossy, which is why this is the
+     * only route out.
      * <p>
      * This is for a removal the user asked for. A removal the user did not directly request
-     * goes through {@link #removeReported}, which reports it and then calls this.
+     * goes through {@link #removeReported}, which also reports it.
      *
-     * @effects when this span is in the registry, posts a {@link SpanRemoval} through the line's
-     *     song and removes the span; otherwise nothing. What is recorded, and what is thrown
-     *     outside a bracket, is {@link Song#applyChange}'s promise
+     * @effects when this span is on its line, records a {@link SpanRemoval} and removes the span
+     *     from the line; otherwise nothing. What is recorded, and what is thrown outside a
+     *     bracket, is {@link Song#applyChange}'s promise
      */
     public final void removeFrom() {
         line().spanRegistry().remove(this);

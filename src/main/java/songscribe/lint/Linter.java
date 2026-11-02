@@ -28,8 +28,7 @@ import songscribe.message.notification.LintingNotification;
 /**
  * Runs every {@link LintRule} over one song and holds the result until the next run.
  *
- * <p>One linter belongs to one song. The song lints when a {@link LintingNotification} for it
- * is built; that class states the order this gives every reader of the report.
+ * <p>One linter belongs to one song.
  *
  * <p>EDT only, by contract; reads the song only.
  */

@@ -117,9 +117,7 @@ import songscribe.util.StringUtils;
  * Manages and draws the music score and its lyrics, and handles input for editing it.
  *
  * <h2>Lifecycle</h2>
- * Process-lifetime: {@link #init()} subscribes the view to the message bus and nothing ever
- * unsubscribes it. The class is deliberately not {@code songscribe.lifecycle.Disposable}; there is
- * nothing to release.
+ * Process-lifetime; never disposed.
  */
 
 public final class ScoreView
@@ -1025,9 +1023,8 @@ public final class ScoreView
     }
 
     /**
-     * The sole handler that performs a zoom change. Runs at
-     * {@link ZoomDidChangeNotification#APPLY_PRIORITY} so the zoom is applied before other
-     * handlers react.
+     * Runs at {@link ZoomDidChangeNotification#APPLY_PRIORITY} so the zoom is applied before
+     * other handlers react.
      */
     @Handler(priority = ZoomDidChangeNotification.APPLY_PRIORITY)
     public void zoomDidChangeApplyZoom(ZoomDidChangeNotification message) {
