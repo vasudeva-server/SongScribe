@@ -28,6 +28,9 @@ import songscribe.dom.StaffElement;
  *
  * <p>Only a {@link Flagged} mark competes for its element's color, where playing, selection and
  * hover each win over the lint color.
+ *
+ * <p>Every consumer switches over these kinds with no default, so a new kind does not compile
+ * until each consumer handles it.
  */
 public sealed interface LintMark {
 

@@ -275,23 +275,50 @@ class LineSelectionHandler {
     }
 
     /**
-     * @return {@code null} when {@code report} puts no such mark on the target
+     * @return {@code null} when {@code report} puts no mark on the target that the pointer can hover
      */
     private static @Nullable LintMark lintMarkOf(HitTarget target, LintReport report) {
-        LintMark mark = null;
+        var element = markableElementOf(target);
 
-        if (target instanceof HitTarget.Element(var element)) {
-            mark = new LintMark.Flagged(element);
-        } else if (target instanceof HitTarget.Attachment(AnnotationAttachment annotation)
-            && annotation.owner() instanceof StaffElement owner) {
-            mark = new LintMark.FlaggedAnnotation(owner);
-        }
-
-        if (mark == null || !report.marksOn(mark.element()).contains(mark)) {
+        if (element == null) {
             return null;
         }
 
-        return mark;
+        for (var mark : report.marksOn(element)) {
+            if (isHoveredAt(mark, target)) {
+                return mark;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return {@code null} when no lint mark can sit on the target
+     */
+    private static @Nullable StaffElement markableElementOf(HitTarget target) {
+        if (target instanceof HitTarget.Element(var element)) {
+            return element;
+        }
+
+        if (target instanceof HitTarget.Attachment(AnnotationAttachment annotation)
+            && annotation.owner() instanceof StaffElement owner) {
+            return owner;
+        }
+
+        return null;
+    }
+
+    /**
+     * A missing lyric's "?" is not a hit region, so no target hovers it here: the pointer reaches it
+     * through {@link #hitTestMissingLyricViewPoint}.
+     */
+    private static boolean isHoveredAt(LintMark mark, HitTarget target) {
+        return switch (mark) {
+            case LintMark.Flagged _ -> target instanceof HitTarget.Element;
+            case LintMark.FlaggedAnnotation _ -> target instanceof HitTarget.Attachment(AnnotationAttachment _);
+            case LintMark.MissingLyric _ -> false;
+        };
     }
 
     record MissingLyricHit(LintMark.MissingLyric mark, Rectangle2D boundsSs) { }
