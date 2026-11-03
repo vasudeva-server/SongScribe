@@ -30,7 +30,9 @@ import songscribe.dom.Song;
  */
 public final class LyricNumbers {
 
-    private static final int FIRST_LYRIC_NUMBER = 1;
+    // Every saved file holds these numbers, so a script keeps its number for good.
+    private static final int LATIN_LYRIC_NUMBER = 1;
+    private static final int BENGALI_LYRIC_NUMBER = 2;
 
     private LyricNumbers() {
     }
@@ -39,17 +41,17 @@ public final class LyricNumbers {
      * @return {@code null} when no script has that lyric number
      */
     public static Song.@Nullable Script toScript(int number) {
-        var scripts = Song.Script.values();
-        var ordinal = number - FIRST_LYRIC_NUMBER;
-
-        if (ordinal < 0 || ordinal >= scripts.length) {
-            return null;
-        }
-
-        return scripts[ordinal];
+        return switch (number) {
+            case LATIN_LYRIC_NUMBER -> Song.Script.LATIN;
+            case BENGALI_LYRIC_NUMBER -> Song.Script.BENGALI;
+            default -> null;
+        };
     }
 
     public static int number(Song.Script script) {
-        return script.ordinal() + FIRST_LYRIC_NUMBER;
+        return switch (script) {
+            case LATIN -> LATIN_LYRIC_NUMBER;
+            case BENGALI -> BENGALI_LYRIC_NUMBER;
+        };
     }
 }
