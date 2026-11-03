@@ -95,7 +95,7 @@ final class LyricChainEditor {
         }
 
         trace("breakHyphenChain: ending the word at {}", backIndex);
-        line.setSyllableBoundary(backIndex, script, true, false);
+        line.endWordAt(backIndex, script);
     }
 
     void breakMelismaChain(int currentIndex) {

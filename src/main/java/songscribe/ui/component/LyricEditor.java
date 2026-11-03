@@ -66,9 +66,11 @@ import songscribe.Strings;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.LyricRun;
+import songscribe.dom.LyricWrite;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
+import songscribe.dom.SyllableEnd;
 import songscribe.error.RuntimeError;
 import songscribe.layout.InsetsSs;
 import songscribe.layout.LyricEditFitCalculator;
@@ -319,35 +321,22 @@ public final class LyricEditor extends MyJTextField {
         fontMetrics = getFontMetrics(zoomedFont);
     }
 
-    /**
-     * The legal shapes of a committed syllable; a neutral commit keeps the stored shape (see
-     * {@link #neutralCommitSpec()}).
-     */
-    public enum CommitKind {
-        /** Word-final syllable: SINGLE or END, compound = false. */
-        WORD_FINAL,
-        /** Word-continuing via hyphen: BEGIN or MIDDLE, compound = false. */
-        WORD_CONTINUING_HYPHEN,
-        /** Word-continuing via compound join: compound = true. */
-        WORD_CONTINUING_COMPOUND
-    }
-
-    private record CommitSpec(CommitKind kind, Lyric.Extend extend) {}
+    private record CommitSpec(SyllableEnd syllableEnd, Lyric.Extend extend) {}
 
     /**
      * Derived in one place so {@link #ensureLyricFits} and {@link #commitInner}'s no-op check
-     * cannot drift apart if the {@link CommitKind}/{@link Lyric.Extend} mapping changes.
+     * cannot drift apart if the {@link SyllableEnd}/{@link Lyric.Extend} mapping changes.
      *
-     * <p><b>Assumed by {@code wantsContinues}:</b> a non-{@link CommitKind#WORD_FINAL} commit
+     * <p><b>Assumed by {@code wantsContinues}:</b> a non-{@link SyllableEnd#WORD_END} commit
      * always carries non-blank text and a non-carrier extend. A new continuing commit path must
      * uphold it, or the no-op check reads a real change as no change and skips the write.
      */
     private record CommitIntent(boolean wantsCarrier, boolean wantsContinues, boolean wantsCompound) {
-        static CommitIntent of(CommitKind kind, Lyric.Extend extend) {
+        static CommitIntent of(SyllableEnd syllableEnd, Lyric.Extend extend) {
             return new CommitIntent(
                 Lyric.isCarrier(extend),
-                kind != CommitKind.WORD_FINAL,
-                kind == CommitKind.WORD_CONTINUING_COMPOUND);
+                syllableEnd.continuesWord(),
+                syllableEnd.isCompound());
         }
     }
 
@@ -479,7 +468,7 @@ public final class LyricEditor extends MyJTextField {
             focused = false;
             var commitSpec = neutralCommitSpec();
 
-            if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
+            if (!ensureLyricFits(commitSpec.syllableEnd(), commitSpec.extend())) {
                 // Keep the editor open and focused so the user can shorten the too-long lyric.
                 focused = true;
                 requestFocusInWindow();
@@ -487,7 +476,7 @@ public final class LyricEditor extends MyJTextField {
             }
 
             line.getSong().withModification(commitOpName(), () -> {
-                commitInner(commitSpec.kind(), commitSpec.extend());
+                commitInner(commitSpec.syllableEnd(), commitSpec.extend());
                 applyDismissAdjustment();
             });
             dismiss(false);
@@ -592,7 +581,7 @@ public final class LyricEditor extends MyJTextField {
                             setText("");
                         }
 
-                        breakChainCommitAndAdvance(CommitKind.WORD_FINAL, findNextEligibleIndex());
+                        breakChainCommitAndAdvance(SyllableEnd.WORD_END, findNextEligibleIndex());
                     }
                     case '-' -> { e.consume(); logState("key HYPHEN"); handleHyphen(); }
                     case '=', '+' -> { e.consume(); logState("key COMPOUND"); handleCompound(); }
@@ -668,13 +657,13 @@ public final class LyricEditor extends MyJTextField {
             logState("key ENTER");
             var commitSpec = neutralCommitSpec();
 
-            if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
+            if (!ensureLyricFits(commitSpec.syllableEnd(), commitSpec.extend())) {
                 // Keep the editor open (it retains focus) so the user can shorten the lyric.
                 return;
             }
 
             line.getSong().withModification(commitOpName(), () -> {
-                commitInner(commitSpec.kind(), commitSpec.extend());
+                commitInner(commitSpec.syllableEnd(), commitSpec.extend());
                 applyDismissAdjustment();
             });
             dismiss(true);
@@ -779,15 +768,15 @@ public final class LyricEditor extends MyJTextField {
      * Same-text and empty-on-empty commits emit no mutations.
      */
     public void commit() {
-        commit(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+        commit(SyllableEnd.WORD_END, Lyric.Extend.NONE);
     }
 
-    private void commit(CommitKind kind, Lyric.Extend extend) {
-        if (!ensureLyricFits(kind, extend)) {
+    private void commit(SyllableEnd syllableEnd, Lyric.Extend extend) {
+        if (!ensureLyricFits(syllableEnd, extend)) {
             return;
         }
 
-        line.getSong().withModification(commitOpName(), () -> commitInner(kind, extend));
+        line.getSong().withModification(commitOpName(), () -> commitInner(syllableEnd, extend));
     }
 
     /**
@@ -795,13 +784,13 @@ public final class LyricEditor extends MyJTextField {
      * a fitting line into one that overflows the staff. An already-overflowing line is never
      * blocked, nor is a commit of empty non-carrier text.
      */
-    private boolean ensureLyricFits(CommitKind kind, Lyric.Extend extend) {
+    private boolean ensureLyricFits(SyllableEnd syllableEnd, Lyric.Extend extend) {
         if (showingLyricFitAlert) {
             // The alert's focus-steal re-entered this check; refuse without stacking a second alert.
             return false;
         }
 
-        var intent = CommitIntent.of(kind, extend);
+        var intent = CommitIntent.of(syllableEnd, extend);
         var text = commitText();
 
         if (text.isEmpty() && !intent.wantsCarrier()) {
@@ -927,12 +916,12 @@ public final class LyricEditor extends MyJTextField {
      * Assumes an open modification bracket. Same-state and empty-on-empty commits emit no
      * mutations.
      */
-    private void commitInner(CommitKind kind, Lyric.Extend extend) {
+    private void commitInner(SyllableEnd syllableEnd, Lyric.Extend extend) {
         var text = commitText();
         var existingLyric = element.getLyricForScript(activeScript);
 
         if (LogUtils.isTracingLyrics(LOG)) {
-            logState("commit " + kind + '/' + extend);
+            logState("commit " + syllableEnd + '/' + extend);
         }
 
         // The user cleared the placeholder rather than replacing it, so this element gives up
@@ -957,7 +946,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var existingText = existingLyric != null ? existingLyric.text() : "";
-        var intent = CommitIntent.of(kind, extend);
+        var intent = CommitIntent.of(syllableEnd, extend);
         var existingSyllabic = existingLyric != null ? existingLyric.syllabic() : null;
         var existingContinues = Lyric.syllabicContinues(existingSyllabic);
         var existingCompound = existingLyric != null && existingLyric.compound();
@@ -989,8 +978,7 @@ public final class LyricEditor extends MyJTextField {
             chainEditor.clearForwardCarriers(index);
         }
 
-        line.writeLyricForScript(index, activeScript, text, extend,
-            kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
+        line.writeLyricForScript(index, activeScript, new LyricWrite(text, extend, syllableEnd));
 
         // A syllable on a paired grace note implies a melisma across its host, so the
         // extender follows the text: established by this commit, torn down when the text
@@ -1007,28 +995,28 @@ public final class LyricEditor extends MyJTextField {
      * The commit and the dismiss adjustment produce one
      * {@link songscribe.message.notification.SongDidChangeNotification}.
      */
-    public void advance(CommitKind kind, Lyric.Extend extend) {
-        advanceWithIndex(kind, extend, findNextEligibleIndex());
+    public void advance(SyllableEnd syllableEnd, Lyric.Extend extend) {
+        advanceWithIndex(syllableEnd, extend, findNextEligibleIndex());
     }
 
     public void advance() {
         var commitSpec = neutralCommitSpec();
-        advance(commitSpec.kind(), commitSpec.extend());
+        advance(commitSpec.syllableEnd(), commitSpec.extend());
     }
 
     public void retreat() {
         var commitSpec = neutralCommitSpec();
-        advanceWithIndex(commitSpec.kind(), commitSpec.extend(), findPreviousEligibleIndex());
+        advanceWithIndex(commitSpec.syllableEnd(), commitSpec.extend(), findPreviousEligibleIndex());
     }
 
-    private void advanceWithIndex(CommitKind kind, Lyric.Extend extend, @Nullable Integer nextIndex) {
-        if (!ensureLyricFits(kind, extend)) {
+    private void advanceWithIndex(SyllableEnd syllableEnd, Lyric.Extend extend, @Nullable Integer nextIndex) {
+        if (!ensureLyricFits(syllableEnd, extend)) {
             trace("advance: refused, the lyric does not fit");
             return;
         }
 
         line.getSong().withModification(commitOpName(), () -> {
-            commitInner(kind, extend);
+            commitInner(syllableEnd, extend);
             applyDismissAdjustment();
         });
         openIndexOrDismiss(nextIndex);
@@ -1037,8 +1025,8 @@ public final class LyricEditor extends MyJTextField {
     /**
      * Not called inside an open modification bracket; it opens its own.
      */
-    private void breakChainCommitAndAdvance(CommitKind kind, @Nullable Integer nextIndex) {
-        if (!ensureLyricFits(kind, Lyric.Extend.NONE)) {
+    private void breakChainCommitAndAdvance(SyllableEnd syllableEnd, @Nullable Integer nextIndex) {
+        if (!ensureLyricFits(syllableEnd, Lyric.Extend.NONE)) {
             trace("breakChainCommitAndAdvance: refused, the lyric does not fit");
             return;
         }
@@ -1047,7 +1035,7 @@ public final class LyricEditor extends MyJTextField {
         line.getSong().withModification(commitOpName(), () -> {
             chainEditor.breakChainAtCurrentElement(currentIndex);
             suppressDismissAdjustment = true;
-            commitInner(kind, Lyric.Extend.NONE);
+            commitInner(syllableEnd, Lyric.Extend.NONE);
             applyDismissAdjustment();
         });
         openIndexOrDismiss(nextIndex);
@@ -1074,7 +1062,7 @@ public final class LyricEditor extends MyJTextField {
             // still empty; text typed over it makes the element a syllable in its own right.
             if (text.isEmpty()) {
                 trace("neutralCommitSpec: keeping the {} carrier", extend);
-                return new CommitSpec(CommitKind.WORD_FINAL, extend);
+                return new CommitSpec(SyllableEnd.WORD_END, extend);
             }
 
             trace("neutralCommitSpec: text typed over a {} carrier, committing a plain syllable", extend);
@@ -1086,21 +1074,21 @@ public final class LyricEditor extends MyJTextField {
             return plainWordFinal();
         }
 
-        var kind = switch (lyric.syllabic()) {
+        var syllableEnd = switch (lyric.syllabic()) {
             case BEGIN, MIDDLE -> lyric.compound()
-                ? CommitKind.WORD_CONTINUING_COMPOUND
-                : CommitKind.WORD_CONTINUING_HYPHEN;
-            case SINGLE, END -> CommitKind.WORD_FINAL;
+                ? SyllableEnd.CONTINUES_COMPOUND
+                : SyllableEnd.CONTINUES;
+            case SINGLE, END -> SyllableEnd.WORD_END;
             case null -> throw RuntimeError.exit(
                 "Text-bearing lyric at editor element is missing syllabic");
         };
 
-        trace("neutralCommitSpec: keeping {}/{}", kind, extend);
-        return new CommitSpec(kind, extend);
+        trace("neutralCommitSpec: keeping {}/{}", syllableEnd, extend);
+        return new CommitSpec(syllableEnd, extend);
     }
 
     private static CommitSpec plainWordFinal() {
-        return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+        return new CommitSpec(SyllableEnd.WORD_END, Lyric.Extend.NONE);
     }
 
     private void openIndexOrDismiss(@Nullable Integer nextIndex) {
@@ -1148,7 +1136,7 @@ public final class LyricEditor extends MyJTextField {
             }
 
             trace("hyphen: text over a carrier, breaking its chain, advancing to {}", nextIndex);
-            breakChainCommitAndAdvance(CommitKind.WORD_CONTINUING_HYPHEN, nextIndex);
+            breakChainCommitAndAdvance(SyllableEnd.CONTINUES, nextIndex);
             return;
         }
 
@@ -1161,7 +1149,7 @@ public final class LyricEditor extends MyJTextField {
             }
 
             trace("hyphen: committing syllable as word-continuing, advancing to {}", nextIndex);
-            advanceWithIndex(CommitKind.WORD_CONTINUING_HYPHEN, Lyric.Extend.NONE, nextIndex);
+            advanceWithIndex(SyllableEnd.CONTINUES, Lyric.Extend.NONE, nextIndex);
             return;
         }
 
@@ -1220,12 +1208,12 @@ public final class LyricEditor extends MyJTextField {
 
         if (openedAsExtender) {
             trace("compound: text over a carrier, breaking its chain, advancing to {}", nextIndex);
-            breakChainCommitAndAdvance(CommitKind.WORD_CONTINUING_COMPOUND, nextIndex);
+            breakChainCommitAndAdvance(SyllableEnd.CONTINUES_COMPOUND, nextIndex);
             return;
         }
 
         trace("compound: committing syllable as compound, advancing to {}", nextIndex);
-        advanceWithIndex(CommitKind.WORD_CONTINUING_COMPOUND, Lyric.Extend.NONE, nextIndex);
+        advanceWithIndex(SyllableEnd.CONTINUES_COMPOUND, Lyric.Extend.NONE, nextIndex);
     }
 
     private void handleUnderscore() {
@@ -1283,7 +1271,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void startMelismaOnNextElement(int nextIndex) {
-        if (!ensureLyricFits(CommitKind.WORD_FINAL, Lyric.Extend.START)) {
+        if (!ensureLyricFits(SyllableEnd.WORD_END, Lyric.Extend.START)) {
             return;
         }
 
@@ -1297,7 +1285,7 @@ public final class LyricEditor extends MyJTextField {
                 suppressDismissAdjustment = true;
             }
 
-            commitInner(CommitKind.WORD_FINAL, Lyric.Extend.START);
+            commitInner(SyllableEnd.WORD_END, Lyric.Extend.START);
             applyDismissAdjustment();
             chainEditor.markMelismaCarrierRun(currentIndex, nextIndex);
         });
@@ -1355,7 +1343,7 @@ public final class LyricEditor extends MyJTextField {
         logState("commitAndDismiss");
         var commitSpec = neutralCommitSpec();
 
-        if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
+        if (!ensureLyricFits(commitSpec.syllableEnd(), commitSpec.extend())) {
             // Keep the editor open and focused; re-arm the outside-click listener (the caller
             // removed it) so a later click can dismiss the editor once the lyric fits.
             focused = true;
@@ -1365,7 +1353,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         line.getSong().withModification(commitOpName(), () -> {
-            commitInner(commitSpec.kind(), commitSpec.extend());
+            commitInner(commitSpec.syllableEnd(), commitSpec.extend());
             applyDismissAdjustment();
         });
         dismiss(true);

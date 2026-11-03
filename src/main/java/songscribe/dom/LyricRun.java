@@ -112,7 +112,7 @@ public interface LyricRun extends StaffElementRun {
             var crosses = mayCross && hasFollowingTextBearingLyric(beforeIndex, script);
 
             if (beforeLyric != null && isWordContinuingLyric(beforeLyric) && !crosses) {
-                setSyllableBoundary(beforeIndex, script, true, false);
+                endWordAt(beforeIndex, script);
             }
         }
 
@@ -322,83 +322,74 @@ public interface LyricRun extends StaffElementRun {
      * the stored value are skipped, so no redundant {@code ElementModification} is emitted.
      *
      * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
-     *
-     * @param isCompound ignored when {@code isWordEnd} is {@code true}
      */
-    default void setSyllableBoundary(int index, Song.Script script, boolean isWordEnd, boolean isCompound) {
+    default void endWordAt(int index, Song.Script script) {
         var lyric = getElement(index).getLyricForScript(script);
 
         if (lyric == null) {
             throw new IllegalStateException(
-                "setSyllableBoundary requires existing lyric at index " + index + " script " + script);
+                "endWordAt requires existing lyric at index " + index + " script " + script);
         }
 
         if (lyric.syllabic() == null) {
             throw new IllegalStateException(
-                "setSyllableBoundary cannot run on carrier lyric (extend=" + lyric.extend() + ')');
+                "endWordAt cannot run on carrier lyric (extend=" + lyric.extend() + ')');
         }
 
         var prevContinues = previousLyricContinues(index, script);
-        var newSyllabic = deriveSyllabic(prevContinues, !isWordEnd);
+        var newSyllabic = deriveSyllabic(prevContinues, false);
 
-        var newCompound = !isWordEnd && isCompound;
+        trace("endWordAt({}): {} -> {}, prevContinues={}",
+            index, lyric.syllabic(), newSyllabic, prevContinues);
 
-        trace("setSyllableBoundary({}, wordEnd={}, compound={}): {} -> {}, prevContinues={}",
-            index, isWordEnd, isCompound, lyric.syllabic(), newSyllabic, prevContinues);
-
-        if (newSyllabic != lyric.syllabic() || newCompound != lyric.compound()) {
+        if (newSyllabic != lyric.syllabic() || lyric.compound()) {
             modifyElement(index, ElementField.LYRIC, () ->
-                replaceSyllabicAndCompound(index, lyric, newSyllabic, newCompound));
+                replaceSyllabicAndCompound(index, lyric, newSyllabic, false));
         }
 
-        fixSuccessorSyllabic(index, script, !isWordEnd);
+        fixSuccessorSyllabic(index, script, false);
     }
 
     /**
-     * Use this rather than {@link #setSyllableBoundary} whenever the text itself is being
-     * written: deriving the syllabic here means one {@link ElementField#LYRIC} modification for
-     * this element. {@code setSyllableBoundary} remains the entry point for re-lettering a lyric
-     * whose text is <em>not</em> changing.
+     * Use this rather than {@link #endWordAt} whenever the text itself is being written:
+     * deriving the syllabic here means one {@link ElementField#LYRIC} modification for this
+     * element. {@code endWordAt} remains the entry point for ending the word at a lyric whose
+     * text is <em>not</em> changing.
      *
      * <p>Blank text on a non-carrier is an erasure rather than a syllable, so this removes the
      * script's lyric outright.
      *
      * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
-     *
-     * @param text       blank for a carrier or an erased syllable
-     * @param isCompound ignored when {@code isWordEnd} is {@code true}
      */
-    default void writeLyricForScript(int index, Song.Script script, String text, Lyric.Extend extend,
-            boolean isWordEnd, boolean isCompound) {
-        var isCarrier = Lyric.isCarrier(extend);
+    default void writeLyricForScript(int index, Song.Script script, LyricWrite write) {
+        var text = write.text();
+        var extend = write.extend();
 
-        // isBlank, not isEmpty: whitespace-only text erases the syllable exactly as an empty
-        // string does. Decided before any Lyric is derived or constructed, since Lyric's
-        // constructor rejects blank text on a non-carrier outright.
-        if (!isCarrier && text.isBlank()) {
+        // Decided before any Lyric is derived or constructed, since Lyric's constructor rejects
+        // blank text on a non-carrier outright. Callers that pre-compute a commit's
+        // continues-status from syllableEnd by itself (LyricEditor.CommitIntent) must therefore
+        // never pass a continuing request with blank text, or their answer and this one diverge.
+        if (write.erases()) {
             trace("writeLyricForScript({}, '{}', {}): blank, erasing", index, text, extend);
             removeLyricForScript(index, script);
             return;
         }
 
-        // Stricter than isWordEnd alone: a lyric with no text of its own continues nothing,
-        // whatever the caller asked for. Callers that pre-compute a commit's continues-status
-        // from isWordEnd by itself (LyricEditor.CommitIntent) must therefore never pass a
-        // continuing request with blank text, or their answer and this one diverge.
-        var continuesIntoNext = !isCarrier && !isWordEnd;
+        var isCarrier = write.isCarrier();
+        var continuesIntoNext = write.continuesIntoNext();
 
         Lyric.@Nullable Syllabic syllabic = isCarrier
             ? null
             : deriveSyllabic(previousLyricContinues(index, script), continuesIntoNext);
 
-        var compound = continuesIntoNext && isCompound;
+        var compound = write.compound();
 
         trace("writeLyricForScript({}, '{}', {}): syllabic={}, compound={}",
             index, text, extend, syllabic, compound);
 
         var element = getElement(index);
 
-        // Skip a write that would store what is already there, as setSyllableBoundary and
+        // Skip a write that would store what is already there, as endWordAt and
         // fixSuccessorSyllabic do: an ElementModification costs two element clones plus an undo
         // entry the user could step back into for no visible change.
         if (!storesSameLyric(element.getLyricForScript(script), text, extend, syllabic, compound)) {
@@ -712,7 +703,7 @@ public interface LyricRun extends StaffElementRun {
 
         trace("endDanglingWord({}): ending dangling word", index);
 
-        setSyllableBoundary(index, script, true, false);
+        endWordAt(index, script);
     }
 
     /**
