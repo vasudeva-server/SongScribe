@@ -33,7 +33,7 @@ import songscribe.dom.Song;
  * closed once, by repeats, and no section opens inside another. What opens, closes and nests a
  * section is {@link RepeatSections}' rule.
  *
- * <p>Each violation carries the heading {@link Strings#LINT_REPEATS_UNBALANCED} and the mark
+ * <p>Each violation carries the heading {@link LintHeading#REPEATS_UNBALANCED} and the mark
  * {@link LintMark.Flagged} on the offending bar:
  *
  * <ul>
@@ -66,7 +66,7 @@ final class BalancedRepeatsCheck implements LintCheck {
 
     private static void addViolations(List<Violation> violations, Song song, List<ElementLocation> locations, String reasonKey) {
         for (var location : locations) {
-            violations.add(new Violation(Strings.get(Strings.LINT_REPEATS_UNBALANCED),
+            violations.add(new Violation(LintHeading.REPEATS_UNBALANCED,
                                          Strings.get(reasonKey),
                                          new LintMark.Flagged(song.elementAt(location))));
         }

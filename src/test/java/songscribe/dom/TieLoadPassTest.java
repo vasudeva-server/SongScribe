@@ -139,6 +139,6 @@ class TieLoadPassTest extends UnitTest {
 
     private static ReportedChange removed(String reasonKey, int firstLine, int lastLine) {
         return new ReportedChange(
-            Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), new LineRange(firstLine, lastLine));
+            ChangeHeading.TIES_REMOVED, Strings.get(reasonKey), new LineRange(firstLine, lastLine));
     }
 }

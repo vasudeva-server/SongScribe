@@ -108,7 +108,7 @@ class TupletLoadPassTest extends UnitTest {
                 TWO_CROTCHETS, List.of()),
             new AddedCase("an absent ratio is derived from the beat and reported as updated", null,
                 List.of(new ReportedChange(
-                    Strings.REPORT_TUPLETS_UPDATED,
+                    ChangeHeading.TUPLETS_UPDATED,
                     Strings.get(Strings.REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
                     lineRange())))
         );
@@ -122,7 +122,7 @@ class TupletLoadPassTest extends UnitTest {
         var line = loaded.song().getLine(LINE);
 
         assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
-            Strings.REPORT_TUPLETS_REMOVED,
+            ChangeHeading.TUPLETS_REMOVED,
             Strings.get(testCase.reasonKey()),
             lineRange()));
         assertThat(line.spanRegistry().findSpans(Tuplet.class)).isEmpty();

@@ -252,12 +252,10 @@ public final class ReportPanel extends JPanel {
     }
 
     private static Row changeRow(ReportedChange change) {
-        var heading = Strings.get(change.headingKey());
         var where = change.where();
-
         var location = where == null ? null : lineLocation(where);
 
-        return new ChangeRow(heading, location, change.description());
+        return new ChangeRow(change.heading().text(), location, change.description());
     }
 
     /**
@@ -271,7 +269,7 @@ public final class ReportPanel extends JPanel {
         var location = Strings.get(Strings.REPORT_LOCATION_ELEMENT,
                                    elementLocation.lineIndex() + 1,
                                    elementLocation.elementIndex() + 1);
-        return new LintRow(finding.heading(), location, finding.description(), mark);
+        return new LintRow(finding.heading().text(), location, finding.description(), mark);
     }
 
     private static String lineLocation(LineRange range) {

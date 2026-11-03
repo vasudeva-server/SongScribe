@@ -32,6 +32,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.LineRange;
+import songscribe.dom.ChangeHeading;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.Span;
 import songscribe.dom.Trill;
@@ -76,10 +77,10 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
      * @param notes       the span's notes in order, the first carrying its start marker and the
      *                    last its stop marker
      * @param spanType    the span the notes build when they all sit on one line
-     * @param headingKey  the report heading the dropped span is reported under
+     * @param heading  the report heading the dropped span is reported under
      */
     private record CrossLineCase(
-        String description, List<String> notes, Class<? extends Span<?>> spanType, String headingKey
+        String description, List<String> notes, Class<? extends Span<?>> spanType, ChangeHeading heading
     ) {
 
         /** The notes with {@code separator} between the last note and the ones before it. */
@@ -118,7 +119,7 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
             .hasSize(CROSS_LINE_COUNT)
             .allSatisfy(line -> assertThat(line.spanRegistry().getSpans()).isEmpty());
         assertThat(result.report().changes()).containsExactly(new ReportedChange(
-            testCase.headingKey(),
+            testCase.heading(),
             Strings.get(Strings.REPORT_REASON_DAMAGED_LINE_BREAK),
             new LineRange(FIRST_LINE, SECOND_LINE)));
     }
@@ -138,15 +139,15 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
         return Stream.of(
             new CrossLineCase("a beam", List.of(
                 middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)),
-                middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END))), Beam.class, Strings.REPORT_BEAMS_REMOVED),
+                middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END))), Beam.class, ChangeHeading.BEAMS_REMOVED),
             new CrossLineCase("a tuplet", List.of(
                 middleCEighth(tripletRatio(), tupletBracket(MusicXmlRoundTripSupport.TYPE_START)),
                 middleCEighth(tripletRatio()),
                 middleCEighth(tripletRatio(), tupletBracket(MusicXmlRoundTripSupport.TYPE_STOP))),
-                Tuplet.class, Strings.REPORT_TUPLETS_REMOVED),
+                Tuplet.class, ChangeHeading.TUPLETS_REMOVED),
             new CrossLineCase("a trill", List.of(
                 middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_START)),
-                middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP))), Trill.class, Strings.REPORT_TRILLS_REMOVED)
+                middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP))), Trill.class, ChangeHeading.TRILLS_REMOVED)
         );
     }
 
@@ -180,54 +181,54 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
         return Stream.of(
             new DroppedMarkCase("a beam start no end pairs with",
                 middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)) + middleCEighth(), 2,
-                dropped(Strings.REPORT_BEAMS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
+                dropped(ChangeHeading.BEAMS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("a beam end no start pairs with",
                 middleCEighth() + middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END)), 2,
-                dropped(Strings.REPORT_BEAMS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_START)),
+                dropped(ChangeHeading.BEAMS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_START)),
             new DroppedMarkCase("a trill start no end pairs with",
                 middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_START)) + middleCEighth(), 2,
-                dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
+                dropped(ChangeHeading.TRILLS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("a trill end no start pairs with",
                 middleCEighth() + middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP)), 2,
-                dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_START)),
+                dropped(ChangeHeading.TRILLS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_START)),
             new DroppedMarkCase("a hairpin still open when the part ends",
                 wedge(MusicXmlRoundTripSupport.WEDGE_CRESCENDO) + middleCEighth() + middleCEighth(), 2,
-                dropped(Strings.REPORT_HAIRPINS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
+                dropped(ChangeHeading.HAIRPINS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("an ending still open when the part ends",
                 endingStart() + middleCEighth() + middleCEighth(), 2,
-                dropped(Strings.REPORT_ENDINGS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
+                dropped(ChangeHeading.ENDINGS_REMOVED, Strings.REPORT_REASON_DAMAGED_NO_END)),
             new DroppedMarkCase("a tuplet whose actual-notes is below every grade",
                 threeNoteTuplet(timeModification(TUPLET_ACTUAL_NOTES_BELOW_GRADES, TRIPLET_NORMAL_NOTES)), 3,
-                dropped(Strings.REPORT_TUPLETS_REMOVED, Strings.REPORT_REASON_DAMAGED_TUPLET_NUMBER)),
+                dropped(ChangeHeading.TUPLETS_REMOVED, Strings.REPORT_REASON_DAMAGED_TUPLET_NUMBER)),
             new DroppedMarkCase("a tuplet whose actual-notes is above every grade",
                 threeNoteTuplet(timeModification(TUPLET_ACTUAL_NOTES_ABOVE_GRADES, TRIPLET_NORMAL_NOTES)), 3,
-                dropped(Strings.REPORT_TUPLETS_REMOVED, Strings.REPORT_REASON_DAMAGED_TUPLET_NUMBER)),
+                dropped(ChangeHeading.TUPLETS_REMOVED, Strings.REPORT_REASON_DAMAGED_TUPLET_NUMBER)),
             new DroppedMarkCase("a tuplet with a normal-type and no positive normal-notes",
                 threeNoteTuplet(timeModification(TRIPLET_ACTUAL_NOTES, NO_NORMAL_NOTES)), 3,
-                dropped(Strings.REPORT_TUPLETS_REMOVED, Strings.REPORT_REASON_DAMAGED_NORMAL_NOTES)),
+                dropped(ChangeHeading.TUPLETS_REMOVED, Strings.REPORT_REASON_DAMAGED_NORMAL_NOTES)),
             new DroppedMarkCase("a tie on a rest",
                 eighthRest(TIED_START) + middleCEighth(), 2,
-                dropped(Strings.REPORT_TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
+                dropped(ChangeHeading.TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
             new DroppedMarkCase("a tie on a grace note",
                 note(element(MusicXmlRoundTripSupport.GRACE, ""), MIDDLE_C_PITCH,
                     element(MusicXmlRoundTripSupport.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH), TIED_START) + middleCEighth(), 2,
-                dropped(Strings.REPORT_TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
+                dropped(ChangeHeading.TIES_REMOVED, Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT)),
             new DroppedMarkCase("a trill starting on a rest",
                 eighthRest(trill(MusicXmlRoundTripSupport.TYPE_START)) + middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP)), 2,
-                dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE)),
+                dropped(ChangeHeading.TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE)),
             new DroppedMarkCase("a trill covering a rest",
                 middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_START)) + eighthRest()
                     + middleCEighth(trill(MusicXmlRoundTripSupport.TYPE_STOP)), 3,
-                dropped(Strings.REPORT_TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_REST_OR_BREATH_MARK)),
+                dropped(ChangeHeading.TRILLS_REMOVED, Strings.REPORT_REASON_TRILL_REST_OR_BREATH_MARK)),
             new DroppedMarkCase("a beam mark on a rest",
                 eighthRest(beam(MusicXmlRoundTripSupport.BEAM_BEGIN)) + middleCEighth(beam(MusicXmlRoundTripSupport.BEAM_END)), 2,
-                dropped(Strings.REPORT_BEAMS_REMOVED, Strings.REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT))
+                dropped(ChangeHeading.BEAMS_REMOVED, Strings.REPORT_REASON_BEAM_UNBEAMABLE_ELEMENT))
         );
     }
 
     /** The entry for a mark dropped from the first line. */
-    private static ReportedChange dropped(String headingKey, String reasonKey) {
-        return new ReportedChange(headingKey, Strings.get(reasonKey), FIRST_LINE_RANGE);
+    private static ReportedChange dropped(ChangeHeading heading, String reasonKey) {
+        return new ReportedChange(heading, Strings.get(reasonKey), FIRST_LINE_RANGE);
     }
 
     /** Three eighths that open and close one tuplet bracket, each carrying {@code ratio}. */

@@ -63,7 +63,7 @@ class TerminalLoadPassTest extends UnitTest {
 
         assertThat(loaded.report().changes()).containsExactlyElementsOf(testCase.removedOn().stream()
             .map(lineIndex -> new ReportedChange(
-                Strings.REPORT_FINAL_BARLINES_REMOVED,
+                ChangeHeading.FINAL_BARLINES_REMOVED,
                 Strings.get(Strings.REPORT_REASON_FINAL_BARLINE_NOT_LAST),
                 new LineRange(lineIndex, lineIndex)))
             .toList());

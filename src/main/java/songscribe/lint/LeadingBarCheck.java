@@ -37,7 +37,7 @@ final class LeadingBarCheck implements LintCheck {
      *
      * @param song the song to examine; read only
      * @return no violation when no bar line stands first in the song; otherwise one violation
-     *     with the heading {@link Strings#LINT_BAR_LEADING}, the description
+     *     with the heading {@link LintHeading#LEADING_BAR}, the description
      *     {@link Strings#REPORT_REASON_LEADING_BAR}, and a {@link LintMark.Flagged} mark on that
      *     bar line
      */
@@ -49,7 +49,7 @@ final class LeadingBarCheck implements LintCheck {
             return List.of();
         }
 
-        return List.of(new Violation(Strings.get(Strings.LINT_BAR_LEADING),
+        return List.of(new Violation(LintHeading.LEADING_BAR,
                                      Strings.get(Strings.REPORT_REASON_LEADING_BAR),
                                      new LintMark.Flagged(song.elementAt(location))));
     }

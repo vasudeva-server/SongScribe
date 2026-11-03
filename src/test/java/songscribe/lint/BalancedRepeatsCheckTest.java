@@ -41,13 +41,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BalancedRepeatsCheckTest extends UnitTest {
 
     private static final LintSongs.Reason NOT_OPENED =
-        new LintSongs.Reason(Strings.LINT_REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NOT_OPENED);
+        new LintSongs.Reason(LintHeading.REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NOT_OPENED);
 
     private static final LintSongs.Reason NOT_CLOSED =
-        new LintSongs.Reason(Strings.LINT_REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NOT_CLOSED);
+        new LintSongs.Reason(LintHeading.REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NOT_CLOSED);
 
     private static final LintSongs.Reason NESTED =
-        new LintSongs.Reason(Strings.LINT_REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NESTED);
+        new LintSongs.Reason(LintHeading.REPEATS_UNBALANCED, Strings.LINT_REASON_REPEAT_NESTED);
 
     private record RepeatCase(String description, String notation, List<LintSongs.Reason> reasons) {
 

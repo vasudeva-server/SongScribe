@@ -97,7 +97,7 @@ public record ChangeReport(List<ReportedChange> changes) {
             var reported = new ArrayList<ReportedChange>(changes.size());
 
             for (var change : changes) {
-                reported.add(new ReportedChange(change.headingKey(), change.description(), resolve(change.where())));
+                reported.add(new ReportedChange(change.heading(), change.description(), resolve(change.where())));
             }
 
             return new ChangeReport(reported);

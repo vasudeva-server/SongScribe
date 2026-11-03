@@ -52,7 +52,7 @@ import songscribe.dom.StaffElement;
  *
  * <p>Each violation carries the mark {@link LintMark.FlaggedAnnotation} on the annotated
  * element, and one element may carry several. The first three are listed under
- * {@link Strings#LINT_FINE_UNBALANCED}, the last under {@link Strings#LINT_FINE_MISSING}:
+ * {@link LintHeading#FINE_UNBALANCED}, the last under {@link LintHeading#FINE_MISSING}:
  *
  * <ul>
  *   <li>{@link Strings#LINT_REASON_FINE_NOT_ON_BAR} on a Fine on an element that is not a
@@ -87,16 +87,16 @@ final class UnbalancedFineCheck implements LintCheck {
     }
 
     private enum Problem {
-        NOT_ON_BAR(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_ON_BAR),
-        ON_LAST_BAR(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_ON_LAST_BAR),
-        NOT_REFERENCED(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_REFERENCED),
-        REFERENCE_WITHOUT_FINE(Strings.LINT_FINE_MISSING, Strings.LINT_REASON_FINE_REFERENCE_WITHOUT_FINE);
+        NOT_ON_BAR(LintHeading.FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_ON_BAR),
+        ON_LAST_BAR(LintHeading.FINE_UNBALANCED, Strings.LINT_REASON_FINE_ON_LAST_BAR),
+        NOT_REFERENCED(LintHeading.FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_REFERENCED),
+        REFERENCE_WITHOUT_FINE(LintHeading.FINE_MISSING, Strings.LINT_REASON_FINE_REFERENCE_WITHOUT_FINE);
 
-        private final String headingKey;
+        private final LintHeading heading;
         private final String reasonKey;
 
-        Problem(String headingKey, String reasonKey) {
-            this.headingKey = headingKey;
+        Problem(LintHeading heading, String reasonKey) {
+            this.heading = heading;
             this.reasonKey = reasonKey;
         }
     }
@@ -162,7 +162,7 @@ final class UnbalancedFineCheck implements LintCheck {
         }
 
         private void flag(StaffElement element, Problem problem) {
-            found.add(new Violation(Strings.get(problem.headingKey),
+            found.add(new Violation(problem.heading,
                                     Strings.get(problem.reasonKey),
                                     new LintMark.FlaggedAnnotation(element)));
         }

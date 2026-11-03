@@ -59,7 +59,7 @@ public final class Beam extends Span<NoteElement> {
 
     private static final int MIN_MEMBERS = 2;
 
-    private static final String REPORT_HEADING_KEY = Strings.REPORT_BEAMS_REMOVED;
+    private static final ChangeHeading REPORT_HEADING = ChangeHeading.BEAMS_REMOVED;
 
     /** This beam's direction while a {@link DirectionHold} is open on it; null otherwise. */
     private @Nullable Direction heldDirection = null;
@@ -96,7 +96,7 @@ public final class Beam extends Span<NoteElement> {
      * @return {@link Spanning.Spanned} with a new beam over the widened range, anchored on its
      *     first element and ending on its last, and with every beam the widened range absorbs,
      *     empty when it absorbs none; or {@link Spanning.Refused} with
-     *     {@link Spanning.Cause#RANGE}, under {@link Strings#REPORT_BEAMS_REMOVED}, and
+     *     {@link Spanning.Cause#RANGE}, under {@link ChangeHeading#BEAMS_REMOVED}, and
      *     <ul>
      *       <li>{@link Strings#REPORT_REASON_BEAM_TOO_FEW_NOTES} when {@code range} holds
      *           fewer than {@value #MIN_MEMBERS} elements that are not grace notes;</li>
@@ -151,7 +151,7 @@ public final class Beam extends Span<NoteElement> {
     }
 
     private static Spanning<Beam> refused(String reasonKey) {
-        return new Spanning.Refused<>(reasonKey, Spanning.Cause.RANGE, REPORT_HEADING_KEY);
+        return new Spanning.Refused<>(reasonKey, Spanning.Cause.RANGE, REPORT_HEADING);
     }
 
     @Override
@@ -243,8 +243,8 @@ public final class Beam extends Span<NoteElement> {
     }
 
     @Override
-    protected String reportHeadingKey() {
-        return REPORT_HEADING_KEY;
+    protected ChangeHeading reportHeading() {
+        return REPORT_HEADING;
     }
 
     /**

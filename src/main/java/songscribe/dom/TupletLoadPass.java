@@ -144,7 +144,7 @@ final class TupletLoadPass {
                 }
 
                 song.report(new RecordedChange(
-                    Strings.REPORT_TUPLETS_UPDATED,
+                    ChangeHeading.TUPLETS_UPDATED,
                     Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), tuplet.getRatio().normalNotes()),
                     where));
                 yield Placement.UPDATED;

@@ -164,7 +164,7 @@ class HairpinSweepTest extends UnitTest {
             assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_HAIRPINS_REMOVED);
+                    assertThat(entry.heading()).isEqualTo(ChangeHeading.HAIRPINS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });

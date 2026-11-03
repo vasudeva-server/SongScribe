@@ -33,7 +33,6 @@ import songscribe.UnitTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.loadCompactSong;
 import static songscribe.dom.SongFactory.loadSong;
-import static songscribe.dom.SongFactory.noMarks;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 
 /**
@@ -93,7 +92,7 @@ class LeadingBarLoadPassTest extends UnitTest {
         assertThat(line.getKey()).isEqualTo(testCase.ownKeyAfter());
         assertThat(loaded.report().changes()).containsExactlyElementsOf(testCase.reportedAt().stream()
             .map(where -> new ReportedChange(
-                Strings.REPORT_LEADING_BARS_REMOVED, Strings.get(testCase.reasonKey()), where))
+                ChangeHeading.LEADING_BARS_REMOVED, Strings.get(testCase.reasonKey()), where))
             .toList());
     }
 

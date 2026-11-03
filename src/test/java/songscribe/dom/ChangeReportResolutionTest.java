@@ -105,6 +105,6 @@ class ChangeReportResolutionTest extends UnitTest {
     }
 
     private static RecordedChange changeOn(@Nullable ChangeLines where) {
-        return new RecordedChange(Strings.REPORT_TIES_REMOVED, Strings.get(Strings.REPORT_REASON_TIE_NOT_HELD), where);
+        return new RecordedChange(ChangeHeading.TIES_REMOVED, Strings.get(Strings.REPORT_REASON_TIE_NOT_HELD), where);
     }
 }

@@ -129,7 +129,7 @@ class BeamTest extends UnitTest {
             assertThat(beamed.line().spanRegistry().findSpans(Beam.class)).isEmpty();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_BEAMS_REMOVED);
+                    assertThat(entry.heading()).isEqualTo(ChangeHeading.BEAMS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });
@@ -202,7 +202,7 @@ class BeamTest extends UnitTest {
         var line = tiedLine(testCase.tiedFrom());
 
         assertThat(Beam.spanning(line, testCase.range())).isEqualTo(new Spanning.Refused<Beam>(
-            Strings.REPORT_REASON_BEAM_TIED_NOTES, Spanning.Cause.RANGE, Strings.REPORT_BEAMS_REMOVED));
+            Strings.REPORT_REASON_BEAM_TIED_NOTES, Spanning.Cause.RANGE, ChangeHeading.BEAMS_REMOVED));
     }
 
     @ParameterizedTest(name = "{0}")

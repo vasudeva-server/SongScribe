@@ -24,9 +24,9 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.ChangeReport;
+import songscribe.dom.ChangeHeading;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.Song;
 import songscribe.dom.SongFactory;
@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReportPanelStatusTest extends UnitTest {
 
     private static final ChangeReport ONE_CHANGE = new ChangeReport(
-        List.of(new ReportedChange(Strings.REPORT_BEAMS_REMOVED, "", null)));
+        List.of(new ReportedChange(ChangeHeading.BEAMS_REMOVED, "", null)));
 
     @Test
     void testAnUndoAfterChangesReturnsTheStatusToEmpty() {

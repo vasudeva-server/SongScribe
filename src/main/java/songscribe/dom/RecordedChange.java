@@ -26,17 +26,16 @@ import songscribe.Strings;
 /**
  * One change the song made on its own during an edit or a load, before its report is built.
  *
- * @param headingKey a {@code Strings} key whose value is plain text
- * @param where      {@code null} only for a change with no place in the song
+ * @param where {@code null} only for a change with no place in the song
  */
-public record RecordedChange(String headingKey, String description, @Nullable ChangeLines where) {
+public record RecordedChange(ChangeHeading heading, String description, @Nullable ChangeLines where) {
 
     /**
      * One entry stands for every accidental conversion in the file.
      */
     public static RecordedChange accidentalsConverted() {
         return new RecordedChange(
-            Strings.REPORT_ACCIDENTALS_CONVERTED,
+            ChangeHeading.ACCIDENTALS_CONVERTED,
             Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
             null);
     }
@@ -46,7 +45,7 @@ public record RecordedChange(String headingKey, String description, @Nullable Ch
      */
     public static RecordedChange lyricDropped(Line line) {
         return new RecordedChange(
-            Strings.REPORT_LYRICS_REMOVED,
+            ChangeHeading.LYRICS_REMOVED,
             Strings.get(Strings.REPORT_LYRICS_DETAIL),
             ChangeLines.on(line));
     }

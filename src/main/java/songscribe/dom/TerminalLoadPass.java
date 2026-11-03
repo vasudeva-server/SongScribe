@@ -37,7 +37,7 @@ final class TerminalLoadPass {
      *     than its last element, and when it has a line, its last element is a valid terminal
      *     ({@link ElementType#isValidSongTerminal()})
      * @effects records to the load's report, in document order, one entry under
-     *     {@link Strings#REPORT_FINAL_BARLINES_REMOVED} with
+     *     {@link ChangeHeading#FINAL_BARLINES_REMOVED} with
      *     {@link Strings#REPORT_REASON_FINAL_BARLINE_NOT_LAST} on the line of each final double bar
      *     line removed, before the entries of the spans its removal takes
      * @effects records no entry for making the last element a valid terminal; a span that change
@@ -51,7 +51,7 @@ final class TerminalLoadPass {
                 if (line.getElement(i).getType() == ElementType.FINAL_DOUBLE_BARLINE
                     && !isSongLastElement(line, i)) {
                     song.report(new RecordedChange(
-                        Strings.REPORT_FINAL_BARLINES_REMOVED,
+                        ChangeHeading.FINAL_BARLINES_REMOVED,
                         Strings.get(Strings.REPORT_REASON_FINAL_BARLINE_NOT_LAST),
                         ChangeLines.on(line)));
                     line.removeElement(i);

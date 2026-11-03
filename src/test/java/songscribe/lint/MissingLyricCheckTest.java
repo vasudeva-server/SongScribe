@@ -72,7 +72,7 @@ class MissingLyricCheckTest extends UnitTest {
 
         assertThat(violations).extracting(Violation::mark).containsExactlyInAnyOrderElementsOf(scenario.expected());
         assertThat(violations).allSatisfy(violation -> {
-            assertThat(violation.heading()).isEqualTo(Strings.get(Strings.LINT_LYRICS_MISSING));
+            assertThat(violation.heading()).isEqualTo(LintHeading.LYRIC_MISSING);
             assertThat(violation.description()).isEqualTo(Strings.get(Strings.LINT_REASON_LYRIC_MISSING));
         });
     }

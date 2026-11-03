@@ -326,7 +326,7 @@ class HairpinTest extends UnitTest {
                 assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
                 assertThat(reports.reports()).singleElement().satisfies(entries ->
                     assertThat(entries).singleElement().satisfies(entry -> {
-                        assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_HAIRPINS_REMOVED);
+                        assertThat(entry.heading()).isEqualTo(ChangeHeading.HAIRPINS_REMOVED);
                         assertThat(entry.description())
                             .isEqualTo(Strings.get(Strings.REPORT_REASON_HAIRPIN_NON_SINGLE_BAR));
                     }));
@@ -386,7 +386,7 @@ class HairpinTest extends UnitTest {
     }
 
     private static Spanning.Refused<Hairpin> refusal(String reasonKey, Spanning.Cause cause) {
-        return new Spanning.Refused<>(reasonKey, cause, Strings.REPORT_HAIRPINS_REMOVED);
+        return new Spanning.Refused<>(reasonKey, cause, ChangeHeading.HAIRPINS_REMOVED);
     }
 
     /** A case whose line holds {@code elements} and whose candidate is the whole line. */

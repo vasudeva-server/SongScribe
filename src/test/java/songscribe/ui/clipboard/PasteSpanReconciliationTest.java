@@ -44,6 +44,7 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.NoteValue;
 import songscribe.dom.LineRange;
+import songscribe.dom.ChangeHeading;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.Span;
 import songscribe.dom.Spanning;
@@ -358,7 +359,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         assertThat(pasted.spansOnLine()).isEmpty();
         assertThat(pasted.reports()).singleElement().satisfies(report -> {
-            assertThat(report.headingKey()).isEqualTo(Strings.REPORT_ENDINGS_REMOVED);
+            assertThat(report.heading()).isEqualTo(ChangeHeading.ENDINGS_REMOVED);
             assertThat(report.description()).isEqualTo(Strings.get(testCase.refusalKey()));
         });
     }
@@ -419,7 +420,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
     private static ReportedChange beatBarrierReport() {
         return new ReportedChange(
-            Strings.REPORT_TUPLETS_REMOVED,
+            ChangeHeading.TUPLETS_REMOVED,
             Strings.get(Strings.REPORT_REASON_BEAT_BARRIER),
             new LineRange(FIRST_LINE, FIRST_LINE));
     }
@@ -462,9 +463,9 @@ class PasteSpanReconciliationTest extends UnitTest {
      * @param description the case, as the test's display name
      * @param notation    the compact notation of the source line
      * @param span        builds the span over the range up to and including the barline
-     * @param headingKey  the heading the span's report entry is under
+     * @param heading  the heading the span's report entry is under
      */
-    private record StrandedCase(String description, String notation, Function<Line, Span<?>> span, String headingKey) {}
+    private record StrandedCase(String description, String notation, Function<Line, Span<?>> span, ChangeHeading heading) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("strandedCases")
@@ -479,9 +480,9 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         assertThat(pasted.spansOnLine()).isEmpty();
         assertThat(pasted.reports())
-            .extracting(ReportedChange::headingKey, ReportedChange::description, ReportedChange::where)
+            .extracting(ReportedChange::heading, ReportedChange::description, ReportedChange::where)
             .containsExactly(tuple(
-                testCase.headingKey(),
+                testCase.heading(),
                 Strings.get(Strings.REPORT_REASON_ENDPOINT_DELETED),
                 new LineRange(FIRST_LINE, FIRST_LINE)));
     }
@@ -491,9 +492,9 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         return Stream.of(
             new StrandedCase("an ending", "6 :| 6 | K:" + RUNNING_KEY.name() + " 6",
-                line -> endingOver(line, range), Strings.REPORT_ENDINGS_REMOVED),
+                line -> endingOver(line, range), ChangeHeading.ENDINGS_REMOVED),
             new StrandedCase("a tuplet", "Q Q Q | K:" + RUNNING_KEY.name() + " Q",
-                line -> tripletOver(line, range, NoteValue.EIGHTH), Strings.REPORT_TUPLETS_REMOVED)
+                line -> tripletOver(line, range, NoteValue.EIGHTH), ChangeHeading.TUPLETS_REMOVED)
         );
     }
 

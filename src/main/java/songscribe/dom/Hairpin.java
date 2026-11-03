@@ -52,7 +52,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      */
     public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.3332;
 
-    private static final String REPORT_HEADING_KEY = Strings.REPORT_HAIRPINS_REMOVED;
+    private static final ChangeHeading REPORT_HEADING = ChangeHeading.HAIRPINS_REMOVED;
 
     private final Kind kind;
 
@@ -109,7 +109,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      *     more than one element with a hairpin of the opposite kind
      *     ({@link Span#overlappingBeyondEndpoint}). Every {@link Spanning.Cause#RANGE} refusal
      *     is judged before the {@link Spanning.Cause#OTHER_SPAN} one. Every refusal carries
-     *     {@link Strings#REPORT_HAIRPINS_REMOVED} as its heading.
+     *     {@link ChangeHeading#HAIRPINS_REMOVED} as its heading.
      */
     public static Spanning<Hairpin> spanning(Line line, Kind kind, ElementRange range) {
         var elements = line.getElements();
@@ -138,7 +138,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     private static Spanning<Hairpin> refused(String reasonKey, Spanning.Cause cause) {
-        return new Spanning.Refused<>(reasonKey, cause, REPORT_HEADING_KEY);
+        return new Spanning.Refused<>(reasonKey, cause, REPORT_HEADING);
     }
 
     /**
@@ -176,8 +176,8 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     @Override
-    protected String reportHeadingKey() {
-        return REPORT_HEADING_KEY;
+    protected ChangeHeading reportHeading() {
+        return REPORT_HEADING;
     }
 
     /**

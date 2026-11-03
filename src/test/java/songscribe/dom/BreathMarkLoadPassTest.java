@@ -89,7 +89,7 @@ class BreathMarkLoadPassTest extends UnitTest {
     /** The entry the pass records for a breath mark that stood on line {@code lineIndex}. */
     private static ReportedChange removedOn(int lineIndex) {
         return new ReportedChange(
-            Strings.REPORT_BREATH_MARKS_REMOVED,
+            ChangeHeading.BREATH_MARKS_REMOVED,
             Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
             new LineRange(lineIndex, lineIndex));
     }

@@ -954,7 +954,7 @@ public class LineComponent extends ScoreComponent
         var sections = new ArrayList<ToolTipSection>();
 
         for (var finding : lineModel.getSong().getLinter().getReport().findingsAt(mark)) {
-            sections.add(new ToolTipSection(finding.heading(), null, finding.description()));
+            sections.add(new ToolTipSection(finding.heading().text(), null, finding.description()));
         }
 
         return UIUtils.toolTipHtml(sections);

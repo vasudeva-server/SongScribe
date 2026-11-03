@@ -91,7 +91,7 @@ final class SpanLoadPass {
 
             case Spanning.Refused<S> refused -> {
                 LOG.warn("Load pass: dropped an ill-formed span ({}) over elements {}-{} of line {} ({})",
-                    refused.headingKey(), range.begin(), range.end(), lineIndex, refused.reasonKey());
+                    refused.heading(), range.begin(), range.end(), lineIndex, refused.reasonKey());
 
                 song.report(refused.reportedAt(ChangeLines.on(line)));
             }

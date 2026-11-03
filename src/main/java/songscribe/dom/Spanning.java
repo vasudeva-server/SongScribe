@@ -54,14 +54,13 @@ public sealed interface Spanning<S extends Span<?>> permits Spanning.Spanned, Sp
     record Spanned<S extends Span<?>>(S span, List<S> absorbed) implements Spanning<S> {}
 
     /**
-     * @param reasonKey  a {@code Strings} key whose value is plain text the user reads
-     * @param headingKey the one the refused kind's {@link Span#reportHeadingKey} returns; its
-     *                   value is a MessageFormat pattern taking a count as {@code {0}}
+     * @param reasonKey a {@code Strings} key whose value is plain text the user reads
+     * @param heading   the one the refused kind's {@link Span#reportHeading} returns
      */
-    record Refused<S extends Span<?>>(String reasonKey, Cause cause, String headingKey) implements Spanning<S> {
+    record Refused<S extends Span<?>>(String reasonKey, Cause cause, ChangeHeading heading) implements Spanning<S> {
 
         public RecordedChange reportedAt(ChangeLines where) {
-            return new RecordedChange(headingKey, Strings.get(reasonKey), where);
+            return new RecordedChange(heading, Strings.get(reasonKey), where);
         }
     }
 

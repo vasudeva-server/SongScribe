@@ -187,11 +187,11 @@ final class LintSongs {
      * A violation as a test reads it: where it sits in song order, the heading and the text it
      * says, and the kind of mark it carries.
      */
-    record Found(int position, String heading, String description, Class<? extends LintMark> markType) {
+    record Found(int position, LintHeading heading, String description, Class<? extends LintMark> markType) {
     }
 
-    /** What one expected violation says: the {@code Strings} keys of its heading and its text. */
-    record Reason(String headingKey, String descriptionKey) {
+    /** What one expected violation says: its heading and the {@code Strings} key of its text. */
+    record Reason(LintHeading heading, String descriptionKey) {
     }
 
     /**
@@ -212,8 +212,8 @@ final class LintSongs {
     }
 
     /**
-     * The violations that {@code notations} mark as expected, each with the text of its heading
-     * and of its reason.
+     * The violations that {@code notations} mark as expected, each with its heading and the text
+     * of its reason.
      *
      * @param markType the kind of mark every expected violation carries
      * @param reasons  the heading and reason of each violation, one per mark of {@code notations}
@@ -236,7 +236,7 @@ final class LintSongs {
         for (var i = 0; i < positions.size(); i++) {
             var reason = reasons.get(i);
             expected.add(new Found(positions.get(i),
-                                   Strings.get(reason.headingKey()),
+                                   reason.heading(),
                                    Strings.get(reason.descriptionKey()),
                                    markType));
         }

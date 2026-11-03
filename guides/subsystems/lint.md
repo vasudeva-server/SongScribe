@@ -7,6 +7,7 @@ Read `LintRule` first.
 - `LintRule`
 - `LintCheck`
 - `Violation`
+- `LintHeading`
 - `LintFinding`
 - `LintMark`
 - `LintReport`

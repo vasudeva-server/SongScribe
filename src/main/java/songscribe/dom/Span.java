@@ -186,10 +186,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
         return invalidated ? new SpanOutcome.Remove(reasonKey) : SpanOutcome.Keep.INSTANCE;
     }
 
-    /**
-     * The key's value is a MessageFormat pattern taking the entry count as {@code {0}}.
-     */
-    protected abstract String reportHeadingKey();
+    protected abstract ChangeHeading reportHeading();
 
     private ChangeLines changeLines() {
         return ChangeLines.on(line());
@@ -205,7 +202,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * @param where {@code null} for an entry with no place
      */
     public RecordedChange reportedAt(String reasonKey, @Nullable ChangeLines where) {
-        return new RecordedChange(reportHeadingKey(), Strings.get(reasonKey), where);
+        return new RecordedChange(reportHeading(), Strings.get(reasonKey), where);
     }
 
     /**

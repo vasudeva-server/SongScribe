@@ -40,16 +40,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 class UnbalancedFineCheckTest extends UnitTest {
 
     private static final LintSongs.Reason NOT_ON_BAR =
-        new LintSongs.Reason(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_ON_BAR);
+        new LintSongs.Reason(LintHeading.FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_ON_BAR);
 
     private static final LintSongs.Reason ON_LAST_BAR =
-        new LintSongs.Reason(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_ON_LAST_BAR);
+        new LintSongs.Reason(LintHeading.FINE_UNBALANCED, Strings.LINT_REASON_FINE_ON_LAST_BAR);
 
     private static final LintSongs.Reason NOT_REFERENCED =
-        new LintSongs.Reason(Strings.LINT_FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_REFERENCED);
+        new LintSongs.Reason(LintHeading.FINE_UNBALANCED, Strings.LINT_REASON_FINE_NOT_REFERENCED);
 
     private static final LintSongs.Reason REFERENCE_WITHOUT_FINE =
-        new LintSongs.Reason(Strings.LINT_FINE_MISSING, Strings.LINT_REASON_FINE_REFERENCE_WITHOUT_FINE);
+        new LintSongs.Reason(LintHeading.FINE_MISSING, Strings.LINT_REASON_FINE_REFERENCE_WITHOUT_FINE);
 
     private record FineCase(String description, List<String> notations, List<LintSongs.Reason> reasons) {
 

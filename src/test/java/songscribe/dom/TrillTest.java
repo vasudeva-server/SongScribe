@@ -107,7 +107,7 @@ class TrillTest extends UnitTest {
         var line = lineOf(testCase.elements().get().toArray(StaffElement[]::new));
 
         assertThat(Trill.spanning(line, wholeRangeOf(line))).isEqualTo(new Spanning.Refused<Trill>(
-            testCase.reasonKey(), Spanning.Cause.RANGE, Strings.REPORT_TRILLS_REMOVED));
+            testCase.reasonKey(), Spanning.Cause.RANGE, ChangeHeading.TRILLS_REMOVED));
     }
 
     static Stream<RangeCase> acceptedRanges() {
@@ -191,7 +191,7 @@ class TrillTest extends UnitTest {
             assertThat(trilled.line().spanRegistry().findSpans(Trill.class)).isEmpty();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_TRILLS_REMOVED);
+                    assertThat(entry.heading()).isEqualTo(ChangeHeading.TRILLS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });

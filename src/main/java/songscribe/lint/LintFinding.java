@@ -20,12 +20,13 @@
 
 package songscribe.lint;
 
+
 /**
  * A {@link Violation} tied to the rule it breaks. What it blocks comes from its rule's flags.
  */
 public record LintFinding(LintRule rule, Violation violation) {
 
-    public String heading() {
+    public LintHeading heading() {
         return violation.heading();
     }
 

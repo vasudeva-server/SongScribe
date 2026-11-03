@@ -67,7 +67,7 @@ import songscribe.error.RuntimeError;
  */
 public final class Ending extends Span<StaffElement> {
 
-    private static final String REPORT_HEADING_KEY = Strings.REPORT_ENDINGS_REMOVED;
+    private static final ChangeHeading REPORT_HEADING = ChangeHeading.ENDINGS_REMOVED;
 
     private Ending(StaffElement anchorElement, StaffElement endElement) {
         super(StaffElement.class, anchorElement, endElement);
@@ -99,7 +99,7 @@ public final class Ending extends Span<StaffElement> {
      *     {@link Spanning.Cause#OTHER_SPAN} and {@link Strings#REPORT_REASON_ENDING_NOT_VALID}
      *     when it overlaps an ending already on {@code line}; or with {@link Spanning.Cause#RANGE}
      *     and {@link Strings#REPORT_REASON_ENDING_NO_OPEN_SECTION} when its split closes no
-     *     open repeat section. Every refusal carries {@link Strings#REPORT_ENDINGS_REMOVED}
+     *     open repeat section. Every refusal carries {@link ChangeHeading#ENDINGS_REMOVED}
      *     as its heading.
      * @throws IllegalStateException if the range is well formed and overlaps no ending, and
      *     {@code line} is not one of its song's lines
@@ -126,7 +126,7 @@ public final class Ending extends Span<StaffElement> {
     }
 
     private static Spanning<Ending> refused(String reasonKey, Spanning.Cause cause) {
-        return new Spanning.Refused<>(reasonKey, cause, REPORT_HEADING_KEY);
+        return new Spanning.Refused<>(reasonKey, cause, REPORT_HEADING);
     }
 
     /**
@@ -420,8 +420,8 @@ public final class Ending extends Span<StaffElement> {
     }
 
     @Override
-    protected String reportHeadingKey() {
-        return REPORT_HEADING_KEY;
+    protected ChangeHeading reportHeading() {
+        return REPORT_HEADING;
     }
 
     /**

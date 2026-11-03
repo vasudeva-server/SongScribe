@@ -41,7 +41,7 @@ public final class Tuplet extends Span<StaffElement> {
     private final TupletGrade grade;
     private final TupletNormalTime ratio;
 
-    private static final String REPORT_HEADING_KEY = Strings.REPORT_TUPLETS_REMOVED;
+    private static final ChangeHeading REPORT_HEADING = ChangeHeading.TUPLETS_REMOVED;
 
     private Tuplet(StaffElement anchorElement, StaffElement endElement, TupletGrade grade, TupletNormalTime ratio) {
         super(StaffElement.class, anchorElement, endElement);
@@ -101,7 +101,7 @@ public final class Tuplet extends Span<StaffElement> {
             }
 
             case TupletValidator.Result.Invalid(var reasonKey) ->
-                new Spanning.Refused<>(reasonKey, Spanning.Cause.RANGE, REPORT_HEADING_KEY);
+                new Spanning.Refused<>(reasonKey, Spanning.Cause.RANGE, REPORT_HEADING);
         };
     }
 
@@ -207,8 +207,8 @@ public final class Tuplet extends Span<StaffElement> {
     }
 
     @Override
-    protected String reportHeadingKey() {
-        return REPORT_HEADING_KEY;
+    protected ChangeHeading reportHeading() {
+        return REPORT_HEADING;
     }
 
     private static boolean replacementUnbalances(StaffElement oldElement, StaffElement newElement) {

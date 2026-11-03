@@ -128,13 +128,16 @@ class ChangeReportDeliveryTest extends UnitTest {
      */
     private static void assertHoldsEveryRemoval(List<ReportedChange> entries) {
         assertThat(entries)
-            .extracting(ReportedChange::headingKey, ReportedChange::description)
+            .extracting(ReportedChange::heading, ReportedChange::description)
             .containsExactly(
-                tuple(Strings.REPORT_TRILLS_REMOVED,
+                tuple(
+                    ChangeHeading.TRILLS_REMOVED,
                     Strings.get(Strings.REPORT_REASON_REPLACED)),
-                tuple(Strings.REPORT_TRILLS_REMOVED,
+                tuple(
+                    ChangeHeading.TRILLS_REMOVED,
                     Strings.get(Strings.REPORT_REASON_ENDPOINT_DELETED)),
-                tuple(Strings.REPORT_ENDINGS_REMOVED,
+                tuple(
+                    ChangeHeading.ENDINGS_REMOVED,
                     Strings.get(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION)));
     }
 

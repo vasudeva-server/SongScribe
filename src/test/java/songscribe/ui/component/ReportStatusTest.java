@@ -27,9 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.ChangeReport;
+import songscribe.dom.ChangeHeading;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.SongFactory;
 import songscribe.dom.StaffElementFactory;
@@ -43,7 +43,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ReportStatusTest extends UnitTest {
 
     private static final ChangeReport ONE_CHANGE = new ChangeReport(
-        List.of(new ReportedChange(Strings.REPORT_BEAMS_REMOVED, "", null)));
+        List.of(new ReportedChange(ChangeHeading.BEAMS_REMOVED, "", null)));
 
     private static final LintReport ONE_FINDING = lintedReport(line -> line.addElement(StaffElementFactory.singleBarline()));
 

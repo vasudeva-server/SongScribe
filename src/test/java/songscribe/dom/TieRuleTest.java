@@ -89,7 +89,7 @@ class TieRuleTest extends UnitTest {
      * @param endIndex    the index the tie from the first element ends on afterwards, or
      *                    {@code null} when the first element is no longer tied
      * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
-     *                    {@link Strings#REPORT_TIES_REMOVED}, or {@code null} when the edit
+     *                    {@link ChangeHeading#TIES_REMOVED}, or {@code null} when the edit
      *                    reports no tie
      */
     private record EditCase(
@@ -129,7 +129,7 @@ class TieRuleTest extends UnitTest {
     private static void assertTieReport(ReportRecorder reports, @Nullable String reasonKey, @Nullable LineRange where) {
         var tieEntries = reports.reports().stream()
             .flatMap(List::stream)
-            .filter(change -> change.headingKey().equals(Strings.REPORT_TIES_REMOVED))
+            .filter(change -> change.heading().equals(ChangeHeading.TIES_REMOVED))
             .toList();
 
         if (reasonKey == null) {
@@ -196,8 +196,9 @@ class TieRuleTest extends UnitTest {
             assertThat(line.spanRegistry().findBeamAt(END)).as("no beam holds both tied notes").isNull();
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries)
-                    .extracting(ReportedChange::headingKey, ReportedChange::description)
-                    .containsExactly(tuple(Strings.REPORT_BEAMS_REMOVED,
+                    .extracting(ReportedChange::heading, ReportedChange::description)
+                    .containsExactly(tuple(
+                        ChangeHeading.BEAMS_REMOVED,
                         Strings.get(Strings.REPORT_REASON_BEAM_TIED_NOTES))));
         });
     }
@@ -235,7 +236,7 @@ class TieRuleTest extends UnitTest {
      * @param edit        makes the edit, inside a modification bracket
      * @param kept        whether the first line's last note is still tied afterwards
      * @param reasonKey   the {@link Strings} key of the reason the rule reports the removal under
-     *                    {@link Strings#REPORT_TIES_REMOVED}, or {@code null} when the edit
+     *                    {@link ChangeHeading#TIES_REMOVED}, or {@code null} when the edit
      *                    reports no tie
      * @param reportedAt  the lines the removal is placed on, or {@code null} when the edit
      *                    reports no tie

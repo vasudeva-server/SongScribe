@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.LineRange;
+import songscribe.dom.ChangeHeading;
 import songscribe.dom.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -105,7 +106,7 @@ class LyricScriptRoundTripTest extends UnitTest {
             .isEmpty();
 
         assertThat(result.report().changes()).singleElement().satisfies(change -> {
-            assertThat(change.headingKey()).isEqualTo(Strings.REPORT_LYRICS_REMOVED);
+            assertThat(change.heading()).isEqualTo(ChangeHeading.LYRICS_REMOVED);
             assertThat(change.description()).isEqualTo(Strings.get(Strings.REPORT_LYRICS_DETAIL));
             assertThat(change.where()).isEqualTo(new LineRange(FIRST_LINE_INDEX, FIRST_LINE_INDEX));
         });

@@ -38,6 +38,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Key;
 import songscribe.dom.NoteElement;
 import songscribe.dom.LineRange;
+import songscribe.dom.ChangeHeading;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.StaffElement;
 
@@ -141,7 +142,7 @@ class MusicXmlTieTest extends UnitTest {
         assertThat(anchor.isTiedTo(end)).as("the tie stays").isTrue();
         assertThat(line.spanRegistry().findSpans(Beam.class)).as("the beam goes").isEmpty();
         assertThat(result.report().changes()).containsExactly(new ReportedChange(
-            Strings.REPORT_BEAMS_REMOVED,
+            ChangeHeading.BEAMS_REMOVED,
             Strings.get(Strings.REPORT_REASON_BEAM_TIED_NOTES),
             new LineRange(FIRST_LINE, FIRST_LINE)));
     }

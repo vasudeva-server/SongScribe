@@ -74,7 +74,7 @@ class EndingTest extends UnitTest {
         Strings.REPORT_REASON_ENDING_BAR_AFTER_END, Spanning.Cause.RANGE);
 
     private static Spanning.Refused<Ending> refusal(String reasonKey, Spanning.Cause cause) {
-        return new Spanning.Refused<>(reasonKey, cause, Strings.REPORT_ENDINGS_REMOVED);
+        return new Spanning.Refused<>(reasonKey, cause, ChangeHeading.ENDINGS_REMOVED);
     }
 
     /** What an ending may end on, besides a note or a rest: the bars that end a section. */
@@ -492,7 +492,7 @@ class EndingTest extends UnitTest {
             assertThat(line.spanRegistry().getSpans()).doesNotContain(ending);
             assertThat(reports.reports()).singleElement().satisfies(entries ->
                 assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.REPORT_ENDINGS_REMOVED);
+                    assertThat(entry.heading()).isEqualTo(ChangeHeading.ENDINGS_REMOVED);
                     assertThat(entry.description()).isEqualTo(Strings.get(testCase.reasonKey()));
                 }));
         });

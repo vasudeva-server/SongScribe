@@ -103,7 +103,7 @@ class HairpinLoadPassTest extends UnitTest {
 
         assertThat(loaded.song().getLine(LINE).spanRegistry().findSpans(Hairpin.class)).isEmpty();
         assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
-            Strings.REPORT_HAIRPINS_REMOVED,
+            ChangeHeading.HAIRPINS_REMOVED,
             Strings.get(testCase.refusalKey()),
             new LineRange(LINE, LINE)));
     }
@@ -129,7 +129,7 @@ class HairpinLoadPassTest extends UnitTest {
             assertThat(hairpin.range()).isEqualTo(SPAN);
         });
         assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
-            Strings.REPORT_HAIRPINS_REMOVED,
+            ChangeHeading.HAIRPINS_REMOVED,
             Strings.get(Strings.REPORT_REASON_HAIRPIN_OPPOSITE_OVERLAP),
             new LineRange(LINE, LINE)));
     }

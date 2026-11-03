@@ -88,7 +88,7 @@ public final class SongStart {
             : Strings.REPORT_REASON_LEADING_BAR_KEY;
 
         return new RecordedChange(
-            Strings.REPORT_LEADING_BARS_REMOVED,
+            ChangeHeading.LEADING_BARS_REMOVED,
             Strings.get(reasonKey),
             ChangeLines.on(line));
     }

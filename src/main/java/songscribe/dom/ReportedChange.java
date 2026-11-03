@@ -27,8 +27,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>It can outlive any change to the song.
  *
- * @param headingKey a {@code Strings} key whose value is plain text
- * @param where      as the song stood when the report was built, or {@code null} for a change
- *                   with no place in the song
+ * @param where as the song stood when the report was built, or {@code null} for a change with no
+ *              place in the song
  */
-public record ReportedChange(String headingKey, String description, @Nullable LineRange where) { }
+public record ReportedChange(ChangeHeading heading, String description, @Nullable LineRange where) { }

@@ -40,7 +40,7 @@ public final class Trill extends Span<NoteElement> implements IntrinsicHeight {
     public static final double TRILL_GLYPH_WIDTH_SS;
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
-    private static final String REPORT_HEADING_KEY = Strings.REPORT_TRILLS_REMOVED;
+    private static final ChangeHeading REPORT_HEADING = ChangeHeading.TRILLS_REMOVED;
 
     static {
         var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.ORNAMENT_TRILL);
@@ -68,14 +68,14 @@ public final class Trill extends Span<NoteElement> implements IntrinsicHeight {
      * @return {@link Spanning.Spanned} with a new trill anchored on the element at
      *     {@code range.begin()} and ending on the element at {@code range.end()}, absorbing
      *     nothing; or {@link Spanning.Refused} with {@link Spanning.Cause#RANGE}, under
-     *     {@link Strings#REPORT_TRILLS_REMOVED}, and the reason {@link #illFormedReason}
+     *     {@link ChangeHeading#TRILLS_REMOVED}, and the reason {@link #illFormedReason}
      *     answers for {@code line}'s elements
      */
     public static Spanning<Trill> spanning(Line line, ElementRange range) {
         var illFormed = illFormedReason(line.getElements(), range);
 
         if (illFormed != null) {
-            return new Spanning.Refused<>(illFormed, Spanning.Cause.RANGE, REPORT_HEADING_KEY);
+            return new Spanning.Refused<>(illFormed, Spanning.Cause.RANGE, REPORT_HEADING);
         }
 
         return new Spanning.Spanned<>(new Trill(line.noteAt(range.begin()), line.noteAt(range.end())), List.of());
@@ -145,8 +145,8 @@ public final class Trill extends Span<NoteElement> implements IntrinsicHeight {
     }
 
     @Override
-    protected String reportHeadingKey() {
-        return REPORT_HEADING_KEY;
+    protected ChangeHeading reportHeading() {
+        return REPORT_HEADING;
     }
 
     @Override

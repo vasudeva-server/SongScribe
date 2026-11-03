@@ -71,7 +71,7 @@ final class BreathMarkLoadPass {
             while (i < line.elementCount()) {
                 if (line.getElement(i).getType().isBreathMark() && !line.isDurationAt(i - 1)) {
                     song.report(new RecordedChange(
-                        Strings.REPORT_BREATH_MARKS_REMOVED,
+                        ChangeHeading.BREATH_MARKS_REMOVED,
                         Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
                         ChangeLines.on(line)));
                     line.removeElement(i);

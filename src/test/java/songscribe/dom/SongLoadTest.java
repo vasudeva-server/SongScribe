@@ -34,14 +34,12 @@ import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.SongFactory.LoadBuild;
 import songscribe.dom.SongFactory.LineBuilder;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.engraving.StaffPosition;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static songscribe.dom.SongFactory.addLines;
 import static songscribe.dom.SongFactory.loadCompactSong;
 import static songscribe.dom.SongFactory.loadSong;
-import static songscribe.dom.SongFactory.noMarks;
 import static songscribe.dom.SongFactory.notesAroundKeyChange;
 import static songscribe.dom.SpanFactory.TRIPLET_NORMAL_NOTES;
 import static songscribe.dom.SpanFactory.ratioOf;
@@ -154,27 +152,27 @@ class SongLoadTest extends UnitTest {
 
         assertThat(loaded.report().changes()).containsExactly(
             new ReportedChange(
-                Strings.REPORT_ACCIDENTALS_CONVERTED,
+                ChangeHeading.ACCIDENTALS_CONVERTED,
                 Strings.get(Strings.REPORT_ACCIDENTALS_DETAIL),
                 null),
             new ReportedChange(
-                Strings.REPORT_TUPLETS_UPDATED,
+                ChangeHeading.TUPLETS_UPDATED,
                 Strings.get(Strings.REPORT_UPDATED_DETAIL, grade.number(), TRIPLET_NORMAL_NOTES),
                 THE_LINE),
             new ReportedChange(
-                Strings.REPORT_TUPLETS_REMOVED,
+                ChangeHeading.TUPLETS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_NUMBER_EQUALS_NORMAL_NOTES),
                 THE_LINE),
             new ReportedChange(
-                Strings.REPORT_ENDINGS_REMOVED,
+                ChangeHeading.ENDINGS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_ENDING_NOT_VALID),
                 THE_LINE),
             new ReportedChange(
-                Strings.REPORT_HAIRPINS_REMOVED,
+                ChangeHeading.HAIRPINS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE),
                 THE_LINE),
             new ReportedChange(
-                Strings.REPORT_BREATH_MARKS_REMOVED,
+                ChangeHeading.BREATH_MARKS_REMOVED,
                 Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
                 THE_LINE));
     }
@@ -233,7 +231,7 @@ class SongLoadTest extends UnitTest {
                     assertThat(line.noteAt(0).isTiedToNext()).isTrue();
                     assertThat(line.spanRegistry().findSpans(Beam.class)).isEmpty();
                     assertThat(loaded.report().changes()).containsExactly(new ReportedChange(
-                        Strings.REPORT_BEAMS_REMOVED,
+                        ChangeHeading.BEAMS_REMOVED,
                         Strings.get(Strings.REPORT_REASON_BEAM_TIED_NOTES),
                         new LineRange(FIRST_LINE, FIRST_LINE)));
                 }),
@@ -243,8 +241,8 @@ class SongLoadTest extends UnitTest {
                 loaded -> {
                     assertThat(loaded.song().getLine(FIRST_LINE).getElements().stream().map(StaffElement::getType))
                         .containsExactlyElementsOf(TWO_NOTES_AND_TERMINAL);
-                    assertThat(loaded.report().changes()).extracting(ReportedChange::headingKey)
-                        .containsExactly(Strings.REPORT_BREATH_MARKS_REMOVED, Strings.REPORT_LEADING_BARS_REMOVED);
+                    assertThat(loaded.report().changes()).extracting(ReportedChange::heading)
+                        .containsExactly(ChangeHeading.BREATH_MARKS_REMOVED, ChangeHeading.LEADING_BARS_REMOVED);
                 }),
 
             new OrderCase("the final accidental stamp sees a removed final double bar line",
@@ -382,9 +380,9 @@ class SongLoadTest extends UnitTest {
      *
      * @param description the case, as the test's display name
      * @param source      loads the song
-     * @param headingKeys the heading of each report entry, in order
+     * @param headings    the heading of each report entry, in order
      */
-    private record RemovedSpanCase(String description, SongSource source, List<String> headingKeys) {}
+    private record RemovedSpanCase(String description, SongSource source, List<ChangeHeading> headings) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("removedSpanCases")
@@ -392,8 +390,8 @@ class SongLoadTest extends UnitTest {
         throws StrandedKeyChangeException {
         var loaded = testCase.source().load();
 
-        assertThat(loaded.report().changes()).extracting(ReportedChange::headingKey)
-            .containsExactlyElementsOf(testCase.headingKeys());
+        assertThat(loaded.report().changes()).extracting(ReportedChange::heading)
+            .containsExactlyElementsOf(testCase.headings());
     }
 
     static Stream<RemovedSpanCase> removedSpanCases() {
@@ -410,7 +408,7 @@ class SongLoadTest extends UnitTest {
                             List.of(), List.of(), List.of(), List.of());
                     },
                     DOCUMENT_KEY, ENDING_ON_LEADING_BAR),
-                List.of(Strings.REPORT_LEADING_BARS_REMOVED, Strings.REPORT_ENDINGS_REMOVED)),
+                List.of(ChangeHeading.LEADING_BARS_REMOVED, ChangeHeading.ENDINGS_REMOVED)),
 
             new RemovedSpanCase("a tuplet holding a removed breath mark",
                 () -> loadCompactSong(
@@ -424,7 +422,7 @@ class SongLoadTest extends UnitTest {
                             List.of(), List.of(), List.of(), List.of(), List.of());
                     },
                     DOCUMENT_KEY, TUPLET_AROUND_BREATH_MARKS),
-                List.of(Strings.REPORT_BREATH_MARKS_REMOVED, Strings.REPORT_TUPLETS_REMOVED)),
+                List.of(ChangeHeading.BREATH_MARKS_REMOVED, ChangeHeading.TUPLETS_REMOVED)),
 
             new RemovedSpanCase("an ending on a removed final double bar line",
                 () -> loadCompactSong(
@@ -438,7 +436,7 @@ class SongLoadTest extends UnitTest {
                             List.of(), List.of(), List.of(), List.of());
                     },
                     DOCUMENT_KEY, ENDING_ON_FINAL_BAR, "3 3"),
-                List.of(Strings.REPORT_FINAL_BARLINES_REMOVED, Strings.REPORT_ENDINGS_REMOVED)));
+                List.of(ChangeHeading.FINAL_BARLINES_REMOVED, ChangeHeading.ENDINGS_REMOVED)));
     }
 
     @Test

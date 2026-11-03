@@ -162,7 +162,7 @@ public final class Tie {
         record Broken(String reasonKey, ChangeLines where) implements Judgment {
 
             RecordedChange entry() {
-                return new RecordedChange(Strings.REPORT_TIES_REMOVED, Strings.get(reasonKey), where);
+                return new RecordedChange(ChangeHeading.TIES_REMOVED, Strings.get(reasonKey), where);
             }
         }
     }

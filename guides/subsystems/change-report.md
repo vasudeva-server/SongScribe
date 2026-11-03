@@ -9,6 +9,7 @@ Read `ChangeReport` first.
 - `RecordedChange`
 - `ChangeLines`
 - `ReportedChange`
+- `ChangeHeading`
 - `LineRange`
 - `ModificationRule`
 - `SongLoad`

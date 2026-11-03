@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LeadingBarCheckTest extends UnitTest {
 
     private static final LintSongs.Reason LEADING_BAR =
-        new LintSongs.Reason(Strings.LINT_BAR_LEADING, Strings.REPORT_REASON_LEADING_BAR);
+        new LintSongs.Reason(LintHeading.LEADING_BAR, Strings.REPORT_REASON_LEADING_BAR);
 
     private record LeadingBarCase(String description, List<String> notations, List<LintSongs.Reason> reasons) {
 

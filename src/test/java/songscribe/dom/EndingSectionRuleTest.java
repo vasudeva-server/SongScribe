@@ -140,7 +140,7 @@ class EndingSectionRuleTest extends UnitTest {
             if (testCase.reportedAt() != null) {
                 assertThat(endingsAfter).isEmpty();
                 assertThat(reports.reports()).singleElement().isEqualTo(List.of(new ReportedChange(
-                    Strings.REPORT_ENDINGS_REMOVED,
+                    ChangeHeading.ENDINGS_REMOVED,
                     Strings.get(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION),
                     testCase.reportedAt())));
             } else {

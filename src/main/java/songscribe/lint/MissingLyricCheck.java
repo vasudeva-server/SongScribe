@@ -47,7 +47,7 @@ import songscribe.dom.Song;
  * song with elements and no lyric in the active script gives a violation for every slot.
  *
  * <p>Each slot sung on no syllable gives one violation, with the heading
- * {@link Strings#LINT_LYRICS_MISSING}, the text {@link Strings#LINT_REASON_LYRIC_MISSING} and the
+ * {@link LintHeading#LYRIC_MISSING}, the text {@link Strings#LINT_REASON_LYRIC_MISSING} and the
  * mark {@link LintMark.MissingLyric} naming the slot and the script.
  */
 final class MissingLyricCheck implements LintCheck {
@@ -64,7 +64,6 @@ final class MissingLyricCheck implements LintCheck {
     @Override
     public List<Violation> check(Song song) {
         var script = song.getActiveScript();
-        var heading = Strings.get(Strings.LINT_LYRICS_MISSING);
         var description = Strings.get(Strings.LINT_REASON_LYRIC_MISSING);
         var found = new ArrayList<Violation>();
         var openIntoLine = false;
@@ -90,7 +89,7 @@ final class MissingLyricCheck implements LintCheck {
                 }
 
                 if (lyric == null && isUnsungSlot(line, index)) {
-                    found.add(new Violation(heading, description, new LintMark.MissingLyric(element, script)));
+                    found.add(new Violation(LintHeading.LYRIC_MISSING, description, new LintMark.MissingLyric(element, script)));
                 }
 
                 index++;
