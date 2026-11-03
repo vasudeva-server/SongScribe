@@ -31,7 +31,9 @@ import songscribe.Strings;
  *
  * <p>A removed bar line's key change moves onto the line: a bar line removed from the song start
  * takes the mid-line key change behind it with it, and that key becomes the own key of the line,
- * so every element after the pair sounds in the key it did before. {@link #keyBehind} answers
+ * so every element after the pair sounds in the key it did before.
+ *
+ * <p>{@link StaffElementRun#leadingBars} answers which bar lines the rule removes from a run, and
  * which key moves.
  *
  * <p>The rule is not an invariant of the model: a deletion can leave a bar line first.
@@ -69,9 +71,7 @@ public final class SongStart {
             return null;
         }
 
-        var line = song.getLine(lineIndex);
-
-        if (!line.getElement(0).getType().isBar() || line.isTerminalAt(0)) {
+        if (song.getLine(lineIndex).leadingBars() == null) {
             return null;
         }
 
@@ -79,21 +79,9 @@ public final class SongStart {
     }
 
     /**
-     * @param removed as {@link StaffElementRun#effectiveRange} widened them
-     * @return {@code null} when {@code removed} holds no key change, and the removal moves no key
+     * The one entry for the bar lines removed from the start of {@code line}, however many there
+     * are.
      */
-    public static @Nullable Key keyBehind(StaffElementRun run, StaffElementRun.EffectiveRange removed) {
-        var range = removed.range();
-
-        for (var index = range.end(); index >= range.begin(); index--) {
-            if (run.getElement(index) instanceof KeyChangeElement keyChange) {
-                return keyChange.getKey();
-            }
-        }
-
-        return null;
-    }
-
     public static RecordedChange removedEntry(Line line, @Nullable Key movedKey) {
         var reasonKey = movedKey == null
             ? Strings.REPORT_REASON_LEADING_BAR

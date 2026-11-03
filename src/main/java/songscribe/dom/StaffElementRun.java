@@ -557,6 +557,38 @@ public interface StaffElementRun {
     }
 
     /**
+     * Returns the bar lines that stand first in this run, the ones {@link SongStart} says a song
+     * may not start with, each widened to the pair it belongs to, so a key change behind one goes
+     * with it.
+     *
+     * <p>A line's terminal is never among them, because the walk stops at
+     * {@link #effectiveElementCount}.
+     *
+     * @return {@code null} when this run does not start with a bar line
+     */
+    default @Nullable LeadingBars leadingBars() {
+        var ranges = new ArrayList<EffectiveRange>();
+        @Nullable Key movedKey = null;
+        var index = 0;
+
+        while (index < effectiveElementCount() && getElement(index).getType().isBar()) {
+            var effectiveRange = effectiveRange(ElementRange.single(index));
+            var range = effectiveRange.range();
+            ranges.add(effectiveRange);
+
+            for (var i = range.begin(); i <= range.end(); i++) {
+                if (getElement(i) instanceof KeyChangeElement keyChange) {
+                    movedKey = keyChange.getKey();
+                }
+            }
+
+            index = range.end() + 1;
+        }
+
+        return ranges.isEmpty() ? null : new LeadingBars(ranges, movedKey);
+    }
+
+    /**
      * Indices below {@link #FIRST_LEGAL_KEY_CHANGE_INDEX} are treated as that index rather than
      * rejected.
      *
@@ -604,6 +636,24 @@ public interface StaffElementRun {
         var lastKeyChangeKey = lastKeyChangeKeyFrom(fromIndex);
 
         return lastKeyChangeKey != null ? lastKeyChangeKey : runningKey;
+    }
+
+    /**
+     * What {@link #leadingBars} found at the start of a run.
+     *
+     * <p>Removing the ranges takes the key changes behind the bar lines with them. The key of the
+     * last of those key changes is the key the rest of the run sounds in, so it moves onto the
+     * line the run starts.
+     *
+     * @param ranges   ascending, pairwise disjoint and contiguous from index 0; never empty
+     * @param movedKey the key of the last key change in {@code ranges}; {@code null} when they
+     *                 hold none, and their removal moves no key
+     */
+    record LeadingBars(List<EffectiveRange> ranges, @Nullable Key movedKey) {
+
+        public LeadingBars {
+            ranges = List.copyOf(ranges);
+        }
     }
 
     /**

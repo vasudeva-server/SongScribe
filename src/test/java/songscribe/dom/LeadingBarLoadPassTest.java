@@ -99,10 +99,20 @@ class LeadingBarLoadPassTest extends UnitTest {
 
     static Stream<LoadCase> loadCases() {
         return Stream.of(
-            new LoadCase("a song that starts with two bar lines loses both, one entry each",
+            new LoadCase("a song that starts with two bar lines loses both, one entry for the line",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "| | 3 3 F"),
                 FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.NO_ACCIDENTALS, Key.NO_ACCIDENTALS,
-                List.of(ON_FIRST_LINE, ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR),
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR),
+
+            new LoadCase("two bar lines with a key change behind the second: the key change's key moves onto the line",
+                () -> loadCompactSong(Key.NO_ACCIDENTALS, "| | K:TWO_SHARPS 3 3 F"),
+                FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.TWO_SHARPS, Key.TWO_SHARPS,
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY),
+
+            new LoadCase("a first line of only bar lines and a bar line starting the second: one entry per line",
+                () -> loadCompactSong(Key.NO_ACCIDENTALS, "| |", "| 3 3 F"),
+                SECOND_LINE, TWO_NOTES_AND_FINAL_BAR, null, Key.NO_ACCIDENTALS,
+                List.of(ON_FIRST_LINE, ON_SECOND_LINE), Strings.REPORT_REASON_LEADING_BAR),
 
             new LoadCase("a song that holds only its terminal keeps it and reports nothing",
                 () -> loadSong(line -> {

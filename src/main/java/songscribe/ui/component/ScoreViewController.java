@@ -1130,15 +1130,18 @@ public final class ScoreViewController {
         //
         // A key change dropped with its bar line set the key the rest of the fragment sounds in,
         // so that key becomes the line's own key when the paste lands.
-        var songChanges = new ArrayList<RecordedChange>();
-        @Nullable Key movedKey = null;
+        StaffElementRun.@Nullable LeadingBars droppedBars = null;
 
-        if (line.isSongStartAt(insertIndex) && leadsWithBar(reduction.fragment())) {
+        if (line.isSongStartAt(insertIndex)) {
             var drop = reduction.withoutLeadingBars();
-            reduction = drop.reduction();
-            movedKey = drop.movedKey();
-            songChanges.add(SongStart.removedEntry(line, movedKey));
+
+            if (drop != null) {
+                reduction = drop.reduction();
+                droppedBars = drop.dropped();
+            }
         }
+
+        var movedKey = droppedBars == null ? null : droppedBars.movedKey();
 
         var instantiated = reduction.fragment();
 
@@ -1148,7 +1151,7 @@ public final class ScoreViewController {
         // the key a dropped key change moves; a pure insertion moving no key has nothing left to
         // do at all. Either way the gesture is spent, not declined.
         if (instantiated.elements().isEmpty()) {
-            landFragment(line, target, reduction, new SongChanges(songChanges, movedKey));
+            landFragment(line, target, reduction, droppedBars);
             return FragmentInsertOutcome.INSERTED;
         }
 
@@ -1215,39 +1218,30 @@ public final class ScoreViewController {
             return FragmentInsertOutcome.LINE_FULL;
         }
 
-        landFragment(line, target, reduction, new SongChanges(songChanges, movedKey));
+        landFragment(line, target, reduction, droppedBars);
 
         return FragmentInsertOutcome.INSERTED;
-    }
-
-    private static boolean leadsWithBar(Fragment fragment) {
-        var elements = fragment.elements();
-
-        return !elements.isEmpty() && elements.getFirst().getType().isBar();
-    }
-
-    /**
-     * @param movedKey {@code null} when the paste moves none
-     */
-    private record SongChanges(List<RecordedChange> entries, @Nullable Key movedKey) {
     }
 
     /**
      * The changes are made only once the paste is certain to happen, so a refused paste leaves
      * the bracket empty. The key is set before the fragment lands, so the stranded key changes
      * are measured against the key the line now starts in.
+     *
+     * @param droppedBars the bar lines dropped from the start of the fragment; {@code null} when
+     *     the paste dropped none
      */
     private static void landFragment(
         Line line, StaffElementRun.InsertionTarget target, Fragment.Reduction reduction,
-        SongChanges songChanges
+        StaffElementRun.@Nullable LeadingBars droppedBars
     ) {
-        var song = line.getSong();
-        songChanges.entries().forEach(song::report);
+        if (droppedBars != null) {
+            var movedKey = droppedBars.movedKey();
+            line.getSong().report(SongStart.removedEntry(line, movedKey));
 
-        var movedKey = songChanges.movedKey();
-
-        if (movedKey != null) {
-            line.setKey(movedKey);
+            if (movedKey != null) {
+                line.setKey(movedKey);
+            }
         }
 
         FragmentPaste.paste(line, target, reduction);

@@ -258,20 +258,6 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         return without(stranded);
     }
 
-    private List<StaffElementRun.EffectiveRange> leadingBarRanges() {
-        var run = run();
-        var ranges = new ArrayList<StaffElementRun.EffectiveRange>();
-        var index = 0;
-
-        while (index < elements.size() && elements.get(index).getType().isBar()) {
-            var effectiveRange = run.effectiveRange(StaffElementRun.ElementRange.single(index));
-            ranges.add(effectiveRange);
-            index = effectiveRange.range().end() + 1;
-        }
-
-        return ranges;
-    }
-
     /** @param removed pairwise disjoint */
     private Reduction without(List<StaffElementRun.EffectiveRange> removed) {
         var removedIndices = new HashSet<Integer>();
@@ -325,41 +311,33 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
 
         /**
          * For a paste that lands at the start of the song, where no bar line may stand
-         * ({@link SongStart}). The drop names the key of the last key change it left out.
+         * ({@link SongStart}).
+         *
+         * @return {@code null} when the fragment does not start with a bar line, and nothing is
+         *     dropped
          */
-        public LeadingBarDrop withoutLeadingBars() {
-            var leadingBars = fragment.leadingBarRanges();
+        public @Nullable LeadingBarDrop withoutLeadingBars() {
+            var leadingBars = fragment.run().leadingBars();
 
-            if (leadingBars.isEmpty()) {
-                return new LeadingBarDrop(this, null);
+            if (leadingBars == null) {
+                return null;
             }
 
-            var run = fragment.run();
-            @Nullable Key movedKey = null;
-
-            for (var leadingBar : leadingBars) {
-                var key = SongStart.keyBehind(run, leadingBar);
-
-                if (key != null) {
-                    movedKey = key;
-                }
-            }
-
-            var reduced = fragment.without(leadingBars);
+            var reduced = fragment.without(leadingBars.ranges());
             var stranded = new ArrayList<>(strandedSpans);
             stranded.addAll(reduced.strandedSpans());
 
-            return new LeadingBarDrop(new Reduction(reduced.fragment(), stranded), movedKey);
+            return new LeadingBarDrop(new Reduction(reduced.fragment(), stranded), leadingBars);
         }
     }
 
     /**
-     * What {@link Reduction#withoutLeadingBars} leaves of a fragment, and the key it moves.
+     * What {@link Reduction#withoutLeadingBars} leaves of a fragment, and what it dropped.
      *
-     * @param movedKey the key of the last key change the drop left out; {@code null} when it left
-     *     out none
+     * @param dropped the bar lines left out, with the key the drop moves; its ranges index the
+     *     fragment before the drop
      */
-    public record LeadingBarDrop(Reduction reduction, @Nullable Key movedKey) {
+    public record LeadingBarDrop(Reduction reduction, StaffElementRun.LeadingBars dropped) {
     }
 
     /**

@@ -22,8 +22,6 @@ package songscribe.dom;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.dom.StaffElementRun.ElementRange;
-
 /**
  * Removes every bar line that stands first in a freshly parsed song.
  *
@@ -53,18 +51,26 @@ final class LeadingBarLoadPass {
      *     stranded
      * @effects a span with an endpoint on a removed element, such as an ending that starts on the
      *     bar line, is removed with it
-     * @effects records to the load's report one {@link SongStart#removedEntry} per bar line
-     *     removed, naming the line it was on and whether the removal moved a key, in the order of
-     *     removal, each before the entries of the spans its removal takes
+     * @effects records to the load's report one {@link SongStart#removedEntry} per line it
+     *     removed bar lines from, naming that line and whether the removal moved a key, in line
+     *     order, each before the entries of the spans its removal takes
      */
     static void run(Song song) {
         var removedCount = 0;
-        var leadingBar = SongStart.leadingBar(song);
 
-        while (leadingBar != null) {
-            var line = song.getLine(leadingBar.lineIndex());
-            var removed = line.effectiveRange(ElementRange.single(leadingBar.elementIndex()));
-            var movedKey = SongStart.keyBehind(line, removed);
+        // A line left empty passes the start of the song to the next non-empty line, whose own
+        // leading bar lines then stand first.
+        for (var lineIndex = song.firstNonEmptyLineIndex(); lineIndex != null;
+             lineIndex = song.firstNonEmptyLineIndex()) {
+
+            var line = song.getLine(lineIndex);
+            var leadingBars = line.leadingBars();
+
+            if (leadingBars == null) {
+                break;
+            }
+
+            var movedKey = leadingBars.movedKey();
 
             // Set before the removal, so the elements behind the pair never run in any key but
             // the one they ran in under the key change.
@@ -73,9 +79,8 @@ final class LeadingBarLoadPass {
             }
 
             song.report(SongStart.removedEntry(line, movedKey));
-            line.removeRange(removed.range());
-            removedCount++;
-            leadingBar = SongStart.leadingBar(song);
+            line.deleteRanges(leadingBars.ranges());
+            removedCount += leadingBars.ranges().size();
         }
 
         if (removedCount > 0) {
