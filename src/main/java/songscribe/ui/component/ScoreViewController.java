@@ -1192,10 +1192,10 @@ public final class ScoreViewController {
         // The line as the paste will leave it: the deleted range swapped for the clones, starting
         // in the key a dropped key change moves onto it. The key moves only once the paste lands,
         // so the walk and the fit measurement read it from the projection.
-        var startKey = (movedKey != null) ? movedKey : line.getRunningKey();
-        var edit = (rawDeleteRange == null)
-            ? ProjectedEdit.inserting(line, insertIndex, clones, startKey)
-            : ProjectedEdit.replacing(line, rawDeleteRange, clones, startKey);
+        var splice = (rawDeleteRange == null)
+            ? ProjectedEdit.inserting(line, insertIndex, clones)
+            : ProjectedEdit.replacing(line, rawDeleteRange, clones);
+        var edit = (movedKey == null) ? splice : splice.movingLineKeyTo(movedKey);
         var restamps = edit.walk();
 
         // The LINE_FULL refusal leaves the line exactly as it was (C1), so it lives inside the

@@ -54,7 +54,8 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * either half of a pair. {@link StaffElementRun#effectiveRange} widens a named range over
  * the element paired with either end, behind every kind of bar a key change can stand behind,
  * and {@link StaffElementRun#beginIncludingKeyChangeBarline} takes the barline half of that
- * widening without the grace-note half.
+ * widening without the grace-note half. {@link StaffElementRun#keyBefore(int, Key)} reads the key
+ * a position is in under a supposed start key.
  */
 class StaffElementRunTest extends UnitTest {
 
@@ -520,5 +521,59 @@ class StaffElementRunTest extends UnitTest {
         assertThat(barCases().map(BarCase::type))
             .containsExactlyInAnyOrderElementsOf(
                 Stream.of(ElementType.values()).filter(ElementType::isBar).toList());
+    }
+
+    /**
+     * The key {@link #keyRun()} is supposed to start in, and the two its key changes establish. No
+     * two are equal, so a case cannot pass on the wrong one.
+     */
+    private static final Key KEY_RUN_START_KEY = Key.ONE_SHARP;
+    private static final Key KEY_RUN_FIRST_CHANGE_KEY = Key.TWO_SHARPS;
+    private static final Key KEY_RUN_SECOND_CHANGE_KEY = Key.THREE_FLATS;
+
+    /** {@link #keyRun()}, by position. */
+    private static final int KEY_RUN_FIRST_BARLINE = 1;
+    private static final int KEY_RUN_FIRST_KEY_CHANGE = 2;
+    private static final int KEY_RUN_SECOND_KEY_CHANGE = 5;
+
+    /**
+     * {@code note, barline, key change, note, barline, key change, note}, the key changes
+     * establishing {@link #KEY_RUN_FIRST_CHANGE_KEY} and then {@link #KEY_RUN_SECOND_CHANGE_KEY}.
+     */
+    private static StaffElementRun keyRun() {
+        return new DetachedLyricRun(List.of(
+            crotchet(), singleBarline(), keyChange(KEY_RUN_FIRST_CHANGE_KEY),
+            crotchet(), singleBarline(), keyChange(KEY_RUN_SECOND_CHANGE_KEY),
+            crotchet()));
+    }
+
+    /**
+     * One insertion index on {@link #keyRun()} and the key an element inserted there is in.
+     *
+     * @param description the case, as the test's display name
+     * @param index       the insertion index asked about
+     * @param expected    the key in effect just before it
+     */
+    private record KeyBeforeCase(String description, int index, Key expected) {}
+
+    static Stream<KeyBeforeCase> keyBeforeCases() {
+        return Stream.of(
+            new KeyBeforeCase("index 0 is the start key", 0, KEY_RUN_START_KEY),
+            new KeyBeforeCase("an index with no key change below it is the start key",
+                KEY_RUN_FIRST_BARLINE, KEY_RUN_START_KEY),
+            new KeyBeforeCase("a key change is not counted at its own index",
+                KEY_RUN_FIRST_KEY_CHANGE, KEY_RUN_START_KEY),
+            new KeyBeforeCase("a key change is counted at the index just after it",
+                KEY_RUN_FIRST_KEY_CHANGE + 1, KEY_RUN_FIRST_CHANGE_KEY),
+            new KeyBeforeCase("a key change stays in effect until the next one",
+                KEY_RUN_SECOND_KEY_CHANGE, KEY_RUN_FIRST_CHANGE_KEY),
+            new KeyBeforeCase("the insertion index past the last element is in the last key change's key",
+                keyRun().elementCount(), KEY_RUN_SECOND_CHANGE_KEY));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keyBeforeCases")
+    void testKeyBeforeIsTheLastKeyChangeBelowTheIndexElseTheStartKey(KeyBeforeCase testCase) {
+        assertThat(keyRun().keyBefore(testCase.index(), KEY_RUN_START_KEY)).isEqualTo(testCase.expected());
     }
 }

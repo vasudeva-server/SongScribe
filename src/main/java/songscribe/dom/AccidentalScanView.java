@@ -40,12 +40,10 @@ interface AccidentalScanView {
      */
     Line line(int lineIndex);
 
-    int elementCount(int lineIndex);
-
     /**
-     * @param index the element's index, in {@code 0..elementCount(lineIndex) - 1}
+     * The line's elements as this view sees them.
      */
-    StaffElement elementAt(int lineIndex, int index);
+    StaffElementRun run(int lineIndex);
 
     /**
      * @return the line's own key, or null when it inherits one
@@ -55,18 +53,12 @@ interface AccidentalScanView {
     Key startKey(int lineIndex);
 
     /**
-     * @param cursor a place in the song; its index in {@code 0..elementCount(lineIndex)}
+     * @param cursor a place in the song; its index in {@code 0..run(lineIndex).elementCount()}
      */
     default Key keyBefore(Cursor cursor) {
         var lineIndex = cursor.lineIndex();
 
-        for (var index = cursor.index() - 1; index >= 0; index--) {
-            if (elementAt(lineIndex, index) instanceof KeyChangeElement keyChange) {
-                return keyChange.getKey();
-            }
-        }
-
-        return startKey(lineIndex);
+        return run(lineIndex).keyBefore(cursor.index(), startKey(lineIndex));
     }
 
     record Live(Song song) implements AccidentalScanView {
@@ -82,13 +74,8 @@ interface AccidentalScanView {
         }
 
         @Override
-        public int elementCount(int lineIndex) {
-            return song.getLine(lineIndex).elementCount();
-        }
-
-        @Override
-        public StaffElement elementAt(int lineIndex, int index) {
-            return song.getLine(lineIndex).getElement(index);
+        public StaffElementRun run(int lineIndex) {
+            return song.getLine(lineIndex);
         }
 
         @Override

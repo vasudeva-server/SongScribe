@@ -162,7 +162,7 @@ public final class Line implements EditableRun {
      *     outside a bracket, is {@link Song#applyChange}'s promise
      */
     public void setKey(@Nullable Key key) {
-        var normalized = key != null && key.equals(song.keyInheritance().inheritedKeyOf(this)) ? null : key;
+        var normalized = normalizedOwnKey(key);
 
         if (Objects.equals(this.key, normalized)) {
             return;
@@ -173,6 +173,13 @@ public final class Line implements EditableRun {
             new LineKeyChange(this, old, normalized),
             () -> this.key = normalized
         );
+    }
+
+    /**
+     * @return the own key {@link #setKey} leaves this line with when it is handed {@code key}
+     */
+    @Nullable Key normalizedOwnKey(@Nullable Key key) {
+        return key != null && key.equals(song.keyInheritance().inheritedKeyOf(this)) ? null : key;
     }
 
     /**
@@ -200,24 +207,12 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns the key in force just before {@code index}: {@link #getRunningKey()}, overridden
-     * by the last {@link KeyChangeElement} at an index below {@code index}. An element inserted
-     * at {@code index} is in this key, and a key change standing at {@code index} is not counted.
-     * Index 0 never holds a key change — see {@link KeyChangeElement}'s position invariant — so
-     * {@code keyBefore(1)} equals {@code keyBefore(0)}.
+     * As {@link #keyBefore(int, Key)}, with this line starting in its running key.
      *
      * @param index an insertion index, {@code 0..}{@link #elementCount()}
-     * @return the key in force just before that index; {@link #getRunningKey()} at 0
-     * @invariant {@code keyBefore(elementCount())} equals {@link #keyAtEndOfLine()}
      */
     public Key keyBefore(int index) {
-        for (var scanIndex = index - 1; scanIndex > 0; scanIndex--) {
-            if (elements.get(scanIndex) instanceof KeyChangeElement keyChange) {
-                return keyChange.getKey();
-            }
-        }
-
-        return getRunningKey();
+        return keyBefore(index, getRunningKey());
     }
 
     public Key keyAtEndOfLine() {

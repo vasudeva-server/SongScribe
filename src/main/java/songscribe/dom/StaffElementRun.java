@@ -568,24 +568,15 @@ public interface StaffElementRun {
      */
     default @Nullable LeadingBars leadingBars() {
         var ranges = new ArrayList<EffectiveRange>();
-        @Nullable Key movedKey = null;
         var index = 0;
 
         while (index < effectiveElementCount() && getElement(index).getType().isBar()) {
             var effectiveRange = effectiveRange(ElementRange.single(index));
-            var range = effectiveRange.range();
             ranges.add(effectiveRange);
-
-            for (var i = range.begin(); i <= range.end(); i++) {
-                if (getElement(i) instanceof KeyChangeElement keyChange) {
-                    movedKey = keyChange.getKey();
-                }
-            }
-
-            index = range.end() + 1;
+            index = effectiveRange.range().end() + 1;
         }
 
-        return ranges.isEmpty() ? null : new LeadingBars(ranges, movedKey);
+        return ranges.isEmpty() ? null : new LeadingBars(ranges, lastKeyChangeKeyIn(0, index));
     }
 
     /**
@@ -596,9 +587,29 @@ public interface StaffElementRun {
      *     case the run leaves in effect whatever it started in
      */
     default @Nullable Key lastKeyChangeKeyFrom(int fromIndex) {
+        return lastKeyChangeKeyIn(fromIndex, elementCount());
+    }
+
+    /**
+     * @param index    an insertion index, {@code 0..}{@link #elementCount()}
+     * @param startKey the key to suppose this run begins in
+     * @return the key an element inserted at {@code index} is in: the key of the last key change
+     *     at an index below {@code index}, or {@code startKey} when none stands there. A key
+     *     change at {@code index} itself is not counted
+     */
+    default Key keyBefore(int index, Key startKey) {
+        var lastKeyChangeKey = lastKeyChangeKeyIn(0, index);
+
+        return lastKeyChangeKey != null ? lastKeyChangeKey : startKey;
+    }
+
+    /**
+     * @return {@code null} when no key change stands in {@code fromIndex..toIndex - 1}
+     */
+    private @Nullable Key lastKeyChangeKeyIn(int fromIndex, int toIndex) {
         var lowestIndex = Math.max(fromIndex, FIRST_LEGAL_KEY_CHANGE_INDEX);
 
-        for (var index = elementCount() - 1; index >= lowestIndex; index--) {
+        for (var index = toIndex - 1; index >= lowestIndex; index--) {
             if (getElement(index) instanceof KeyChangeElement keyChange) {
                 return keyChange.getKey();
             }

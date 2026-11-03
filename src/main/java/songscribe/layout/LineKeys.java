@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Key;
 import songscribe.dom.Line;
+import songscribe.dom.ProjectedEdit;
 
 /**
  * The three keys a horizontal solve reads off a line, so a solve can be run against keys the
@@ -37,5 +38,9 @@ public record LineKeys(Key headerKey, Key keyAtEndOfLine, @Nullable Key nextRunn
 
     public static LineKeys of(Line line) {
         return new LineKeys(line.getRunningKey(), line.keyAtEndOfLine(), line.nextLineRunningKey());
+    }
+
+    public static LineKeys of(ProjectedEdit edit) {
+        return new LineKeys(edit.startKey(), edit.keyAtEndOfLine(), edit.nextLineStartKey());
     }
 }

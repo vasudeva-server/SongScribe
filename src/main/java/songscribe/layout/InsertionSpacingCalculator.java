@@ -34,6 +34,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ProjectedEdit;
 import songscribe.dom.Slide;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
 /**
@@ -281,40 +282,29 @@ public final class InsertionSpacingCalculator {
 
         var columns = new ArrayList<ElementColumn>();
         var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
-
-        var runningKey = edit.startKey();
-
-        for (var i = 0; i < insertIndex; i++) {
-            var element = line.getElement(i);
-            runningKey = keyAfter(element, runningKey);
-            columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
-        }
-
         var activeScript = line.getSong().getActiveScript();
+        var elements = edit.elements();
+        var insertedEnd = insertIndex + fragment.size();
+        var liveIndexShift = edit.removed().size() - fragment.size();
+        var projectedEffectiveCount = effectiveCount - liveIndexShift;
 
-        // A key signature's width depends on the key it cancels as well as the key it establishes,
-        // and a fragment element sits on no line to read that from. The projected sequence is what
-        // knows it: the key in effect just before the insertion point, moved on by each key
-        // change the fragment itself carries. Each one is measured through a stand-in told that
-        // key, so a pasted or inserted signature reserves the room its naturals actually need.
-        for (var element : fragment) {
-            var measured = element;
+        for (var i = 0; i < projectedEffectiveCount; i++) {
+            var element = elements.get(i);
 
+            // A key signature's width depends on the key it cancels as well as the key it
+            // establishes. A live key change reads that key off its unedited line, and a fragment
+            // element sits on no line at all, so each one is measured through a stand-in told the
+            // key in effect before it in the projection.
             if (element instanceof KeyChangeElement keyChange) {
-                measured = KeyChangeElement.forMeasurement(keyChange.getKey(), runningKey);
+                var measured = KeyChangeElement.forMeasurement(keyChange.getKey(), edit.keyBefore(i));
+                columns.add(buildDetachedColumn(measured, activeScript, columnBuilder));
+            } else if (i < insertIndex) {
+                columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
+            } else if (i < insertedEnd) {
+                columns.add(buildDetachedColumn(element, activeScript, columnBuilder));
+            } else {
+                columns.add(buildSurroundingColumn(element, line, i + liveIndexShift, columnBuilder));
             }
-
-            runningKey = keyAfter(element, runningKey);
-
-            columns.add(columnBuilder != null
-                ? columnBuilder.buildDetachedColumn(measured, activeScript)
-                : ElementColumnBuilder.buildLightweightColumn(measured));
-        }
-
-        for (var i = successorIndex; i < effectiveCount; i++) {
-            var element = line.getElement(i);
-            runningKey = keyAfter(element, runningKey);
-            columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
         }
 
         // The fit gate solves the SAME chain LayoutEngine will after the commit — the projected
@@ -322,26 +312,15 @@ public final class InsertionSpacingCalculator {
         // exactly as calculateInsertion does for a single element.
         appendTerminalIfPresent(columns, line, columnBuilder);
 
-        var keys = new LineKeys(edit.startKey(), runningKey, nextRunningKey(line, runningKey));
-
-        return new FragmentInsertionResult(line, columns, keys);
+        return new FragmentInsertionResult(line, columns, LineKeys.of(edit));
     }
 
-    private static Key keyAfter(StaffElement element, Key key) {
-        return (element instanceof KeyChangeElement keyChange) ? keyChange.getKey() : key;
-    }
+    private static ElementColumn buildDetachedColumn(
+        StaffElement element, Song.Script activeScript, @Nullable ElementColumnBuilder columnBuilder) {
 
-    /**
-     * @return null when {@code line} is its song's last line
-     */
-    private static @Nullable Key nextRunningKey(Line line, Key keyAtEndOfLine) {
-        if (line.isLast()) {
-            return null;
-        }
-
-        var nextOwnKey = line.getSong().getLine(line.index() + 1).getKey();
-
-        return (nextOwnKey != null) ? nextOwnKey : keyAtEndOfLine;
+        return columnBuilder != null
+            ? columnBuilder.buildDetachedColumn(element, activeScript)
+            : ElementColumnBuilder.buildLightweightColumn(element);
     }
 
     /**

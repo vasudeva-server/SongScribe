@@ -138,7 +138,7 @@ public final class SelectionActionApplier {
             inserted.set(change.index() - begin, change.standIn());
         }
 
-        var restamps = ProjectedEdit.replacing(line, changed, inserted, line.getRunningKey()).walk();
+        var restamps = ProjectedEdit.replacing(line, changed, inserted).walk();
 
         var standIns = changes.stream().map(PendingChange::standIn).toList();
         var lyricRenderMetrics = score.findLyricRenderMetrics();

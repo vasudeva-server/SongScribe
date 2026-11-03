@@ -258,8 +258,7 @@ final class PreviewElementInserter {
      * {@code replacement} is left stamped as the walk decided.
      */
     private static boolean replacementFits(LineComponent lc, Line line, int index, StaffElement replacement) {
-        var edit = ProjectedEdit.replacing(
-            line, StaffElementRun.ElementRange.single(index), List.of(replacement), line.getRunningKey());
+        var edit = ProjectedEdit.replacing(line, StaffElementRun.ElementRange.single(index), List.of(replacement));
         var restamps = edit.walk();
 
         // The auto-maintained terminal barline is not measured: layout pins it flush-right, and
@@ -307,7 +306,7 @@ final class PreviewElementInserter {
     private static boolean walkAndCalculateInsertion(
         LineComponent lc, Line line, StaffElement previewElement, int index) {
 
-        var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement), line.getRunningKey()).walk();
+        var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement)).walk();
 
         // The insertion's own check runs inside the fit gate, with the walk's accidentals stamped
         // so the projection measures the right widths.

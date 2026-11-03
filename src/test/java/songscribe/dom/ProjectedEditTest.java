@@ -101,7 +101,7 @@ class ProjectedEditTest extends UnitTest {
         var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
 
         return new Fixture(song,
-            ProjectedEdit.replacing(line, ElementRange.single(2), List.of(keyChange), line.getRunningKey()),
+            ProjectedEdit.replacing(line, ElementRange.single(2), List.of(keyChange)),
             () -> line.setElement(2, keyChange));
     }
 
@@ -118,7 +118,7 @@ class ProjectedEditTest extends UnitTest {
             StaffElementFactory.keyChange(Key.ONE_SHARP), StaffElementFactory.note(F, Accidental.NATURAL));
 
         return new Fixture(song,
-            ProjectedEdit.inserting(line, 1, fragment, line.getRunningKey()),
+            ProjectedEdit.inserting(line, 1, fragment),
             () -> line.insertRun(1, fragment));
     }
 
@@ -134,7 +134,7 @@ class ProjectedEditTest extends UnitTest {
         var fragment = List.<StaffElement>of(StaffElementFactory.note(F), StaffElementFactory.note(OTHER));
 
         return new Fixture(song,
-            ProjectedEdit.inserting(line, 0, fragment, Key.ONE_SHARP),
+            ProjectedEdit.inserting(line, 0, fragment).movingLineKeyTo(Key.ONE_SHARP),
             () -> {
                 line.setKey(Key.ONE_SHARP);
                 line.insertRun(0, fragment);
@@ -153,7 +153,7 @@ class ProjectedEditTest extends UnitTest {
         var emptied = ElementRange.single(0);
 
         return new Fixture(song,
-            ProjectedEdit.replacing(line, emptied, List.of(), Key.ONE_SHARP),
+            ProjectedEdit.replacing(line, emptied, List.of()).movingLineKeyTo(Key.ONE_SHARP),
             () -> {
                 line.setKey(Key.ONE_SHARP);
                 line.removeRange(emptied);

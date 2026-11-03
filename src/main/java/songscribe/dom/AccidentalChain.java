@@ -94,7 +94,7 @@ public final class AccidentalChain {
         var lineIndex = cursor.lineIndex();
         var index = cursor.index();
 
-        while ((lineIndex < view.lineCount()) && (index >= view.elementCount(lineIndex))) {
+        while ((lineIndex < view.lineCount()) && (index >= view.run(lineIndex).elementCount())) {
             lineIndex++;
             index = 0;
         }
@@ -119,10 +119,12 @@ public final class AccidentalChain {
         var first = true;
 
         for (var lineIndex = 0; lineIndex < view.lineCount(); lineIndex++) {
-            for (var index = 0; index < view.elementCount(lineIndex); index++) {
+            var run = view.run(lineIndex);
+
+            for (var index = 0; index < run.elementCount(); index++) {
                 var startsOwnKey = (index == 0) && (view.ownKey(lineIndex) != null);
 
-                if (first || startsOwnKey || (view.elementAt(lineIndex, index) instanceof KeyChangeElement)) {
+                if (first || startsOwnKey || (run.getElement(index) instanceof KeyChangeElement)) {
                     restamps.addAll(walk(view, ChainEdit.rekeyingFrom(new Cursor(lineIndex, index))));
                 }
 
@@ -165,7 +167,7 @@ public final class AccidentalChain {
             var first = true;
 
             while (cursor != null) {
-                var element = view.elementAt(cursor.lineIndex(), cursor.index());
+                var element = view.run(cursor.lineIndex()).getElement(cursor.index());
 
                 if (cursor.index() == 0) {
                     previous = null;
@@ -287,8 +289,10 @@ public final class AccidentalChain {
             var index = rangeStart.index() - 1;
 
             while (true) {
+                var run = view.run(lineIndex);
+
                 for (; index >= 0; index--) {
-                    var element = view.elementAt(lineIndex, index);
+                    var element = run.getElement(index);
 
                     if (element.getType().endsAccidentalsInForce()) {
                         return keyAlterationFor(position);
@@ -304,7 +308,7 @@ public final class AccidentalChain {
                 }
 
                 lineIndex--;
-                index = view.elementCount(lineIndex) - 1;
+                index = view.run(lineIndex).elementCount() - 1;
             }
         }
 
@@ -320,8 +324,10 @@ public final class AccidentalChain {
         }
 
         private @Nullable StaffElement previousBefore(Cursor cursor) {
+            var run = view.run(cursor.lineIndex());
+
             for (var index = cursor.index() - 1; index >= 0; index--) {
-                var element = view.elementAt(cursor.lineIndex(), index);
+                var element = run.getElement(index);
 
                 if (!skipped(element)) {
                     return element;
@@ -334,7 +340,7 @@ public final class AccidentalChain {
         private @Nullable Cursor firstUnskippedAtOrAfter(Cursor cursor) {
             var found = existingAtOrAfter(cursor);
 
-            while ((found != null) && skipped(view.elementAt(found.lineIndex(), found.index()))) {
+            while ((found != null) && skipped(view.run(found.lineIndex()).getElement(found.index()))) {
                 found = existingAtOrAfter(found.next());
             }
 
