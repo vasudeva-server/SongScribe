@@ -103,7 +103,6 @@ public class StaffLinesLayout implements LayoutManager2 {
 
         staffPanel.ensureAllLineLayouts();
 
-        var lyricRenderMetrics = staffPanel.lyricRenderMetrics();
         var aboveMidlineSs = new double[count];
         var belowMidlineSs = new double[count];
 
@@ -122,11 +121,11 @@ public class StaffLinesLayout implements LayoutManager2 {
                 paintBelowMidlineSs[i] = LineSpacing.MIN_BELOW_MIDLINE_SS;
             } else {
                 aboveMidlineSs[i] = result.aboveMidlineSs();
-                belowMidlineSs[i] = result.belowMidlineSs(lyricRenderMetrics);
+                belowMidlineSs[i] = result.belowMidlineSs();
                 // Floored by LayoutResult, so LineComponent's own sizing and midline placement
                 // resolve to the same numbers this layout positions against.
                 paintAboveMidlineSs[i] = result.paintAboveMidlineSs();
-                paintBelowMidlineSs[i] = result.paintBelowMidlineSs(lyricRenderMetrics);
+                paintBelowMidlineSs[i] = result.paintBelowMidlineSs();
             }
         }
 

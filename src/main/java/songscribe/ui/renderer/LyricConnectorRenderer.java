@@ -76,7 +76,7 @@ public final class LyricConnectorRenderer {
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
         var chainPreviewEndXSs = hyphenChainPreviewEndXSs(invariants);
         var editedScript = invariants.getActivelyEditedScript();
-        var ySs = layoutResult.lyricBaselineYSsInLine(lyricRenderMetrics);
+        var ySs = layoutResult.lyricBaselineYSsInLine();
 
         try (var _ = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setFont(lyricRenderMetrics.scaledLyricsFont());

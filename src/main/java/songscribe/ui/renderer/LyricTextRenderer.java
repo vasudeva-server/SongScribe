@@ -90,7 +90,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
         // The zoomed scale: the outer transform (which we strip below) is pxPerSs × factor,
         // so we re-derive integer pixel coordinates from the same zoomed value.
         var viewPxPerSs = invariants.getViewPixelsPerStaffSpace();
-        var yPx = (int) Math.round(layoutResult.lyricBaselineYSsInLine(lyricRenderMetrics) * viewPxPerSs);
+        var yPx = (int) Math.round(layoutResult.lyricBaselineYSsInLine() * viewPxPerSs);
 
         try (var _ = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
             // Strip the staff-space → pixel transform (which also carries the current

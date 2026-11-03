@@ -72,15 +72,11 @@ public final class HitRegionBuilder {
      *                     be populated
      * @return {@link HitRegistry#EMPTY} if the line has nothing clickable
      */
-    public static HitRegistry build(
-        Line line,
-        LayoutResult layoutResult,
-        LyricRenderMetrics lyricRenderMetrics) {
-
+    public static HitRegistry build(Line line, LayoutResult layoutResult) {
         var builder = HitRegistry.builder();
 
         addElements(line, layoutResult, builder);
-        addLyrics(line, layoutResult, lyricRenderMetrics, builder);
+        addLyrics(line, layoutResult, builder);
         addHairpins(layoutResult, builder);
         addEndings(layoutResult, builder);
         addSlides(line, layoutResult, builder);
@@ -107,15 +103,10 @@ public final class HitRegionBuilder {
         }
     }
 
-    private static void addLyrics(
-        Line line,
-        LayoutResult layoutResult,
-        LyricRenderMetrics lyricRenderMetrics,
-        HitRegistry.Builder builder) {
-
+    private static void addLyrics(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var element : line.getElements()) {
             for (var box : layoutResult.getLyricBoxes(element)) {
-                var rectSs = layoutResult.lyricBoxRectSs(box, lyricRenderMetrics);
+                var rectSs = layoutResult.lyricBoxRectSs(box);
                 addRegion(builder, rectSs, new HitTarget.Lyric(element, box.script()));
             }
         }

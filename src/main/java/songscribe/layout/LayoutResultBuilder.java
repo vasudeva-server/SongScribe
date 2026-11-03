@@ -38,8 +38,8 @@ import songscribe.layout.LayoutResult.StemLayout;
 import songscribe.layout.LayoutResult.TieLayout;
 
 /**
- * Builder for creating {@link LayoutResult} instances incrementally. The staff header is taken at
- * construction, so a builder cannot exist without it.
+ * Builder for creating {@link LayoutResult} instances incrementally. The staff header and the lyric
+ * row geometry are taken at construction, so a builder cannot exist without them.
  */
 public class LayoutResultBuilder {
 
@@ -52,14 +52,16 @@ public class LayoutResultBuilder {
     private final StaffHeader staffHeader;
     private double contentAboveStaffSs = 0;
     private double contentBelowStaffSs = 0;
+    private final LyricRowGeometry lyricRowGeometry;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
     private final Map<StaffElement, LyricBoxLayout> lyricPlaceholders;
     private final List<LyricConnectorLayout> lyricConnectors;
     private boolean hasTrailingLyricContinuation = false;
     private boolean overflowsStaffWidth = false;
 
-    LayoutResultBuilder(StaffHeader staffHeader) {
+    LayoutResultBuilder(StaffHeader staffHeader, LyricRowGeometry lyricRowGeometry) {
         this.staffHeader = staffHeader;
+        this.lyricRowGeometry = lyricRowGeometry;
         elementColumns = new HashMap<>();
         beamLayouts = new HashMap<>();
         stemLayouts = new HashMap<>();
@@ -172,6 +174,7 @@ public class LayoutResultBuilder {
             staffHeader,
             contentAboveStaffSs,
             contentBelowStaffSs,
+            lyricRowGeometry,
             lyricBoxes,
             lyricPlaceholders,
             lyricConnectors,

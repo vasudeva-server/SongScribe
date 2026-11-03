@@ -36,43 +36,69 @@ import songscribe.font.TextMeasurement;
 
 /**
  * Lyrics-font-derived values computed once per relayout rather than per element.
- *
- * @param lyricsFont       the lyrics font in unscaled (pixel-size) units
- * @param scaledLyricsFont the lyrics font scaled to staff-space units
- * @param placeholderFont  layout measures and the renderer draws the "?" for a missing lyric in
- *                         it, so the box matches the drawn glyph
- * @param staffToLyricsGapSs a <em>baseline</em> offset from a line's below-staff content to the
- *                         lyric row's baseline, not the visual gap
  */
-public record LyricRenderMetrics(
-    Font lyricsFont,
-    Font scaledLyricsFont,
-    Font placeholderFont,
-    double hyphenWidthSs,
-    double spaceWidthSs,
-    double placeholderWidthSs,
-    double staffToLyricsGapSs
-) {
+public final class LyricRenderMetrics {
 
     public static final double HYPHEN_WIDENING_FACTOR = 1.75;
 
-    /**
-     * Every component is a function of the lyrics font, so this is the only way to build them
-     * outside tests that deliberately inject degenerate values.
-     */
-    public static LyricRenderMetrics forFont(Font lyricsFont) {
+    private final Font lyricsFont;
+    private final Font scaledLyricsFont;
+    private final Font placeholderFont;
+    private final double hyphenWidthSs;
+    private final LyricLayoutBuilder.Widths layoutWidths;
+    private final LyricRowGeometry rowGeometry;
+
+    private LyricRenderMetrics(Font lyricsFont) {
+        this.lyricsFont = lyricsFont;
+        scaledLyricsFont = DocumentScale.fontSizedInSs(lyricsFont);
         // SemiBold so the mark stands out from the lyrics; the face ships with the
         // application, so every document draws the mark at the same weight.
-        var placeholderFont = LocalFonts.load(SourceSans3Font.STYLE_SEMIBOLD, lyricsFont.getSize2D());
-
-        return new LyricRenderMetrics(
-            lyricsFont,
-            DocumentScale.fontSizedInSs(lyricsFont),
-            placeholderFont,
-            TextMeasurement.textWidthSs(lyricsFont, "-").value(),
-            TextMeasurement.textWidthSs(lyricsFont, " ").value(),
+        placeholderFont = LocalFonts.load(SourceSans3Font.STYLE_SEMIBOLD, lyricsFont.getSize2D());
+        hyphenWidthSs = TextMeasurement.textWidthSs(lyricsFont, "-").value();
+        layoutWidths = new LyricLayoutBuilder.Widths(
             TextMeasurement.textWidthSs(placeholderFont, LyricLayoutBuilder.PLACEHOLDER_TEXT).value(),
+            TextMeasurement.textWidthSs(lyricsFont, " ").value());
+        rowGeometry = new LyricRowGeometry(
+            fontHeightSs(lyricsFont),
             LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
+    }
+
+    public static LyricRenderMetrics forFont(Font lyricsFont) {
+        return new LyricRenderMetrics(lyricsFont);
+    }
+
+    /** In unscaled (pixel-size) units. */
+    public Font lyricsFont() {
+        return lyricsFont;
+    }
+
+    /** The lyrics font scaled to staff-space units. */
+    public Font scaledLyricsFont() {
+        return scaledLyricsFont;
+    }
+
+    /**
+     * Layout measures and the renderer draws the "?" for a missing lyric in this font, so the box
+     * matches the drawn glyph.
+     */
+    public Font placeholderFont() {
+        return placeholderFont;
+    }
+
+    public double hyphenWidthSs() {
+        return hyphenWidthSs;
+    }
+
+    public double spaceWidthSs() {
+        return layoutWidths.spaceWidthSs();
+    }
+
+    public LyricLayoutBuilder.Widths layoutWidths() {
+        return layoutWidths;
+    }
+
+    public LyricRowGeometry rowGeometry() {
+        return rowGeometry;
     }
 
     public double preferredHyphenCellWidthSs() {
@@ -116,16 +142,8 @@ public record LyricRenderMetrics(
     }
 
     /**
-     * Independent of the typed text, so the editor box does not change height as descenders are
-     * typed or deleted.
-     */
-    public double lyricBoxHeightSs() {
-        return fontHeightSs(lyricsFont);
-    }
-
-    /**
-     * Deliberately not {@link #lyricBoxHeightSs}: {@link JTextField} lays out from the font-wide
-     * ascent and descent, so sizing the editor from ink would clip glyphs mid-edit.
+     * Deliberately not {@link LyricRowGeometry#lyricBoxHeightSs}: {@link JTextField} lays out from
+     * the font-wide ascent and descent, so sizing the editor from ink would clip glyphs mid-edit.
      */
     public Ss editorBoxHeightSs() {
         return new Ss(

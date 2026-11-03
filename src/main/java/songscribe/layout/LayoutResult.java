@@ -55,6 +55,7 @@ public final class LayoutResult {
     private final StaffHeader staffHeader;
     private final double contentAboveStaffSs;
     private final double contentBelowStaffSs;
+    private final LyricRowGeometry lyricRowGeometry;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
     private final Map<StaffElement, LyricBoxLayout> lyricPlaceholders;
     private final List<LyricConnectorLayout> lyricConnectors;
@@ -85,6 +86,7 @@ public final class LayoutResult {
         StaffHeader staffHeader,
         double contentAboveStaffSs,
         double contentBelowStaffSs,
+        LyricRowGeometry lyricRowGeometry,
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
         Map<StaffElement, LyricBoxLayout> lyricPlaceholders,
         List<LyricConnectorLayout> lyricConnectors,
@@ -107,6 +109,7 @@ public final class LayoutResult {
         this.staffHeader = staffHeader;
         this.contentAboveStaffSs = contentAboveStaffSs;
         this.contentBelowStaffSs = contentBelowStaffSs;
+        this.lyricRowGeometry = lyricRowGeometry;
         var copiedBoxes = new HashMap<StaffElement, List<LyricBoxLayout>>(lyricBoxes.size() * 2);
 
         for (var entry : lyricBoxes.entrySet()) {
@@ -132,6 +135,7 @@ public final class LayoutResult {
         staffHeader = source.staffHeader;
         contentAboveStaffSs = source.contentAboveStaffSs;
         contentBelowStaffSs = source.contentBelowStaffSs;
+        lyricRowGeometry = source.lyricRowGeometry;
         lyricBoxes = source.lyricBoxes;
         lyricPlaceholders = source.lyricPlaceholders;
         lyricConnectors = source.lyricConnectors;
@@ -263,8 +267,8 @@ public final class LayoutResult {
     }
 
     /** Built on {@link #lyricAnchorBelowStaffSs} so the height reserved matches where the row is drawn. */
-    public double belowMidlineSs(LyricRenderMetrics lyricRenderMetrics) {
-        return Staff.STAFF_HALF_SS + lyricAnchorBelowStaffSs() + lyricsBandHeightSs(lyricRenderMetrics);
+    public double belowMidlineSs() {
+        return Staff.STAFF_HALF_SS + lyricAnchorBelowStaffSs() + lyricsBandHeightSs();
     }
 
     /**
@@ -273,16 +277,16 @@ public final class LayoutResult {
      * song.
      * <p>
      * Deliberately built from {@link LineSpacing#LYRICS_ROW_MARGIN_SS} rather than from
-     * {@link LyricRenderMetrics#staffToLyricsGapSs}, a <em>baseline</em> offset that already
+     * {@link LyricRowGeometry#staffToLyricsGapSs}, a <em>baseline</em> offset that already
      * contains the row's above-baseline ink.
      */
-    public double lyricsBandHeightSs(LyricRenderMetrics lyricRenderMetrics) {
-        return LineSpacing.LYRICS_ROW_MARGIN_SS + lyricRenderMetrics.lyricBoxHeightSs();
+    public double lyricsBandHeightSs() {
+        return LineSpacing.LYRICS_ROW_MARGIN_SS + lyricRowGeometry.lyricBoxHeightSs();
     }
 
     /** Covers only this line's own content; the gap to the next line belongs to the parent layout manager. */
-    public double lineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
-        return aboveMidlineSs() + belowMidlineSs(lyricRenderMetrics);
+    public double lineHeightSs() {
+        return aboveMidlineSs() + belowMidlineSs();
     }
 
     /**
@@ -296,13 +300,13 @@ public final class LayoutResult {
     }
 
     /** The floored counterpart of {@link #belowMidlineSs}; see {@link #paintAboveMidlineSs}. */
-    public double paintBelowMidlineSs(LyricRenderMetrics lyricRenderMetrics) {
-        return Math.max(belowMidlineSs(lyricRenderMetrics), LineSpacing.MIN_BELOW_MIDLINE_SS);
+    public double paintBelowMidlineSs() {
+        return Math.max(belowMidlineSs(), LineSpacing.MIN_BELOW_MIDLINE_SS);
     }
 
     /** The height its bounds need for nothing it draws to be clipped; use this for sizing, not {@link #lineHeightSs}. */
-    public Ss paintLineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
-        return new Ss(paintAboveMidlineSs() + paintBelowMidlineSs(lyricRenderMetrics));
+    public Ss paintLineHeightSs() {
+        return new Ss(paintAboveMidlineSs() + paintBelowMidlineSs());
     }
 
     /**
@@ -322,10 +326,10 @@ public final class LayoutResult {
      * Driven by this line's own below-staff content, so lyrics hug each line individually. One row
      * per line, not per script: whichever script is active sits on this baseline.
      */
-    public double lyricBaselineYSsInLine(LyricRenderMetrics lyricRenderMetrics) {
+    public double lyricBaselineYSsInLine() {
         return staffBottomYSsInLine()
             + lyricAnchorBelowStaffSs()
-            + lyricRenderMetrics.staffToLyricsGapSs();
+            + lyricRowGeometry.staffToLyricsGapSs();
     }
 
     /** At most one, for the script this layout pass was built for. */
@@ -344,17 +348,16 @@ public final class LayoutResult {
     }
 
     /**
-     * @param box                a syllable box ({@link #getLyricBoxes}) or a placeholder box
-     *                           ({@link #getLyricPlaceholder}) of this result
-     * @param lyricRenderMetrics the metrics this result was laid out with
+     * @param box a syllable box ({@link #getLyricBoxes}) or a placeholder box
+     *            ({@link #getLyricPlaceholder}) of this result
      * @return a new rectangle in the hit registry's line-local, midline-relative staff spaces
      */
-    public Rectangle2D lyricBoxRectSs(LyricBoxLayout box, LyricRenderMetrics lyricRenderMetrics) {
+    public Rectangle2D lyricBoxRectSs(LyricBoxLayout box) {
         // The lyric boxes are the one geometry source in line-top origin. paintAboveMidlineSs()
         // is the distance from the top of the line's component to the staff midline, so
         // subtracting it puts the row in the midline-relative space every other region uses.
         var rowTopYSs = lyricAreaBaseYSs() - paintAboveMidlineSs();
-        return new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), lyricRenderMetrics.lyricBoxHeightSs());
+        return new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), lyricRowGeometry.lyricBoxHeightSs());
     }
 
     /**
@@ -391,9 +394,9 @@ public final class LayoutResult {
     }
 
     /** The Y is the line's single lyric baseline. */
-    public LyricAnchor getLyricAnchor(StaffElement element, LyricRenderMetrics lyricRenderMetrics) {
+    public LyricAnchor getLyricAnchor(StaffElement element) {
         var boxes = getLyricBoxes(element);
-        var baselineYSs = lyricBaselineYSsInLine(lyricRenderMetrics);
+        var baselineYSs = lyricBaselineYSsInLine();
 
         if (!boxes.isEmpty()) {
             var box = boxes.getFirst();
@@ -451,8 +454,8 @@ public final class LayoutResult {
             insertionIndex, mouseXSs, previewElement, line, betweenElementsOnly);
     }
 
-    public static LayoutResultBuilder builder(StaffHeader staffHeader) {
-        return new LayoutResultBuilder(staffHeader);
+    public static LayoutResultBuilder builder(StaffHeader staffHeader, LyricRowGeometry lyricRowGeometry) {
+        return new LayoutResultBuilder(staffHeader, lyricRowGeometry);
     }
 
     @Override

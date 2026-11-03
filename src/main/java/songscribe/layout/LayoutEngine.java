@@ -180,7 +180,7 @@ public class LayoutEngine {
 
         // The header (clef and key signature) depends on the line's key alone, so the builder
         // opens with it.
-        var builder = LayoutResult.builder(createStaffHeader(line));
+        var builder = LayoutResult.builder(createStaffHeader(line), lyricRenderMetrics.rowGeometry());
         builder.setOverflowsStaffWidth(!fitsStaffWidth);
 
         calculateBeams(line, columns, builder);
@@ -208,7 +208,7 @@ public class LayoutEngine {
         var lyricResult = LyricLayoutBuilder.build(
             columns,
             activeScript,
-            lyricRenderMetrics,
+            lyricRenderMetrics.layoutWidths(),
             hasLeadingLyricContinuation);
 
         for (var entry : lyricResult.boxes().entrySet()) {
@@ -345,7 +345,7 @@ public class LayoutEngine {
         var geometry = builder.build();
 
         return geometry.withHitRegistry(
-            HitRegionBuilder.build(line, geometry, lyricRenderMetrics));
+            HitRegionBuilder.build(line, geometry));
     }
 
     private void calculateBeams(

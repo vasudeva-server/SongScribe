@@ -20,7 +20,6 @@
 
 package songscribe.layout;
 
-import java.awt.Font;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -63,12 +62,6 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final double SYLLABLE_WIDTH_SS = 0.8;
 
     private static final double TOLERANCE_SS = 0.0001;
-
-    private static final int LYRICS_FONT_SIZE = 12;
-
-    private static final int SCALED_LYRICS_FONT_SIZE = 13;
-
-    private static final int PLACEHOLDER_FONT_SIZE = 14;
 
     /** Narrower than the one staff space of notehead every fixture column has. */
     private static final double NARROW_PLACEHOLDER_WIDTH_SS = 0.5;
@@ -337,7 +330,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     private static LyricLayoutBuilder.Result build(List<ElementColumn> columns, double placeholderWidthSs) {
         return LyricLayoutBuilder.build(
-            columns, Song.Script.LATIN, metrics(placeholderWidthSs), false);
+            columns, Song.Script.LATIN, new LyricLayoutBuilder.Widths(placeholderWidthSs, SPACE_WIDTH_SS), false);
     }
 
     /**
@@ -385,21 +378,5 @@ class LyricLayoutBuilderTest extends UnitTest {
     /** Where {@code column}'s syllable box starts: its text centered on the notehead. */
     private static double syllableBoxLeftXSs(ElementColumn column) {
         return column.getNoteheadCenterXSs() - SYLLABLE_WIDTH_SS / 2.0;
-    }
-
-    /** Metrics whose three fonts differ in face and size, so no one is mistaken for another. */
-    private static LyricRenderMetrics metrics(double placeholderWidthSs) {
-        var lyricsFont = new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE);
-        var scaledLyricsFont = new Font(Font.SERIF, Font.ITALIC, SCALED_LYRICS_FONT_SIZE);
-        var placeholderFont = new Font(Font.MONOSPACED, Font.BOLD, PLACEHOLDER_FONT_SIZE);
-
-        return new LyricRenderMetrics(
-            lyricsFont,
-            scaledLyricsFont,
-            placeholderFont,
-            SPACE_WIDTH_SS,
-            SPACE_WIDTH_SS,
-            placeholderWidthSs,
-            0.0);
     }
 }

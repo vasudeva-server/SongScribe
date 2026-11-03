@@ -148,13 +148,6 @@ public class StaffPanel extends JPanel {
         layOutLines();
     }
 
-    /**
-     * Resolved through the first line component, not this panel's own {@link ScoreView}
-     * back-reference, because the line components are given theirs first.
-     */
-    LyricRenderMetrics lyricRenderMetrics() {
-        return linePanels.getFirst().getLineComponent().getScoreView().getLyricRenderMetrics();
-    }
 
     @SuppressWarnings("UnusedReturnValue")
     private ArrayList<LayoutResult> layOutLines() {

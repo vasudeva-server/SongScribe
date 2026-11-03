@@ -410,7 +410,7 @@ public class LineComponent extends ScoreComponent
         //
         // The painted height, so the bounds hold everything this line draws — the measured
         // lineHeightSs is the spacing input and can be shorter than the staff surround.
-        var heightSs = result.paintLineHeightSs(getScoreView().getLyricRenderMetrics());
+        var heightSs = result.paintLineHeightSs();
 
         return new Dimension(
             toViewPx(song.getLineWidthSs()).sizePx(),

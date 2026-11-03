@@ -105,6 +105,12 @@ public final class LyricLayoutBuilder {
     ) {}
 
     /**
+     * @param placeholderWidthSs the width of {@link #PLACEHOLDER_TEXT} in the placeholder font
+     * @param spaceWidthSs       the width of a word space in the lyrics font
+     */
+    public record Widths(double placeholderWidthSs, double spaceWidthSs) {}
+
+    /**
      * Builds lyric boxes and connectors for a single line.
      * <p>
      * Only {@code activeScript} is laid out. A song's other scripts are the same lyrics in other
@@ -116,7 +122,6 @@ public final class LyricLayoutBuilder {
      *
      * @param columns                per-element columns in line order (X positions already finalized)
      * @param activeScript            the script to lay out, from {@link songscribe.dom.Song#getActiveScript()}
-     * @param lyricRenderMetrics     metrics used to measure syllable text widths
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
      * @return the boxes and connectors for that script, and whether an extender runs off the line
@@ -124,12 +129,12 @@ public final class LyricLayoutBuilder {
     public static Result build(
         List<ElementColumn> columns,
         Song.Script activeScript,
-        LyricRenderMetrics lyricRenderMetrics,
+        Widths widths,
         boolean hasLeadingContinuation) {
 
         var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var placeholders = new HashMap<StaffElement, LyricBoxLayout>(columns.size());
-        var placeholderWidthSs = lyricRenderMetrics.placeholderWidthSs();
+        var placeholderWidthSs = widths.placeholderWidthSs();
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
 
@@ -202,7 +207,7 @@ public final class LyricLayoutBuilder {
             var boxXSs = computeLyricBoxLeftXSs(new BoxPlacement(
                 column,
                 widthSs,
-                lyricRenderMetrics.firstGraphemeWidthSs(text),
+                column.getSyllableFirstGraphemeWidthSs(),
                 graceUnionWidthSs,
                 HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric)));
             var box = new LyricBoxLayout(boxXSs, widthSs, activeScript, text);
@@ -253,7 +258,7 @@ public final class LyricLayoutBuilder {
 
         // Always the lyric space width: a melisma is sung on a single (non-hyphenated) syllable,
         // so the gap before the following word is a word space, never a hyphen cell.
-        clampExtendersToFollowingSyllable(connectors, boxesByElement, lyricRenderMetrics.spaceWidthSs());
+        clampExtendersToFollowingSyllable(connectors, boxesByElement, widths.spaceWidthSs());
 
         return new Result(boxesByElement, placeholders, connectors, hasTrailingContinuation);
     }

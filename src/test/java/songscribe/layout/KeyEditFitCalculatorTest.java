@@ -89,15 +89,11 @@ class KeyEditFitCalculatorTest extends UnitTest {
     private static final double WIDEST_LINE_WIDTH_SS = 200.0;
     private static final double LINE_WIDTH_STEP_SS = 1.0;
 
-    /** The three fonts of the metrics differ in face and size, so no one is mistaken for another. */
     private static final int LYRICS_FONT_SIZE = 12;
 
-    private static final int SCALED_LYRICS_FONT_SIZE = 13;
-
-    private static final int PLACEHOLDER_FONT_SIZE = 14;
-
-    /** The syllable spacing the metrics carry; the notes here hold no lyrics, so it measures nothing. */
-    private static final double SYLLABLE_GAP_SS = 0.25;
+    /** The notes here hold no lyrics, so the lyrics font measures nothing. */
+    private static final LyricRenderMetrics LYRIC_RENDER_METRICS =
+        LyricRenderMetrics.forFont(new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE));
 
     /** A first line holding one note. */
     private static final LineBuilder ONE_NOTE = line -> line.addElement(crotchet());
@@ -191,7 +187,7 @@ class KeyEditFitCalculatorTest extends UnitTest {
     private static boolean lineKeyChangeFitsAt(Song song, double lineWidthSs) {
         setLineWidth(song, lineWidthSs);
 
-        return KeyEditFitCalculator.lineKeyChangeFits(song.getLine(0), EDITED_KEY, metrics());
+        return KeyEditFitCalculator.lineKeyChangeFits(song.getLine(0), EDITED_KEY, LYRIC_RENDER_METRICS);
     }
 
     /** Whether every line of {@code song} fits, as the committed layout solves it. */
@@ -199,28 +195,12 @@ class KeyEditFitCalculatorTest extends UnitTest {
         var staffRightMarginSs = song.getLineWidthSs().value();
 
         for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
-            if (!LyricEditFitCalculator.lineFits(song.getLine(lineIndex), metrics(), staffRightMarginSs)) {
+            if (!LyricEditFitCalculator.lineFits(song.getLine(lineIndex), LYRIC_RENDER_METRICS, staffRightMarginSs)) {
                 return false;
             }
         }
 
         return true;
-    }
-
-    private static LyricRenderMetrics metrics() {
-        var lyricsFont = new Font(Font.SANS_SERIF, Font.PLAIN, LYRICS_FONT_SIZE);
-        var scaledLyricsFont = new Font(Font.SERIF, Font.ITALIC, SCALED_LYRICS_FONT_SIZE);
-        var placeholderFont = new Font(Font.MONOSPACED, Font.BOLD, PLACEHOLDER_FONT_SIZE);
-        var placeholderWidthSs = TextMeasurement.textWidthSs(placeholderFont, LyricLayoutBuilder.PLACEHOLDER_TEXT).value();
-
-        return new LyricRenderMetrics(
-            lyricsFont,
-            scaledLyricsFont,
-            placeholderFont,
-            SYLLABLE_GAP_SS,
-            SYLLABLE_GAP_SS,
-            placeholderWidthSs,
-            0.0);
     }
 
     static Stream<MidLineEditCase> midLineEditCases() {
@@ -266,7 +246,7 @@ class KeyEditFitCalculatorTest extends UnitTest {
 
                 return new VerdictAt(
                     lineWidthSs,
-                    testCase.editFits().test(songBefore.getLine(0), metrics()),
+                    testCase.editFits().test(songBefore.getLine(0), LYRIC_RENDER_METRICS),
                     everyLineFits(songLeft));
             })
             .toList();

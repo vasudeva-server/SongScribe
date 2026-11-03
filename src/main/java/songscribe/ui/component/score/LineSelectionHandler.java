@@ -184,7 +184,6 @@ class LineSelectionHandler {
         var line = ready.line();
         var layoutResult = ready.layoutResult();
         var report = line.getSong().getLinter().getReport();
-        var lyricRenderMetrics = lc.getLyricRenderMetrics();
         var pointSs = new Point2D.Double(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
         for (var element : line.getElements()) {
@@ -194,7 +193,7 @@ class LineSelectionHandler {
                     continue;
                 }
 
-                var boundsSs = markBoundsSs(missingLyric, layoutResult, lyricRenderMetrics);
+                var boundsSs = markBoundsSs(missingLyric, layoutResult);
 
                 if (boundsSs.contains(pointSs)) {
                     return new MissingLyricHit(missingLyric, boundsSs);
@@ -234,20 +233,18 @@ class LineSelectionHandler {
             return null;
         }
 
-        return new LintMarkHit(mark, markBoundsSs(mark, layoutResult, lc.getLyricRenderMetrics()));
+        return new LintMarkHit(mark, markBoundsSs(mark, layoutResult));
     }
 
     LintMarkHit lintMarkHit(LintMark mark) {
-        return new LintMarkHit(mark, markBoundsSs(mark, lc.requireLayoutResult(), lc.getLyricRenderMetrics()));
+        return new LintMarkHit(mark, markBoundsSs(mark, lc.requireLayoutResult()));
     }
 
     /**
      * The box is in line-local, midline-relative staff spaces, before the registry's inclusive
      * edge margin.
-     *
-     * @param lyricRenderMetrics the lyric render metrics {@code layoutResult} was laid out with
      */
-    static Rectangle2D markBoundsSs(LintMark mark, LayoutResult layoutResult, LyricRenderMetrics lyricRenderMetrics) {
+    static Rectangle2D markBoundsSs(LintMark mark, LayoutResult layoutResult) {
         return switch (mark) {
             case LintMark.Flagged flagged -> layoutResult.elementHitRectSs(flagged.element());
 
@@ -269,7 +266,7 @@ class LineSelectionHandler {
                     throw new IllegalStateException("layout draws no \"?\" for lint mark: " + mark);
                 }
 
-                yield layoutResult.lyricBoxRectSs(placeholder, lyricRenderMetrics);
+                yield layoutResult.lyricBoxRectSs(placeholder);
             }
         };
     }
