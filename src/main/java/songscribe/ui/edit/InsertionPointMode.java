@@ -144,8 +144,8 @@ public final class InsertionPointMode {
     }
 
     /**
-     * Not done in the constructor: the view has no layout manager yet, and headless views never
-     * get one. {@code ScoreView.init()} calls this on the interactive path only.
+     * Not done in the constructor: this mode is built before the view has its border layout and
+     * its main panel, and an overlay needs both.
      */
     public void installOverlay() {
         scoreView.addOverlay(insertionMarkerOverlay);

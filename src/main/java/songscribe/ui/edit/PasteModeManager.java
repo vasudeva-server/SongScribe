@@ -76,10 +76,6 @@ public final class PasteModeManager implements InsertionPointMode.Client {
     public InsertionPointMode.Placement insertionPointChosen(Line line, int index) {
         var controller = scoreView.getController();
 
-        if (controller == null) {
-            return InsertionPointMode.Placement.DECLINED;
-        }
-
         // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
         // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
         // that PasteAction relies on must be set here around the bracket instead.

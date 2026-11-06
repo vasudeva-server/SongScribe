@@ -22,39 +22,20 @@ package songscribe.ui.component;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.ViewScale;
 import songscribe.ui.component.score.LineComponent;
 
 public final class ComponentHierarchyNavigator {
 
     private final ComponentHierarchyProvider provider;
 
-    /** Null when detached (tests). */
-    @Nullable
-    private ScoreView scoreView;
-
     public ComponentHierarchyNavigator(ComponentHierarchyProvider provider) {
         this.provider = provider;
-    }
-
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
-    }
-
-    private ViewScale viewScale() {
-        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
     }
 
     /** Null if no line component has the given line index. */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
-        var mainPanel = provider.getMainPanel();
-
-        if (mainPanel == null) {
-            return null;
-        }
-
-        for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
+        for (var linePanel : provider.getMainPanel().getStaffPanel().getLinePanels()) {
             var lineComponent = linePanel.getLineComponent();
 
             if (lineComponent.getLineIndex() == lineIndex) {
@@ -69,13 +50,7 @@ public final class ComponentHierarchyNavigator {
         LineComponent.SelectionProvider selectionProvider,
         ScoreView scoreView
     ) {
-        var mainPanel = provider.getMainPanel();
-
-        if (mainPanel == null) {
-            return;
-        }
-
-        var staffPanel = mainPanel.getStaffPanel();
+        var staffPanel = provider.getMainPanel().getStaffPanel();
 
         for (var linePanel : staffPanel.getLinePanels()) {
             var lineComponent = linePanel.getLineComponent();

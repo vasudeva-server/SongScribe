@@ -186,14 +186,12 @@ public final class ScoreView
     // In some contexts (such as playback), we don't want to allow dragging
     private boolean dragDisabled = false;
 
-    @Nullable
-    private Song song = null;
+    // Shown to no subscriber: the first setSong replaces it once MainFrame holds this view.
+    private Song song = new Song();
 
-    @Nullable
-    private JScrollPane scrollPane = null;
+    private final JScrollPane scrollPane;
 
-    @Nullable
-    private JPanel scorePanel = null;
+    private final JPanel scorePanel;
 
     private int leadingKeysPosPx = 32;
 
@@ -201,11 +199,9 @@ public final class ScoreView
 
     private final ClipboardManager clipboardManager;
 
-    @Nullable
-    private MainPanel mainPanel = null;
+    private final MainPanel mainPanel;
 
-    @Nullable
-    private ScoreViewController controller = null;
+    private final ScoreViewController controller;
 
     private final ComponentHierarchyNavigator hierarchyNavigator;
 
@@ -216,10 +212,6 @@ public final class ScoreView
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
     @Nullable private LyricEditor activeLyricEditor;
-
-    // Created by init(), after the scroll pane whose viewport it listens to.
-    @Nullable
-    private LintCalloutController lintCalloutController = null;
 
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     private final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
@@ -234,26 +226,30 @@ public final class ScoreView
         EditModeManager.init(selectionCoordinator, this, this);
 
         hierarchyNavigator = new ComponentHierarchyNavigator(this);
-        hierarchyNavigator.setScoreView(this);
         inputHandler = new ScoreInputHandler(this);
         setLayout(new BorderLayout());
         setFocusable(true);
         addKeyListener(inputHandler);
         bindings.onNotify(zoomPercent, this::refreshOverlayBounds);
-    }
-
-    /** Must be called exactly once after construction. */
-    public void init() {
         setName(ComponentNames.SCORE);
+
+        scorePanel = new ScorePanel(this);
+        scrollPane = new JScrollPane(scorePanel);
+        // No lines of its own: the toolbar draws the line below itself, and the status bar the
+        // line above itself. An empty border, not null, keeps the theme's scroll pane border off.
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        updateScoreSurroundBackground();
+
+        mainPanel = new MainPanel();
+        mainPanel.setScoreView(this);
+        mainPanel.setVisible(true);
+        add(mainPanel, BorderLayout.CENTER);
+        setupLineComponentState();
 
         documentFontManager.installFonts(DocumentFonts.defaultFonts());
 
-        initScorePanel();
-        initMainPanel();
-        lintCalloutController = new LintCalloutController(this);
-
-        // The install above could not cascade — there was no main panel yet.
-        documentFontManager.applyFonts();
+        // Not stored: the bus holds the controller strongly, and nothing else calls it.
+        new LintCalloutController(this);
 
         addMouseListener(inputHandler);
         addMouseWheelListener(inputHandler);
@@ -262,8 +258,7 @@ public final class ScoreView
             PinchZoomGesture.installOn(this);
         }
 
-        selectionChanged();
-        initKeys();
+        scoreKeyBindings.putAll(inputHandler.installKeyBindings(this));
 
         // One preview overlay for this view's lifetime; it is retargeted, never recreated.
         PreviewElementManager.installOverlay(this);
@@ -271,61 +266,32 @@ public final class ScoreView
 
         setPreviewElement(EditModeManager.makePreviewElement());
 
-        MessageSubscription.addProcessListener(this);
-        syncPlaybackPrefs();
-
-        var operations = new MusicEditOperations(selectionCoordinator);
         controller = new ScoreViewController(
             this,
-            operations,
+            new MusicEditOperations(selectionCoordinator),
             selectionCoordinator,
             clipboardManager
         );
 
-        // Last, so the controller and every other subscriber sees the first song as it sees any
-        // other.
-        setSong(new Song(), ChangeReport.EMPTY);
-    }
-
-    private void initKeys() {
-        scoreKeyBindings.putAll(inputHandler.installKeyBindings(this));
-    }
-
-
-    private void initScorePanel() {
-        scorePanel = new ScorePanel(this);
-        scrollPane = new JScrollPane(scorePanel);
-        // No lines of its own: the toolbar draws the line below itself, and the status bar the
-        // line above itself. An empty border, not null, keeps the theme's scroll pane border off.
-        scrollPane.setBorder(BorderFactory.createEmptyBorder());
-        updateScoreSurroundBackground();
+        MessageSubscription.addProcessListener(this);
     }
 
     @Override
     public void updateUI() {
         super.updateUI();
 
+        // JPanel's constructor calls updateUI before this class assigns its fields, so the
+        // scroll pane can be null here even though the field is final.
+        //noinspection ConstantValue
         if (scrollPane != null) {
             updateScoreSurroundBackground();
         }
     }
 
     private void updateScoreSurroundBackground() {
-        if (scrollPane == null) {
-            return;
-        }
-
         var color = FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND);
         scrollPane.setBackground(color);
         scrollPane.getViewport().setBackground(color);
-    }
-
-    private void initMainPanel() {
-        mainPanel = new MainPanel();
-        mainPanel.setScoreView(this);
-        mainPanel.setVisible(true);
-        add(mainPanel, BorderLayout.CENTER);
-        setupLineComponentState();
     }
 
     void setupLineComponentState() {
@@ -336,18 +302,8 @@ public final class ScoreView
     }
 
     @Override
-    public @Nullable MainPanel getMainPanel() {
+    public MainPanel getMainPanel() {
         return mainPanel;
-    }
-
-    private MainPanel requireMainPanel() {
-        var result = mainPanel;
-
-        if (result == null) {
-            throw RuntimeError.exit("mainPanel not initialized");
-        }
-
-        return result;
     }
 
     public boolean isDragDisabled() {
@@ -527,14 +483,7 @@ public final class ScoreView
         }
     }
 
-    public @Nullable JScrollPane getScoreScrollPane() {
-        return scrollPane;
-    }
-
-    public JScrollPane requireScrollPane() {
-        if (scrollPane == null) {
-            throw RuntimeError.exit("score scroll pane not initialized");
-        }
+    public JScrollPane getScrollPane() {
         return scrollPane;
     }
 
@@ -740,10 +689,6 @@ public final class ScoreView
 
     @Override
     public void forwardWheelScroll(MouseWheelEvent e) {
-        if (scrollPane == null) {
-            return;
-        }
-
         // Rebuild the event with the scroll pane as source/target so it is delivered
         // straight to JScrollPane's own listeners, bypassing AWT's ancestor search
         // (which would otherwise stop at this view, since it has its own wheel listener).
@@ -772,20 +717,12 @@ public final class ScoreView
         return selectionCoordinator.getSelectionSize();
     }
 
-    public boolean isInitialized() {
-        return song != null;
-    }
-
-    public @Nullable ScoreViewController getController() {
+    public ScoreViewController getController() {
         return controller;
     }
 
     @Override
     public Song getSong() {
-        if (song == null) {
-            throw RuntimeError.exit("song not initialized");
-        }
-
         return song;
     }
 
@@ -819,7 +756,7 @@ public final class ScoreView
         // MBassador holds Song subscribers by weak reference, so the outgoing Song
         // keeps handling broadcast commands — spawning spurious undo steps against
         // the dead document — until GC clears it. Detach it deterministically here.
-        if (this.song != null && this.song != song) {
+        if (this.song != song) {
             this.song.dispose();
         }
 
@@ -840,19 +777,20 @@ public final class ScoreView
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
 
-        // init() builds the main panel before it installs the first song.
-        requireMainPanel().setSong(song);
+        mainPanel.setSong(song);
         setupLineComponentState();
 
         syncPlaybackPrefs();
+
+        // The selection was cleared above without a post, which would leave the actions
+        // reflecting the previous song's selection.
+        selectionChanged();
 
         // Posted last, once all ScoreView state is consistent. Building the notification lints
         // the song, so every subscriber to the load reads the new song's lint report.
         MessageCenter.post(new DocumentDidLoadNotification(song, report));
 
-        if (scrollPane != null) {
-            scrollPane.getViewport().setViewPosition(new Point(0, 0));
-        }
+        scrollPane.getViewport().setViewPosition(new Point(0, 0));
 
         repaint();
     }
@@ -934,7 +872,7 @@ public final class ScoreView
     public Dimension getPreferredSize() {
         // Sizes round up via sizePx() so content is never clipped at high zoom; margins round
         // to nearest via positionPx(), matching the border layoutPage sets from the same values.
-        var contentHeightPx = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
+        var contentHeightPx = mainPanel.getPreferredSize().height;
 
         return new Dimension(
             viewScale.toViewPx(PageModel.getPageWidthPx()).sizePx(),
@@ -982,10 +920,7 @@ public final class ScoreView
             horizontalMarginPx
         ));
         invalidate();
-
-        if (scorePanel != null) {
-            scorePanel.invalidate();
-        }
+        scorePanel.invalidate();
 
         runWithoutViewportBlit(JScrollPane::validate);
 
@@ -1033,7 +968,7 @@ public final class ScoreView
 
     @Handler
     public void activeScriptDidChange(ActiveScriptDidChangeNotification message) {
-        for (var linePanel : requireMainPanel().getStaffPanel().getLinePanels()) {
+        for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
             linePanel.getLineComponent().invalidateLayout();
         }
 
@@ -1043,16 +978,6 @@ public final class ScoreView
     @Handler
     public void linting(LintingNotification message) {
         repaint();
-    }
-
-    public LintCalloutController requireLintCalloutController() {
-        var result = lintCalloutController;
-
-        if (result == null) {
-            throw RuntimeError.exit("lint callout controller not initialized");
-        }
-
-        return result;
     }
 
     /**
@@ -1078,16 +1003,7 @@ public final class ScoreView
      * contract.
      */
     public void applyZoomPercent(int newPercent, @Nullable Point anchorPoint) {
-        var scoreScrollPane = getScoreScrollPane();
-
-        if (scoreScrollPane == null) {
-            applyZoomPercentAndRelayout(newPercent);
-        } else {
-            runWithoutViewportBlit(
-                pane -> applyZoomPercentAndReanchor(pane, newPercent, anchorPoint)
-            );
-        }
-
+        runWithoutViewportBlit(pane -> applyZoomPercentAndReanchor(pane, newPercent, anchorPoint));
         repaint();
         zoomPercent.set(viewScale.getZoomPercent());
     }
@@ -1109,9 +1025,7 @@ public final class ScoreView
 
         // Force synchronous re-layout so the new (post-zoom) sizes are realized before
         // anything reads them; plain revalidate() is async and would leave stale sizes.
-        if (scorePanel != null) {
-            scorePanel.invalidate();
-        }
+        scorePanel.invalidate();
     }
 
     /**
@@ -1122,10 +1036,6 @@ public final class ScoreView
      * rendering on a large zoom jump.
      */
     private void runWithoutViewportBlit(Consumer<? super JScrollPane> body) {
-        if (scrollPane == null) {
-            return;
-        }
-
         var viewport = scrollPane.getViewport();
         var previousScrollMode = viewport.getScrollMode();
         viewport.setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
@@ -1285,10 +1195,7 @@ public final class ScoreView
 
         var layout = (BorderLayout) getLayout();
         layout.removeLayoutComponent(overlay);
-
-        if (mainPanel != null) {
-            layout.addLayoutComponent(mainPanel, BorderLayout.CENTER);
-        }
+        layout.addLayoutComponent(mainPanel, BorderLayout.CENTER);
 
         // Index 0 is the topmost child; an open lyric editor owns it, so overlays start
         // immediately below it and above everything else.

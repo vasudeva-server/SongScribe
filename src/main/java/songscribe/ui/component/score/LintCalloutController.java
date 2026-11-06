@@ -28,6 +28,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 
 import net.engio.mbassy.listener.Handler;
+import net.engio.mbassy.listener.Listener;
+import net.engio.mbassy.listener.References;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
@@ -36,6 +38,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.notification.LintCalloutWasDismissedNotification;
 import songscribe.message.notification.LintMarkSelectionDidChangeNotification;
+import songscribe.message.notification.LintMarkWasHoveredNotification;
 import songscribe.message.notification.LintingNotification;
 import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.ui.component.ScoreView;
@@ -51,6 +54,7 @@ import songscribe.ui.component.ScoreView;
  * <h2>Lifecycle</h2>
  * Process-lifetime; never disposed.
  */
+@Listener(references = References.Strong)
 public final class LintCalloutController {
 
     private final ScoreView scoreView;
@@ -70,7 +74,7 @@ public final class LintCalloutController {
         this.scoreView = scoreView;
         callout = new LintCallout(scoreView);
 
-        scoreView.requireScrollPane().getViewport().addChangeListener(_ -> hideAll());
+        scoreView.getScrollPane().getViewport().addChangeListener(_ -> hideAll());
         MessageSubscription.addProcessListener(this);
     }
 
@@ -103,7 +107,8 @@ public final class LintCalloutController {
         hideAll();
     }
 
-    void hoverDidEnterMark() {
+    @Handler
+    public void lintMarkWasHovered(LintMarkWasHoveredNotification message) {
         dismissCallout();
     }
 

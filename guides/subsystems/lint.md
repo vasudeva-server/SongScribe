@@ -16,6 +16,9 @@ Read `LintRule` first.
 - `ReportPanel`
 - `LintCallout`
 - `LintCalloutController`
+- `LintMarkSelectionDidChangeNotification`
+- `LintMarkWasHoveredNotification`
+- `LintCalloutWasDismissedNotification`
 - `LintToolTipPlacement`
 
 ## Rules

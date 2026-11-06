@@ -642,7 +642,9 @@ public class MainFrame extends JFrame {
         }
 
 
-        requireScoreView().init();
+        // Not in ScoreView's constructor: the load's subscribers reach the view through this
+        // frame, which holds it only once the constructor returns.
+        requireScoreView().setSong(new Song(), ChangeReport.EMPTY);
 
         initContentSplitPane();
         contentPane.add(contentSplitPane, BorderLayout.CENTER);
@@ -655,7 +657,7 @@ public class MainFrame extends JFrame {
     }
 
     private void initContentSplitPane() {
-        contentSplitPane.setLeftComponent(requireScoreView().requireScrollPane());
+        contentSplitPane.setLeftComponent(requireScoreView().getScrollPane());
         contentSplitPane.setRightComponent(reportPanel);
 
         // A window resize goes entirely to the score, so the panel keeps its width.
@@ -780,7 +782,7 @@ public class MainFrame extends JFrame {
         var owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getPermanentFocusOwner();
         var scoreView = requireScoreView();
         Actions.FOCUS_SCORE_ACTION.setSelected(
-            owner != null && SwingUtilities.isDescendingFrom(owner, scoreView.requireScrollPane()));
+            owner != null && SwingUtilities.isDescendingFrom(owner, scoreView.getScrollPane()));
     }
 
     public void toggleZoom() {
@@ -857,7 +859,7 @@ public class MainFrame extends JFrame {
     }
 
     void updateTitle() {
-        if (scoreView == null || !scoreView.isInitialized()) {
+        if (scoreView == null) {
             return;
         }
 

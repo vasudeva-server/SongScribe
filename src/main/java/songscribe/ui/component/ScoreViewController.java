@@ -437,7 +437,7 @@ public final class ScoreViewController {
             scoreActions.syncPlaybackPrefs();
         }
 
-        if ((all || key == PrefsKey.PAGE_SIZE) && score.isInitialized()) {
+        if (all || key == PrefsKey.PAGE_SIZE) {
             scoreActions.updatePageLayout(score.getSong().getLineWidthSs());
         }
     }
@@ -459,10 +459,6 @@ public final class ScoreViewController {
         warmTupletCache();
 
         var mainPanel = score.getMainPanel();
-
-        if (mainPanel == null) {
-            return;
-        }
 
         // Three mutually exclusive cases for the staff, checked widest first: a line insert or
         // delete rebuilds the LinePanel list; a change that reaches every line invalidates every

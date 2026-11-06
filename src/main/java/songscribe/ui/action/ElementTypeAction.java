@@ -297,7 +297,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
         var scoreView = getScoreView();
 
-        if (scoreView == null || !scoreView.isInitialized()) {
+        if (scoreView == null) {
             return super.getUndoOpName();
         }
 

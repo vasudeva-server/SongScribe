@@ -49,6 +49,8 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.lint.LintMark;
 import songscribe.lint.LintReport;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.LintMarkWasHoveredNotification;
 import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
 import songscribe.ui.OptionDialogs;
@@ -887,7 +889,7 @@ public class LineComponent extends ScoreComponent
         pointerMark = new PointerMark(new Point(viewPoint), report, layout, getViewScale(), hit);
 
         if (hit != null && (previousHit == null || !previousHit.mark().equals(hit.mark()))) {
-            getScoreView().requireLintCalloutController().hoverDidEnterMark();
+            MessageCenter.post(new LintMarkWasHoveredNotification());
         }
 
         return new PointerHit(region, missingLyric);

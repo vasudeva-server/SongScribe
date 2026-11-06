@@ -99,11 +99,6 @@ final class DocumentFontManager {
         var fonts = getFonts();
         var mainPanel = scoreView.getMainPanel();
 
-        // Headless converter path: openFile -> installFonts runs without ScoreView.init().
-        if (mainPanel == null) {
-            return;
-        }
-
         rebuildLyricRenderMetrics();
         var textPanel = mainPanel.getTextPanel();
         var lyricsFont = fonts.getLyricsFont();
@@ -137,9 +132,7 @@ final class DocumentFontManager {
      * widths.
      */
     void rebuildLyricRenderMetrics() {
-        // isInitialized() is ScoreView's "has a song" test. The metrics are song-wide, so
-        // there is nothing to build for a view that has not been handed a document yet.
-        if (!scoreView.isInitialized() || documentFonts == null) {
+        if (documentFonts == null) {
             return;
         }
 

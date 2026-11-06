@@ -27,7 +27,6 @@ import songscribe.ui.component.score.MainPanel;
 
 public interface ComponentHierarchyProvider {
 
-    @Nullable
     MainPanel getMainPanel();
 
     Song getSong();

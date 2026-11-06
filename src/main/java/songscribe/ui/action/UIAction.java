@@ -532,9 +532,9 @@ public class UIAction extends AbstractAction implements Disposable {
     public void actionPerformed(ActionEvent e) {
         var scoreView = getScoreView();
 
-        // When no initialized song exists no modification bracket can open, so there
-        // is nothing to capture; skip straight to the hook (and avoid getSong() throwing).
-        if (scoreView == null || !scoreView.isInitialized()) {
+        // Without a score view no modification bracket can open, so there is nothing to
+        // capture; skip straight to the hook.
+        if (scoreView == null) {
             performAction(e);
             return;
         }
@@ -686,7 +686,6 @@ public class UIAction extends AbstractAction implements Disposable {
         var score = getScoreView();
 
         return score != null
-            && score.isInitialized()
             && score.getSong().getLinter().hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
     }
 
@@ -846,6 +845,6 @@ public class UIAction extends AbstractAction implements Disposable {
         }
 
         var score = getScoreView();
-        return score != null && score.isInitialized() && !score.getSong().isEmpty();
+        return score != null && !score.getSong().isEmpty();
     }
 }

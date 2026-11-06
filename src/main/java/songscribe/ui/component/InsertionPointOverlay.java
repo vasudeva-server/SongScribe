@@ -69,12 +69,7 @@ public final class InsertionPointOverlay extends JComponent {
 
     @Override
     public void doLayout() {
-        var scrollPane = scoreView.getScoreScrollPane();
-
-        if (scrollPane == null) {
-            return;
-        }
-
+        var scrollPane = scoreView.getScrollPane();
         var viewportBoundsPx = SwingUtilities.convertRectangle(
             scrollPane, scrollPane.getViewport().getBounds(), this);
 
