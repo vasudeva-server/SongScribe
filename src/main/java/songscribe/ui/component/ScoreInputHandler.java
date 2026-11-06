@@ -47,8 +47,7 @@ import songscribe.message.command.ToggleFallOnLastInsertionCommand;
 import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.ui.Mode;
-import songscribe.ui.action.Actions;
-import songscribe.ui.action.UIAction;
+import songscribe.ui.action.ToggleNotationAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PitchShifter;
 import songscribe.ui.edit.EditModeManager;
@@ -173,17 +172,17 @@ public final class ScoreInputHandler extends KeyAdapter
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK);
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK);
 
-        // The keystroke comes off the action the binding falls through to, not from a literal
-        // repeated here: the fall-through only reaches the right command while the two agree,
-        // and nothing else would notice if they stopped agreeing.
+        // The keystroke is the constant the action the binding falls through to also uses, not a
+        // literal repeated here: the fall-through only reaches the right command while the two
+        // agree, and nothing else would notice if they stopped agreeing.
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            Actions.TOGGLE_BEAM_ACTION, ToggleBeamWithPreviousCommand::new);
+            ToggleNotationAction.BEAM_KEYSTROKE, ToggleBeamWithPreviousCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            Actions.GLISSANDO_ACTION, ToggleGlissandoWithPreviousCommand::new);
+            ToggleNotationAction.GLISSANDO_KEYSTROKE, ToggleGlissandoWithPreviousCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            Actions.FALL_ACTION, ToggleFallOnLastInsertionCommand::new);
+            ToggleNotationAction.FALL_KEYSTROKE, ToggleFallOnLastInsertionCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            Actions.TOGGLE_TIE_ACTION, ToggleTieWithPreviousCommand::new);
+            ToggleNotationAction.TIE_KEYSTROKE, ToggleTieWithPreviousCommand::new);
 
         return bindings;
     }
@@ -196,16 +195,16 @@ public final class ScoreInputHandler extends KeyAdapter
      * The mode guard is an {@code isEnabled} override, not an early return from
      * {@code actionPerformed}: Swing stops at an enabled binding, so a guard that did nothing
      * would swallow the key and leave select mode with no working shortcut. Reporting it as
-     * disabled lets the search reach {@code targetAction}'s own accelerator in the root pane.
+     * disabled lets the search reach the target action's own accelerator in the root pane.
      */
     private void registerLastInsertionBinding(
         Map<? super KeyStroke, Object> bindings,
         InputMap inputMap,
         ActionMap actionMap,
-        UIAction targetAction,
+        KeyStroke keyStroke,
         Supplier<? extends Message> commandFactory
     ) {
-        registerKeyStroke(bindings, inputMap, actionMap, targetAction.getAccelerator(),
+        registerKeyStroke(bindings, inputMap, actionMap, keyStroke,
             new AbstractAction() {
                 @Override
                 public boolean isEnabled() {

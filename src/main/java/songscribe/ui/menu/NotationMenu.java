@@ -99,13 +99,7 @@ public class NotationMenu extends JMenu {
         addMenuListener(new MenuListener() {
             @Override
             public void menuSelected(MenuEvent e) {
-                var ctrl = mainFrame.getScoreViewController();
-
-                if (ctrl != null) {
-                    MAKE_ENDING_ACTION.validate(ctrl);
-                } else {
-                    MAKE_ENDING_ACTION.setEnabled(false);
-                }
+                MAKE_ENDING_ACTION.validate(mainFrame.getScoreViewController());
             }
 
             @Override

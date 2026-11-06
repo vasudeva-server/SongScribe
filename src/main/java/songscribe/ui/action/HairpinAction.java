@@ -85,18 +85,7 @@ public final class HairpinAction extends UIAction {
             return false;
         }
 
-        var ctrl = getScoreViewController();
-
-        if (ctrl == null) {
-            // Without a controller the state cannot be resolved, and super has already
-            // enabled the action from flags alone — exactly the flag-only enable this
-            // override exists to prevent.
-            applyLabel(ineligible);
-            setEnabled(false);
-            return false;
-        }
-
-        var resolution = ctrl.resolveHairpinAction(kind);
+        var resolution = getScoreViewController().resolveHairpinAction(kind);
         applyLabel(resolution);
         setEnabled(resolution instanceof HairpinResolution.Applicable);
         return true;

@@ -87,7 +87,7 @@ public final class ZoomLevelAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        ZoomController.setZoomPercent(zoomPercent);
+        ZoomController.setZoomPercent(getScoreView(), zoomPercent);
     }
 
     private record ZoomLevelShortcut(int zoomPercent, int virtualKey) {}

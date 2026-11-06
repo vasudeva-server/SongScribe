@@ -22,6 +22,7 @@ package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 
 import net.engio.mbassy.listener.Handler;
@@ -30,13 +31,14 @@ import songscribe.Strings;
 import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.ui.ZoomController;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.UIUtils;
 
 public final class ZoomAction extends UIAction {
 
     public static final int ZOOM_ICON_SIZE = 18;
 
-    private final Runnable zoomOperation;
+    private final Consumer<ScoreView> zoomOperation;
     private final IntPredicate enabledAtPercent;
 
     public static ZoomAction createZoomInAction(MainFrame mainFrame) {
@@ -69,7 +71,7 @@ public final class ZoomAction extends UIAction {
         String actionCommand,
         String icon,
         int virtualKey,
-        Runnable zoomOperation,
+        Consumer<ScoreView> zoomOperation,
         IntPredicate enabledAtPercent
     ) {
         super(
@@ -86,18 +88,18 @@ public final class ZoomAction extends UIAction {
 
         this.zoomOperation = zoomOperation;
         this.enabledAtPercent = enabledAtPercent;
-        setEnabled(enabledAtPercent.test(ZoomController.getZoomPercent()));
+        setEnabled(enabledAtPercent.test(ZoomController.getZoomPercent(getScoreView())));
     }
 
     @Override
     protected void performAction(ActionEvent e) {
-        zoomOperation.run();
+        zoomOperation.accept(getScoreView());
     }
 
     @Override
     public boolean updateEnabledState() {
         var enabledState = super.updateEnabledState()
-            && enabledAtPercent.test(ZoomController.getZoomPercent());
+            && enabledAtPercent.test(ZoomController.getZoomPercent(getScoreView()));
         setEnabled(enabledState);
         return enabledState;
     }

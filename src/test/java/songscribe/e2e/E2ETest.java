@@ -221,7 +221,6 @@ public abstract class E2ETest {
         var overlay = statusOverlay;
         assertThat(overlay).isNotNull();
         var scoreView = MainFrame.getInstance().getScoreView();
-        assertThat(scoreView).isNotNull();
         var scoreLoc = scoreView.getLocationOnScreen();
         var scoreSize = scoreView.getSize();
         var overlaySize = overlay.getPreferredSize();
@@ -243,10 +242,7 @@ public abstract class E2ETest {
     }
 
     protected ScoreView scoreView() {
-        var scoreView = MainFrame.getInstance().getScoreView();
-        assertThat(scoreView).isNotNull();
-
-        return scoreView;
+        return MainFrame.getInstance().getScoreView();
     }
 
     protected Song song() {

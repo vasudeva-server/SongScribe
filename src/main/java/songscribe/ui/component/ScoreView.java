@@ -186,7 +186,7 @@ public final class ScoreView
     // In some contexts (such as playback), we don't want to allow dragging
     private boolean dragDisabled = false;
 
-    // Shown to no subscriber: the first setSong replaces it once MainFrame holds this view.
+    // Shown to no subscriber: the first setSong replaces it.
     private Song song = new Song();
 
     private final JScrollPane scrollPane;
@@ -263,8 +263,6 @@ public final class ScoreView
         // One preview overlay for this view's lifetime; it is retargeted, never recreated.
         PreviewElementManager.installOverlay(this);
         EditModeManager.getInsertionPointMode().installOverlay();
-
-        setPreviewElement(EditModeManager.makePreviewElement());
 
         controller = new ScoreViewController(
             this,
@@ -679,12 +677,12 @@ public final class ScoreView
 
     @Override
     public void zoomByWheel(double preciseWheelRotation, Point viewPoint) {
-        ZoomController.zoomByWheel(preciseWheelRotation, viewPoint);
+        ZoomController.zoomByWheel(this, preciseWheelRotation, viewPoint);
     }
 
     @Override
     public void zoomByMagnification(double magnification, @Nullable Point viewPoint) {
-        ZoomController.zoomByMagnification(magnification, viewPoint);
+        ZoomController.zoomByMagnification(this, magnification, viewPoint);
     }
 
     @Override
@@ -766,7 +764,7 @@ public final class ScoreView
         // once per document.
         LineComponent.resetOverflowWarning();
 
-        ZoomController.resetZoom();
+        ZoomController.resetZoom(this);
 
         // Passing the song's own width leaves the model untouched — setLineWidthSs early-returns
         // on an equal value.

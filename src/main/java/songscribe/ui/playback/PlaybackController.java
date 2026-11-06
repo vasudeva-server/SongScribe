@@ -100,8 +100,8 @@ public final class PlaybackController {
     }
 
     /**
-     * Called once per process, at the top of {@link MainFrame#initFrame()}, before any constant
-     * in this class is first referenced. The constants this replaces keep their bus
+     * Called once per process, by the {@link MainFrame} constructor, before any constant in this
+     * class is first referenced. The constants this replaces keep their bus
      * registrations, so a second call must first retire the bus they joined.
      */
     public static void initialize(MainFrame mainFrame) {

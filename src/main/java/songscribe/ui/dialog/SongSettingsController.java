@@ -23,7 +23,6 @@ import java.awt.Font;
 
 import songscribe.Strings;
 import songscribe.dom.Song;
-import songscribe.dom.Ss;
 import songscribe.dom.Tempo;
 import songscribe.font.FontKey;
 import songscribe.layout.LyricEditFitCalculator;
@@ -64,7 +63,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
 
         return new SongSettingsInput(
             song.getMetadata(),
-            requireScoreView().getDocumentFonts(),
+            getScoreView().getDocumentFonts(),
             song.getTempo(),
             song.getLineWidthSs(),
             new LyricsContext(song.getLyricsText(), !song.getTranslatedLyrics().isEmpty())
@@ -78,7 +77,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
     @Override
     protected ValidationResult validate(SongSettingsOutput values) {
         var lyricsFontChange = new LyricsFontChange(
-            requireScoreView().getDocumentFonts().getFont(FontKey.LYRICS),
+            getScoreView().getDocumentFonts().getFont(FontKey.LYRICS),
             values.fonts().getFont(FontKey.LYRICS)
         );
 
@@ -99,7 +98,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
     @Override
     protected void commit(SongSettingsOutput values) {
         var song = getSong();
-        var scoreView = requireScoreView();
+        var scoreView = getScoreView();
 
         withModification(Strings.get(Strings.ACTION_EDIT_OP_SONG_SETTINGS), () -> {
             applyTempo(song, values.tempo());

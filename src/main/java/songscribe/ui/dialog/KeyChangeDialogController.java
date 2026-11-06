@@ -37,7 +37,6 @@ import songscribe.dom.StaffElementRun;
 import songscribe.layout.KeyEditFitCalculator;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
-import songscribe.util.UIUtils;
 
 /**
  * Everything {@link KeyChangeDialog} is not allowed to know: which line the notator pointed at,
@@ -131,7 +130,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      */
     @Override
     protected ValidationResult validate(Key values) {
-        var lyricRenderMetrics = requireScoreView().getLyricRenderMetrics();
+        var lyricRenderMetrics = getScoreView().getLyricRenderMetrics();
 
         return switch (site.binding()) {
             case LINE_KEY -> refusalUnless(

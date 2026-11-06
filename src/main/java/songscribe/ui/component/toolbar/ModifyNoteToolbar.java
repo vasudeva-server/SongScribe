@@ -21,17 +21,18 @@
 package songscribe.ui.component.toolbar;
 
 import songscribe.ui.action.Actions;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.component.ToolbarButton;
 import songscribe.ui.component.TupletPopupButton;
 
 public class ModifyNoteToolbar extends Toolbar {
 
-    public ModifyNoteToolbar() {
+    public ModifyNoteToolbar(ScoreViewController controller) {
         add(new ToolbarButton(Actions.GLISSANDO_ACTION));
         add(new ToolbarButton(Actions.FALL_ACTION));
         add(new ToolbarButton(Actions.TOGGLE_BEAM_ACTION));
         add(new ToolbarButton(Actions.TOGGLE_TIE_ACTION));
-        add(new TupletPopupButton());
+        add(new TupletPopupButton(controller));
         add(new ToolbarButton(Actions.FLIP_STEM_DIRECTION_ACTION));
         add(new ToolbarButton(Actions.EDIT_LYRIC_ACTION));
     }

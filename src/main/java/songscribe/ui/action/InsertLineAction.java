@@ -93,7 +93,7 @@ public final class InsertLineAction extends UIAction {
             return true;
         }
 
-        var isEnabled = requireScoreView().getSelectionCoordinator().hasLineSelection();
+        var isEnabled = getScoreView().getSelectionCoordinator().hasLineSelection();
         setEnabled(isEnabled);
         return isEnabled;
     }

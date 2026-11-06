@@ -153,11 +153,10 @@ public class MainFrame extends JFrame {
 
     public String appName;
 
-    @Nullable
-    protected ScoreView scoreView = null;
+    private final ScoreView scoreView;
 
     @Nullable
-    protected File currentFile = null;
+    private File currentFile = null;
 
     @Nullable
     private JLabel titleBarLabel = null;
@@ -245,6 +244,26 @@ public class MainFrame extends JFrame {
 
         installShutdownTasks();
         MessageSubscription.addProcessListener(this);
+
+        setTitle(appName);
+        setAppIcon();
+
+        scoreView = new ScoreView(this::setCurrentFile);
+
+        // The actions reach the score view through this frame, and everything below reads the
+        // actions.
+        Actions.initialize(this);
+        PlaybackController.initialize(this);
+        PlaybackController.register(scoreView);
+
+        initContent();
+        updateTitle();
+
+        installDesktopHandlers();
+        MenuController.init(this);
+        installFocusTracking();
+        installBackgroundHandlers();
+        setFrameSize();
     }
 
     public static void main(String[] args) {
@@ -453,28 +472,7 @@ public class MainFrame extends JFrame {
         Prefs.put(PrefsKey.FIRST_RUN, false);
     }
 
-    public void initFrame() {
-        // Initialize action constants before anything else in this method uses them.
-        //
-        // main() constructs the singleton, which calls initFrame() to wire the UI; initFrame()
-        // calls Actions.initialize(this) to populate the Actions.* constants, and the first read
-        // of one of those constants is MenuController.init(this).
-        Actions.initialize(this);
-        PlaybackController.initialize(this);
-
-        setTitle(appName);
-        setAppIcon();
-
-        scoreView = new ScoreView(this::setCurrentFile);
-        PlaybackController.register(scoreView);
-
-        initContent();
-        updateTitle();
-
-        installDesktopHandlers();
-        MenuController.init(this);
-        installFocusTracking();
-
+    private void installBackgroundHandlers() {
         // When the application goes to the background, cancel any pending paste and activate
         // the glass pane so the reactivation click is consumed. ActivationGate.activate() posts
         // ApplicationDidEnterBackgroundNotification, which is what hides the insertion note —
@@ -516,8 +514,6 @@ public class MainFrame extends JFrame {
                 }
             });
         }
-
-        setFrameSize();
     }
 
     /**
@@ -595,7 +591,7 @@ public class MainFrame extends JFrame {
         contentPane.setLayout(new BorderLayout());
 
 
-        var toolbarPanel = new MainToolbarPanel();
+        var toolbarPanel = new MainToolbarPanel(scoreView.getController());
 
 
         if (SystemInfo.isMacOS && SystemInfo.isMacFullWindowContentSupported) {
@@ -642,9 +638,9 @@ public class MainFrame extends JFrame {
         }
 
 
-        // Not in ScoreView's constructor: the load's subscribers reach the view through this
-        // frame, which holds it only once the constructor returns.
-        requireScoreView().setSong(new Song(), ChangeReport.EMPTY);
+        // Not in ScoreView's constructor: the load's subscribers include the actions and the
+        // toolbar, which are built after the view.
+        scoreView.setSong(new Song(), ChangeReport.EMPTY);
 
         initContentSplitPane();
         contentPane.add(contentSplitPane, BorderLayout.CENTER);
@@ -653,11 +649,11 @@ public class MainFrame extends JFrame {
         Runnable showReportStatus = () -> Actions.TOGGLE_MESSAGES_ACTION.setStatus(reportStatus.get());
         showReportStatus.run();
         reportStatus.observe(showReportStatus);
-        contentPane.add(new StatusBar(), BorderLayout.SOUTH);
+        contentPane.add(new StatusBar(scoreView), BorderLayout.SOUTH);
     }
 
     private void initContentSplitPane() {
-        contentSplitPane.setLeftComponent(requireScoreView().getScrollPane());
+        contentSplitPane.setLeftComponent(scoreView.getScrollPane());
         contentSplitPane.setRightComponent(reportPanel);
 
         // A window resize goes entirely to the score, so the panel keeps its width.
@@ -766,7 +762,7 @@ public class MainFrame extends JFrame {
 
     /** The move happens when the focus system processes the request. */
     public void focusScore() {
-        requireScoreView().requestFocusInWindow();
+        scoreView.requestFocusInWindow();
     }
 
     private void installFocusTracking() {
@@ -780,7 +776,6 @@ public class MainFrame extends JFrame {
      */
     public void syncScoreAction() {
         var owner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getPermanentFocusOwner();
-        var scoreView = requireScoreView();
         Actions.FOCUS_SCORE_ACTION.setSelected(
             owner != null && SwingUtilities.isDescendingFrom(owner, scoreView.getScrollPane()));
     }
@@ -830,7 +825,7 @@ public class MainFrame extends JFrame {
     }
 
     boolean showSaveDialog() {
-        if (scoreView == null || !scoreView.getSong().isModified()) {
+        if (!scoreView.getSong().isModified()) {
             return true;
         }
 
@@ -859,10 +854,6 @@ public class MainFrame extends JFrame {
     }
 
     void updateTitle() {
-        if (scoreView == null) {
-            return;
-        }
-
         if (!SwingUtilities.isEventDispatchThread()) {
             SwingUtilities.invokeLater(this::updateTitle);
             return;
@@ -914,27 +905,12 @@ public class MainFrame extends JFrame {
         updateTitle();
     }
 
-    @Nullable
     public ScoreView getScoreView() {
         return scoreView;
     }
 
-    /** {@code null} before the score view or its controller exists. */
-    public @Nullable ScoreViewController getScoreViewController() {
-        return scoreView != null ? scoreView.getController() : null;
-    }
-
-    /**
-     * For code that runs after initialization.
-     */
-    public ScoreView requireScoreView() {
-        var result = scoreView;
-
-        if (result == null) {
-            throw RuntimeError.exit("scoreView not initialized");
-        }
-
-        return result;
+    public ScoreViewController getScoreViewController() {
+        return scoreView.getController();
     }
 
     @Nullable
@@ -962,13 +938,9 @@ public class MainFrame extends JFrame {
         }
 
         setCurrentFile(null);
-
-        if (scoreView != null) {
-            scoreView.setSong(new Song(), ChangeReport.EMPTY);
-            scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
-            scoreView.requestFocusInWindow();
-        }
-
+        scoreView.setSong(new Song(), ChangeReport.EMPTY);
+        scoreView.installDocumentFonts(DocumentFonts.defaultFonts());
+        scoreView.requestFocusInWindow();
         LOG.info("New song");
     }
 
@@ -1022,7 +994,7 @@ public class MainFrame extends JFrame {
     }
 
     public void handleOpenFile(File file) {
-        if (!showSaveDialog() || scoreView == null) {
+        if (!showSaveDialog()) {
             return;
         }
 
@@ -1031,7 +1003,7 @@ public class MainFrame extends JFrame {
 
     @Handler
     public void handleRevertToSaved(RevertToSavedCommand message) {
-        if (scoreView == null || currentFile == null) {
+        if (currentFile == null) {
             return;
         }
 
@@ -1051,10 +1023,6 @@ public class MainFrame extends JFrame {
     }
 
     private void openFileAndUpdateRecents(File file) {
-        if (scoreView == null) {
-            return;
-        }
-
         var path = file.toPath().toAbsolutePath();
         var opened = scoreView.openFile(file);
 
@@ -1089,7 +1057,7 @@ public class MainFrame extends JFrame {
 
     /** Asked before the file chooser opens, because a "No" after it discards the user's choice of file. */
     private boolean saveIsAllowed() {
-        return scoreView != null && Output.SAVE.allowed(this, scoreView.getSong());
+        return Output.SAVE.allowed(this, scoreView.getSong());
     }
 
     private boolean saveCurrentFile() {
@@ -1102,10 +1070,6 @@ public class MainFrame extends JFrame {
 
     /** Leaves the window's current file alone. */
     private boolean writeSong(File file) {
-        if (scoreView == null) {
-            return false;
-        }
-
         var song = scoreView.getSong();
 
         try {
@@ -1130,10 +1094,6 @@ public class MainFrame extends JFrame {
     }
 
     private boolean chooseFileAndWrite() {
-        if (scoreView == null) {
-            return false;
-        }
-
         var suggestedFileName = currentFile == null
             ? scoreView.getSuggestedFileName()
             : FileUtils.getPathWithoutExtension(currentFile.getName());

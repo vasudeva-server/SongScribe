@@ -208,9 +208,7 @@ public final class SongScribe {
         new PreviewElementManager();
         Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
 
-        var mainFrame = MainFrame.getInstance();
-        mainFrame.initFrame();
-        return mainFrame;
+        return MainFrame.getInstance();
     }
 
     /** Call once, before anything can post or subscribe. */

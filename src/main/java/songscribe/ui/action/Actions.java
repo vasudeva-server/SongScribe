@@ -174,8 +174,8 @@ public final class Actions {
     private static List<AppMenuAction> appMenuActions = List.of();
 
     /**
-     * Called once per process, at the top of {@link MainFrame#initFrame()}, before any
-     * constant in this class is first referenced.
+     * Called once per process, by the {@link MainFrame} constructor, before any constant in
+     * this class is first referenced. Requires {@code mainFrame} to hold its score view.
      */
     public static void initialize(MainFrame mainFrame) {
         // Constructed here rather than in a static initializer so that merely loading this

@@ -241,7 +241,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
         // The modification bracket has closed and the song's chain walk has stamped the note,
         // so its pitch is the one it now sounds.
         if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
-            if (requireScoreView().getSingleSelectedElement() instanceof NoteElement note) {
+            if (getScoreView().getSingleSelectedElement() instanceof NoteElement note) {
                 new PlayThread(note.getPitch()).start();
             }
         }

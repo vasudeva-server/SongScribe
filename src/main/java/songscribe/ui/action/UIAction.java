@@ -412,20 +412,16 @@ public class UIAction extends AbstractAction implements Disposable {
         return mainFrame;
     }
 
-    protected @Nullable ScoreView getScoreView() {
+    protected ScoreView getScoreView() {
         return mainFrame.getScoreView();
     }
 
-    protected @Nullable ScoreViewController getScoreViewController() {
+    protected ScoreViewController getScoreViewController() {
         return mainFrame.getScoreViewController();
     }
 
-    protected ScoreView requireScoreView() {
-        return mainFrame.requireScoreView();
-    }
-
     protected Song getSong() {
-        return mainFrame.requireScoreView().getSong();
+        return mainFrame.getScoreView().getSong();
     }
 
     public void setFlags(Flag... flags) {
@@ -530,15 +526,6 @@ public class UIAction extends AbstractAction implements Disposable {
 
     @Override
     public void actionPerformed(ActionEvent e) {
-        var scoreView = getScoreView();
-
-        // Without a score view no modification bracket can open, so there is nothing to
-        // capture; skip straight to the hook.
-        if (scoreView == null) {
-            performAction(e);
-            return;
-        }
-
         UndoController.withPendingOpName(getUndoOpName(), () -> performAction(e));
     }
 
@@ -553,12 +540,6 @@ public class UIAction extends AbstractAction implements Disposable {
         // If an action is going to be enabled based on a single flag,
         // we have to check the entire context to see if the action can in fact be enabled.
         var scoreView = getScoreView();
-
-        if (scoreView == null) {
-            setEnabled(false);
-            return false;
-        }
-
         var activeSelection = hasActiveSelection();
         var enable =
             enableFromInsertionPointMode() &&
@@ -649,7 +630,7 @@ public class UIAction extends AbstractAction implements Disposable {
             return true;
         }
 
-        return !Actions.REST_ACTION.isSelected() && !requireScoreView().getSelectionCoordinator().selectionHasRests();
+        return !Actions.REST_ACTION.isSelected() && !getScoreView().getSelectionCoordinator().selectionHasRests();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
@@ -683,10 +664,7 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     private boolean hasPlaybackBlockingFinding() {
-        var score = getScoreView();
-
-        return score != null
-            && score.getSong().getLinter().hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
+        return getSong().getLinter().hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
     }
 
     protected boolean enableFromMidiState() {
@@ -822,7 +800,7 @@ public class UIAction extends AbstractAction implements Disposable {
             return false;
         }
 
-        var score = requireScoreView();
+        var score = getScoreView();
         var selection = score.getSelectionCoordinator().getSelection();
 
         if (selection == null) {
@@ -834,7 +812,7 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     private boolean hasActiveSelection() {
-        return requireScoreView()
+        return getScoreView()
             .getSelectionCoordinator()
             .hasActiveSelection();
     }
@@ -844,7 +822,6 @@ public class UIAction extends AbstractAction implements Disposable {
             return true;
         }
 
-        var score = getScoreView();
-        return score != null && !score.getSong().isEmpty();
+        return !getSong().isEmpty();
     }
 }

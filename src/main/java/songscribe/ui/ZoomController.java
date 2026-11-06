@@ -27,11 +27,10 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.ZoomDidChangeNotification;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Stateless orchestrator for changing the active score's zoom level.
+ * Stateless orchestrator for changing a score's zoom level.
  * <p>
  * All mutators are EDT-only by contract; no locking.
  */
@@ -50,44 +49,38 @@ public final class ZoomController {
 
     private ZoomController() {}
 
-    public static int getZoomPercent() {
-        var scoreView = MainFrame.getInstance().getScoreView();
-
-        if (scoreView == null) {
-            return DEFAULT_ZOOM_PERCENT;
-        }
-
+    public static int getZoomPercent(ScoreView scoreView) {
         return scoreView.getViewScale().getZoomPercent();
     }
 
-    public static void zoomIn() {
-        applyZoom(nextLevelAbove(getZoomPercent()), null);
+    public static void zoomIn(ScoreView scoreView) {
+        applyZoom(scoreView, nextLevelAbove(getZoomPercent(scoreView)), null);
     }
 
-    public static void zoomOut() {
-        applyZoom(nextLevelBelow(getZoomPercent()), null);
+    public static void zoomOut(ScoreView scoreView) {
+        applyZoom(scoreView, nextLevelBelow(getZoomPercent(scoreView)), null);
     }
 
-    public static void resetZoom() {
-        applyZoom(DEFAULT_ZOOM_PERCENT, null);
+    public static void resetZoom(ScoreView scoreView) {
+        applyZoom(scoreView, DEFAULT_ZOOM_PERCENT, null);
     }
 
-    public static void setZoomPercent(int percent) {
-        applyZoom(clampZoomPercent(percent), null);
-    }
-
-    /**
-     * {@code viewAnchorPoint} is in the active {@link ScoreView}'s local coordinate space.
-     */
-    public static void setZoomPercent(int percent, Point viewAnchorPoint) {
-        applyZoom(clampZoomPercent(percent), viewAnchorPoint);
+    public static void setZoomPercent(ScoreView scoreView, int percent) {
+        applyZoom(scoreView, clampZoomPercent(percent), null);
     }
 
     /**
-     * {@code viewAnchorPoint} is in the active {@link ScoreView}'s local coordinate space.
+     * {@code viewAnchorPoint} is in {@code scoreView}'s local coordinate space.
      */
-    public static void zoomByWheel(double preciseWheelRotation, Point viewAnchorPoint) {
-        var currentPercent = getZoomPercent();
+    public static void setZoomPercent(ScoreView scoreView, int percent, Point viewAnchorPoint) {
+        applyZoom(scoreView, clampZoomPercent(percent), viewAnchorPoint);
+    }
+
+    /**
+     * {@code viewAnchorPoint} is in {@code scoreView}'s local coordinate space.
+     */
+    public static void zoomByWheel(ScoreView scoreView, double preciseWheelRotation, Point viewAnchorPoint) {
+        var currentPercent = getZoomPercent(scoreView);
         var scaleFactor = 1 - preciseWheelRotation * WHEEL_ZOOM_FACTOR_PER_NOTCH;
         var newPercent = (int) Math.round(currentPercent * scaleFactor);
 
@@ -99,19 +92,23 @@ public final class ZoomController {
             newPercent -= (int) Math.signum(preciseWheelRotation);
         }
 
-        setZoomPercent(newPercent, viewAnchorPoint);
+        setZoomPercent(scoreView, newPercent, viewAnchorPoint);
     }
 
     /**
      * {@code viewAnchorPoint} is the viewport center when null.
      */
-    public static void zoomByMagnification(double magnification, @Nullable Point viewAnchorPoint) {
-        var newPercent = (int) Math.round(getZoomPercent() * (1 + magnification));
+    public static void zoomByMagnification(
+        ScoreView scoreView,
+        double magnification,
+        @Nullable Point viewAnchorPoint
+    ) {
+        var newPercent = (int) Math.round(getZoomPercent(scoreView) * (1 + magnification));
 
-        // Calls applyZoom directly rather than setZoomPercent(int, Point): that overload
-        // requires a non-null anchor, whereas a pinch anchors at the viewport center
+        // Calls applyZoom directly rather than setZoomPercent(ScoreView, int, Point): that
+        // overload requires a non-null anchor, whereas a pinch anchors at the viewport center
         // (null) whenever the cursor is unavailable or outside the view.
-        applyZoom(clampZoomPercent(newPercent), viewAnchorPoint);
+        applyZoom(scoreView, clampZoomPercent(newPercent), viewAnchorPoint);
     }
 
     static int nextLevelAbove(int percent) {
@@ -143,13 +140,7 @@ public final class ZoomController {
     /**
      * {@code viewAnchorPoint} is the viewport center when null.
      */
-    private static void applyZoom(int newZoomPercent, @Nullable Point viewAnchorPoint) {
-        var scoreView = MainFrame.getInstance().getScoreView();
-
-        if (scoreView == null) {
-            return;
-        }
-
+    private static void applyZoom(ScoreView scoreView, int newZoomPercent, @Nullable Point viewAnchorPoint) {
         var oldZoomPercent = scoreView.getViewScale().getZoomPercent();
 
         if (newZoomPercent == oldZoomPercent) {

@@ -67,7 +67,7 @@ public final class ZoomStatusBarPanel extends JPanel {
     // the process, so there is no retirement to release it at.
     private final Bindings bindings = new Bindings();
 
-    public ZoomStatusBarPanel() {
+    public ZoomStatusBarPanel(ScoreView scoreView) {
         super(new FlowLayout(FlowLayout.LEADING, CONTROL_GAP_PX, 0));
         setOpaque(false);
 
@@ -75,26 +75,26 @@ public final class ZoomStatusBarPanel extends JPanel {
 
         zoomSlider.setFocusable(false);
         zoomSlider.setOpaque(false);
-        zoomSlider.addChangeListener(_ -> ZoomController.setZoomPercent(zoomSlider.getValue()));
+        zoomSlider.addChangeListener(_ -> ZoomController.setZoomPercent(scoreView, zoomSlider.getValue()));
         add(zoomSlider);
 
         add(new ZoomButton(Actions.ZOOM_IN_ACTION));
 
-        buildPercentMenu();
+        buildPercentMenu(scoreView);
         percentButton.setFocusable(false);
         percentButton.putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
         percentButton.addActionListener(event -> percentMenu.show(percentButton, 0, percentButton.getHeight()));
         add(percentButton);
 
-        var zoomPercent = MainFrame.getInstance().requireScoreView().zoomPercent();
+        var zoomPercent = scoreView.zoomPercent();
         updateState(zoomPercent.get());
         bindings.onNotify(zoomPercent, () -> updateState(zoomPercent.get()));
     }
 
-    private void buildPercentMenu() {
+    private void buildPercentMenu(ScoreView scoreView) {
         for (var levelPercent : ZoomController.ZOOM_LEVEL_PERCENTS) {
             var item = new JCheckBoxMenuItem(Strings.get(Strings.STATUS_ZOOM_PERCENT, levelPercent));
-            item.addActionListener(event -> ZoomController.setZoomPercent(levelPercent));
+            item.addActionListener(event -> ZoomController.setZoomPercent(scoreView, levelPercent));
 
             // Advertise the stop's shortcut where the stop itself is chosen. The keystroke
             // is bound on the root pane by the action, not by this item.

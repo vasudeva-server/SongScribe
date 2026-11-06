@@ -80,7 +80,7 @@ public class PasteboardAction extends UIAction {
      * is disabled while it is selected.
      */
     protected boolean isTerminalSelected() {
-        return requireScoreView().getSelectionCoordinator().isTerminalSelected();
+        return getScoreView().getSelectionCoordinator().isTerminalSelected();
     }
 
     protected boolean updateScoreEnabledState() {
@@ -88,7 +88,7 @@ public class PasteboardAction extends UIAction {
             return false;
         }
 
-        var scoreView = requireScoreView();
+        var scoreView = getScoreView();
 
         return switch (op) {
             case PASTE -> scoreView.getPasteboardSize() > 0;

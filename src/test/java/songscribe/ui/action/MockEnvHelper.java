@@ -63,7 +63,7 @@ public final class MockEnvHelper {
 
         when(mockFrame.getRootPane()).thenReturn(mock(JRootPane.class, RETURNS_DEEP_STUBS));
         when(mockFrame.getScoreView()).thenReturn(mockScore);
-        when(mockFrame.requireScoreView()).thenReturn(mockScore);
+        when(mockFrame.getScoreViewController()).thenReturn(mockCtrl);
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         // ZoomController (reached via Actions.initialize → ZoomAction) reads the active
         // view's zoom, so give the mock a real ViewScale rather than a null.

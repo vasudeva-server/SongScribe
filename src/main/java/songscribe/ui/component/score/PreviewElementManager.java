@@ -190,11 +190,6 @@ public final class PreviewElementManager {
      */
     private static @Nullable LineComponent retargetMouseLine() {
         var scoreView = MainFrame.getInstance().getScoreView();
-
-        if (scoreView == null) {
-            return null;
-        }
-
         var mousePos = scoreView.getMousePosition();
 
         if (mousePos == null) {

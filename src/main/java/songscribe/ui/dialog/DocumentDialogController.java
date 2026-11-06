@@ -50,15 +50,15 @@ abstract class DocumentDialogController<I extends @Nullable Copyable<I>, O exten
         return mainFrame;
     }
 
-    protected final ScoreView requireScoreView() {
-        return mainFrame.requireScoreView();
+    protected final ScoreView getScoreView() {
+        return mainFrame.getScoreView();
     }
 
     /**
      * A controller that outlives a document asks again rather than holding the answer.
      */
     protected final Song getSong() {
-        return requireScoreView().getSong();
+        return getScoreView().getSong();
     }
 
     /**

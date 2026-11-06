@@ -101,29 +101,21 @@ public final class TupletAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        var ctrl = getScoreViewController();
-
-        if (ctrl != null) {
-            handleChange(ctrl);
-        }
+        handleChange();
     }
 
     @Override
     @Handler
     public void linting(LintingNotification message) {
-        var ctrl = getScoreViewController();
-
-        if (ctrl != null) {
-            handleChange(ctrl);
-        }
+        handleChange();
     }
 
-    private void handleChange(ScoreViewController ctrl) {
+    private void handleChange() {
         if (!updateEnabledState()) {
             return;
         }
 
-        var info = ctrl.canToggleTuplet();
+        var info = getScoreViewController().canToggleTuplet();
 
         // Availability and selection are separate properties of the same shared action, so
         // the menu and the toolbar popup both pick them up with no rebuild. The existing
@@ -135,18 +127,11 @@ public final class TupletAction extends UIAction {
 
     @Override
     public String getUndoOpName() {
-        var baseAddKey = baseAddKey();
-        var ctrl = getScoreViewController();
-
-        if (ctrl == null) {
-            return Strings.get(baseAddKey);
-        }
-
-        if (ctrl.canToggleTuplet().existingGrade() != null) {
+        if (getScoreViewController().canToggleTuplet().existingGrade() != null) {
             return Strings.get(Strings.ACTION_EDIT_OP_CHANGE_TUPLET_GRADE);
         }
 
-        return Strings.get(baseAddKey);
+        return Strings.get(baseAddKey());
     }
 
     private String baseAddKey() {

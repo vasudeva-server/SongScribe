@@ -56,7 +56,7 @@ public final class RevertToSavedAction extends UIAction {
     public boolean updateEnabledState() {
         var enabledState = super.updateEnabledState() &&
             getMainFrame().getCurrentFile() != null &&
-            requireScoreView().getSong().isModified();
+            getScoreView().getSong().isModified();
         setEnabled(enabledState);
         return enabledState;
     }

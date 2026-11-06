@@ -69,15 +69,9 @@ public final class TupletMenuItems {
         }
     }
 
-    /** @return {@code null} when the selection carries no tuplet or there is no score to ask */
+    /** @return {@code null} when the selection carries no tuplet */
     @Nullable
     private static TupletGrade existingGrade() {
-        var ctrl = MainFrame.getInstance().getScoreViewController();
-
-        if (ctrl == null) {
-            return null;
-        }
-
-        return ctrl.canToggleTuplet().existingGrade();
+        return MainFrame.getInstance().getScoreViewController().canToggleTuplet().existingGrade();
     }
 }

@@ -37,12 +37,15 @@ import songscribe.util.UIUtils;
 
 public class TupletPopupButton extends PopupMenuButton {
 
-    public TupletPopupButton() {
+    private final ScoreViewController controller;
+
+    public TupletPopupButton(ScoreViewController controller) {
         super(
             Actions.TOGGLE_TUPLET_ACTIONS,
             Actions.TOGGLE_TUPLET_ACTIONS.get(1),
             ItemStyle.RADIO
         );
+        this.controller = controller;
         MessageSubscription.addProcessListener(this);
     }
 
@@ -64,7 +67,7 @@ public class TupletPopupButton extends PopupMenuButton {
 
     @Handler
     public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        updateDefaultAction(MainFrame.getInstance().getScoreViewController());
+        updateDefaultAction();
     }
 
     /**
@@ -74,23 +77,19 @@ public class TupletPopupButton extends PopupMenuButton {
      */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
-        updateDefaultAction(MainFrame.getInstance().getScoreViewController());
+        updateDefaultAction();
     }
 
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
-        updateDefaultAction(MainFrame.getInstance().getScoreViewController());
+        updateDefaultAction();
     }
 
     /**
      * When no grade applies the previous default is kept: the whole button is disabled.
      */
-    private void updateDefaultAction(@Nullable ScoreViewController ctrl) {
-        if (ctrl == null) {
-            return;
-        }
-
-        var info = ctrl.canToggleTuplet();
+    private void updateDefaultAction() {
+        var info = controller.canToggleTuplet();
 
         for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
             if (info.validGrades().contains(action.getGrade())) {

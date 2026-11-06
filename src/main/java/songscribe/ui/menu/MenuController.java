@@ -82,8 +82,6 @@ public class MenuController {
 
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        // Fail here rather than later: every menu this builds acts on the score view.
-        mainFrame.requireScoreView();
         initMenus();
         MessageSubscription.addProcessListener(this);
     }

@@ -95,8 +95,7 @@ public final class TrillAction extends SelectableUIAction {
     }
 
     private void refreshSelectedState() {
-        var scoreView = getScoreView();
-        var range = (scoreView != null) ? selectedRangeOf(scoreView) : null;
+        var range = selectedRangeOf(getScoreView());
 
         if (range == null) {
             setSelected(false);
@@ -110,7 +109,7 @@ public final class TrillAction extends SelectableUIAction {
     protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
 
-        var range = selectedRangeOf(requireScoreView());
+        var range = selectedRangeOf(getScoreView());
 
         if (range == null) {
             return;

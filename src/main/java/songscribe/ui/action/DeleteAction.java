@@ -73,7 +73,7 @@ public final class DeleteAction extends PasteboardAction {
             return false;
         }
 
-        var scoreView = requireScoreView();
+        var scoreView = getScoreView();
         var selection = scoreView.getSelectionCoordinator();
 
         return selection.getSelectedTarget() instanceof HitTarget.Lyric ||

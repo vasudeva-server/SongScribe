@@ -295,13 +295,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             return super.getUndoOpName();
         }
 
-        var scoreView = getScoreView();
-
-        if (scoreView == null) {
-            return super.getUndoOpName();
-        }
-
-        var selectedElements = scoreView.getSelectionCoordinator().getSelectedElements();
+        var selectedElements = getScoreView().getSelectionCoordinator().getSelectedElements();
 
         if (selectedElements.isEmpty()) {
             return super.getUndoOpName();
@@ -328,7 +322,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         var terminalType = terminalType();
 
         if (terminalType == null
-                || !requireScoreView().getSelectionCoordinator().isTerminalSelected()) {
+                || !getScoreView().getSelectionCoordinator().isTerminalSelected()) {
             return false;
         }
 

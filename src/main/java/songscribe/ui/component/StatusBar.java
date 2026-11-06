@@ -59,7 +59,7 @@ public final class StatusBar extends JPanel {
     private final JLabel baseLabel = new JLabel(EMPTY_CONTENT);
     private final JLabel octaveDurationLabel = new JLabel();
 
-    public StatusBar() {
+    public StatusBar(ScoreView scoreView) {
         setLayout(new GridBagLayout());
         setOpaque(true);
         setBorder(BorderFactory.createCompoundBorder(
@@ -85,7 +85,7 @@ public final class StatusBar extends JPanel {
         var zoomConstraints = new GridBagConstraints();
         zoomConstraints.gridx = 1;
         zoomConstraints.anchor = GridBagConstraints.LINE_END;
-        add(new ZoomStatusBarPanel(), zoomConstraints);
+        add(new ZoomStatusBarPanel(scoreView), zoomConstraints);
 
         MessageSubscription.addProcessListener(this);
     }

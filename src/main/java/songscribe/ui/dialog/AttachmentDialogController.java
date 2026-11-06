@@ -187,7 +187,7 @@ public abstract sealed class AttachmentDialogController<T extends Copyable<T>>
      * @return {@code null} when the selection is not a single element of the active line
      */
     private static @Nullable AttachmentTarget selectionTarget(MainFrame mainFrame) {
-        var scoreView = mainFrame.requireScoreView();
+        var scoreView = mainFrame.getScoreView();
         var activeLineIndex = scoreView.getSelectionCoordinator().getActiveLineIndex();
 
         if (activeLineIndex == null) {

@@ -25,6 +25,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import javax.swing.KeyStroke;
 
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
@@ -43,6 +44,14 @@ import songscribe.ui.component.ScoreViewController;
 
 public final class ToggleNotationAction extends UIAction {
 
+    // Constants, not read off the actions: the score binds the same keystrokes for its
+    // last-insertion commands, and the score is built before the actions exist.
+    public static final KeyStroke BEAM_KEYSTROKE = KeyStroke.getKeyStroke(KeyEvent.VK_B, 0);
+    public static final KeyStroke TIE_KEYSTROKE = KeyStroke.getKeyStroke(KeyEvent.VK_T, 0);
+    public static final KeyStroke GLISSANDO_KEYSTROKE =
+        KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK);
+    public static final KeyStroke FALL_KEYSTROKE = KeyStroke.getKeyStroke(KeyEvent.VK_F, 0);
+
     private final Predicate<? super ScoreViewController> canToggle;
     private final Supplier<? extends Message> commandFactory;
 
@@ -54,8 +63,7 @@ public final class ToggleNotationAction extends UIAction {
             28,
             "toggle-beam",
             Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
-            KeyEvent.VK_B,
-            0,
+            BEAM_KEYSTROKE,
             Flag.REQUIRES_MULTIPLE_SELECTION,
             ScoreViewController::canToggleBeaming,
             ToggleBeamCommand::new,
@@ -76,8 +84,7 @@ public final class ToggleNotationAction extends UIAction {
             20,
             "toggle-tie",
             Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
-            KeyEvent.VK_T,
-            0,
+            TIE_KEYSTROKE,
             Flag.REQUIRES_SELECTION,
             ScoreViewController::canToggleTie,
             ToggleTieCommand::new,
@@ -101,8 +108,7 @@ public final class ToggleNotationAction extends UIAction {
             26,
             "toggle-glissando",
             Strings.get(Strings.ACTION_GLISSANDO_TOGGLE_TOOLTIP),
-            KeyEvent.VK_G,
-            InputEvent.SHIFT_DOWN_MASK,
+            GLISSANDO_KEYSTROKE,
             Flag.REQUIRES_SELECTION,
             ScoreViewController::canToggleGlissando,
             ToggleGlissandoCommand::new,
@@ -125,8 +131,7 @@ public final class ToggleNotationAction extends UIAction {
             26,
             "toggle-fall",
             Strings.get(Strings.ACTION_FALL_TOGGLE_TOOLTIP),
-            KeyEvent.VK_F,
-            0,
+            FALL_KEYSTROKE,
             Flag.REQUIRES_SELECTION,
             ScoreViewController::canToggleFall,
             ToggleFallCommand::new,
@@ -141,8 +146,7 @@ public final class ToggleNotationAction extends UIAction {
         int size,
         String actionCommand,
         String tooltip,
-        int virtualKey,
-        int modifiers,
+        KeyStroke keyStroke,
         Flag selectionSizeFlag,
         Predicate<? super ScoreViewController> canToggle,
         Supplier<? extends Message> commandFactory,
@@ -155,8 +159,8 @@ public final class ToggleNotationAction extends UIAction {
             size,
             actionCommand,
             tooltip,
-            virtualKey,
-            modifiers,
+            keyStroke.getKeyCode(),
+            keyStroke.getModifiers(),
             selectionSizeFlag,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
@@ -180,10 +184,8 @@ public final class ToggleNotationAction extends UIAction {
     }
 
     private void handleChange() {
-        var ctrl = getScoreViewController();
-
-        if (ctrl != null && updateEnabledState()) {
-            setEnabled(canToggle.test(ctrl));
+        if (updateEnabledState()) {
+            setEnabled(canToggle.test(getScoreViewController()));
         }
     }
 

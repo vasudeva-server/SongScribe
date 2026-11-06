@@ -30,6 +30,7 @@ import javax.swing.UIManager;
 
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ModeCycleButton;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.component.StaffAnnotationPopupButton;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 import songscribe.ui.component.ToolbarToggleButton;
@@ -47,7 +48,7 @@ public final class MainToolbarPanel extends JPanel {
 
     private static final String BACKGROUND_KEY = "ToolBar.background";
 
-    public MainToolbarPanel() {
+    public MainToolbarPanel(ScoreViewController controller) {
         setLayout(new BorderLayout());
         // The line below the toolbar belongs to the toolbar, so it runs across the window above
         // both the score and the Messages panel.
@@ -58,7 +59,7 @@ public final class MainToolbarPanel extends JPanel {
         toolsPanel.add(createDotRestToolbarPanel());
         toolsPanel.add(createAccidentalToolbarPanel());
         toolsPanel.add(createArticulationToolbarPanel());
-        toolsPanel.add(createConnectionToolbarPanel());
+        toolsPanel.add(createConnectionToolbarPanel(controller));
         toolsPanel.add(createBarlineToolbarPanel());
         toolsPanel.add(createStaffAnnotationToolbarPanel());
         add(toolsPanel, BorderLayout.WEST);
@@ -130,9 +131,9 @@ public final class MainToolbarPanel extends JPanel {
         return panel;
     }
 
-    private static JPanel createConnectionToolbarPanel() {
+    private static JPanel createConnectionToolbarPanel(ScoreViewController controller) {
         var panel = createToolbarPanel(RIGHT_BORDER);
-        panel.add(new ModifyNoteToolbar());
+        panel.add(new ModifyNoteToolbar(controller));
         return panel;
     }
 
