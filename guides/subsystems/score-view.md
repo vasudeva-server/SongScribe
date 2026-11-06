@@ -11,7 +11,10 @@ Read `ScoreView` first.
 - `LinePanel`
 - `TextPanel`
 - `ScoreComponent`
-- `BaseTitleComponent`
+- `TitleComponent`
+- `TitleKind`
+- `TitleText`
+- `TitlePreview`
 - `LineComponent`
 - `LineOverlayComponent`
 - `OverlayHost`

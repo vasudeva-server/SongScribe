@@ -113,8 +113,7 @@ class LineSelectionHandler {
     }
 
     /**
-     * @return {@code null} when the point landed on nothing clickable or this component has no
-     *         line to test against
+     * @return {@code null} when the point landed on nothing clickable
      */
     @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
         var region = hitRegionAtViewPoint(viewPoint);
@@ -128,31 +127,8 @@ class LineSelectionHandler {
 
     /** Null when {@link #hitTestViewPoint} returns null. */
     @Nullable HitRegion hitRegionAtViewPoint(Point viewPoint) {
-        var registry = readyRegistry();
-
-        if (registry == null) {
-            return null;
-        }
-
+        var registry = lc.requireLayoutResult().getHitRegistry();
         return registry.hitRegion(layoutXSs(viewPoint), layoutYSs(viewPoint));
-    }
-
-    /**
-     * @return {@code null} when this component has no line to hit-test or its layout could not
-     *         be brought up to date
-     */
-    private @Nullable HitRegistry readyRegistry() {
-        if (lc.getLine() == null) {
-            return null;
-        }
-
-        var ready = lc.readyLayout();
-
-        if (ready == null) {
-            return null;
-        }
-
-        return ready.layoutResult().getHitRegistry();
     }
 
     /**
@@ -172,17 +148,11 @@ class LineSelectionHandler {
     }
 
     /**
-     * @return {@code null} when the point is not over a "?" or this component has no line laid out
+     * @return {@code null} when the point is not over a "?"
      */
     @Nullable MissingLyricHit hitTestMissingLyricViewPoint(Point viewPoint) {
-        var ready = lc.readyLayout();
-
-        if (ready == null) {
-            return null;
-        }
-
-        var line = ready.line();
-        var layoutResult = ready.layoutResult();
+        var line = lc.getLine();
+        var layoutResult = lc.requireLayoutResult();
         var report = line.getSong().getLinter().getReport();
         var pointSs = new Point2D.Double(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
@@ -486,12 +456,9 @@ class LineSelectionHandler {
         }
 
         var scoreView = lc.getScoreView();
-        var line = lc.getLine();
 
-        if (e.isShiftDown()
-            && line != null
-            && scoreView.getSelectionCoordinator().getRange() != null) {
-            var elementIndex = LineComponent.elementIndexOf(pressTarget, line);
+        if (e.isShiftDown() && scoreView.getSelectionCoordinator().getRange() != null) {
+            var elementIndex = LineComponent.elementIndexOf(pressTarget, lc.getLine());
 
             if (elementIndex != null) {
                 scoreView.extendSelectionTo(elementIndex);
@@ -513,13 +480,8 @@ class LineSelectionHandler {
     }
 
     boolean isSelectionActive(MouseEvent e) {
-        var scoreView = lc.getScoreView();
-        var line = lc.getLine();
-
-        return line != null &&
-            !MidiController.isPlaying() &&
-            (scoreView.getMode() == Mode.SELECT || e.isAltDown());
-
+        return !MidiController.isPlaying()
+            && (lc.getScoreView().getMode() == Mode.SELECT || e.isAltDown());
     }
 
     private void prepareSelection() {
@@ -587,7 +549,7 @@ class LineSelectionHandler {
     private boolean selectAndPlayElement(StaffElement element) {
         var line = lc.getLine();
 
-        if (line == null || !line.contains(element)) {
+        if (!line.contains(element)) {
             return false;
         }
 
@@ -600,13 +562,7 @@ class LineSelectionHandler {
             return;
         }
 
-        var line = lc.getLine();
-
-        if (line == null) {
-            return;
-        }
-
-        if (line.getElement(elementIndex) instanceof NoteElement note) {
+        if (lc.getLine().getElement(elementIndex) instanceof NoteElement note) {
             new PlayThread(note.getPitch()).start();
         }
     }
@@ -634,18 +590,17 @@ class LineSelectionHandler {
     /**
      * Rebuilt on every ask, since a line's content can change under a live drag.
      *
-     * @return {@code null} when this component has no line, has no layout, or the line holds
-     *         nothing a drag could select
+     * @return {@code null} when this component has no layout, or the line holds nothing a drag
+     *         could select
      */
     private @Nullable SweepRange sweepRange() {
-        var line = lc.getLine();
         var layoutResult = lc.getLayoutResult();
 
-        if (line == null || layoutResult == null) {
+        if (layoutResult == null) {
             return null;
         }
 
-        return SweepRange.of(line, layoutResult);
+        return SweepRange.of(lc.getLine(), layoutResult);
     }
 
     /**

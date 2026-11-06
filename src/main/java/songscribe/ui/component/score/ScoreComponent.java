@@ -43,77 +43,46 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
 /**
- * Abstract base class for score rendering components. A detached component (a dialog preview)
- * still receives events, but each hook reads a null {@code scoreView} and does nothing.
+ * Abstract base class for the components that draw the score view's song.
  */
 public abstract class ScoreComponent extends JComponent {
 
     private final MouseAdapter mouseAdapter = new MouseAdapter() {
         @Override
         public void mouseClicked(MouseEvent e) {
-            var view = scoreView;
-
-            if (view == null || !UIUtils.isLeftClick(e)) {
-                return;
+            if (UIUtils.isLeftClick(e)) {
+                clicked(e);
             }
-
-            clicked(e, view);
         }
 
         @Override
         public void mousePressed(MouseEvent e) {
-            var view = scoreView;
-
-            if (view == null || !UIUtils.isLeftClick(e)) {
-                return;
+            if (UIUtils.isLeftClick(e)) {
+                scoreView.takeFocus();
+                pressed(e);
             }
-
-            view.takeFocus();
-            pressed(e, view);
         }
 
         @Override
         public void mouseReleased(MouseEvent e) {
-            var view = scoreView;
-
-            if (view == null) {
-                return;
-            }
-
-            released(e, view);
+            released(e);
         }
 
         @Override
         public void mouseEntered(MouseEvent e) {
-            var view = scoreView;
-
-            if (view == null) {
-                return;
-            }
-
-            entered(e, view);
+            entered(e);
         }
 
         @Override
         public void mouseExited(MouseEvent e) {
-            var view = scoreView;
-
-            if (view == null) {
-                return;
-            }
-
-            exited(e, view);
+            exited(e);
         }
     };
 
-    @Nullable
-    protected Song song;
-
     /**
-     * {@code null} when this component is detached. Read on demand through
-     * {@link #getViewScale()} so a rebuilt tree never renders at a stale zoom.
+     * Read on demand through {@link #getViewScale()} so a rebuilt tree never renders at a stale
+     * zoom.
      */
-    @Nullable
     protected final ScoreView scoreView;
 
     protected int marginTop = 0;
@@ -124,28 +93,18 @@ public abstract class ScoreComponent extends JComponent {
     /** Null when this component centers on its own width. */
     private @Nullable Float contentXPx = null;
 
-    /**
-     * @param scoreView {@code null} for a detached component
-     */
-    protected ScoreComponent(@Nullable ScoreView scoreView) {
+    protected ScoreComponent(ScoreView scoreView) {
         this.scoreView = scoreView;
         setOpaque(false);
         addMouseListener(mouseAdapter);
     }
 
-    public void setSong(Song song) {
-        this.song = song;
-        revalidate();
-        repaint();
-    }
-
-    /** {@code null} when detached. */
-    public @Nullable ScoreView getScoreView() {
+    public ScoreView getScoreView() {
         return scoreView;
     }
 
     protected ViewScale getViewScale() {
-        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+        return scoreView.getViewScale();
     }
 
     protected ViewPx toViewPx(Ss ss) {
@@ -153,11 +112,7 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     public Song getSong() {
-        if (song == null) {
-            throw RuntimeError.exit("song not initialized");
-        }
-
-        return song;
+        return scoreView.getSong();
     }
 
     public void setMargin(int margin) {
@@ -297,12 +252,10 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     /**
-     * {@code view} is the owning view, so attachment is a precondition carried by the signature.
-     * <p>
      * A double-click arrives as two clicks and the first takes the cancel-and-deselect path, so
      * the selection is cleared before an editor opens.
      */
-    protected void clicked(MouseEvent e, ScoreView view) {
+    protected void clicked(MouseEvent e) {
         // Playback state is read from the playback controller rather than from the
         // sequencer because the action layer's DISABLE_WHEN_PLAYING flag does not reach
         // a mouse handler.
@@ -310,32 +263,26 @@ public abstract class ScoreComponent extends JComponent {
             return;
         }
 
-        view.cancelPlacementAndDeselect();
+        scoreView.cancelPlacementAndDeselect();
+    }
+
+    /** Reached only for a left press, after the score view takes the focus. */
+    protected void pressed(MouseEvent e) {
     }
 
     /**
-     * {@code view} is the owning view, so attachment is a precondition carried by the signature.
+     * Unlike {@link #clicked} and {@link #pressed}, not filtered by button: a release of any
+     * button reaches it.
      */
-    protected void pressed(MouseEvent e, ScoreView view) {
+    protected void released(MouseEvent e) {
     }
 
-    /**
-     * {@code view} as in {@link #pressed}. Unlike {@link #clicked} and {@link #pressed}, not
-     * filtered by button: a release of any button reaches it.
-     */
-    protected void released(MouseEvent e, ScoreView view) {
+    /** Not filtered by button. */
+    protected void entered(MouseEvent e) {
     }
 
-    /**
-     * {@code view} as in {@link #pressed}. Not filtered by button.
-     */
-    protected void entered(MouseEvent e, ScoreView view) {
-    }
-
-    /**
-     * {@code view} as in {@link #pressed}. Not filtered by button.
-     */
-    protected void exited(MouseEvent e, ScoreView view) {
+    /** Not filtered by button. */
+    protected void exited(MouseEvent e) {
     }
 
 }

@@ -52,10 +52,7 @@ public class TranslationComponent extends ScoreComponent {
     }
 
     public double getTextWidth(Graphics2D g2) {
-        if (song == null) {
-            return 0;
-        }
-
+        var song = getSong();
         var translation = song.getTranslatedLyrics();
 
         if (translation.isEmpty()) {
@@ -86,10 +83,7 @@ public class TranslationComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (song == null) {
-            return;
-        }
-
+        var song = getSong();
         var translation = song.getTranslatedLyrics();
 
         if (translation.isEmpty()) {
@@ -137,10 +131,7 @@ public class TranslationComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
+        var song = getSong();
         var translation = song.getTranslatedLyrics();
 
         if (translation.isEmpty()) {

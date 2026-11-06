@@ -28,7 +28,7 @@ import songscribe.binding.ObservableValue;
 import songscribe.binding.Property;
 import songscribe.binding.ValueProperty;
 import songscribe.binding.WritableValue;
-import songscribe.ui.component.score.BaseTitleComponent;
+import songscribe.ui.component.score.TitlePreview;
 
 /**
  * Writable views over the presentation state a dialog computes — the framework's
@@ -70,11 +70,7 @@ public final class Widgets {
         return label::setText;
     }
 
-    /**
-     * The sink never clears a preview: a caller restoring the song's own rendering calls
-     * {@code setPreview(null)} directly.
-     */
-    public static WritableValue<BaseTitleComponent.Preview> preview(BaseTitleComponent component) {
-        return component::setPreview;
+    public static WritableValue<TitlePreview.Content> preview(TitlePreview preview) {
+        return preview::setContent;
     }
 }

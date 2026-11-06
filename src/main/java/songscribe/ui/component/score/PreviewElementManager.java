@@ -371,7 +371,7 @@ public final class PreviewElementManager {
         // highlight.
         var line = current.line().getLine();
 
-        if (line != null && !line.canReplaceElementAt(current.insertionIndex(), previewElement.getType())) {
+        if (!line.canReplaceElementAt(current.insertionIndex(), previewElement.getType())) {
             return null;
         }
 
@@ -431,7 +431,7 @@ public final class PreviewElementManager {
         var layoutResult = lc.getLayoutResult();
         var line = lc.getLine();
 
-        if (layoutResult == null || line == null) {
+        if (layoutResult == null) {
             // Layout is being recalculated (e.g., mid-drag). A stale hover is no hover: drop it
             // so that the next repaint does not show a highlight on the wrong element.
             hover = null;

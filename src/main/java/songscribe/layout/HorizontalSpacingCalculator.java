@@ -105,14 +105,7 @@ public final class HorizontalSpacingCalculator {
             + StaffHeaderMetrics.CLEF_GAP_SS;
     }
 
-    /**
-     * @param line a null line has no key signature
-     */
-    public static double calculateHeaderRightEdgeSs(@Nullable Line line) {
-        if (line == null) {
-            return calculateHeaderRightEdgeSs(Key.NO_ACCIDENTALS);
-        }
-
+    public static double calculateHeaderRightEdgeSs(Line line) {
         return calculateHeaderRightEdgeSs(line.getRunningKey());
     }
 
@@ -129,10 +122,8 @@ public final class HorizontalSpacingCalculator {
     /**
      * A point exactly on the header's right edge counts as inside, so this agrees with the
      * staff-line hit region.
-     *
-     * @param line a null line has no key signature
      */
-    public static boolean isWithinHeaderXSs(double xSs, @Nullable Line line) {
+    public static boolean isWithinHeaderXSs(double xSs, Line line) {
         return xSs <= calculateHeaderRightEdgeSs(line);
     }
 

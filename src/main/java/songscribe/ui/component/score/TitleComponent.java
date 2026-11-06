@@ -20,34 +20,57 @@
 
 package songscribe.ui.component.score;
 
-import org.jspecify.annotations.Nullable;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
 
-import songscribe.dom.SongMetadata;
+import songscribe.ui.action.Actions;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
- * Component that renders the song title, wrapping to at most
- * {@link SongMetadata#MAX_TITLE_LINES} lines.
+ * Draws the song's title or subtitle on the score, sized as {@link TitleText} does.
+ * <p>
+ * An empty title or subtitle therefore has no hit area, and a double-click where it would sit does
+ * nothing; that is deliberate, because a placeholder target would put an invisible click-swallowing
+ * strip above every score.
  */
-public class TitleComponent extends BaseTitleComponent {
+public final class TitleComponent extends ScoreComponent {
 
-    public TitleComponent(@Nullable ScoreView scoreView) {
+    private final TitleKind kind;
+
+    private final TitleText titleText;
+
+    public TitleComponent(ScoreView scoreView, TitleKind kind) {
         super(scoreView);
+        this.kind = kind;
+        titleText = new TitleText(kind);
+    }
+
+    /**
+     * No hit testing: the component is exactly as wide as its text, so a click that reached it
+     * is a click on the title.
+     * <p>
+     * {@code SONG_SETTINGS_ACTION} is deliberately not null-guarded, so a startup-ordering
+     * regression fails loudly instead of becoming a gesture that silently does nothing. The
+     * playback condition is applied by {@link ScoreComponent} before this method is reached.
+     */
+    @Override
+    protected boolean openEditor() {
+        Actions.SONG_SETTINGS_ACTION.openAt(kind.editorSection());
+        return true;
+    }
+
+    private TitleText.Block block() {
+        var song = getSong();
+        return new TitleText.Block(kind.songText(song), song.getLineWidthSs(), getFont(), getViewScale());
     }
 
     @Override
-    protected String songText() {
-        return getSong().getNumberedTitle();
+    protected void render(Graphics2D g2) {
+        titleText.draw(g2, block(), getWidth());
     }
 
     @Override
-    protected int maxRenderedLines() {
-        return SongMetadata.MAX_TITLE_LINES;
-    }
-
-    @Override
-    protected SongSettingsDialog.Section editorSection() {
-        return SongSettingsDialog.Section.TITLE;
+    public Dimension getPreferredSize() {
+        return titleText.preferredSize(block());
     }
 }

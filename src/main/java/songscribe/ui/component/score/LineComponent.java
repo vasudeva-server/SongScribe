@@ -36,6 +36,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
@@ -97,10 +98,9 @@ public class LineComponent extends ScoreComponent
         boolean isElementRangeSelected(int elementIndex, int lineIndex);
     }
 
-    @Nullable
-    private Line line;
+    private final Line line;
 
-    private int lineIndex;
+    private final int lineIndex;
 
     private double middleLineYSs;
 
@@ -156,8 +156,15 @@ public class LineComponent extends ScoreComponent
      */
     private @Nullable PointerMark pointerMark = null;
 
-    public LineComponent(ScoreView scoreView) {
+    public LineComponent(ScoreView scoreView, Line line, int lineIndex) {
         super(scoreView);
+        this.line = line;
+        this.lineIndex = lineIndex;
+        setName(ComponentNames.line(lineIndex));
+
+        // The selection itself is the coordinator's and is untouched by a rebuild — all that
+        // is registered here is which line this index now holds.
+        scoreView.getSelectionCoordinator().registerLine(lineIndex, line);
 
         // This listener must be added before the tooltip manager registers below, and the order
         // must stay: Swing calls motion listeners in the order they were added, so mouseMoved
@@ -170,24 +177,17 @@ public class LineComponent extends ScoreComponent
         ToolTipManager.sharedInstance().registerComponent(this);
     }
 
-    public void setLine(Line line, int lineIndex) {
-        this.line = line;
-        this.lineIndex = lineIndex;
-        setName(ComponentNames.line(lineIndex));
-        layoutDirty = true;
-        layoutResult = null;
-        middleLineYSsValid = false;
-
-        // The selection itself is the coordinator's and is untouched by this rebuild — all that
-        // is registered here is which line this index now holds.
-        getScoreView().getSelectionCoordinator().registerLine(lineIndex, line);
-
-        revalidate();
-        repaint();
+    public Line getLine() {
+        return line;
     }
 
-    public @Nullable Line getLine() {
-        return line;
+    /**
+     * The song of this component's line. During a song change it can differ from the score
+     * view's song until the staff is rebuilt, and a line must draw with its own song.
+     */
+    @Override
+    public Song getSong() {
+        return line.getSong();
     }
 
     public int getLineIndex() {
@@ -199,7 +199,7 @@ public class LineComponent extends ScoreComponent
     }
 
     public double getMiddleLineYSs() {
-        if (!middleLineYSsValid && song != null) {
+        if (!middleLineYSsValid) {
             middleLineYSs = calculateMiddleLineYSs();
             middleLineYSsValid = true;
         }
@@ -253,7 +253,7 @@ public class LineComponent extends ScoreComponent
     }
 
     public void ensureLayout() {
-        if (song != null && line != null && needsLayout()) {
+        if (needsLayout()) {
             performLayout();
         }
     }
@@ -279,14 +279,9 @@ public class LineComponent extends ScoreComponent
     }
 
     private void performLayout() {
-        if (song == null || line == null) {
-            return;
-        }
-
-        var staffRightMarginSs = song.getLineWidthSs().value();
-        var view = getScoreView();
-        var lyricRenderMetrics = view.getLyricRenderMetrics();
-        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, view);
+        var staffRightMarginSs = getSong().getLineWidthSs().value();
+        var lyricRenderMetrics = scoreView.getLyricRenderMetrics();
+        var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, scoreView);
         var result = layoutEngine.layout(line, hasLeadingLyricContinuation, TempoMark.STACKED);
 
         layoutResult = result;
@@ -318,10 +313,6 @@ public class LineComponent extends ScoreComponent
 
     @Override
     protected void render(Graphics2D g2) {
-        if (song == null || line == null) {
-            return;
-        }
-
         if (needsLayout()) {
             performLayout();
         }
@@ -367,10 +358,6 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public Dimension getPreferredSize() {
-        if (song == null || line == null) {
-            return new Dimension(0, 0);
-        }
-
         if (needsLayout()) {
             performLayout();
         }
@@ -378,9 +365,6 @@ public class LineComponent extends ScoreComponent
         var result = layoutResult;
 
         if (result == null) {
-            // Layout always produces a result, so a null one means the pass never ran — it
-            // returns early without a score view. The throw also guards the @Nullable
-            // getScoreView() dereference below.
             throw unexpectedNullLayout();
         }
 
@@ -397,7 +381,7 @@ public class LineComponent extends ScoreComponent
         var heightSs = result.paintLineHeightSs();
 
         return new Dimension(
-            toViewPx(song.getLineWidthSs()).sizePx(),
+            toViewPx(getSong().getLineWidthSs()).sizePx(),
             toViewPx(heightSs).sizePx());
     }
 
@@ -501,7 +485,7 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    protected void clicked(MouseEvent e, ScoreView view) {
+    protected void clicked(MouseEvent e) {
         // Grace mode handles its own click logic. Returns true to consume the event.
         if (getGraceModeManager().mouseClicked(this, e)) {
             return;
@@ -547,13 +531,11 @@ public class LineComponent extends ScoreComponent
             // Consumed either way: the press already selected the lyric, or mouseMoved hid the
             // preview over the "?", and nothing below this should insert an element or
             // re-resolve the click to a note.
-            if (UIUtils.isLeftDoubleClick(e)
-                && line != null
-                && view.getActiveLyricEditor() == null) {
+            if (UIUtils.isLeftDoubleClick(e) && scoreView.getActiveLyricEditor() == null) {
                 var element = lyricHit != null ? editableLyricElement(lyricHit) : missingLyricElement;
 
                 if (element != null) {
-                    LyricEditor.deselectAndOpenOn(view, line, line.getElementIndex(element));
+                    LyricEditor.deselectAndOpenOn(scoreView, line, line.getElementIndex(element));
                 }
             }
 
@@ -561,8 +543,7 @@ public class LineComponent extends ScoreComponent
         }
 
         // All four double-click-to-edit gestures ask about the same point, so they share the
-        // cascade result above. Pinning line to a local here is what lets the three that act on
-        // notation take it as a plain non-null argument.
+        // cascade result above.
         //
         // No modifier gates this: a double-click always means "edit this," regardless of
         // which keys happen to be down, so shift+double-click on a selectable element opens
@@ -573,23 +554,21 @@ public class LineComponent extends ScoreComponent
         // already switched permanently to SELECT, which Alt does anywhere and a plain click does
         // on the staff lines in the clef/key signature column — and it additionally rules out
         // playback. The attribution runs outside it on purpose; see its own method.
-        var clickedLine = line;
-
-        if (UIUtils.isLeftDoubleClick(e) && clickedLine != null) {
+        if (UIUtils.isLeftDoubleClick(e)) {
             if (editDoubleClickedAttribution(clickHit)) {
                 return;
             }
 
             if (selectionHandler.isSelectionActive(e)) {
-                if (!e.isShiftDown() && editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
+                if (!e.isShiftDown() && editLyricOnDoubleClickedElement(clickHit)) {
                     return;
                 }
 
-                if (editDoubleClickedAttachment(clickHit, clickedLine)) {
+                if (editDoubleClickedAttachment(clickHit)) {
                     return;
                 }
 
-                if (editDoubleClickedKeyChange(e, clickedLine)) {
+                if (editDoubleClickedKeyChange(e)) {
                     return;
                 }
             }
@@ -630,10 +609,8 @@ public class LineComponent extends ScoreComponent
         return null;
     }
 
-    private boolean editLyricOnDoubleClickedElement(@Nullable HitTarget clickHit, Line line) {
-        var view = getScoreView();
-
-        if (view.getActiveLyricEditor() != null) {
+    private boolean editLyricOnDoubleClickedElement(@Nullable HitTarget clickHit) {
+        if (scoreView.getActiveLyricEditor() != null) {
             return false;
         }
 
@@ -651,7 +628,7 @@ public class LineComponent extends ScoreComponent
             return false;
         }
 
-        LyricEditor.deselectAndOpenOn(view, line, targetIndex);
+        LyricEditor.deselectAndOpenOn(scoreView, line, targetIndex);
         return true;
     }
 
@@ -678,7 +655,7 @@ public class LineComponent extends ScoreComponent
      * A lyric editor open elsewhere on the line must not block editing an attachment. Answering
      * false is safe: {@code handleClick} consumes every click while selection is active.
      */
-    private boolean editDoubleClickedAttachment(@Nullable HitTarget clickHit, Line line) {
+    private boolean editDoubleClickedAttachment(@Nullable HitTarget clickHit) {
         if (!(clickHit instanceof HitTarget.Attachment(var attachment))) {
             return false;
         }
@@ -691,14 +668,8 @@ public class LineComponent extends ScoreComponent
      * the change it renders. Answering false is safe for the reason
      * {@link #editDoubleClickedAttachment} gives.
      */
-    private boolean editDoubleClickedKeyChange(MouseEvent e, Line line) {
-        var ready = readyLayout();
-
-        if (ready == null) {
-            return false;
-        }
-
-        var layoutResult = ready.layoutResult();
+    private boolean editDoubleClickedKeyChange(MouseEvent e) {
+        var layoutResult = requireLayoutResult();
         var mouseXSs = selectionHandler.layoutXSs(e.getPoint());
         var mainFrame = MainFrame.getInstance();
         var headerTarget = layoutResult.hitTestHeaderKeyEdit(mouseXSs, line);
@@ -726,7 +697,7 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    protected void pressed(MouseEvent e, ScoreView view) {
+    protected void pressed(MouseEvent e) {
         if (getGraceModeManager().mousePressed(this, e)) {
             return;
         }
@@ -769,7 +740,7 @@ public class LineComponent extends ScoreComponent
         // the press dispatch, all below.
         var pressHit = selectionHandler.hitTestViewPoint(e.getPoint());
 
-        if (view.getMode() == Mode.EDIT
+        if (scoreView.getMode() == Mode.EDIT
             && (e.isAltDown() || pressHit instanceof HitTarget.StaffLine)) {
             Actions.SELECT_MODE_ACTION.perform(this);
         }
@@ -778,7 +749,7 @@ public class LineComponent extends ScoreComponent
         // is. The mode is re-checked because an alt+click or a staff-line hit above may have just
         // switched us to SELECT, where the selection handler below handles lyrics along with
         // everything else.
-        if (view.getMode() == Mode.EDIT
+        if (scoreView.getMode() == Mode.EDIT
             && selectionHandler.handleEditModePress(pressHit)) {
             return;
         }
@@ -796,7 +767,7 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    protected void released(MouseEvent e, ScoreView view) {
+    protected void released(MouseEvent e) {
         // Capture before handleRelease() clears it. Refreshed on every release, so
         // clicked can never read a value left over from an earlier press.
         pressHitIndex = noteDragHandler.getDragElementIndex();
@@ -814,12 +785,12 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    protected void entered(MouseEvent e, ScoreView view) {
+    protected void entered(MouseEvent e) {
         PreviewElementManager.mouseEnteredLine(this);
     }
 
     @Override
-    protected void exited(MouseEvent e, ScoreView view) {
+    protected void exited(MouseEvent e) {
         pointerMark = null;
         getInsertionPointMode().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
@@ -847,21 +818,11 @@ public class LineComponent extends ScoreComponent
      * @param region       {@code null} when a click there gets none
      * @param missingLyric {@code null} when the point is on no "?"
      */
-    private record PointerHit(@Nullable HitRegion region, LineSelectionHandler.@Nullable MissingLyricHit missingLyric) {
-
-        static final PointerHit NONE = new PointerHit(null, null);
-    }
+    private record PointerHit(@Nullable HitRegion region, LineSelectionHandler.@Nullable MissingLyricHit missingLyric) {}
 
     private PointerHit lookUpPointer(Point viewPoint) {
-        var ready = readyLayout();
-
-        if (ready == null) {
-            pointerMark = null;
-            return PointerHit.NONE;
-        }
-
-        var report = ready.line().getSong().getLinter().getReport();
-        var layout = ready.layoutResult();
+        var report = getSong().getLinter().getReport();
+        var layout = requireLayoutResult();
         var region = selectionHandler.hitRegionAtViewPoint(viewPoint);
         var missingLyric = selectionHandler.hitTestMissingLyricViewPoint(viewPoint);
         var hit = selectionHandler.lintMarkAt(region, missingLyric, report, layout);
@@ -878,17 +839,16 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * @return {@code null} when the point is on no mark or this component has no line laid out
+     * @return {@code null} when the point is on no mark
      */
     private LineSelectionHandler.@Nullable LintMarkHit lintMarkAtPointer(Point viewPoint) {
         var stored = pointerMark;
-        var ready = readyLayout();
+        var layout = requireLayoutResult();
 
         if (stored != null
-            && ready != null
             && stored.viewPoint().equals(viewPoint)
-            && stored.report() == ready.line().getSong().getLinter().getReport()
-            && stored.layoutResult() == ready.layoutResult()
+            && stored.report() == getSong().getLinter().getReport()
+            && stored.layoutResult() == layout
             && stored.viewScale() == getViewScale()) {
             return stored.hit();
         }
@@ -929,31 +889,13 @@ public class LineComponent extends ScoreComponent
     }
 
     private String lintToolTipText(LintMark mark) {
-        var lineModel = getLine();
-
-        if (lineModel == null) {
-            throw RuntimeError.exit("lint tooltip requested for a line component with no line");
-        }
-
         var sections = new ArrayList<ToolTipSection>();
 
-        for (var finding : lineModel.getSong().getLinter().getReport().findingsAt(mark)) {
+        for (var finding : getSong().getLinter().getReport().findingsAt(mark)) {
             sections.add(new ToolTipSection(finding.heading().text(), null, finding.description()));
         }
 
         return UIUtils.toolTipHtml(sections);
-    }
-
-    /** A line component is never detached. */
-    @Override
-    public ScoreView getScoreView() {
-        // The constructor takes a non-null view; the inherited field is nullable only for
-        // detached title previews.
-        if (scoreView == null) {
-            throw RuntimeError.exit("LineComponent constructed without a ScoreView");
-        }
-
-        return scoreView;
     }
 
     /**
@@ -1031,22 +973,6 @@ public class LineComponent extends ScoreComponent
         }
 
         return lineRenderer.buildInvariants();
-    }
-
-    record ReadyLayout(Line line, LayoutResult layoutResult) {}
-
-    @Nullable ReadyLayout readyLayout() {
-        if (line == null) {
-            return null;
-        }
-
-        ensureLayout();
-
-        if (layoutResult == null) {
-            return null;
-        }
-
-        return new ReadyLayout(line, layoutResult);
     }
 
     public boolean isDraggingSelection() {

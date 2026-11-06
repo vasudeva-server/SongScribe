@@ -43,10 +43,6 @@ public abstract class LyricsComponent extends ScoreComponent {
     protected abstract Font getLyricsFont();
 
     public double getTextWidth(Graphics2D g2) {
-        if (song == null) {
-            return 0;
-        }
-
         var lyrics = getLyrics();
 
         if (lyrics.isEmpty()) {
@@ -61,10 +57,6 @@ public abstract class LyricsComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (song == null) {
-            return;
-        }
-
         var lyrics = getLyrics();
 
         if (lyrics.isEmpty()) {
@@ -97,10 +89,6 @@ public abstract class LyricsComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
         var lyrics = getLyrics();
 
         if (lyrics.isEmpty()) {
@@ -115,6 +103,6 @@ public abstract class LyricsComponent extends ScoreComponent {
         var height = lineHeight * lines.length;
 
         return new Dimension(
-            toViewPx(song.getLineWidthSs()).sizePx(), height + getMarginTop());
+            toViewPx(getSong().getLineWidthSs()).sizePx(), height + getMarginTop());
     }
 }

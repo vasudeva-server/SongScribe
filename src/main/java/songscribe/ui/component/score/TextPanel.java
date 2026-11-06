@@ -45,9 +45,6 @@ public class TextPanel extends JPanel {
 
     private final TranslationComponent translationComponent;
 
-    @Nullable
-    private Song song;
-
     private final ScoreView scoreView;
 
     public TextPanel(ScoreView scoreView) {
@@ -69,25 +66,15 @@ public class TextPanel extends JPanel {
         add(translationComponent);
     }
 
-    public void setSong(Song song) {
-        this.song = song;
-        underLyricsComponent.setSong(song);
-        banglaLyricsComponent.setSong(song);
-        translationComponent.setSong(song);
-        revalidate();
-        repaint();
-    }
-
-    private ViewScale viewScale() {
-        return scoreView.getViewScale();
-    }
-
-    public Song getSong() {
-        if (song == null) {
-            throw RuntimeError.exit("song not initialized");
-        }
-
-        return song;
+    /**
+     * Call after the score view installs a new song.
+     *
+     * @effects every child measures the new song at the next layout
+     */
+    void songDidChange() {
+        underLyricsComponent.invalidate();
+        banglaLyricsComponent.invalidate();
+        translationComponent.invalidate();
     }
 
     public UnderLyricsComponent getUnderLyricsComponent() {
@@ -104,25 +91,23 @@ public class TextPanel extends JPanel {
 
     @Override
     protected void paintComponent(Graphics g) {
-        if (song != null) {
-            var g2 = (Graphics2D) g;
-            var unionWidth = calculateUnionWidth(g2);
+        var g2 = (Graphics2D) g;
+        var unionWidth = calculateUnionWidth(g2);
 
-            if (unionWidth > 0) {
-                // The union width is measured with zoom-scaled fonts, so center against
-                // the view-scaled (zoomed) line width.
-                // A centering bound, not a size: rounding it to a whole pixel would throw away
-                // half a pixel of centering, and setContentX takes a float anyway.
-                var lineWidthPx = viewScale().toViewPx(song.getLineWidthSs()).value();
-                var contentX = (float) ((lineWidthPx - unionWidth) / 2);
-                underLyricsComponent.setContentX(contentX);
-                banglaLyricsComponent.setContentX(contentX);
-                translationComponent.setContentX(contentX);
-            } else {
-                underLyricsComponent.setContentX(null);
-                banglaLyricsComponent.setContentX(null);
-                translationComponent.setContentX(null);
-            }
+        if (unionWidth > 0) {
+            // The union width is measured with zoom-scaled fonts, so center against
+            // the view-scaled (zoomed) line width.
+            // A centering bound, not a size: rounding it to a whole pixel would throw away
+            // half a pixel of centering, and setContentX takes a float anyway.
+            var lineWidthPx = scoreView.getViewScale().toViewPx(scoreView.getSong().getLineWidthSs()).value();
+            var contentX = (float) ((lineWidthPx - unionWidth) / 2);
+            underLyricsComponent.setContentX(contentX);
+            banglaLyricsComponent.setContentX(contentX);
+            translationComponent.setContentX(contentX);
+        } else {
+            underLyricsComponent.setContentX(null);
+            banglaLyricsComponent.setContentX(null);
+            translationComponent.setContentX(null);
         }
 
         super.paintComponent(g);
@@ -140,10 +125,6 @@ public class TextPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
         var underLyricsSize = underLyricsComponent.getPreferredSize();
         var banglaLyricsSize = banglaLyricsComponent.getPreferredSize();
         var translationSize = translationComponent.getPreferredSize();

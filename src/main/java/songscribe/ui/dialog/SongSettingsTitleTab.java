@@ -55,9 +55,8 @@ import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonBlankTextArea;
 import songscribe.ui.component.NumericRange;
 import songscribe.ui.component.NumericTextField;
-import songscribe.ui.component.score.BaseTitleComponent;
-import songscribe.ui.component.score.SubtitleComponent;
-import songscribe.ui.component.score.TitleComponent;
+import songscribe.ui.component.score.TitleKind;
+import songscribe.ui.component.score.TitlePreview;
 import songscribe.util.UIUtils;
 
 final class SongSettingsTitleTab extends BaseDialog.Tab {
@@ -93,13 +92,13 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
 
     private final JButton takeButton = new JButton(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE));
-    private final TitleComponent titlePreview = new TitleComponent(null);
+    private final TitlePreview titlePreview = new TitlePreview(TitleKind.TITLE);
 
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> subtitle =
         Controls.text(subtitleField, Timing.WHILE_TYPING, SongMetadata::normalizeSubtitle);
     private final FontSettingRow.DescriptionLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
-    private final SubtitleComponent subtitlePreview = new SubtitleComponent(null);
+    private final TitlePreview subtitlePreview = new TitlePreview(TitleKind.SUBTITLE);
 
     // The page-colored rows the two previews sit in. Fields rather than locals in
     // initContents because their width is bound to the wrap width in the constructor,
@@ -149,21 +148,19 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // only once focus leaves.
         requireValid(bindings().computed(() -> !title.get().isBlank()));
 
-        // Previews show the chosen font at its natural size: they are never given a
-        // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom). Each
-        // preview sizes itself to its text and is centered in a PreviewRow, which
-        // carries the page colour and is one score line wide.
+        // Each preview sizes itself to its text and is centered in a PreviewRow, which carries
+        // the page colour and is one score line wide.
 
         // Both previews normalize the field text themselves rather than reading what the
         // property answers: the property normalizes on focus loss, so a preview reading it
         // raw would show straight quotes while the user types where the score renders curly
         // ones.
         var dialogBindings = bindings();
-        dialogBindings.bind(Widgets.preview(titlePreview), dialogBindings.computed(() -> new BaseTitleComponent.Preview(
+        dialogBindings.bind(Widgets.preview(titlePreview), dialogBindings.computed(() -> new TitlePreview.Content(
             Song.numberedTitle(number.get(), SongMetadata.normalizeTitle(title.get())),
             wrapWidthSs.get()
         )));
-        dialogBindings.bind(Widgets.preview(subtitlePreview), dialogBindings.computed(() -> new BaseTitleComponent.Preview(
+        dialogBindings.bind(Widgets.preview(subtitlePreview), dialogBindings.computed(() -> new TitlePreview.Content(
             normalizedSubtitle(),
             wrapWidthSs.get()
         )));

@@ -134,7 +134,7 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
         var layoutResult = line.getLayoutResult();
         var hover = PreviewElementManager.hover();
 
-        if (musicLine == null || layoutResult == null || hover == null) {
+        if (layoutResult == null || hover == null) {
             return 0;
         }
 

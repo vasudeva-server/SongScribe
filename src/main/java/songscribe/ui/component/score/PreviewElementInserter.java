@@ -72,7 +72,7 @@ final class PreviewElementInserter {
         var hover = PreviewElementManager.hover();
         var previewElement = EditModeManager.getPreviewElement();
 
-        if (line == null || hover == null || previewElement == null) {
+        if (hover == null || previewElement == null) {
             return null;
         }
 

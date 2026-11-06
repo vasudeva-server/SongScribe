@@ -38,7 +38,7 @@ That ordering shrinks the work here rather than adding to it:
 ### Layout and rendering
 - `ScoreView` (inside `JScrollPane` → `ScorePanel`) is a single white `JComponent` sized to one page width whose height grows without bound: `getPreferredSize()` derives `max(pageHeightPx, contentHeight + margins)` on every ask, from `MainPanel`'s preferred height. Margins are an `EmptyBorder` set in `layoutPage`.
   
-- `MainPanel` (`BoxLayout.Y_AXIS`, `MainPanel.java:92`) stacks `TitleComponent` → `SubtitleComponent` → `ScoreMarginStrut` (`SCORE_MARGIN_TOP_SS = 1.5`) → `StaffPanel` → `TextPanel` → `FootnotesComponent`. `MainPanel.getPreferredSize()` (lines 276-303) manually sums child heights. No page-break concept exists anywhere.
+- `MainPanel` (`BoxLayout.Y_AXIS`, `MainPanel.java:92`) stacks `TitleComponent` (title) → `TitleComponent` (subtitle) → `ScoreMarginStrut` (`SCORE_MARGIN_TOP_SS = 1.5`) → `StaffPanel` → `TextPanel` → `FootnotesComponent`. `MainPanel.getPreferredSize()` (lines 276-303) manually sums child heights. No page-break concept exists anywhere.
   
 - `StaffPanel` uses the custom `StaffLinesLayout` and holds `List<LinePanel> linePanels` (`StaffPanel.java:52`). `rebuildLayout()` (lines 116-139) does `removeAll()` + `linePanels.clear()` and constructs a fresh `LinePanel` per line — there is no incremental add/remove.
   
@@ -104,7 +104,7 @@ Callers map indices back to components. No Swing type crosses this boundary — 
 ```
   index  kind              source
   ─────  ────────────────  ────────────────────────────────
-   0     PAGE_ONE_ONLY     TitleComponent + SubtitleComponent (one block)
+   0     PAGE_ONE_ONLY     the title and subtitle TitleComponents (one block)
    1     NORMAL            ScoreMarginStrut (SCORE_MARGIN_TOP_SS)
    2..n  NORMAL            one per LinePanel — never split
    n+1   NORMAL            TextPanel (under-lyrics/Bangla/translation), atomic
@@ -181,7 +181,7 @@ One component keeps the ordered `LinePanel` list and runs the full-song measurem
       └ ScoreView (white, 1 sheet)        ├ PageComponent 1 (white)
          └ MainPanel [BoxLayout]          │   ├ content children
             ├ TitleComponent              │   └ LineOverlayComponent(s)
-            ├ SubtitleComponent           ├ ── gap ──
+            ├ TitleComponent (sub)        ├ ── gap ──
             ├ ScoreMarginStrut            ├ PageComponent 2 (white)
             ├ StaffPanel                  │   └ …
             │  └ LinePanel×N              ├ ── gap ──

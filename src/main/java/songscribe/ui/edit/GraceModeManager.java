@@ -249,11 +249,6 @@ public final class GraceModeManager {
         }
 
         var line = lineComponent.getLine();
-
-        if (line == null) {
-            return false;
-        }
-
         var hover = PreviewElementManager.hover();
 
         if (hover == null) {
@@ -410,12 +405,6 @@ public final class GraceModeManager {
         selectionCoordinator.getActionReflector().saveActionStates();
 
         var line = lineComponent.getLine();
-
-        if (line == null) {
-            abort();
-            return;
-        }
-
         var accepted = PreviewElementManager.acceptForGraceMode(lineComponent);
 
         if (accepted == null) {

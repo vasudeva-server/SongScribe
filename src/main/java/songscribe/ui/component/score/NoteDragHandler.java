@@ -111,11 +111,6 @@ class NoteDragHandler {
         dragMoved = false;
 
         var line = lc.getLine();
-
-        if (line == null) {
-            return false;
-        }
-
         var hitIndex = LineComponent.elementIndexOf(hitTarget, line);
 
         if (hitIndex == null) {

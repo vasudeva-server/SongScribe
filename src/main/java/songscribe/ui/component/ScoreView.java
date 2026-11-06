@@ -762,7 +762,7 @@ public final class ScoreView
         PlaybackController.stop();
         selectionCoordinator.clearSelection();
 
-        mainPanel.setSong(song);
+        mainPanel.songDidChange();
         retargetOverlays();
 
         syncPlaybackPrefs();

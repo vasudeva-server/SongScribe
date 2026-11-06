@@ -248,9 +248,7 @@ class LineRenderer {
             return color;
         }
 
-        var line = lc.getLine();
-
-        if (line != null && lc.isPendingCancelElement(line.getElement(elementIndex))) {
+        if (lc.isPendingCancelElement(lc.getLine().getElement(elementIndex))) {
             return Color.RED;
         }
 
@@ -366,11 +364,6 @@ class LineRenderer {
         var annotationRenderer = AnnotationRenderer.getInstance();
         var lyricTextRenderer = LyricTextRenderer.getInstance();
         var line = lc.getLine();
-
-        if (line == null) {
-            return;
-        }
-
         var layoutResult = invariants.getLayoutResult();
         var decorationLayouts = layoutResult.decorationLayouts();
 

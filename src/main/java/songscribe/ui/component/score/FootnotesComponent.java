@@ -49,11 +49,7 @@ public class FootnotesComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (song == null) {
-            return;
-        }
-
-        var footnotes = song.getFootnotes();
+        var footnotes = getSong().getFootnotes();
 
         if (footnotes.isEmpty()) {
             return;
@@ -89,15 +85,11 @@ public class FootnotesComponent extends ScoreComponent {
      * centering, so the result is never negative.
      */
     private float calculateRenderX(double textWidth) {
-        if (song == null) {
-            return 0;
-        }
-
         // The text width is measured with a zoom-scaled font, so center against the
         // view-scaled (zoomed) line width.
         // A centering bound, not a size: rounding it to a whole pixel would throw away
         // half a pixel of centering, and drawString takes a float anyway.
-        var lineWidthPx = toViewPx(song.getLineWidthSs()).value();
+        var lineWidthPx = toViewPx(getSong().getLineWidthSs()).value();
         var maxWidth = lineWidthPx * MAX_WIDTH_PERCENTAGE;
         var actualWidth = Math.min(textWidth, maxWidth);
         return (float) ((lineWidthPx - actualWidth) / 2);
@@ -105,10 +97,7 @@ public class FootnotesComponent extends ScoreComponent {
 
     @Override
     public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
+        var song = getSong();
         var footnotes = song.getFootnotes();
 
         if (footnotes.isEmpty()) {

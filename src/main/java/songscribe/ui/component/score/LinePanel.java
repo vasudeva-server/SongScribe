@@ -39,21 +39,14 @@ public class LinePanel extends JPanel {
 
     private final int lineIndex;
 
-    public LinePanel(
-        ScoreView scoreView,
-        Song song,
-        Line line,
-        int lineIndex
-    ) {
+    public LinePanel(ScoreView scoreView, Line line, int lineIndex) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
         this.line = line;
         this.lineIndex = lineIndex;
 
-        lineComponent = new LineComponent(scoreView);
-        lineComponent.setSong(song);
-        lineComponent.setLine(line, lineIndex);
+        lineComponent = new LineComponent(scoreView, line, lineIndex);
         lineComponent.setAlignmentX(LEFT_ALIGNMENT);
 
         add(lineComponent);
@@ -69,10 +62,6 @@ public class LinePanel extends JPanel {
 
     public int getLineIndex() {
         return lineIndex;
-    }
-
-    public void setSong(Song song) {
-        lineComponent.setSong(song);
     }
 
     public void setMiddleLineYSs(double middleLineYSs) {

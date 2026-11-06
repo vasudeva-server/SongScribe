@@ -66,8 +66,7 @@ public final class GraceGlissandoPreviewOverlay extends RecordedInkOverlay {
         // condition but builds a full LineInvariants otherwise, which is wasted whenever the
         // recorded ink is still current. The preview a grace note awaits is its host note, so a
         // preview element of any other class means there is nothing to connect to.
-        if (domLine == null
-            || !(line.getPreviewElement() instanceof NoteElement previewElement)
+        if (!(line.getPreviewElement() instanceof NoteElement previewElement)
             || line.getLayoutResult() == null) {
             return null;
         }

@@ -45,16 +45,13 @@ public class MainPanel extends JPanel {
 
     private final TitleComponent titleComponent;
 
-    private final SubtitleComponent subtitleComponent;
+    private final TitleComponent subtitleComponent;
 
     private final StaffPanel staffPanel;
 
     private final TextPanel textPanel;
 
     private final FootnotesComponent footnotesComponent;
-
-    @Nullable
-    private Song song;
 
     private final ScoreView scoreView;
 
@@ -67,10 +64,10 @@ public class MainPanel extends JPanel {
         // BoxLayout aligns children relative to each other, so a single centered child
         // among left-aligned siblings would be misaligned rather than centered — every
         // child in this stack shares the same alignment.
-        titleComponent = new TitleComponent(scoreView);
+        titleComponent = new TitleComponent(scoreView, TitleKind.TITLE);
         titleComponent.setAlignmentX(CENTER_ALIGNMENT);
 
-        subtitleComponent = new SubtitleComponent(scoreView);
+        subtitleComponent = new TitleComponent(scoreView, TitleKind.SUBTITLE);
         subtitleComponent.setAlignmentX(CENTER_ALIGNMENT);
 
         staffPanel = new StaffPanel(scoreView);
@@ -119,30 +116,27 @@ public class MainPanel extends JPanel {
         }
     }
 
-    public void setSong(Song song) {
-        this.song = song;
-        titleComponent.setSong(song);
-        subtitleComponent.setSong(song);
-        staffPanel.setSong(song);
-        textPanel.setSong(song);
-        footnotesComponent.setSong(song);
+    /**
+     * Call after the score view installs a new song.
+     *
+     * @effects every line panel is rebuilt from the new song, and every child measures it
+     *          at the next layout
+     */
+    public void songDidChange() {
+        staffPanel.rebuildLayout();
+        textPanel.songDidChange();
+        titleComponent.invalidate();
+        subtitleComponent.invalidate();
+        footnotesComponent.invalidate();
         revalidate();
         repaint();
-    }
-
-    public Song getSong() {
-        if (song == null) {
-            throw RuntimeError.exit("song not initialized");
-        }
-
-        return song;
     }
 
     public TitleComponent getTitleComponent() {
         return titleComponent;
     }
 
-    public SubtitleComponent getSubtitleComponent() {
+    public TitleComponent getSubtitleComponent() {
         return subtitleComponent;
     }
 
@@ -156,13 +150,6 @@ public class MainPanel extends JPanel {
 
     public FootnotesComponent getFootnotesComponent() {
         return footnotesComponent;
-    }
-
-    /** Call this after lines are added or removed from the song. */
-    public void rebuildLayout() {
-        staffPanel.rebuildLayout();
-        revalidate();
-        repaint();
     }
 
     @Nullable
@@ -187,10 +174,6 @@ public class MainPanel extends JPanel {
 
     @Override
     public Dimension getPreferredSize() {
-        if (song == null) {
-            return new Dimension(0, 0);
-        }
-
         var titleSize = titleComponent.getPreferredSize();
         var subtitleSize = subtitleComponent.getPreferredSize();
         var scoreSize = staffPanel.getPreferredSize();

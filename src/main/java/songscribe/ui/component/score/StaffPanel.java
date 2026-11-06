@@ -39,9 +39,6 @@ import songscribe.ui.component.ScoreView;
  */
 public class StaffPanel extends JPanel {
 
-    @Nullable
-    private Song song;
-
     private final List<LinePanel> linePanels = new ArrayList<>();
 
     private final ScoreView scoreView;
@@ -65,34 +62,17 @@ public class StaffPanel extends JPanel {
         return false;
     }
 
-    public void setSong(Song song) {
-        this.song = song;
-        rebuildLayout();
-    }
-
-    public Song getSong() {
-        if (song == null) {
-            throw RuntimeError.exit("song not initialized");
-        }
-
-        return song;
-    }
-
+    /** Builds one line panel for each line of the score view's current song. */
     public void rebuildLayout() {
         removeAll();
         linePanels.clear();
 
-        if (song == null) {
-            revalidate();
-            repaint();
-            return;
-        }
-
+        var song = scoreView.getSong();
         var lineCount = song.lineCount();
 
         for (var i = 0; i < lineCount; i++) {
             var line = song.getLine(i);
-            var linePanel = new LinePanel(scoreView, song, line, i);
+            var linePanel = new LinePanel(scoreView, line, i);
             linePanel.setAlignmentX(LEFT_ALIGNMENT);
             linePanels.add(linePanel);
 
@@ -134,15 +114,12 @@ public class StaffPanel extends JPanel {
     }
 
     void ensureAllLineLayouts() {
-        var firstLineView = linePanels.getFirst().getLineComponent().getScoreView();
-
         // Line layouts read hyphenWidthSs and spaceWidthSs from the metrics to reserve column
         // spacing for syllable gaps, so they are rebuilt before any layout runs.
-        firstLineView.rebuildLyricRenderMetrics();
+        scoreView.rebuildLyricRenderMetrics();
 
         layOutLines();
     }
-
 
     @SuppressWarnings("UnusedReturnValue")
     private ArrayList<LayoutResult> layOutLines() {

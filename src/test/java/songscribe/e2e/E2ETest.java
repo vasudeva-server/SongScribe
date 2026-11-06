@@ -488,7 +488,6 @@ public abstract class E2ETest {
             var lc = scoreView().getLineComponent(lineIndex);
             assertThat(lc).isNotNull();
             var line = lc.getLine();
-            assertThat(line).isNotNull();
             var note = line.getElement(noteIndex);
 
             var layoutResult = lc.getLayoutResult();
@@ -522,7 +521,6 @@ public abstract class E2ETest {
             var lc = scoreView().getLineComponent(lineIndex);
             assertThat(lc).isNotNull();
             var line = lc.getLine();
-            assertThat(line).isNotNull();
 
             int xViewPx;
 
@@ -557,7 +555,6 @@ public abstract class E2ETest {
             var lc = scoreView().getLineComponent(lineIndex);
             assertThat(lc).isNotNull();
             var line = lc.getLine();
-            assertThat(line).isNotNull();
             var layoutResult = lc.getLayoutResult();
 
             var element = line.getElement(elementIndex);

@@ -83,7 +83,7 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         var domLine = line.getLine();
         var layoutResult = line.getLayoutResult();
 
-        if (domLine == null || layoutResult == null) {
+        if (layoutResult == null) {
             return null;
         }
 

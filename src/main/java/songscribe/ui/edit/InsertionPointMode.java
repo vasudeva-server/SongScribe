@@ -318,7 +318,7 @@ public final class InsertionPointMode {
         var layoutResult = lineComponent.getLayoutResult();
         var currentClient = client;
 
-        if (line == null || layoutResult == null || currentClient == null) {
+        if (layoutResult == null || currentClient == null) {
             return;
         }
 
@@ -369,11 +369,6 @@ public final class InsertionPointMode {
         }
 
         var line = lineComponent.getLine();
-
-        if (line == null) {
-            return;
-        }
-
         var chosenIndex = targetIndex;
 
         if (currentClient.insertionPointChosen(line, chosenIndex) == Placement.COMPLETED) {
