@@ -22,10 +22,16 @@ package songscribe.ui.component.score;
 
 import java.awt.Font;
 
+import songscribe.ui.component.ScoreView;
+
 /**
  * Component that renders the main under-lyrics section.
  */
 public class UnderLyricsComponent extends LyricsComponent {
+
+    public UnderLyricsComponent(ScoreView scoreView) {
+        super(scoreView);
+    }
 
     @Override
     protected String getLyrics() {

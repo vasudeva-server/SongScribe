@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import java.awt.Font;
 
 import songscribe.dom.Ss;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Component that renders Bengali (Bangla) lyrics.
@@ -30,6 +31,10 @@ import songscribe.dom.Ss;
 public class BanglaLyricsComponent extends LyricsComponent {
 
     private static final Ss BANGLA_LYRICS_TOP_MARGIN_SS = new Ss(2.0);
+
+    public BanglaLyricsComponent(ScoreView scoreView) {
+        super(scoreView);
+    }
 
     /** Recomputed per layout so it tracks the current zoom. */
     @Override

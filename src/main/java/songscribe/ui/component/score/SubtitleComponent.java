@@ -20,10 +20,13 @@
 
 package songscribe.ui.component.score;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.SongMetadata;
 import songscribe.dom.Ss;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
@@ -34,6 +37,10 @@ import songscribe.ui.dialog.SongSettingsDialog;
  * and the rest does not, in the overflow colour.
  */
 public class SubtitleComponent extends BaseTitleComponent {
+
+    public SubtitleComponent(@Nullable ScoreView scoreView) {
+        super(scoreView);
+    }
 
     @Override
     protected String songText() {

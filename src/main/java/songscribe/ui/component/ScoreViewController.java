@@ -474,10 +474,7 @@ public final class ScoreViewController {
             // for a deleted line. Coarse (recreates every LinePanel) but correct for both
             // forward edits and undo/redo replay, which funnel through this same handler.
             mainPanel.getStaffPanel().rebuildLayout();
-            // rebuildLayout() creates fresh LineComponents with only song and line set;
-            // re-wire the scoreView into each (as document load does) so their next
-            // performLayout() has a live scoreView and does not produce a null layout.
-            score.setupLineComponentState();
+            score.retargetOverlays();
         } else if (invalidatesEveryLine(message)) {
             for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
                 linePanel.getLineComponent().invalidateLayout();

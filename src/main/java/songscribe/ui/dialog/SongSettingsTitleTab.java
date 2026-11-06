@@ -93,13 +93,13 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
 
     private final JButton takeButton = new JButton(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE));
-    private final TitleComponent titlePreview = new TitleComponent();
+    private final TitleComponent titlePreview = new TitleComponent(null);
 
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> subtitle =
         Controls.text(subtitleField, Timing.WHILE_TYPING, SongMetadata::normalizeSubtitle);
     private final FontSettingRow.DescriptionLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
-    private final SubtitleComponent subtitlePreview = new SubtitleComponent();
+    private final SubtitleComponent subtitlePreview = new SubtitleComponent(null);
 
     // The page-colored rows the two previews sit in. Fields rather than locals in
     // initContents because their width is bound to the wrap width in the constructor,

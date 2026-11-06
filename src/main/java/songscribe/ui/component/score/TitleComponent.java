@@ -20,7 +20,10 @@
 
 package songscribe.ui.component.score;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.SongMetadata;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
@@ -28,6 +31,10 @@ import songscribe.ui.dialog.SongSettingsDialog;
  * {@link SongMetadata#MAX_TITLE_LINES} lines.
  */
 public class TitleComponent extends BaseTitleComponent {
+
+    public TitleComponent(@Nullable ScoreView scoreView) {
+        super(scoreView);
+    }
 
     @Override
     protected String songText() {

@@ -27,6 +27,7 @@ import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
 import songscribe.dom.ViewPx;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicsState;
 
 /**
@@ -39,6 +40,10 @@ public class TranslationComponent extends ScoreComponent {
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";
 
     private static final String TRANSLATION_HEADER_UNOFFICIAL = "Unofficial translation:";
+
+    public TranslationComponent(ScoreView scoreView) {
+        super(scoreView);
+    }
 
     /** Recomputed per layout so it tracks the current zoom. */
     @Override

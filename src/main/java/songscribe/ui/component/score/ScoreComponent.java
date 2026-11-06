@@ -43,9 +43,8 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
 /**
- * Abstract base class for score rendering components. A detached component (dialog previews,
- * exporters) still receives events, but each hook reads a null {@code scoreView} and does
- * nothing.
+ * Abstract base class for score rendering components. A detached component (a dialog preview)
+ * still receives events, but each hook reads a null {@code scoreView} and does nothing.
  */
 public abstract class ScoreComponent extends JComponent {
 
@@ -115,7 +114,7 @@ public abstract class ScoreComponent extends JComponent {
      * {@link #getViewScale()} so a rebuilt tree never renders at a stale zoom.
      */
     @Nullable
-    protected ScoreView scoreView;
+    protected final ScoreView scoreView;
 
     protected int marginTop = 0;
     protected int marginRight = 0;
@@ -125,7 +124,11 @@ public abstract class ScoreComponent extends JComponent {
     /** Null when this component centers on its own width. */
     private @Nullable Float contentXPx = null;
 
-    protected ScoreComponent() {
+    /**
+     * @param scoreView {@code null} for a detached component
+     */
+    protected ScoreComponent(@Nullable ScoreView scoreView) {
+        this.scoreView = scoreView;
         setOpaque(false);
         addMouseListener(mouseAdapter);
     }
@@ -134,10 +137,6 @@ public abstract class ScoreComponent extends JComponent {
         this.song = song;
         revalidate();
         repaint();
-    }
-
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
     }
 
     /** {@code null} when detached. */

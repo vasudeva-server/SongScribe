@@ -26,6 +26,7 @@ import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
 import songscribe.font.TextMeasurement;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicsState;
 
 /**
@@ -35,6 +36,10 @@ public class FootnotesComponent extends ScoreComponent {
 
     public static final Ss FOOTNOTES_MIN_MARGIN_TOP_SS = new Ss(5.0);
     private static final double MAX_WIDTH_PERCENTAGE = 2.0 / 3.0;
+
+    public FootnotesComponent(ScoreView scoreView) {
+        super(scoreView);
+    }
 
     /** Recomputed per layout so it tracks the current zoom. */
     @Override

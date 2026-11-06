@@ -147,7 +147,7 @@ class LineRenderer {
             .setLyricRenderMetrics(score.getLyricRenderMetrics())
             .setActivelyEditedElement(editedElement)
             .setActivelyEditedScript(editedScript)
-            .setSelectionProvider(lc.getSelectionProvider())
+            .setSelectionProvider(lc.getScoreView())
             .setPlaying(lc.getPlaying())
             .setLintReport(song.getLinter().getReport())
             .build();

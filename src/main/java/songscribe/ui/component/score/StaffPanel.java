@@ -44,21 +44,16 @@ public class StaffPanel extends JPanel {
 
     private final List<LinePanel> linePanels = new ArrayList<>();
 
-    /** Null when detached (tests). */
-    @Nullable
-    private ScoreView scoreView;
+    private final ScoreView scoreView;
 
-    public StaffPanel() {
+    public StaffPanel(ScoreView scoreView) {
+        this.scoreView = scoreView;
         setLayout(new StaffLinesLayout(this));
         setOpaque(false);
     }
 
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
-    }
-
     ViewScale viewScale() {
-        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+        return scoreView.getViewScale();
     }
 
     /**
@@ -97,7 +92,7 @@ public class StaffPanel extends JPanel {
 
         for (var i = 0; i < lineCount; i++) {
             var line = song.getLine(i);
-            var linePanel = new LinePanel(song, line, i);
+            var linePanel = new LinePanel(scoreView, song, line, i);
             linePanel.setAlignmentX(LEFT_ALIGNMENT);
             linePanels.add(linePanel);
 

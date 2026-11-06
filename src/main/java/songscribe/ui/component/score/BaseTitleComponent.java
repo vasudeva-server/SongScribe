@@ -35,6 +35,7 @@ import songscribe.font.TextMeasurement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.Actions;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.SongSettingsDialog;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
@@ -64,6 +65,10 @@ public abstract class BaseTitleComponent extends ScoreComponent {
     /** {@code null} draws the song. */
     @Nullable
     private Preview preview;
+
+    protected BaseTitleComponent(@Nullable ScoreView scoreView) {
+        super(scoreView);
+    }
 
     public void setPreview(@Nullable Preview preview) {
         this.preview = preview;

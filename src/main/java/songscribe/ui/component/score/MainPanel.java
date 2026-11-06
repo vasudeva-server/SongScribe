@@ -56,11 +56,10 @@ public class MainPanel extends JPanel {
     @Nullable
     private Song song;
 
-    /** Null when detached (tests). */
-    @Nullable
-    private ScoreView scoreView;
+    private final ScoreView scoreView;
 
-    public MainPanel() {
+    public MainPanel(ScoreView scoreView) {
+        this.scoreView = scoreView;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
@@ -68,19 +67,19 @@ public class MainPanel extends JPanel {
         // BoxLayout aligns children relative to each other, so a single centered child
         // among left-aligned siblings would be misaligned rather than centered — every
         // child in this stack shares the same alignment.
-        titleComponent = new TitleComponent();
+        titleComponent = new TitleComponent(scoreView);
         titleComponent.setAlignmentX(CENTER_ALIGNMENT);
 
-        subtitleComponent = new SubtitleComponent();
+        subtitleComponent = new SubtitleComponent(scoreView);
         subtitleComponent.setAlignmentX(CENTER_ALIGNMENT);
 
-        staffPanel = new StaffPanel();
+        staffPanel = new StaffPanel(scoreView);
         staffPanel.setAlignmentX(CENTER_ALIGNMENT);
 
-        textPanel = new TextPanel();
+        textPanel = new TextPanel(scoreView);
         textPanel.setAlignmentX(CENTER_ALIGNMENT);
 
-        footnotesComponent = new FootnotesComponent();
+        footnotesComponent = new FootnotesComponent(scoreView);
         footnotesComponent.setAlignmentX(CENTER_ALIGNMENT);
 
         add(titleComponent);
@@ -94,21 +93,8 @@ public class MainPanel extends JPanel {
         add(footnotesComponent);
     }
 
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
-        titleComponent.setScoreView(scoreView);
-        subtitleComponent.setScoreView(scoreView);
-        footnotesComponent.setScoreView(scoreView);
-        staffPanel.setScoreView(scoreView);
-        textPanel.setScoreView(scoreView);
-    }
-
-    private ViewScale viewScale() {
-        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
-    }
-
     private int scoreMarginTopPx() {
-        return viewScale().toViewPx(SCORE_MARGIN_TOP_SS).positionPx();
+        return scoreView.getViewScale().toViewPx(SCORE_MARGIN_TOP_SS).positionPx();
     }
 
     /**

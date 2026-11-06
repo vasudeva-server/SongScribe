@@ -26,12 +26,17 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
+import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicsState;
 
 /**
  * Abstract base for lyrics components that render centered multi-line text.
  */
 public abstract class LyricsComponent extends ScoreComponent {
+
+    protected LyricsComponent(ScoreView scoreView) {
+        super(scoreView);
+    }
 
     protected abstract String getLyrics();
 

@@ -123,7 +123,6 @@ import songscribe.util.StringUtils;
 public final class ScoreView
     extends JComponent
     implements
-    ComponentHierarchyProvider,
     DocumentFontsHolder,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
@@ -203,8 +202,6 @@ public final class ScoreView
 
     private final ScoreViewController controller;
 
-    private final ComponentHierarchyNavigator hierarchyNavigator;
-
     private final ScoreInputHandler inputHandler;
 
     private final DocumentFontManager documentFontManager;
@@ -225,7 +222,6 @@ public final class ScoreView
         documentFontManager = new DocumentFontManager(this);
         EditModeManager.init(selectionCoordinator, this, this);
 
-        hierarchyNavigator = new ComponentHierarchyNavigator(this);
         inputHandler = new ScoreInputHandler(this);
         setLayout(new BorderLayout());
         setFocusable(true);
@@ -240,11 +236,9 @@ public final class ScoreView
         scrollPane.setBorder(BorderFactory.createEmptyBorder());
         updateScoreSurroundBackground();
 
-        mainPanel = new MainPanel();
-        mainPanel.setScoreView(this);
+        mainPanel = new MainPanel(this);
         mainPanel.setVisible(true);
         add(mainPanel, BorderLayout.CENTER);
-        setupLineComponentState();
 
         documentFontManager.installFonts(DocumentFonts.defaultFonts());
 
@@ -292,14 +286,6 @@ public final class ScoreView
         scrollPane.getViewport().setBackground(color);
     }
 
-    void setupLineComponentState() {
-        hierarchyNavigator.setupLineComponentState(this, this);
-
-        // The line components the overlays point at may have just been recreated.
-        retargetOverlays();
-    }
-
-    @Override
     public MainPanel getMainPanel() {
         return mainPanel;
     }
@@ -311,7 +297,8 @@ public final class ScoreView
     /** Null if not found. */
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
-        return hierarchyNavigator.getLineComponent(lineIndex);
+        var linePanel = mainPanel.getLinePanel(lineIndex);
+        return linePanel == null ? null : linePanel.getLineComponent();
     }
 
     /**
@@ -776,7 +763,7 @@ public final class ScoreView
         selectionCoordinator.clearSelection();
 
         mainPanel.setSong(song);
-        setupLineComponentState();
+        retargetOverlays();
 
         syncPlaybackPrefs();
 
@@ -1232,7 +1219,7 @@ public final class ScoreView
      * A rebuilt layout discards the {@link LineComponent}s the overlays target, and managers
      * retarget on mouse motion only; without this the preview hides until the pointer moves.
      */
-    private void retargetOverlays() {
+    void retargetOverlays() {
         // retarget() ends in inkDidChange(), which recomputes the bounds itself.
         forEachLineOverlay(LineOverlayComponent::retarget);
     }

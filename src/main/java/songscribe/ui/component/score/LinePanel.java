@@ -26,6 +26,7 @@ import javax.swing.JPanel;
 
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Thin wrapper panel that hosts a single {@link LineComponent}.
@@ -34,11 +35,12 @@ public class LinePanel extends JPanel {
 
     private final LineComponent lineComponent;
 
-    private Line line;
+    private final Line line;
 
-    private int lineIndex;
+    private final int lineIndex;
 
     public LinePanel(
+        ScoreView scoreView,
         Song song,
         Line line,
         int lineIndex
@@ -49,7 +51,7 @@ public class LinePanel extends JPanel {
         this.line = line;
         this.lineIndex = lineIndex;
 
-        lineComponent = new LineComponent();
+        lineComponent = new LineComponent(scoreView);
         lineComponent.setSong(song);
         lineComponent.setLine(line, lineIndex);
         lineComponent.setAlignmentX(LEFT_ALIGNMENT);
@@ -71,12 +73,6 @@ public class LinePanel extends JPanel {
 
     public void setSong(Song song) {
         lineComponent.setSong(song);
-    }
-
-    public void setLine(Line line, int lineIndex) {
-        this.line = line;
-        this.lineIndex = lineIndex;
-        lineComponent.setLine(line, lineIndex);
     }
 
     public void setMiddleLineYSs(double middleLineYSs) {

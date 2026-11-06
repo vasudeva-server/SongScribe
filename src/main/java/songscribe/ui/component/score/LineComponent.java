@@ -84,7 +84,7 @@ public class LineComponent extends ScoreComponent
     private static final int LINT_MARK_MARGIN = 10;
 
     /**
-     * Allows LineComponent to check selection without coupling to ScoreView.
+     * The selection, as the renderers of a line ask about it.
      */
     public interface SelectionProvider {
 
@@ -105,9 +105,6 @@ public class LineComponent extends ScoreComponent
     private double middleLineYSs;
 
     private boolean middleLineYSsValid;
-
-    @Nullable
-    private SelectionProvider selectionProvider;
 
     /** {@code null} if none is playing. */
     private LineInvariants.@Nullable Playing playing;
@@ -159,7 +156,9 @@ public class LineComponent extends ScoreComponent
      */
     private @Nullable PointerMark pointerMark = null;
 
-    public LineComponent() {
+    public LineComponent(ScoreView scoreView) {
+        super(scoreView);
+
         // This listener must be added before the tooltip manager registers below, and the order
         // must stay: Swing calls motion listeners in the order they were added, so mouseMoved
         // stores the mark under the pointer (pointerMark) before the manager's listener asks
@@ -179,12 +178,9 @@ public class LineComponent extends ScoreComponent
         layoutResult = null;
         middleLineYSsValid = false;
 
-        // Register with coordinator if score is available. The selection itself is the
-        // coordinator's and is untouched by this rebuild — all that is registered here is
-        // which line this index now holds.
-        if (scoreView != null) {
-            scoreView.getSelectionCoordinator().registerLine(lineIndex, line);
-        }
+        // The selection itself is the coordinator's and is untouched by this rebuild — all that
+        // is registered here is which line this index now holds.
+        getScoreView().getSelectionCoordinator().registerLine(lineIndex, line);
 
         revalidate();
         repaint();
@@ -221,20 +217,6 @@ public class LineComponent extends ScoreComponent
 
     public double getViewPixelsPerStaffSpace() {
         return DocumentScale.PIXELS_PER_STAFF_SPACE * getViewScale().factor();
-    }
-
-    public void setSelectionProvider(@Nullable SelectionProvider selectionProvider) {
-        this.selectionProvider = selectionProvider;
-    }
-
-    @Override
-    public void setScoreView(ScoreView scoreView) {
-        super.setScoreView(scoreView);
-
-        // Register the line with the coordinator when the score arrives after setLine.
-        if (line != null) {
-            scoreView.getSelectionCoordinator().registerLine(lineIndex, line);
-        }
     }
 
     public void setPlaying(LineInvariants.@Nullable Playing playing) {
@@ -297,12 +279,12 @@ public class LineComponent extends ScoreComponent
     }
 
     private void performLayout() {
-        if (song == null || line == null || scoreView == null) {
+        if (song == null || line == null) {
             return;
         }
 
         var staffRightMarginSs = song.getLineWidthSs().value();
-        var view = scoreView;
+        var view = getScoreView();
         var lyricRenderMetrics = view.getLyricRenderMetrics();
         var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, view);
         var result = layoutEngine.layout(line, hasLeadingLyricContinuation, TempoMark.STACKED);
@@ -962,11 +944,13 @@ public class LineComponent extends ScoreComponent
         return UIUtils.toolTipHtml(sections);
     }
 
-    /** A live line component always has one. */
+    /** A line component is never detached. */
     @Override
     public ScoreView getScoreView() {
+        // The constructor takes a non-null view; the inherited field is nullable only for
+        // detached title previews.
         if (scoreView == null) {
-            throw RuntimeError.exit("ScoreView reference not set on LineComponent");
+            throw RuntimeError.exit("LineComponent constructed without a ScoreView");
         }
 
         return scoreView;
@@ -1047,10 +1031,6 @@ public class LineComponent extends ScoreComponent
         }
 
         return lineRenderer.buildInvariants();
-    }
-
-    @Nullable SelectionProvider getSelectionProvider() {
-        return selectionProvider;
     }
 
     record ReadyLayout(Line line, LayoutResult layoutResult) {}

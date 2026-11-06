@@ -48,21 +48,20 @@ public class TextPanel extends JPanel {
     @Nullable
     private Song song;
 
-    /** Null when detached (tests). */
-    @Nullable
-    private ScoreView scoreView;
+    private final ScoreView scoreView;
 
-    public TextPanel() {
+    public TextPanel(ScoreView scoreView) {
+        this.scoreView = scoreView;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
-        underLyricsComponent = new UnderLyricsComponent();
+        underLyricsComponent = new UnderLyricsComponent(scoreView);
         underLyricsComponent.setAlignmentX(LEFT_ALIGNMENT);
 
-        banglaLyricsComponent = new BanglaLyricsComponent();
+        banglaLyricsComponent = new BanglaLyricsComponent(scoreView);
         banglaLyricsComponent.setAlignmentX(LEFT_ALIGNMENT);
 
-        translationComponent = new TranslationComponent();
+        translationComponent = new TranslationComponent(scoreView);
         translationComponent.setAlignmentX(LEFT_ALIGNMENT);
 
         add(underLyricsComponent);
@@ -79,15 +78,8 @@ public class TextPanel extends JPanel {
         repaint();
     }
 
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
-        underLyricsComponent.setScoreView(scoreView);
-        banglaLyricsComponent.setScoreView(scoreView);
-        translationComponent.setScoreView(scoreView);
-    }
-
     private ViewScale viewScale() {
-        return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
+        return scoreView.getViewScale();
     }
 
     public Song getSong() {
