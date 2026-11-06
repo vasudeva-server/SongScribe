@@ -24,9 +24,12 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.geom.Point2D;
 
+import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.ViewPx;
+import songscribe.font.TextMeasurement;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicsState;
 
@@ -40,6 +43,8 @@ public class TranslationComponent extends ScoreComponent {
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";
 
     private static final String TRANSLATION_HEADER_UNOFFICIAL = "Unofficial translation:";
+
+    private static final float HEADER_GAP_FONT_SIZE_DIVISOR = 4f;
 
     public TranslationComponent(ScoreView scoreView) {
         super(scoreView);
@@ -60,7 +65,6 @@ public class TranslationComponent extends ScoreComponent {
         }
 
         var lyricsFont = zoomedFont(getFont());
-        var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
         double maxWidth = 0;
 
@@ -68,11 +72,8 @@ public class TranslationComponent extends ScoreComponent {
             g2,
             GraphicsState.Property.FONT
         )) {
-            g2.setFont(headerFont);
-            var headerText = song.isUnofficialTranslation()
-                ? TRANSLATION_HEADER_UNOFFICIAL
-                : TRANSLATION_HEADER_OFFICIAL;
-            maxWidth = Math.max(maxWidth, textBlockWidth(headerText, g2));
+            g2.setFont(headerFont(lyricsFont));
+            maxWidth = Math.max(maxWidth, textBlockWidth(headerText(song), g2));
 
             g2.setFont(lyricsFont);
             maxWidth = Math.max(maxWidth, textBlockWidth(translation, g2));
@@ -96,36 +97,24 @@ public class TranslationComponent extends ScoreComponent {
             GraphicsState.Property.COLOR
         )) {
             var lyricsFont = zoomedFont(getFont());
-            var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
+            var headerFont = headerFont(lyricsFont);
             g2.setFont(headerFont);
             g2.setColor(Color.BLACK);
 
-            var headerText = song.isUnofficialTranslation()
-                ? TRANSLATION_HEADER_UNOFFICIAL
-                : TRANSLATION_HEADER_OFFICIAL;
-
-            var headerMetrics = g2.getFontMetrics();
+            var headerText = headerText(song);
+            var headerMetrics = TextMeasurement.fontMetrics(headerFont);
 
             var x = resolveContentX(headerText, g2);
-
             var y = (float) (getMarginTop() + headerMetrics.getAscent());
 
             g2.drawString(headerText, x, y);
             y += headerMetrics.getHeight();
-
-            // Margin below header
-            y += lyricsFont.getSize2D() / 4f;
+            y += headerGap(lyricsFont);
 
             g2.setFont(lyricsFont);
 
-            var lineHeight = g2.getFontMetrics().getHeight();
-            var lines = translation.split("\n");
-
-            for (var line : lines) {
-                g2.drawString(line, x, y);
-                y += lineHeight;
-            }
+            drawTextLines(translation, new Point2D.Float(x, y), g2);
         }
     }
 
@@ -139,20 +128,28 @@ public class TranslationComponent extends ScoreComponent {
         }
 
         var lyricsFont = zoomedFont(getFont());
-        var headerFont = lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
 
-        var headerMetrics = getFontMetrics(headerFont);
+        var headerMetrics = TextMeasurement.fontMetrics(headerFont(lyricsFont));
         var height = (float) getMarginTop() + headerMetrics.getHeight();
-
-        // Margin below header
-        height += lyricsFont.getSize2D() / 4f;
-
-        var textMetrics = getFontMetrics(lyricsFont);
-        var lines = translation.split("\n");
-        height += textMetrics.getHeight() * lines.length;
+        height += headerGap(lyricsFont);
+        height += textLinesHeight(translation, lyricsFont);
 
         return new Dimension(
             toViewPx(song.getLineWidthSs()).sizePx(),
             new ViewPx(height).sizePx());
+    }
+
+    private static Font headerFont(Font lyricsFont) {
+        return lyricsFont.deriveFont(Font.BOLD, lyricsFont.getSize2D());
+    }
+
+    private static String headerText(Song song) {
+        return song.isUnofficialTranslation()
+            ? TRANSLATION_HEADER_UNOFFICIAL
+            : TRANSLATION_HEADER_OFFICIAL;
+    }
+
+    private static float headerGap(Font lyricsFont) {
+        return lyricsFont.getSize2D() / HEADER_GAP_FONT_SIZE_DIVISOR;
     }
 }

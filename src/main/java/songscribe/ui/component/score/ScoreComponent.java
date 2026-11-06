@@ -27,6 +27,7 @@ import java.awt.Graphics2D;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.font.TextLayout;
+import java.awt.geom.Point2D;
 import javax.swing.JComponent;
 
 import org.jspecify.annotations.Nullable;
@@ -210,6 +211,31 @@ public abstract class ScoreComponent extends JComponent {
         }
 
         return maxWidth;
+    }
+
+    /**
+     * Draws each {@code \n}-separated line of {@code text} at the x of {@code firstBaseline}. The
+     * first line's baseline is at the y of {@code firstBaseline}, and each later line's baseline
+     * is one {@link TextMeasurement#fontMetrics} line height below the one before it, so the
+     * block fills exactly {@link #textLinesHeight} for the same text and font.
+     *
+     * @param g2 the paint-time graphics, with the font to draw in already set
+     */
+    protected static void drawTextLines(String text, Point2D.Float firstBaseline, Graphics2D g2) {
+        var lineHeight = TextMeasurement.fontMetrics(g2.getFont()).getHeight();
+        var y = firstBaseline.y;
+
+        for (var line : text.split("\n")) {
+            g2.drawString(line, firstBaseline.x, y);
+            y += lineHeight;
+        }
+    }
+
+    /**
+     * The height that {@link #drawTextLines} fills with {@code text} set in {@code font}.
+     */
+    protected static int textLinesHeight(String text, Font font) {
+        return TextMeasurement.fontMetrics(font).getHeight() * text.split("\n").length;
     }
 
     @Override

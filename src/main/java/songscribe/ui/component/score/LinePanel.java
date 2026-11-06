@@ -35,16 +35,9 @@ public class LinePanel extends JPanel {
 
     private final LineComponent lineComponent;
 
-    private final Line line;
-
-    private final int lineIndex;
-
     public LinePanel(ScoreView scoreView, Line line, int lineIndex) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
-
-        this.line = line;
-        this.lineIndex = lineIndex;
 
         lineComponent = new LineComponent(scoreView, line, lineIndex);
         lineComponent.setAlignmentX(LEFT_ALIGNMENT);
@@ -57,11 +50,11 @@ public class LinePanel extends JPanel {
     }
 
     public Line getLine() {
-        return line;
+        return lineComponent.getLine();
     }
 
     public int getLineIndex() {
-        return lineIndex;
+        return lineComponent.getLineIndex();
     }
 
     public void setMiddleLineYSs(double middleLineYSs) {

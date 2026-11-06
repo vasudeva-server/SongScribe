@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.geom.Point2D;
 
 import songscribe.dom.Ss;
 import songscribe.font.TextMeasurement;
@@ -65,18 +66,12 @@ public class FootnotesComponent extends ScoreComponent {
             g2.setColor(Color.BLACK);
 
             var metrics = TextMeasurement.fontMetrics(font);
-            var lineHeight = metrics.getHeight();
 
             var textWidth = textBlockWidth(footnotes, g2);
             var x = calculateRenderX(textWidth);
             var y = (float) (getMarginTop() + metrics.getAscent());
 
-            var lines = footnotes.split("\n");
-
-            for (var line : lines) {
-                g2.drawString(line, x, y);
-                y += lineHeight;
-            }
+            drawTextLines(footnotes, new Point2D.Float(x, y), g2);
         }
     }
 
@@ -104,12 +99,7 @@ public class FootnotesComponent extends ScoreComponent {
             return new Dimension(0, 0);
         }
 
-        var font = zoomedFont(getFont());
-        var metrics = TextMeasurement.fontMetrics(font);
-
-        var lines = footnotes.split("\n");
-        var lineHeight = metrics.getHeight();
-        var height = getMarginTop() + (lineHeight * lines.length);
+        var height = getMarginTop() + textLinesHeight(footnotes, zoomedFont(getFont()));
 
         return new Dimension(toViewPx(song.getLineWidthSs()).sizePx(), height);
     }
