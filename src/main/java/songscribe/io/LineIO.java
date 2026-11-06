@@ -99,14 +99,7 @@ public final class LineIO {
         @org.jetbrains.annotations.Nullable
         private StaffElementIO.StaffElementReader noteReader = null;
 
-        // True once any note in any line read so far named a retired accidental that was
-        // converted. Accumulated here because noteReader is replaced for each <line>, so
-        // its own flag does not survive to the end of the document.
-        private boolean sawLegacyAccidental = false;
-
-        // Each line, in document order, on which a note dropped a lyric whose number has no
-        // script. Kept here for the same reason as sawLegacyAccidental.
-        private final Set<Line> linesThatDroppedLyrics = new LinkedHashSet<>();
+        private final ReaderChanges changes;
 
         @Nullable
         private Where where = null;
@@ -137,8 +130,12 @@ public final class LineIO {
         private int parsedKeyAccidentalCount = 0;
         private @Nullable LegacyKeyType parsedKeyType = null;
 
-        LineReader(Song song) {
+        /**
+         * @param changes the changes of the read this reader is part of
+         */
+        LineReader(Song song, ReaderChanges changes) {
             this.song = song;
+            this.changes = changes;
         }
 
         private void applyParsedKey(Line line) throws SAXException {
@@ -151,17 +148,6 @@ public final class LineIO {
 
             var keyType = parsedType != null ? parsedType : LegacyKeyType.NONE;
             line.setKey(keyType.keyFor(LOG, accidentalCount));
-        }
-
-        public boolean sawLegacyAccidental() {
-            return sawLegacyAccidental;
-        }
-
-        /**
-         * Each line appears once, in document order.
-         */
-        public List<Line> linesThatDroppedLyrics() {
-            return List.copyOf(linesThatDroppedLyrics);
         }
 
         /**
@@ -314,7 +300,7 @@ public final class LineIO {
                 if (qName.equals(XML_LINE)) {
                     where = Where.LINE;
                     line = new Line(song);
-                    noteReader = new StaffElementIO.StaffElementReader();
+                    noteReader = new StaffElementIO.StaffElementReader(changes);
                     parsedKeyAccidentalCount = 0;
                     parsedKeyType = null;
                 }
@@ -348,12 +334,8 @@ public final class LineIO {
                         accumulateLegacyTrillFlag(elementIndex);
                     }
 
-                    if (noteReader.sawLegacyAccidental()) {
-                        sawLegacyAccidental = true;
-                    }
-
                     if (noteReader.droppedLyric()) {
-                        linesThatDroppedLyrics.add(line);
+                        changes.lyricDropped(line);
                     }
 
                     line.addElement(n);

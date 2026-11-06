@@ -140,6 +140,8 @@ public final class SongIO {
 
         private final Song song;
 
+        private final ReaderChanges changes = new ReaderChanges();
+
         @Nullable
         private Tempo tempo = null;
         private String number = Strings.get(Strings.SONG_DEFAULT_NUMBER);
@@ -238,13 +240,13 @@ public final class SongIO {
                         where = Where.SONG;
 
                         if (majorVersion == ORIGINAL_MAJOR_VERSION && minorVersion == ORIGINAL_MINOR_VERSION) {
-                            noteReader = new StaffElementIO.StaffElementReader();
+                            noteReader = new StaffElementIO.StaffElementReader(changes);
                             tempoReader = new TempoIO.TempoReader();
                         } else if (
                             (majorVersion == ORIGINAL_MAJOR_VERSION && minorVersion > ORIGINAL_MINOR_VERSION) ||
                             (majorVersion == MAX_READABLE_MAJOR_VERSION && minorVersion <= MAX_READABLE_MINOR_VERSION)
                         ) {
-                            lineReader = new LineIO.LineReader(song);
+                            lineReader = new LineIO.LineReader(song, changes);
                             viewReader = new ViewIO.ViewReader();
                         } else {
                             throw new NewerVersionException();
@@ -539,10 +541,6 @@ public final class SongIO {
             }
         }
 
-        private boolean accidentalsConverted() {
-            return (noteReader != null && noteReader.sawLegacyAccidental())
-                || (lineReader != null && lineReader.sawLegacyAccidental());
-        }
 
         /**
          * Must be called once, after the parse. A lyric whose number names no script is dropped
@@ -597,9 +595,7 @@ public final class SongIO {
 
             MigrationPipeline.runPostAssembly(ctx);
 
-            if (accidentalsConverted()) {
-                song.report(RecordedChange.accidentalsConverted());
-            }
+            changes.reportTo(song);
 
             var warnings = new ArrayList<LoadWarning>();
 
@@ -609,14 +605,8 @@ public final class SongIO {
 
             var marks = new PendingMarks(List.of(), List.of(), List.of(), List.of(), List.of(), List.of());
 
-            // Only a lineReader reads lyrics and line-level marks: a v1.0 document keeps its
-            // lyrics at song level, where the legacy lyrics import places them, and carries no
-            // marks.
+            // Only a lineReader reads line-level marks: a v1.0 document carries none.
             if (lineReader != null) {
-                for (var line : lineReader.linesThatDroppedLyrics()) {
-                    song.report(RecordedChange.lyricDropped(line));
-                }
-
                 marks = lineReader.pendingMarks();
             }
 

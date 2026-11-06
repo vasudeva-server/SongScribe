@@ -78,6 +78,7 @@ import songscribe.dom.TupletNormalTime;
 import songscribe.dom.UserOffset;
 import songscribe.io.DocumentValidation;
 import songscribe.io.ReadAnnotation;
+import songscribe.io.ReaderChanges;
 
 /**
  * Maps the first {@code <part>} of an unmarshalled {@code <score-partwise>} onto the
@@ -223,14 +224,7 @@ final class MeasureMapper {
     @Nullable
     private Integer lineStartMeasureIndex = null;
 
-    // True once any note's <accidental> token was a retired legacy token converted to its
-    // replacement. One report entry stands for every conversion, so map reports it once the walk
-    // is over.
-    private boolean accidentalsConverted = false;
-
-    // Every line on which a note lost a <lyric> whose number names no script, once each. Each
-    // gets one report entry, which map reports once the walk is over.
-    private final Set<Line> linesThatDroppedLyrics = new LinkedHashSet<>();
+    private final ReaderChanges changes = new ReaderChanges();
 
     // Every tuplet bracket the walk has closed, with no stated ratio when the file states
     // none; carried to the load stages in the PendingMarks — a mapper cannot build a Tuplet,
@@ -279,13 +273,7 @@ final class MeasureMapper {
             mapper.mapPart(part);
         }
 
-        if (mapper.accidentalsConverted) {
-            song.report(RecordedChange.accidentalsConverted());
-        }
-
-        for (var line : mapper.linesThatDroppedLyrics) {
-            song.report(RecordedChange.lyricDropped(line));
-        }
+        mapper.changes.reportTo(song);
 
         return new PendingMarks(
             mapper.pendingTuplets,
@@ -564,11 +552,11 @@ final class MeasureMapper {
         var element = mapped.element();
 
         if (mapped.usedLegacyAccidental()) {
-            accidentalsConverted = true;
+            changes.accidentalConverted();
         }
 
         if (mapped.droppedLyric()) {
-            linesThatDroppedLyrics.add(line);
+            changes.lyricDropped(line);
         }
 
         site.noteSite = new NoteSite(pmNote, element, line);

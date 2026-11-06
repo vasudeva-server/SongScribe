@@ -237,11 +237,7 @@ public final class StaffElementIO {
         private boolean stemForced = false;
         private boolean stemUp = false;
 
-        // True once any element read by this reader named a retired accidental that was
-        // converted to its replacement. Unlike trillFlagged this is never reset: it answers
-        // "did anything in this file get converted", which the loader reports so a converted
-        // song opens modified. Read out via sawLegacyAccidental().
-        private boolean sawLegacyAccidental = false;
+        private final ReaderChanges changes;
 
         // True when the current element lost a <lyric> whose number names no script.
         // LineIO.LineReader reads this after each note and records the element's line, so each
@@ -255,14 +251,17 @@ public final class StaffElementIO {
         private Lyric.Extend lyricExtend = Lyric.Extend.NONE;
 
         /**
+         * @param changes the changes of the read this reader is part of
+         */
+        public StaffElementReader(ReaderChanges changes) {
+            this.changes = changes;
+        }
+
+        /**
          * Valid only after {@code endElement11} returns a non-null element.
          */
         public boolean isTrillFlagged() {
             return trillFlagged;
-        }
-
-        public boolean sawLegacyAccidental() {
-            return sawLegacyAccidental;
         }
 
         /**
@@ -529,7 +528,7 @@ public final class StaffElementIO {
                 }
 
                 if (LEGACY_ACCIDENTAL_NAMES.contains(str)) {
-                    sawLegacyAccidental = true;
+                    changes.accidentalConverted();
                 }
 
                 note.choose(accidental);
