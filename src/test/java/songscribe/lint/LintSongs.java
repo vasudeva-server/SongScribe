@@ -27,6 +27,7 @@ import java.util.List;
 import songscribe.Strings;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Key;
 import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
@@ -38,12 +39,10 @@ import songscribe.dom.StaffElementFactory;
 /**
  * Songs for the lint check tests, written as notation and read back as a flat list of elements.
  *
- * <p>A notation is whitespace-separated tokens, one element each:
+ * <p>A notation is whitespace-separated tokens, one element each, of the grammar
+ * {@link SongFactory#compactElement} reads, decorated as follows:
  *
  * <ul>
- *   <li>{@code A} — a crotchet; {@code R} — a crotchet rest;</li>
- *   <li>{@code |}, {@code ||}, {@code |||} — a single, a double and a final double barline;</li>
- *   <li>{@code |:}, {@code :|}, {@code :|:} — a left, a right and a left-right repeat;</li>
  *   <li>a token followed by {@code @text} carries that text as its annotation, with each
  *       underscore standing for a space;</li>
  *   <li>a token ends in one {@value #VIOLATION_MARK} for each violation a check is expected to
@@ -70,18 +69,7 @@ final class LintSongs {
      * @return the song
      */
     static Song song(String... notations) {
-        var builders = new SongFactory.LineBuilder[notations.length];
-
-        for (var i = 0; i < notations.length; i++) {
-            var notation = notations[i];
-            builders[i] = line -> {
-                for (var token : tokensOf(notation)) {
-                    line.addElement(element(token));
-                }
-            };
-        }
-
-        return SongFactory.buildSong(builders);
+        return SongFactory.compactSong(Key.NO_ACCIDENTALS, (lineIndex, line, token) -> element(token), notations);
     }
 
     /**
@@ -169,7 +157,7 @@ final class LintSongs {
         var position = 0;
 
         for (var notation : notations) {
-            for (var token : tokensOf(notation)) {
+            for (var token : SongFactory.compactTokens(notation)) {
                 var markCount = token.length() - stripMarks(token).length();
 
                 for (var i = 0; i < markCount; i++) {
@@ -244,10 +232,6 @@ final class LintSongs {
         return expected;
     }
 
-    private static List<String> tokensOf(String notation) {
-        return Arrays.stream(notation.trim().split("\\s+")).filter(token -> !token.isEmpty()).toList();
-    }
-
     private static String stripMarks(String token) {
         var end = token.length();
 
@@ -262,17 +246,7 @@ final class LintSongs {
         var token = stripMarks(markedToken);
         var separatorIndex = token.indexOf(ANNOTATION_SEPARATOR);
         var name = separatorIndex < 0 ? token : token.substring(0, separatorIndex);
-        var element = switch (name) {
-            case "A" -> StaffElementFactory.crotchet();
-            case "R" -> StaffElementFactory.crotchetRest();
-            case "|" -> StaffElementFactory.singleBarline();
-            case "||" -> StaffElementFactory.doubleBarline();
-            case "|||" -> StaffElementFactory.finalDoubleBarline();
-            case "|:" -> StaffElementFactory.repeatLeft();
-            case ":|" -> StaffElementFactory.repeatRight();
-            case ":|:" -> StaffElementFactory.repeatLeftRight();
-            default -> throw new IllegalArgumentException("Unrecognized lint notation token: " + token);
-        };
+        var element = SongFactory.compactElement(name);
 
         if (separatorIndex >= 0) {
             var text = token.substring(separatorIndex + ANNOTATION_SEPARATOR.length()).replace(TOKEN_SPACE, " ");

@@ -43,7 +43,7 @@ class LinterTest extends UnitTest {
     void testFindingsOfDifferentRulesComeInSongOrder() {
         // Both notes lack a lyric, and the second :| closes no section; BALANCED_REPEATS is declared
         // before MISSING_LYRIC, so declaration order would list it first.
-        var song = LintSongs.song("A", "A :| :|");
+        var song = LintSongs.song("N", "N :| :|");
 
         assertThat(placedFindings(song)).containsExactly(
             new Placed(LintRule.MISSING_LYRIC, 0),
@@ -54,7 +54,7 @@ class LinterTest extends UnitTest {
     @Test
     void testFindingsOnOneElementComeInRuleDeclarationOrder() {
         // The second :| closes no section and carries a Fine that nothing refers to.
-        var song = LintSongs.song("A :| :|@Fine A");
+        var song = LintSongs.song("N :| :|@Fine N");
 
         assertThat(placedFindings(song)).containsExactly(
             new Placed(LintRule.MISSING_LYRIC, 0),

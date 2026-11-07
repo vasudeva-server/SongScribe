@@ -33,12 +33,14 @@ import songscribe.engraving.StaffPosition;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.keyChange;
 import static songscribe.dom.StaffElementFactory.minimRest;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
@@ -137,6 +139,12 @@ public final class SongFactory {
     /** The compact notation of one quaver. */
     private static final String QUAVER_TOKEN = "Q";
 
+    /** The compact notation of one crotchet at the default staff position. */
+    private static final String CROTCHET_TOKEN = "N";
+
+    /** The compact notation that ties the last note added to the note after it. */
+    private static final String TIE_TOKEN = "~";
+
     /**
      * A song of one line per element of {@code notations}, each parsed by
      * {@link #addCompactElements}, starting in {@code startingKey}.
@@ -154,19 +162,66 @@ public final class SongFactory {
         return buildSong(compactBuilders(startingKey, notations));
     }
 
+    /**
+     * A song of one line per element of {@code notations}, like {@link #compactSong(Key, String...)},
+     * except that {@code reader} turns each token into its element. A test whose notation decorates
+     * the grammar's tokens (a name to find the element by, an annotation, a mark) strips the
+     * decoration in {@code reader} and passes the bare token to {@link #compactElement}.
+     *
+     * @param startingKey the key the first line establishes
+     * @param reader      reads every token except {@code ~}
+     * @param notations   one compact notation per line, in song order
+     * @return the song, every note holding a {@link ChainedAccidental}
+     */
+    public static Song compactSong(Key startingKey, TokenReader reader, String... notations) {
+        return buildSong(compactBuilders(startingKey, reader, notations));
+    }
+
+    /**
+     * A song of one line per list of {@code lines}, each holding exactly those elements.
+     *
+     * @param lines the elements of each line, in song order
+     * @return the song
+     */
+    @SafeVarargs
+    public static Song songOfLines(List<StaffElement>... lines) {
+        var builders = Stream.of(lines)
+                             .map(elements -> (LineBuilder) line -> elements.forEach(line::addElement))
+                             .toArray(LineBuilder[]::new);
+
+        return buildSong(builders);
+    }
+
+    /** Reads one token of a compact notation into the element it stands for. */
+    @FunctionalInterface
+    public interface TokenReader {
+
+        /**
+         * @param lineIndex the index of the line the token is on
+         * @param line      the line the element will be added to, holding the elements before this token's
+         * @param token     the token, as written in the notation
+         * @return the element to add
+         */
+        StaffElement read(int lineIndex, Line line, String token);
+    }
+
     private static LineBuilder[] compactBuilders(Key startingKey, String... notations) {
+        return compactBuilders(startingKey, (lineIndex, line, token) -> compactElement(token), notations);
+    }
+
+    private static LineBuilder[] compactBuilders(Key startingKey, TokenReader reader, String... notations) {
         var builders = new LineBuilder[notations.length];
 
         for (var lineIndex = 0; lineIndex < notations.length; lineIndex++) {
             var notation = notations[lineIndex];
-            var isFirstLine = lineIndex == 0;
+            var currentLineIndex = lineIndex;
 
             builders[lineIndex] = line -> {
-                if (isFirstLine) {
+                if (currentLineIndex == 0) {
                     line.setKey(startingKey);
                 }
 
-                addCompactElements(line, notation);
+                addCompactElements(line, currentLineIndex, notation, reader);
             };
         }
 
@@ -340,9 +395,11 @@ public final class SongFactory {
      *   <li>{@code g} prefixed on either of the above — the same note, as a grace note</li>
      *   <li>{@code ~} — ties the last note added to whatever note follows it, on this line or the
      *       next; a {@code ~} after the song's last note ties it with nothing following</li>
-     *   <li>{@code |}, {@code |:}, {@code :|} — a plain barline, a left repeat, a right repeat</li>
+     *   <li>{@code |}, {@code ||}, {@code |:}, {@code :|}, {@code :|:} — a plain barline, a double
+     *       barline, a left repeat, a right repeat, a left-right repeat</li>
      *   <li>{@code R} — a crotchet rest; {@code R2} — a minim rest; {@code B} — a breath mark;
-     *       {@code Q} — a quaver; {@code F} — a final double barline</li>
+     *       {@code Q} — a quaver; {@code N} — a crotchet at the default staff position;
+     *       {@code F} — a final double barline</li>
      *   <li>{@code K:<name>} — a key change establishing {@link Key#valueOf(String) Key.valueOf(name)}</li>
      * </ul>
      *
@@ -350,38 +407,66 @@ public final class SongFactory {
      * @param notation the line's compact notation
      */
     static void addCompactElements(Line line, String notation) {
+        addCompactElements(line, 0, notation, (lineIndex, ignored, token) -> compactElement(token));
+    }
+
+    private static void addCompactElements(Line line, int lineIndex, String notation, TokenReader reader) {
         NoteElement previousNote = null;
 
-        for (var token : notation.trim().split("\\s+")) {
-            if (token.isEmpty()) {
+        for (var token : compactTokens(notation)) {
+            if (TIE_TOKEN.equals(token)) {
+                if (previousNote != null) {
+                    line.addTie(previousNote);
+                }
+
                 continue;
             }
 
-            switch (token) {
-                case "|" -> line.addElement(singleBarline());
-                case "|:" -> line.addElement(repeatLeft());
-                case ":|" -> line.addElement(repeatRight());
-                case "R" -> line.addElement(crotchetRest());
-                case "R2" -> line.addElement(minimRest());
-                case "B" -> line.addElement(breathMark());
-                case "F" -> line.addElement(finalDoubleBarline());
-                case QUAVER_TOKEN -> line.addElement(quaver());
-                case "~" -> {
-                    if (previousNote != null) {
-                        line.addTie(previousNote);
-                    }
-                }
-                default -> {
-                    if (token.startsWith(KEY_CHANGE_PREFIX)) {
-                        line.addElement(keyChange(Key.valueOf(token.substring(KEY_CHANGE_PREFIX.length()))));
-                        continue;
-                    }
+            var element = reader.read(lineIndex, line, token);
 
-                    previousNote = parseNote(token);
-                    line.addElement(previousNote);
-                }
+            line.addElement(element);
+
+            if (element instanceof NoteElement note) {
+                previousNote = note;
             }
         }
+    }
+
+    /**
+     * The whitespace-separated tokens of {@code notation}, in order.
+     *
+     * @param notation a compact notation, or a decorated one whose decoration holds no whitespace
+     * @return its tokens, none empty
+     */
+    public static List<String> compactTokens(String notation) {
+        return Arrays.stream(notation.trim().split("\\s+")).filter(token -> !token.isEmpty()).toList();
+    }
+
+    /**
+     * The element one token of the compact grammar stands for, every token except {@code ~}; see
+     * {@link #addCompactElements} for the grammar.
+     *
+     * @param token a bare token
+     * @return the element
+     * @throws IllegalArgumentException when {@code token} is not in the grammar
+     */
+    public static StaffElement compactElement(String token) {
+        return switch (token) {
+            case "|" -> singleBarline();
+            case "||" -> doubleBarline();
+            case "|:" -> repeatLeft();
+            case ":|" -> repeatRight();
+            case ":|:" -> repeatLeftRight();
+            case "R" -> crotchetRest();
+            case "R2" -> minimRest();
+            case "B" -> breathMark();
+            case "F" -> finalDoubleBarline();
+            case QUAVER_TOKEN -> quaver();
+            case CROTCHET_TOKEN -> crotchet();
+            default -> token.startsWith(KEY_CHANGE_PREFIX)
+                ? keyChange(Key.valueOf(token.substring(KEY_CHANGE_PREFIX.length())))
+                : parseNote(token);
+        };
     }
 
     private static NoteElement parseNote(String token) {

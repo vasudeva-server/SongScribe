@@ -32,12 +32,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.StaffElementFactory.crotchet;
-import static songscribe.dom.StaffElementFactory.doubleBarline;
-import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
-import static songscribe.dom.StaffElementFactory.repeatLeft;
-import static songscribe.dom.StaffElementFactory.repeatLeftRight;
-import static songscribe.dom.StaffElementFactory.repeatRight;
 
 /**
  * {@link RepeatSections}: where the section each right repeat closes begins, which of a song's
@@ -45,7 +39,7 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
  *
  * <p>A case writes the song as a notation and names the elements it asserts about, so no case
  * counts element indexes. The notation is whitespace-separated tokens: {@code |:}, {@code :|},
- * {@code :|:}, {@code ||} and {@code fin} are the bars, {@code N} is a note, and {@code /} ends
+ * {@code :|:}, {@code ||} and {@code F} are the bars, {@code N} is a note, and {@code /} ends
  * the line. A token may end in {@code #name}, which names the element for the case's expected
  * values.
  */
@@ -53,7 +47,6 @@ class RepeatSectionsTest extends UnitTest {
 
     private static final String LINE_BREAK = "/";
     private static final String TAG_SEPARATOR = "#";
-    private static final String WHITESPACE = "\\s+";
 
     /** A song written in notation, and the element locations its tokens named. */
     private record Notated(Song song, Map<String, ElementLocation> tags) {
@@ -68,48 +61,18 @@ class RepeatSectionsTest extends UnitTest {
     }
 
     private static Notated notated(String notation) {
-        var lineNotations = notation.split(LINE_BREAK, -1);
-        var builders = new SongFactory.LineBuilder[lineNotations.length];
         var tags = new HashMap<String, ElementLocation>();
+        var song = SongFactory.compactSong(Key.NO_ACCIDENTALS, (lineIndex, line, token) -> {
+            var parts = token.split(TAG_SEPARATOR, 2);
 
-        for (var lineIndex = 0; lineIndex < lineNotations.length; lineIndex++) {
-            var lineNotation = lineNotations[lineIndex].trim();
-            var currentLineIndex = lineIndex;
+            if (parts.length > 1) {
+                tags.put(parts[1], new ElementLocation(lineIndex, line.getElements().size()));
+            }
 
-            builders[lineIndex] = line -> {
-                if (currentLineIndex == 0) {
-                    line.setKey(Key.NO_ACCIDENTALS);
-                }
+            return SongFactory.compactElement(parts[0]);
+        }, notation.split(LINE_BREAK, -1));
 
-                for (var token : lineNotation.split(WHITESPACE)) {
-                    if (token.isEmpty()) {
-                        continue;
-                    }
-
-                    var parts = token.split(TAG_SEPARATOR, 2);
-
-                    if (parts.length > 1) {
-                        tags.put(parts[1], new ElementLocation(currentLineIndex, line.getElements().size()));
-                    }
-
-                    line.addElement(elementOf(parts[0]));
-                }
-            };
-        }
-
-        return new Notated(SongFactory.buildSong(builders), tags);
-    }
-
-    private static StaffElement elementOf(String token) {
-        return switch (token) {
-            case "|:" -> repeatLeft();
-            case ":|" -> repeatRight();
-            case ":|:" -> repeatLeftRight();
-            case "||" -> doubleBarline();
-            case "fin" -> finalDoubleBarline();
-            case "N" -> crotchet();
-            default -> throw new IllegalArgumentException("Unrecognized notation token: " + token);
-        };
+        return new Notated(song, tags);
     }
 
     /**
@@ -209,7 +172,7 @@ class RepeatSectionsTest extends UnitTest {
                 List.of(), List.of("close"), none, none),
 
             new SectionsCase("a final barline closes the open section like a ||",
-                "|:#open N fin N :|#close",
+                "|:#open N F N :|#close",
                 List.of(), List.of("close"), List.of("open"), none),
 
             new SectionsCase("an opener nested in an unclosed outer opener is reported only as nested",
@@ -295,7 +258,7 @@ class RepeatSectionsTest extends UnitTest {
                 "|: N || N#query", "query", null),
 
             new SectionStartCase("an element after a final barline has no start",
-                "|: N fin N#query", "query", null),
+                "|: N F N#query", "query", null),
 
             new SectionStartCase("a nested section starts after its own opener",
                 "|: N |: N#start N#query", "query", "start"),

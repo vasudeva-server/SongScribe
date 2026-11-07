@@ -215,7 +215,7 @@ class MissingLyricCheckTest extends UnitTest {
         var firstLine = List.<StaffElement>of(sung(Song.Script.LATIN, "ha", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN));
         var secondLine = List.<StaffElement>of(crotchet(), sung(Song.Script.LATIN, "le", Lyric.Extend.NONE, Lyric.Syllabic.END));
 
-        return new Scenario(songOfLines(firstLine, secondLine), List.of());
+        return new Scenario(SongFactory.songOfLines(firstLine, secondLine), List.of());
     }
 
     private static Scenario bareSlotAfterChainAcrossLineBreak() {
@@ -224,7 +224,7 @@ class MissingLyricCheckTest extends UnitTest {
         var secondLine = List.<StaffElement>of(
             crotchet(), sung(Song.Script.LATIN, "le", Lyric.Extend.NONE, Lyric.Syllabic.END), bare);
 
-        return new Scenario(songOfLines(firstLine, secondLine),
+        return new Scenario(SongFactory.songOfLines(firstLine, secondLine),
                             List.of(new LintMark.MissingLyric(bare, Song.Script.LATIN)));
     }
 
@@ -261,15 +261,6 @@ class MissingLyricCheckTest extends UnitTest {
     }
 
     private static Song songOfLine(StaffElement... elements) {
-        return songOfLines(List.of(elements));
-    }
-
-    @SafeVarargs
-    private static Song songOfLines(List<StaffElement>... lines) {
-        var builders = Stream.of(lines)
-                             .map(elements -> (SongFactory.LineBuilder) line -> elements.forEach(line::addElement))
-                             .toArray(SongFactory.LineBuilder[]::new);
-
-        return SongFactory.buildSong(builders);
+        return SongFactory.songOfLines(List.of(elements));
     }
 }

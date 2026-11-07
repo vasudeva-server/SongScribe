@@ -72,13 +72,13 @@ class BalancedRepeatsCheckTest extends UnitTest {
     static Stream<RepeatCase> repeatCases() {
         return Stream.of(
             new RepeatCase("a balanced song gives no finding",
-                "A |: A :| A",
+                "N |: N :| N",
                 List.of()),
             new RepeatCase("a closer after its section is closed is flagged as not opened",
-                "|: A :| A :|!",
+                "|: N :| N :|!",
                 List.of(NOT_OPENED)),
             new RepeatCase("an opener with no closer after it is flagged as not closed",
-                "|:! A",
+                "|:! N",
                 List.of(NOT_CLOSED)),
             new RepeatCase("an opener inside an open section is flagged as nested",
                 "|: |:! :| :|",
