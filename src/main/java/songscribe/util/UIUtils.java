@@ -40,6 +40,7 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
@@ -148,8 +149,46 @@ public final class UIUtils {
         component.setToolTipText(tip);
     }
 
-    public static void keepToolTipsOpenWhileHovered() {
-        ToolTipManager.sharedInstance().setDismissDelay(Integer.MAX_VALUE);
+    /**
+     * Keeps a tooltip of {@code component} open for as long as the pointer stays over it. The
+     * tooltip manager's dismiss delay is shared by every component, so this raises it while the
+     * pointer is over {@code component} and restores it when the pointer exits.
+     */
+    public static void keepToolTipsOpenWhileHovered(JComponent component) {
+        component.addMouseListener(ToolTipHold.INSTANCE);
+    }
+
+    /**
+     * One instance serves every component, so a pointer that moves from one such component into
+     * another keeps the delay held and restores the delay that was in force before the first.
+     * Swing sends no exit to a component removed under the pointer; the delay then stays held
+     * until the pointer exits the next such component it enters.
+     */
+    private static final class ToolTipHold extends MouseAdapter {
+
+        private static final ToolTipHold INSTANCE = new ToolTipHold();
+
+        /** {@code null} while no delay is held. */
+        private @Nullable Integer restoredDismissDelay = null;
+
+        @Override
+        public void mouseEntered(MouseEvent event) {
+            if (restoredDismissDelay == null) {
+                var toolTipManager = ToolTipManager.sharedInstance();
+                restoredDismissDelay = toolTipManager.getDismissDelay();
+                toolTipManager.setDismissDelay(Integer.MAX_VALUE);
+            }
+        }
+
+        @Override
+        public void mouseExited(MouseEvent event) {
+            var delay = restoredDismissDelay;
+
+            if (delay != null) {
+                ToolTipManager.sharedInstance().setDismissDelay(delay);
+                restoredDismissDelay = null;
+            }
+        }
     }
 
     public static void setToolTipText(JComponent component, ToolTipSection section) {

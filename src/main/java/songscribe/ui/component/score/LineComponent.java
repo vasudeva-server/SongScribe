@@ -175,6 +175,7 @@ public class LineComponent extends ScoreComponent
         // getToolTipText(MouseEvent) answers per point, so no tooltip text is set; registering
         // is what makes the tooltip manager ask. It must stay after addMouseMotionListener above.
         ToolTipManager.sharedInstance().registerComponent(this);
+        UIUtils.keepToolTipsOpenWhileHovered(this);
     }
 
     public Line getLine() {

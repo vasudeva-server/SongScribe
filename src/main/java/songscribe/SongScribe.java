@@ -202,7 +202,6 @@ public final class SongScribe {
     public static MainFrame buildMainWindow() {
         setBus();
         UIUtils.installEagerFonts();
-        UIUtils.keepToolTipsOpenWhileHovered();
 
         // The bus holds the listener strongly, so nothing here needs to keep it.
         new PreviewElementManager();
