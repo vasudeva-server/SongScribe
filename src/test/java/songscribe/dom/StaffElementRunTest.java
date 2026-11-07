@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
@@ -627,5 +628,78 @@ class StaffElementRunTest extends UnitTest {
     @MethodSource("keyBeforeCases")
     void testKeyBeforeIsTheLastKeyChangeBelowTheIndexElseTheStartKey(KeyBeforeCase testCase) {
         assertThat(keyRun().keyBefore(testCase.index(), KEY_RUN_START_KEY)).isEqualTo(testCase.expected());
+    }
+
+    /** The keys the key changes in the {@link #leadingBarsCases()} runs establish; they differ. */
+    private static final Key LEADING_FIRST_CHANGE_KEY = Key.TWO_SHARPS;
+    private static final Key LEADING_LAST_CHANGE_KEY = Key.THREE_FLATS;
+
+    /** The index of the second barline in a run of two leading barlines, each with a key change behind it. */
+    private static final int SECOND_LEADING_BAR_WITH_KEY_CHANGE = 2;
+
+    /** The compact notation of a line of two barlines and the terminal. */
+    private static final String TWO_BARS_AND_TERMINAL = "| | F";
+
+    private static StaffElementRun.ElementRange rangeOf(int begin, int end) {
+        return new StaffElementRun.ElementRange(begin, end);
+    }
+
+    /**
+     * One run that starts with barlines, and what {@link StaffElementRun#leadingBars} must find.
+     *
+     * @param description      the case, as the test's display name
+     * @param run              the run, built fresh for each use
+     * @param expectedRanges   the ranges it must answer, in order
+     * @param expectedMovedKey the key it must move, or {@code null} when it moves none
+     */
+    private record LeadingBarsCase(
+        String description, Supplier<StaffElementRun> run,
+        List<StaffElementRun.ElementRange> expectedRanges, @Nullable Key expectedMovedKey
+    ) {}
+
+    static Stream<LeadingBarsCase> leadingBarsCases() {
+        return Stream.of(
+            new LeadingBarsCase("one barline is the one range and moves no key",
+                () -> new DetachedLyricRun(List.of(singleBarline(), crotchet())),
+                List.of(StaffElementRun.ElementRange.single(0)), null),
+            new LeadingBarsCase("two barlines, each with a key change, are two ranges and move the last key",
+                () -> new DetachedLyricRun(List.of(
+                    singleBarline(), keyChange(LEADING_FIRST_CHANGE_KEY),
+                    singleBarline(), keyChange(LEADING_LAST_CHANGE_KEY),
+                    crotchet())),
+                List.of(
+                    rangeOf(0, 1),
+                    rangeOf(SECOND_LEADING_BAR_WITH_KEY_CHANGE, SECOND_LEADING_BAR_WITH_KEY_CHANGE + 1)),
+                LEADING_LAST_CHANGE_KEY),
+            new LeadingBarsCase("barlines followed by the terminal leave the terminal out",
+                () -> compactSong(Key.NO_ACCIDENTALS, TWO_BARS_AND_TERMINAL).getLine(0),
+                List.of(StaffElementRun.ElementRange.single(0), StaffElementRun.ElementRange.single(1)), null)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("leadingBarsCases")
+    void testLeadingBarsAreTheBarlinesFirstInTheRunAndTheKeyTheyMove(LeadingBarsCase testCase) {
+        var leadingBars = testCase.run().get().leadingBars();
+
+        assertThat(leadingBars).isNotNull();
+        assertThat(leadingBars.ranges().stream().map(StaffElementRun.EffectiveRange::range))
+            .containsExactlyElementsOf(testCase.expectedRanges());
+        assertThat(leadingBars.movedKey()).isEqualTo(testCase.expectedMovedKey());
+    }
+
+    static Stream<Arguments> runsWithoutLeadingBars() {
+        return Stream.of(
+            Arguments.of("a run that starts with a note",
+                (Supplier<StaffElementRun>) () -> new DetachedLyricRun(List.of(crotchet(), singleBarline()))),
+            Arguments.of("a song with no elements",
+                (Supplier<StaffElementRun>) () -> compactSong(Key.NO_ACCIDENTALS, NO_NOTES).getLine(0))
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("runsWithoutLeadingBars")
+    void testARunThatDoesNotStartWithABarlineHasNoLeadingBars(String description, Supplier<StaffElementRun> run) {
+        assertThat(run.get().leadingBars()).isNull();
     }
 }
