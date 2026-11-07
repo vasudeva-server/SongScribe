@@ -35,6 +35,8 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
+import songscribe.dom.Span;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Trill;
 import songscribe.dom.StaffElementRun.ElementRange;
 
@@ -90,6 +92,34 @@ class FragmentTest extends UnitTest {
 
     /** The index of the key change, which the barline before it travels with. */
     private static final int KEY_CHANGE_INDEX = 4;
+
+    /**
+     * A fragment that starts with a barline, holds two repeated sections that each take an ending,
+     * and ends in a key change that restates {@link #FRAGMENT_KEY}.
+     */
+    private static final String LEADING_BAR_NOTATION =
+        "| 6 :| 6 | 6 |: 6 | 6 :| 6 | K:" + FRAGMENT_KEY.name() + " 6";
+
+    /** In {@link #LEADING_BAR_NOTATION}, the barline that stands first: the first ending's anchor. */
+    private static final int LEADING_BAR_INDEX = 0;
+
+    /** In {@link #LEADING_BAR_NOTATION}, the note behind the leading barline. */
+    private static final int FIRST_NOTE_INDEX = 1;
+
+    /** In {@link #LEADING_BAR_NOTATION}, the barline the first ending ends on. */
+    private static final int FIRST_ENDING_END_INDEX = 4;
+
+    /** In {@link #LEADING_BAR_NOTATION}, the barline the second ending is anchored on. */
+    private static final int SECOND_ENDING_ANCHOR_INDEX = 8;
+
+    /**
+     * In {@link #LEADING_BAR_NOTATION}, the barline in front of the redundant key change, which
+     * the second ending ends on.
+     */
+    private static final int PAIR_BARLINE_INDEX = 12;
+
+    /** In {@link #LEADING_BAR_NOTATION}, the redundant key change. */
+    private static final int PAIR_KEY_CHANGE_INDEX = 13;
 
     /** The line of a one-line song whose notation is {@code notation}. */
     private static Line lineOfNotation(String notation) {
@@ -298,5 +328,58 @@ class FragmentTest extends UnitTest {
         assertThat(reduction.fragment().elements()).isEmpty();
         assertThat(reduction.fragment().spans()).isEmpty();
         assertThat(reduction.strandedSpans()).isEmpty();
+    }
+
+    @Test
+    void testDroppingTheLeadingBarlinesStrandsTheSpansOnThemAndKeepsTheSpansStrandedBefore() {
+        var line = lineOfNotation(LEADING_BAR_NOTATION);
+        var song = line.getSong();
+
+        addWithoutTracking(song, () -> endingOver(line, new ElementRange(LEADING_BAR_INDEX, FIRST_ENDING_END_INDEX)));
+        addWithoutTracking(song, () -> endingOver(line, new ElementRange(SECOND_ENDING_ANCHOR_INDEX, PAIR_BARLINE_INDEX)));
+        addWithoutTracking(song, () -> trillOver(line, ElementRange.single(FIRST_NOTE_INDEX)));
+
+        var fragment = Fragment.capture(line, wholeRangeOf(line));
+        var elements = fragment.elements();
+        var onLeadingBar = spanAnchoredOn(fragment, elements.get(LEADING_BAR_INDEX));
+        var onPair = spanAnchoredOn(fragment, elements.get(SECOND_ENDING_ANCHOR_INDEX));
+        var trill = spanAnchoredOn(fragment, elements.get(FIRST_NOTE_INDEX));
+
+        var reduction = fragment.withoutRedundantKeyChanges(FRAGMENT_KEY);
+        var drop = reduction.withoutLeadingBars();
+
+        assertThat(drop).isNotNull();
+
+        var staying = new ArrayList<>(elements);
+        staying.remove(PAIR_KEY_CHANGE_INDEX);
+        staying.remove(PAIR_BARLINE_INDEX);
+        staying.remove(LEADING_BAR_INDEX);
+
+        assertThat(drop.reduction().fragment().elements())
+            .as("the leading barline and the redundant pair go")
+            .containsExactlyElementsOf(staying);
+        assertThat(drop.reduction().fragment().spans())
+            .as("a span clear of every dropped element stays")
+            .containsExactly(trill);
+        assertThat(drop.reduction().strandedSpans())
+            .as("the span stranded before the drop, then the span the drop strands")
+            .satisfiesExactly(
+                stranded -> {
+                    assertThat(stranded.span()).isSameAs(onPair);
+                    assertThat(stranded.covered())
+                        .containsExactlyElementsOf(elements.subList(SECOND_ENDING_ANCHOR_INDEX, PAIR_BARLINE_INDEX + 1));
+                },
+                stranded -> {
+                    assertThat(stranded.span()).isSameAs(onLeadingBar);
+                    assertThat(stranded.covered())
+                        .containsExactlyElementsOf(elements.subList(LEADING_BAR_INDEX, FIRST_ENDING_END_INDEX + 1));
+                });
+    }
+
+    private static Span<?> spanAnchoredOn(Fragment fragment, StaffElement anchor) {
+        return fragment.spans().stream()
+            .filter(span -> span.getAnchorElement() == anchor)
+            .findFirst()
+            .orElseThrow();
     }
 }
