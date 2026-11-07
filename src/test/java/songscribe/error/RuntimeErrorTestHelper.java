@@ -28,7 +28,7 @@ public final class RuntimeErrorTestHelper {
 
     /**
      * Installs an exit handler that throws {@link AssertionError} instead of calling
-     * {@code System.exit}. Call once from a {@code @BeforeAll} in each test base class.
+     * {@code System.exit}. Call once, before any test class that can reach an exit is initialized.
      */
     public static void install() {
         RuntimeError.setExitHandlerForTesting(status -> {

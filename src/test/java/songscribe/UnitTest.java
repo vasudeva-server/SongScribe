@@ -94,13 +94,16 @@ public abstract class UnitTest {
     private static volatile boolean bannerShown = false;
     private static volatile boolean flatLafInstalled = false;
 
-    @BeforeAll
-    static void installErrorHandling() throws Exception {
-        // Not UI setup: a unit test that reaches an alert would otherwise block on a modal
-        // dialog nobody can dismiss, which is a hung suite rather than a failing test.
+    // Not UI setup: a unit test that reaches an alert would otherwise block on a modal dialog
+    // nobody can dismiss, which is a hung suite rather than a failing test. Do not move this into
+    // @BeforeAll: a subclass's static initializer runs before @BeforeAll, but after this block.
+    static {
         OptionDialogs.setSuppressDialogs(true);
         RuntimeErrorTestHelper.install();
+    }
 
+    @BeforeAll
+    static void installErrorHandling() throws Exception {
         // UIManager is process-global and queued EDT work outlives the test that queued it,
         // so a control built on the event thread can be built during any test at all. The
         // properties it reads have to be registered for every class, not only the classes
