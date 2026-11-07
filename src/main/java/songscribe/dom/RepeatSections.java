@@ -30,8 +30,8 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The one model of a song's repeat sections: which bar opens the section each right repeat
- * closes, and which repeat bars are left unmatched.
+ * The one model of a song's repeat sections: where the section each right repeat closes
+ * begins, and which repeat bars are left unmatched.
  *
  * <p>An <em>opener</em> is a bar that {@link ElementType#opensRepeatSection() opens a section}
  * ({@code |:} or {@code :|:}); a <em>right repeat</em> {@link ElementType#closesRepeat() closes
@@ -47,8 +47,8 @@ import org.jspecify.annotations.Nullable;
  *   <li>A {@code ||} closes every open section, as a final barline does.</li>
  *   <li>A {@code :|:} first closes the open section as a right repeat, then opens a new one.</li>
  *   <li>A song whose first element is a {@code :|} or {@code :|:} closes the song-start section:
- *       a {@link Section} with a {@code null} opener, not unmatched, whose {@link #sectionStart}
- *       is the bar itself.</li>
+ *       the bar is not one of {@link #unopenedClosers()}, and its {@link #sectionStart} is the
+ *       bar itself.</li>
  *   <li>An opener that comes while a section is open is nested; it still opens a section, which
  *       the next right repeat closes.</li>
  *   <li>An opener whose section a closing bar or the end of the song ends first is never closed,
@@ -57,24 +57,15 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>A snapshot of the song when {@link #of(Song)} built it; it does not follow later edits.
  *
- * @invariant every right repeat of the song is the closer of exactly one {@link Section} or
- *            one of {@link #unopenedClosers()}, never both
- * @invariant every opener of the song that is not one of {@link #nestedOpeners()} is the
- *            opener of exactly one {@link Section} or one of {@link #unclosedOpeners()}, never
- *            both
- * @invariant every opener in {@link #nestedOpeners()} is the opener of at most one
- *            {@link Section}, and never one of {@link #unclosedOpeners()}
+ * @invariant a right repeat of the song is one of {@link #unopenedClosers()} exactly when its
+ *            {@link #sectionStart} is {@code null}
+ * @invariant an opener of the song that is not one of {@link #nestedOpeners()} is one of
+ *            {@link #unclosedOpeners()} exactly when no right repeat closes its section
+ * @invariant no opener in {@link #nestedOpeners()} is one of {@link #unclosedOpeners()}
  * @invariant every list is in song order
  */
 public final class RepeatSections {
 
-    /**
-     * @param opener {@code null} when the song start opened the section
-     */
-    public record Section(@Nullable ElementLocation opener, ElementLocation closer) {
-    }
-
-    private final List<Section> sections;
     private final List<ElementLocation> unopenedClosers;
     private final List<ElementLocation> unclosedOpeners;
     private final List<ElementLocation> nestedOpeners;
@@ -82,7 +73,6 @@ public final class RepeatSections {
     private final Map<ElementLocation, ElementLocation> sectionStarts;
 
     private RepeatSections(Walk walk) {
-        sections = List.copyOf(walk.sections);
         unopenedClosers = List.copyOf(walk.unopenedClosers);
         unclosedOpeners = List.copyOf(walk.unclosedOpeners);
         nestedOpeners = List.copyOf(walk.nestedOpeners);
@@ -111,10 +101,6 @@ public final class RepeatSections {
         walk.endAll();
 
         return new RepeatSections(walk);
-    }
-
-    public List<Section> sections() {
-        return sections;
     }
 
     public List<ElementLocation> unopenedClosers() {
@@ -179,7 +165,6 @@ public final class RepeatSections {
     private static final class Walk {
 
         private final Deque<OpenSection> open = new ArrayDeque<>();
-        private final List<Section> sections = new ArrayList<>();
         private final List<ElementLocation> unopenedClosers = new ArrayList<>();
         private final List<ElementLocation> unclosedOpeners = new ArrayList<>();
         private final List<ElementLocation> nestedOpeners = new ArrayList<>();
@@ -221,12 +206,8 @@ public final class RepeatSections {
         }
 
         private void closeInnermost(ElementLocation closer) {
-            var innermost = open.poll();
-
-            if (innermost == null) {
+            if (open.poll() == null) {
                 unopenedClosers.add(closer);
-            } else {
-                sections.add(new Section(innermost.opener, closer));
             }
         }
 

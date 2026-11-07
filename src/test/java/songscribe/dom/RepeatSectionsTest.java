@@ -40,20 +40,16 @@ import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 
 /**
- * {@link RepeatSections}: which closed sections a song holds, and which of its repeat bars are
- * left over, and where the section open before an element began.
+ * {@link RepeatSections}: where the section each right repeat closes begins, which of a song's
+ * repeat bars are left over, and where the section open before an element began.
  *
  * <p>A case writes the song as a notation and names the elements it asserts about, so no case
  * counts element indexes. The notation is whitespace-separated tokens: {@code |:}, {@code :|},
  * {@code :|:}, {@code ||} and {@code fin} are the bars, {@code N} is a note, and {@code /} ends
  * the line. A token may end in {@code #name}, which names the element for the case's expected
- * values. The name {@link #SONG_START} stands for the section the song start opens, which has no
- * element.
+ * values.
  */
 class RepeatSectionsTest extends UnitTest {
-
-    /** Stands, in a section's opener position, for the section the song start opens. */
-    private static final String SONG_START = "start";
 
     private static final String LINE_BREAK = "/";
     private static final String TAG_SEPARATOR = "#";
@@ -117,15 +113,15 @@ class RepeatSectionsTest extends UnitTest {
     }
 
     /**
-     * One closed section, by the names of its two bars.
+     * One right repeat that closes a section, and the first element of that section.
      *
-     * @param opener the opener's name, or {@link #SONG_START} when the song start opened it
-     * @param closer the closer's name
+     * @param closer the right repeat's name
+     * @param start  the name of the section's first element
      */
-    private record SectionNames(String opener, String closer) {}
+    private record ClosedSection(String closer, String start) {}
 
-    private static SectionNames section(String opener, String closer) {
-        return new SectionNames(opener, closer);
+    private static ClosedSection closed(String closer, String start) {
+        return new ClosedSection(closer, start);
     }
 
     /**
@@ -133,7 +129,7 @@ class RepeatSectionsTest extends UnitTest {
      *
      * @param description     the case, as the test's display name
      * @param notation        the song
-     * @param sections        every closed section, in the song order of its closer
+     * @param closedSections  every right repeat that closes a section
      * @param unopenedClosers the right repeats that find no open section
      * @param unclosedOpeners the openers a closing bar or the song end ends first
      * @param nestedOpeners   the openers that come while a section is open
@@ -141,7 +137,7 @@ class RepeatSectionsTest extends UnitTest {
     private record SectionsCase(
         String description,
         String notation,
-        List<SectionNames> sections,
+        List<ClosedSection> closedSections,
         List<String> unopenedClosers,
         List<String> unclosedOpeners,
         List<String> nestedOpeners
@@ -153,12 +149,19 @@ class RepeatSectionsTest extends UnitTest {
         var notated = notated(testCase.notation());
         var model = RepeatSections.of(notated.song());
 
-        assertThat(model.sections()).containsExactlyElementsOf(testCase.sections().stream()
-            .map(names -> new RepeatSections.Section(
-                SONG_START.equals(names.opener()) ? null : notated.at(names.opener()),
-                notated.at(names.closer())))
-            .toList());
-        assertThat(model.unopenedClosers()).containsExactlyElementsOf(locationsOf(notated, testCase.unopenedClosers()));
+        for (var closedSection : testCase.closedSections()) {
+            assertThat(model.sectionStart(notated.at(closedSection.closer())))
+                .as("the start of the section %s closes", closedSection.closer())
+                .isEqualTo(notated.at(closedSection.start()));
+        }
+
+        var unopenedClosers = locationsOf(notated, testCase.unopenedClosers());
+
+        for (var closer : unopenedClosers) {
+            assertThat(model.sectionStart(closer)).as("the start before unopened closer %s", closer).isNull();
+        }
+
+        assertThat(model.unopenedClosers()).containsExactlyElementsOf(unopenedClosers);
         assertThat(model.unclosedOpeners()).containsExactlyElementsOf(locationsOf(notated, testCase.unclosedOpeners()));
         assertThat(model.nestedOpeners()).containsExactlyElementsOf(locationsOf(notated, testCase.nestedOpeners()));
     }
@@ -172,12 +175,12 @@ class RepeatSectionsTest extends UnitTest {
 
         return Stream.of(
             new SectionsCase("|: N :| is one section",
-                "|:#open N :|#close",
-                List.of(section("open", "close")), none, none, none),
+                "|: N#start :|#close",
+                List.of(closed("close", "start")), none, none, none),
 
             new SectionsCase("|: |: :| :| nests the second opener; the last :| closes the outer section",
-                "|:#outer |:#inner :|#innerClose :|#outerClose",
-                List.of(section("inner", "innerClose"), section("outer", "outerClose")),
+                "|: |:#inner :|#innerClose :|#outerClose",
+                List.of(closed("innerClose", "innerClose"), closed("outerClose", "inner")),
                 none, none, List.of("inner")),
 
             new SectionsCase("|: A || B leaves the opener unclosed",
@@ -185,21 +188,21 @@ class RepeatSectionsTest extends UnitTest {
                 List.of(), none, List.of("open"), none),
 
             new SectionsCase("A :|: B :| is two sections, the first opened by the song start",
-                "N :|:#both N :|#close",
-                List.of(section(SONG_START, "both"), section("both", "close")),
+                "N#first :|:#both N#second :|#close",
+                List.of(closed("both", "first"), closed("close", "second")),
                 none, none, none),
 
             new SectionsCase("|: A :|: B leaves the :|: opener unclosed",
-                "|:#open N :|:#both N",
-                List.of(section("open", "both")), none, List.of("both"), none),
+                "|: N#start :|:#both N",
+                List.of(closed("both", "start")), none, List.of("both"), none),
 
             new SectionsCase("a section across a line break",
-                "|:#open N / N :|#close",
-                List.of(section("open", "close")), none, none, none),
+                "|: N#start / N :|#close",
+                List.of(closed("close", "start")), none, none, none),
 
             new SectionsCase("A :| B :| closes the song-start section, then finds the second :| unopened",
-                "N :|#first N :|#second",
-                List.of(section(SONG_START, "first")), List.of("second"), none, none),
+                "N#start :|#first N :|#second",
+                List.of(closed("first", "start")), List.of("second"), none, none),
 
             new SectionsCase("A || B :| leaves the :| unopened, the || having closed every section",
                 "N || N :|#close",
@@ -215,11 +218,11 @@ class RepeatSectionsTest extends UnitTest {
 
             new SectionsCase("a leading :| closes the song-start section, which holds no element",
                 ":|#close N",
-                List.of(section(SONG_START, "close")), none, none, none),
+                List.of(closed("close", "close")), none, none, none),
 
             new SectionsCase("a leading :|: closes the song-start section, then opens a new one",
-                ":|:#both N :|#close",
-                List.of(section(SONG_START, "both"), section("both", "close")), none, none, none)
+                ":|:#both N#start :|#close",
+                List.of(closed("both", "both"), closed("close", "start")), none, none, none)
         );
     }
 
