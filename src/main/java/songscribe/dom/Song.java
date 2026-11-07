@@ -938,7 +938,7 @@ public final class Song implements Disposable {
     }
 
     /**
-     * @param change names lines of this song
+     * @param change names lines of this song that the same edit or load does not remove
      * @see ModificationSession#report
      */
     public void report(RecordedChange change) {

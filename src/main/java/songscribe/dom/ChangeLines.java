@@ -20,8 +20,8 @@
 package songscribe.dom;
 
 /**
- * The lines a recorded change was made on. The place stays right whatever else the same edit or
- * load does to the song before its report is built.
+ * The lines a recorded change was made on. The place stays right whatever lines the same edit or
+ * load adds or removes around these lines before its report is built.
  *
  * @param first the line the change starts on
  * @param last  the line the change ends on

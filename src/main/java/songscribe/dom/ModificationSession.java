@@ -95,7 +95,8 @@ sealed abstract class ModificationSession permits EditSession, LoadSession {
     abstract void applyChange(Mutation mutation, Runnable mutator);
 
     /**
-     * @param change names lines of this session's song
+     * @param change names lines of this session's song that the same edit or load does not
+     *               remove
      */
     abstract void report(RecordedChange change);
 
