@@ -34,6 +34,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
@@ -238,6 +239,28 @@ class StaffElementRunTest extends UnitTest {
         return test -> compactSong(Key.NO_ACCIDENTALS, notations).getLine(lineIndex);
     }
 
+    /** The slot of the host in {@link #SONG_STARTING_WITH_GRACE_PAIR}, behind its paired grace note. */
+    private static final int SONG_START_HOST = 1;
+
+    /** The first line of a song that opens with a grace note paired with the note after it. */
+    private static final LineSource SONG_STARTING_WITH_GRACE_PAIR = test -> buildSong(line -> {
+        var pairedGrace = graceQuaver();
+        pairedGrace.setSlide(Slide.GLISSANDO);
+        line.addElement(pairedGrace);
+        line.addElement(crotchet());
+    }).getLine(FIRST_LINE);
+
+    /** Every place the first element of the song may land: the lines that precede any element. */
+    private static final List<LineSource> SONG_START_LINES = List.of(
+        lineOfSong(FIRST_LINE, TWO_NOTES),
+        lineOfSong(FIRST_LINE, NO_NOTES),
+        lineOfSong(SECOND_LINE, NO_NOTES, TWO_NOTES));
+
+    /** The song-start lines that hold an element at index 0, which is all a replacement can name. */
+    private static final List<LineSource> SONG_START_LINES_WITH_AN_ELEMENT_FIRST = List.of(
+        lineOfSong(FIRST_LINE, TWO_NOTES),
+        lineOfSong(SECOND_LINE, NO_NOTES, TWO_NOTES));
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("insertRunCases")
     void testCanInsertRunAtComposesInsertionAndBreathMarkRules(InsertRunCase testCase) {
@@ -259,6 +282,10 @@ class StaffElementRunTest extends UnitTest {
                 lineOfSong(SECOND_LINE, TWO_NOTES, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), true),
             new InsertRunCase("a run starting with a note is accepted at index 0 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 0, List.of(crotchet(), singleBarline()), true),
+            new InsertRunCase("a run starting with a barline is refused in a song with no elements",
+                lineOfSong(FIRST_LINE, NO_NOTES), 0, List.of(singleBarline(), crotchet()), false),
+            new InsertRunCase("a run starting with a note is accepted in a song with no elements",
+                lineOfSong(FIRST_LINE, NO_NOTES), 0, List.of(crotchet(), singleBarline()), true),
             new InsertRunCase("a breath mark leading a run after a barline is refused",
                 AFTER_BARLINE, List.of(breathMark()), false),
             new InsertRunCase("a breath mark leading a run at index 0 is refused",
@@ -489,6 +516,12 @@ class StaffElementRunTest extends UnitTest {
                 lineOfSong(SECOND_LINE, TWO_NOTES, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, true),
             new ReplaceCase("an incoming note is accepted at index 0 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 0, ElementType.CROTCHET, true),
+            new ReplaceCase("an incoming barline is refused on the host of a paired grace note "
+                + "at the song start",
+                SONG_STARTING_WITH_GRACE_PAIR, SONG_START_HOST, ElementType.SINGLE_BARLINE, false),
+            new ReplaceCase("an incoming note is accepted on the host of a paired grace note "
+                + "at the song start",
+                SONG_STARTING_WITH_GRACE_PAIR, SONG_START_HOST, ElementType.CROTCHET, true),
             new ReplaceCase("a note paired with nothing may be replaced", PAIRING_LONE_NOTE, true),
             new ReplaceCase("a grace note may not", PAIRING_GRACE, false),
             new ReplaceCase("a key change may not", PAIRING_KEY_CHANGE, false),
@@ -496,6 +529,25 @@ class StaffElementRunTest extends UnitTest {
             new ReplaceCase("a barline no key change sits behind may", PAIRING_LONE_BARLINE, true),
             new ReplaceCase("an index past the run protects nothing", PAST_THE_PAIRING_LINE, true)
         );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("barCases")
+    void testNoKindOfBarMayBeInsertedAtTheSongStart(BarCase testCase) {
+        assertThat(SONG_START_LINES)
+            .allSatisfy(lineSource -> assertThat(
+                lineSource.lineOf(this).canInsertRunAt(0, List.of(testCase.bar().get(), crotchet())))
+                .isFalse());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("barCases")
+    void testNoKindOfBarMayReplaceAnElementAtTheSongStart(BarCase testCase) {
+        assertThat(SONG_START_LINES_WITH_AN_ELEMENT_FIRST)
+            .allSatisfy(lineSource -> assertThat(lineSource.lineOf(this).canReplaceElementAt(0, testCase.type()))
+                .isFalse());
+        assertThat(SONG_STARTING_WITH_GRACE_PAIR.lineOf(this).canReplaceElementAt(SONG_START_HOST, testCase.type()))
+            .isFalse();
     }
 
     @ParameterizedTest(name = "{0}")
