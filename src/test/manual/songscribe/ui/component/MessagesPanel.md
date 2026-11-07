@@ -1,7 +1,8 @@
 # Messages Panel
 
 Exercises: `ReportPanel`, `LintCallout`, `LintCalloutController`, `LineComponent`,
-`LineSelectionHandler`, `LintToolTipPlacement`, `MainFrame`
+`LineSelectionHandler`, `LintToolTipPlacement`, `MainFrame`, `ToggleMessagesAction`,
+`SaveAction`, `PlayStopAction`, `ScoreViewController`, `Fragment`, `SongStart`, `ReportStatus`
 
 ## Showing a finding in the score
 
@@ -97,7 +98,33 @@ step is done, because the selection clears when the pointer leaves the list.
 
 ## Start of the song
 
-30. Pasting a fragment that starts with a barline at the start of the song pastes the rest
-    of the fragment and lists a change row for the dropped barline.
 31. Deleting the notes before a barline, so that the barline is first in the song, flags
     the barline, and Play is disabled while repeats are on.
+
+## Toolbar toggle and menu item
+
+34. With the panel hidden, the toolbar's Messages button is not selected and its tooltip reads
+    "Show messages sidebar". Click it. The panel shows, the button is selected, and its tooltip
+    reads "Hide messages sidebar". Click it again. The panel hides and the button is not
+    selected.
+35. Open the Window menu. The Messages item has a check mark while the panel is shown and none
+    while it is hidden. Choosing it toggles the panel, and the toolbar button's selected state
+    follows.
+36. Show and hide the panel with Shift-Command-M. The toolbar button's selected state and
+    tooltip and the Window menu item's check mark follow each press.
+
+## Toolbar status icon
+
+37. With a song that has no change rows and no lint rows, the toolbar button shows the
+    outlined speech bubble, drawn in the toolbar's color.
+38. With a song that has a change row and no lint rows (break the tie as in check 13, with no
+    lint marks present), the button shows the speech bubble with two lines of text, drawn in
+    the toolbar's color.
+39. With a song that has a lint row, with or without change rows, the button shows the red
+    speech bubble with an exclamation mark. It stays red in both the light and the dark
+    theme.
+40. Removing the last lint row (for example, Command-Z on the edit that caused it) changes the
+    button to the change-rows icon when change rows remain, else to the empty icon. The icon
+    changes with the panel hidden as well as shown.
+41. Switch between the light and the dark theme. The empty and change-rows icons take the new
+    theme's toolbar color.
