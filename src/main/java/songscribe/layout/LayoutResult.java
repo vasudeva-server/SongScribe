@@ -184,9 +184,7 @@ public final class LayoutResult {
      * @return a new rectangle in the hit registry's line-local, midline-relative staff spaces
      */
     public Rectangle2D.Double elementHitRectSs(StaffElement element) {
-        var rectSs = new Rectangle2D.Double();
-        ElementHitGeometry.elementHitRectSs(getElementXSs(element), element, rectSs);
-        return rectSs;
+        return ElementHitGeometry.elementHitRectSs(getElementXSs(element), element);
     }
 
     /**

@@ -27,10 +27,9 @@ import songscribe.dom.StaffElement;
 
 /**
  * The clickable rectangle of a note head, in layout space: X in line-local staff spaces, Y in
- * staff spaces relative to the staff midline. Production code reaches it through
- * {@link LayoutResult#elementHitRectSs}.
+ * staff spaces relative to the staff midline.
  */
-public final class ElementHitGeometry {
+final class ElementHitGeometry {
 
     /**
      * A pixel constant is safe in layout geometry only because {@link DocumentScale} does not
@@ -41,10 +40,7 @@ public final class ElementHitGeometry {
     private ElementHitGeometry() {
     }
 
-    /**
-     * @param out overwritten with the result
-     */
-    public static void elementHitRectSs(double elementXSs, StaffElement element, Rectangle2D.Double out) {
+    static Rectangle2D.Double elementHitRectSs(double elementXSs, StaffElement element) {
         var elementType = element.getType();
 
         // From the element, not from its type: a mid-line key change's type width is only a
@@ -62,7 +58,7 @@ public final class ElementHitGeometry {
         var xExpansionSs = Math.max(0, (minHitSizeSs - naturalWidthSs) / 2);
         var yExpansionSs = Math.max(0, (minHitSizeSs - naturalHeightSs) / 2);
 
-        out.setRect(
+        return new Rectangle2D.Double(
             elementXSs - xExpansionSs,
             elementYSs + topOffsetSs - yExpansionSs,
             naturalWidthSs + 2 * xExpansionSs,

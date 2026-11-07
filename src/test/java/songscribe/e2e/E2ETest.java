@@ -78,7 +78,6 @@ import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.engraving.Staff;
 import songscribe.font.DocumentFonts;
-import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.PageModel;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.OptionDialogs;
