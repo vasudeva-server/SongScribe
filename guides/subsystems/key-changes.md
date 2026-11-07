@@ -17,6 +17,7 @@ Read `KeyChangeElement` first.
 - `CautionaryKeySignature`
 - `KeyEditFitCalculator`
 - `LeadingBarLoadPass`
+- `SongStartRule`
 - `StrandedKeyChangeException`
 - `KeyChangeAction`
 - `KeyChangeDialogController`

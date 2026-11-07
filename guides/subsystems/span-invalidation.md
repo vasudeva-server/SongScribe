@@ -20,6 +20,7 @@ Read `LineSpans` first.
 - `TieLoadPass`
 - `PendingSpan`
 - `ModificationRule`
+- `SongStartRule`
 - `TieRule`
 - `EndingSectionRule`
 

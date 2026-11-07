@@ -455,7 +455,12 @@ class LineSpansTest extends UnitTest {
             song.withModification(() -> line.deleteRange(line.effectiveRange(testCase.extent())));
 
             assertThat(rangesOf(line, testCase.kind())).isEmpty();
-            assertThat(reports.reports()).as("the user deleted the span, so nothing is reported").isEmpty();
+
+            // The ending's case leaves the section opener first in the song, and the song-start
+            // rule reports that barline's removal.
+            assertThat(reports.reports().stream().flatMap(List::stream)
+                .filter(change -> change.heading() != ChangeHeading.LEADING_BARS_REMOVED))
+                .as("the user deleted the span, so it is not reported").isEmpty();
         });
     }
 

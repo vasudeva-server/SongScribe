@@ -53,30 +53,31 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * opening repeat on an earlier line keeps an ending, and deleting the line that holds one removes
  * it.
  *
- * <p>Every fixture ends in the ending under test, on the song's last line, and opens with a
- * closing repeat: a song's start opens a section by itself, so an ending is only broken by an edit
- * when a closing bar stands before the repeat that opens its section.
+ * <p>Every fixture ends in the ending under test, on the song's last line, and opens with a note
+ * and a closing repeat: a song's start opens a section by itself, so an ending is only broken by an
+ * edit when a closing bar stands before the repeat that opens its section. The note keeps the
+ * closing repeat from standing first in the song, where no barline can stand ({@link SongStart}).
  */
 class EndingSectionRuleTest extends UnitTest {
 
     /**
-     * The one-line fixture: a closing repeat, the opening repeat the ending's split closes to, two
-     * notes, and the ending — anchor, split, one note, end.
+     * The one-line fixture: a note, a closing repeat, the opening repeat the ending's split closes
+     * to, two notes, and the ending — anchor, split, one note, end.
      */
-    private static final String ONE_LINE = ":| |: 3 3 :| 3 3";
-    private static final int OPENER_INDEX = 1;
-    private static final int ONE_LINE_ANCHOR_INDEX = 3;
+    private static final String ONE_LINE = "3 :| |: 3 3 :| 3 3";
+    private static final int OPENER_INDEX = 2;
+    private static final int ONE_LINE_ANCHOR_INDEX = 4;
 
     /** The last line of a fixture whose opening repeat is on an earlier line: the ending's line. */
     private static final String ENDING_LINE = "3 3 :| 3 3";
     private static final int ENDING_LINE_ANCHOR_INDEX = 1;
 
     /**
-     * A fixture with a nested section: {@code |: |: A :| B :|} and the ending whose split is the
+     * A fixture with a nested section: {@code A |: |: A :| B :|} and the ending whose split is the
      * last {@code :|}, which closes the outer section.
      */
-    private static final String NESTED_LINE = "|: |: 3 :| 3 3 :| 3 3";
-    private static final int NESTED_ANCHOR_INDEX = 5;
+    private static final String NESTED_LINE = "3 |: |: 3 :| 3 3 :| 3 3";
+    private static final int NESTED_ANCHOR_INDEX = 6;
 
     /** Between an ending's anchor and its end, in a line where nothing else stands in between. */
     private static final int END_OFFSET_FROM_ANCHOR = 3;
@@ -169,11 +170,11 @@ class EndingSectionRuleTest extends UnitTest {
                 replaceOpener(),
                 endingOn(FIRST_LINE)),
             new SectionCase("deleting the line that holds the opening repeat removes the ending",
-                ENDING_LINE_ANCHOR_INDEX, new String[] {":| 3", "|: 3", ENDING_LINE},
+                ENDING_LINE_ANCHOR_INDEX, new String[] {"3 :| 3", "|: 3", ENDING_LINE},
                 song -> song.removeLine(OPENER_LINE),
                 endingOn(SECOND_LINE)),
             new SectionCase("an opening repeat on an earlier line keeps the ending through an edit to its line",
-                ENDING_LINE_ANCHOR_INDEX, new String[] {":| |: 3", ENDING_LINE},
+                ENDING_LINE_ANCHOR_INDEX, new String[] {"3 :| |: 3", ENDING_LINE},
                 song -> song.getLine(SECOND_LINE).addElement(0, crotchet()),
                 null),
             new SectionCase("a split that is the last :| of |: |: :| :| closes the outer section and keeps the ending",

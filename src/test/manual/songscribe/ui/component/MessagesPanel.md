@@ -98,8 +98,10 @@ step is done, because the selection clears when the pointer leaves the list.
 
 ## Start of the song
 
-31. Deleting the notes before a barline, so that the barline is first in the song, flags
-    the barline, and Play is disabled while repeats are on.
+31. Deleting the notes before a barline, so that the barline would be first in the song,
+    removes the barline too. The panel lists a change row, "Barlines at the start of the song
+    were removed", and no lint row for the barline. Command-Z restores the notes and the
+    barline in one step, and the change row goes.
 
 ## Toolbar toggle and menu item
 

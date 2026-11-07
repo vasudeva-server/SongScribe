@@ -35,13 +35,6 @@ import songscribe.dom.Song;
  */
 public enum LintRule {
 
-    /**
-     * No barline or repeat stands first in the song; the song's terminal is exempt. Blocks
-     * playback so that it never meets a leading repeat; a leading plain barline blocks it too,
-     * because one rule covers every bar type.
-     */
-    LEADING_BAR(new LeadingBarCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT, Flag.BLOCKS_PLAYBACK)),
-
     /** Every repeat section is opened and closed exactly once, and none is nested. Blocks playback, which cannot follow broken repeats. */
     BALANCED_REPEATS(new BalancedRepeatsCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT, Flag.BLOCKS_PLAYBACK)),
 

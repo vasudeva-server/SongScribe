@@ -29,7 +29,7 @@ import songscribe.message.mutation.Mutation;
  */
 final class ModificationRules {
 
-    private final List<ModificationRule> rules = List.of(new TieRule(), new EndingSectionRule());
+    private final List<ModificationRule> rules = List.of(new SongStartRule(), new TieRule(), new EndingSectionRule());
 
     void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {
         for (var rule : rules) {

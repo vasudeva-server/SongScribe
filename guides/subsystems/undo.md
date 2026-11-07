@@ -10,6 +10,7 @@ Read `ModificationSession` first.
 - `Mutation`
 - `ModificationRule`
 - `ModificationRules`
+- `SongStartRule`
 - `TieRule`
 - `EndingSectionRule`
 - `SongDidChangeNotification`

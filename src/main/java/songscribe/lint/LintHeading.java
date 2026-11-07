@@ -26,7 +26,6 @@ import songscribe.Strings;
  * What kind of problem lint found, as the user is told about it.
  */
 public enum LintHeading {
-    LEADING_BAR(Strings.LINT_BAR_LEADING),
     FINE_MISSING(Strings.LINT_FINE_MISSING),
     FINE_UNBALANCED(Strings.LINT_FINE_UNBALANCED),
     LYRIC_MISSING(Strings.LINT_LYRICS_MISSING),
