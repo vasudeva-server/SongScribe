@@ -90,10 +90,13 @@ class UnbalancedFineCheckTest extends UnitTest {
             new FineCase("a Fine on the last bar before a blank line is flagged, but not as unreferenced",
                 List.of("N | N |@Fine!", ""),
                 List.of(ON_LAST_BAR)),
-            new FineCase("a Fine on a last element that is not a bar is not on a bar and on the last element, "
-                + "and is not unreferenced",
-                "N | N@Fine!!",
-                List.of(NOT_ON_BAR, ON_LAST_BAR)),
+            new FineCase("a Fine on a last element that is not a bar is only not on a bar",
+                "N | N@Fine!",
+                List.of(NOT_ON_BAR)),
+            new FineCase("a Fine on a note before the last element, with no later reference, "
+                + "is not on a bar and unreferenced",
+                "N@Fine!! | N |",
+                List.of(NOT_ON_BAR, NOT_REFERENCED)),
             new FineCase("a bare word fine in an annotation is a reference",
                 "N |@a_fine_tone! N |",
                 List.of(REFERENCE_WITHOUT_FINE)),

@@ -57,8 +57,10 @@ import songscribe.dom.StaffElement;
  * <ul>
  *   <li>{@link Strings#LINT_REASON_FINE_NOT_ON_BAR} on a Fine on an element that is not a
  *       barline or a repeat.</li>
- *   <li>{@link Strings#LINT_REASON_FINE_ON_LAST_BAR} on a Fine on the last element of the song:
- *       the last element of the last line that has elements. The song ends there anyway.</li>
+ *   <li>{@link Strings#LINT_REASON_FINE_ON_LAST_BAR} on a Fine on a barline or a repeat that is
+ *       the last element of the song: the last element of the last line that has elements. The
+ *       song ends there anyway. A Fine on a last element that is not a barline or a repeat gets
+ *       only the reason above.</li>
  *   <li>{@link Strings#LINT_REASON_FINE_NOT_REFERENCED} on a Fine with no reference after it in
  *       song order. One reference answers every Fine before it. A Fine on the last element of
  *       the song is never flagged with this reason, because nothing can follow it.</li>
@@ -144,13 +146,15 @@ final class UnbalancedFineCheck implements LintCheck {
         private void visitFine(StaffElement element) {
             fineSeen = true;
 
+            var isLast = element == lastElement;
+
             if (!element.getType().isBar()) {
                 flag(element, Problem.NOT_ON_BAR);
+            } else if (isLast) {
+                flag(element, Problem.ON_LAST_BAR);
             }
 
-            if (element == lastElement) {
-                flag(element, Problem.ON_LAST_BAR);
-            } else {
+            if (!isLast) {
                 unreferencedFines.add(element);
             }
         }
