@@ -29,10 +29,10 @@ import songscribe.message.Message;
 /**
  * Both requests and reports a zoom change.
  * <p>
- * {@code ScoreView} applies the change from a handler at {@link #APPLY_PRIORITY}. Any other
- * listener MUST use a priority strictly less than {@link #APPLY_PRIORITY} (a bare
- * {@code @Handler} does), or it may run before the zoom is applied. Only a handler that must
- * see the score before the zoom uses {@link #BEFORE_APPLY_PRIORITY}.
+ * {@code ScoreView} applies the change from a handler at {@link #APPLY_PRIORITY}. A handler that
+ * must see the score before the zoom uses {@link #BEFORE_APPLY_PRIORITY}. Every other listener
+ * MUST use a priority strictly less than {@link #APPLY_PRIORITY} (a bare {@code @Handler} does),
+ * or it may run before the zoom is applied.
  * <p>
  * A handler runs mid-change, before the view has re-laid out. Work that needs the settled zoom
  * observes the view's zoom property instead, which reports after re-layout.
