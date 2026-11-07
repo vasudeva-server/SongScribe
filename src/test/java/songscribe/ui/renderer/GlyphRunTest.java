@@ -22,6 +22,7 @@ package songscribe.ui.renderer;
 
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -32,13 +33,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * How many glyphs a {@link GlyphRun} holds for a span, and where a centered run stands: the count
- * is the number of whole glyphs that fit, never fewer than one, and a run centered on a span
- * overflows it equally on both sides.
+ * How many glyphs a {@link GlyphRun} holds for a span, and where a run stands: the count is the
+ * number of whole glyphs of the tile's scaled size that fit, never fewer than one, and a span a
+ * rounding error short of a whole number holds that number. A run starting at a span begins at its
+ * left edge, and a run centered on a span overflows it equally on both sides.
  */
 class GlyphRunTest extends UnitTest {
 
     private static final ScaledGlyph TILE = ScaledGlyph.atDesignSize(SMuFLGlyph.WIGGLE_TRILL_FASTER);
+
+    // Two scaled advances must not also hold exactly two design advances, so that a count taken
+    // from the design advance gives a number other than two.
+    private static final double NON_DESIGN_SCALE = 2.0;
+
+    private static final ScaledGlyph SCALED_TILE = new ScaledGlyph(SMuFLGlyph.WIGGLE_TRILL_FASTER, NON_DESIGN_SCALE);
 
     private static final double SPAN_LEFT_XSS = 4.0;
 
@@ -47,47 +55,63 @@ class GlyphRunTest extends UnitTest {
     private static final double TOLERANCE_SS = 0.0001;
 
     /**
-     * One span, and how many glyphs fit it.
+     * One span, and how many glyphs of one tile fit it.
      *
-     * @param description         the case, which doubles as the parameterized display name
-     * @param spanWidthInAdvances the span's width, in multiples of the tile's advance
-     * @param expectedCount       how many whole glyphs fit, at least one
+     * @param description   the case, which doubles as the parameterized display name
+     * @param tile          the glyph tiled along the span
+     * @param span          the stretch the run is fitted to
+     * @param expectedCount how many whole glyphs fit, at least one
      */
-    private record CountCase(String description, double spanWidthInAdvances, int expectedCount) {
+    private record CountCase(String description, ScaledGlyph tile, GlyphRun.Span span, int expectedCount) {
 
         @Override
         public String toString() {
             return description;
         }
+    }
 
-        GlyphRun.Span span() {
-            return new GlyphRun.Span(SPAN_LEFT_XSS, SPAN_LEFT_XSS + spanWidthInAdvances * TILE.advanceSs());
-        }
+    private static CountCase inAdvances(
+        String description,
+        ScaledGlyph tile,
+        double spanWidthInAdvances,
+        int expectedCount
+    ) {
+        var span = new GlyphRun.Span(SPAN_LEFT_XSS, SPAN_LEFT_XSS + spanWidthInAdvances * tile.advanceSs());
+
+        return new CountCase(description, tile, span, expectedCount);
     }
 
     static Stream<CountCase> countCases() {
+        // The span starts at zero so that its width is exactly the edge it is built from: an
+        // offset edge would round the one-ulp shortfall away.
+        var roundingErrorShortOfTwo = new GlyphRun.Span(0, Math.nextDown(2 * TILE.advanceSs()));
+
         return Stream.of(
-            new CountCase("a span narrower than one glyph holds the minimum of one", 0.5, 1),
-            new CountCase("a span exactly one glyph wide holds one", 1.0, 1),
-            new CountCase("a span of one glyph and a half holds one, the half is left over", 1.5, 1),
-            new CountCase("a span exactly two glyphs wide holds two", 2.0, 2),
-            new CountCase("a span of three glyphs and a half holds three", 3.5, 3)
+            inAdvances("a span narrower than one glyph holds the minimum of one", TILE, 0.5, 1),
+            inAdvances("a span exactly one glyph wide holds one", TILE, 1.0, 1),
+            inAdvances("a span of one glyph and a half holds one, the half is left over", TILE, 1.5, 1),
+            inAdvances("a span exactly two glyphs wide holds two", TILE, 2.0, 2),
+            inAdvances("a span of three glyphs and a half holds three", TILE, 3.5, 3),
+            new CountCase("a span a rounding error short of two glyphs holds two", TILE, roundingErrorShortOfTwo, 2),
+            inAdvances("a scaled tile holds the whole scaled glyphs that fit", SCALED_TILE, 2.0, 2)
         );
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("countCases")
     void testRunHoldsTheWholeGlyphsThatFit(CountCase testCase) {
+        var tile = testCase.tile();
         var span = testCase.span();
 
-        assertThat(GlyphRun.startingAt(TILE, span, BASELINE_YSS).count()).isEqualTo(testCase.expectedCount());
-        assertThat(GlyphRun.centeredOn(TILE, span, BASELINE_YSS).count()).isEqualTo(testCase.expectedCount());
+        assertThat(GlyphRun.startingAt(tile, span, BASELINE_YSS).count()).isEqualTo(testCase.expectedCount());
+        assertThat(GlyphRun.centeredOn(tile, span, BASELINE_YSS).count()).isEqualTo(testCase.expectedCount());
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("countCases")
-    void testRunStartingAtASpanBeginsAtItsLeftEdge(CountCase testCase) {
-        var run = GlyphRun.startingAt(TILE, testCase.span(), BASELINE_YSS);
+    @Test
+    void testRunStartingAtASpanBeginsAtItsLeftEdge() {
+        var advanceSs = TILE.advanceSs();
+        var span = new GlyphRun.Span(SPAN_LEFT_XSS, SPAN_LEFT_XSS + advanceSs + advanceSs / 2);
+        var run = GlyphRun.startingAt(TILE, span, BASELINE_YSS);
 
         assertThat(run.startXSs()).isEqualTo(SPAN_LEFT_XSS);
         assertThat(run.baselineYSs()).isEqualTo(BASELINE_YSS);
@@ -96,10 +120,11 @@ class GlyphRunTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("countCases")
     void testRunCenteredOnASpanOverflowsOrLeavesTheSameOnBothSides(CountCase testCase) {
+        var tile = testCase.tile();
         var span = testCase.span();
-        var run = GlyphRun.centeredOn(TILE, span, BASELINE_YSS);
+        var run = GlyphRun.centeredOn(tile, span, BASELINE_YSS);
 
-        var runRightXSs = run.startXSs() + run.count() * TILE.advanceSs();
+        var runRightXSs = run.startXSs() + run.count() * tile.advanceSs();
         var leftOfSpanXSs = span.leftXSs() - run.startXSs();
         var rightOfSpanXSs = runRightXSs - span.rightXSs();
 

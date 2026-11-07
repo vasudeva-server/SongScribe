@@ -32,7 +32,8 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  * A SMuFL line segment glyph tiled {@code count} times along one baseline.
  * <p>
  * The run is never stretched or squeezed to fit a span, so a span that is not a whole number of
- * glyphs wide leaves a gap, and a span narrower than one glyph is overflowed. All coordinates are
+ * glyphs wide leaves a gap, and a span narrower than one glyph is overflowed. A span that measures
+ * a rounding error short of a whole number of glyphs holds that whole number. All coordinates are
  * in staff spaces.
  *
  * @param tile        the glyph tiled along the run
@@ -43,7 +44,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 record GlyphRun(ScaledGlyph tile, double startXSs, int count, double baselineYSs) {
 
     // A span is built from two edges, so a span exactly n glyphs wide can measure a rounding
-    // error short of n advances. A count this close to the next whole number counts as whole.
+    // error short of n advances.
     private static final double WHOLE_GLYPH_TOLERANCE = 1e-9;
 
     record Span(double leftXSs, double rightXSs) {
