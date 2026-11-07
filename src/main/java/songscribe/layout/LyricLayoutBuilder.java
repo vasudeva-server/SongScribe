@@ -30,11 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Lyric;
+import songscribe.dom.LyricRun;
+import songscribe.dom.LyricRun.PairMelisma;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.HorizontalSpacingCalculator.GraceSyllable;
-import songscribe.layout.HorizontalSpacingCalculator.PairMelisma;
 
 /**
  * Computes lyric box and connector geometry from per-element {@link Lyric} records.
@@ -175,12 +176,13 @@ public final class LyricLayoutBuilder {
                 if (columnCanBearSyllable(columns, columnIndex)) {
                     var placeholderXSs = computeLyricBoxLeftXSs(new BoxPlacement(
                         column,
-                        placeholderWidthSs,
-                        // The placeholder text is one grapheme, so its first grapheme is all of it.
-                        placeholderWidthSs,
-                        graceUnionWidthSs(columns, columnIndex),
-                        // A note with no lyric starts no melisma, so its pair carries none.
-                        PairMelisma.NONE));
+                        new GraceSyllable(
+                            placeholderWidthSs,
+                            // The placeholder text is one grapheme, so its first grapheme is all of it.
+                            placeholderWidthSs,
+                            graceUnionWidthSs(columns, columnIndex),
+                            // A note with no lyric starts no melisma, so its pair carries none.
+                            PairMelisma.NONE)));
                     placeholders.put(
                         element, new LyricBoxLayout(placeholderXSs, placeholderWidthSs, activeScript, PLACEHOLDER_TEXT));
                 }
@@ -206,10 +208,11 @@ public final class LyricLayoutBuilder {
             var graceUnionWidthSs = graceUnionWidthSs(columns, columnIndex);
             var boxXSs = computeLyricBoxLeftXSs(new BoxPlacement(
                 column,
-                widthSs,
-                column.getSyllableFirstGraphemeWidthSs(),
-                graceUnionWidthSs,
-                HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric)));
+                new GraceSyllable(
+                    widthSs,
+                    column.getSyllableFirstGraphemeWidthSs(),
+                    graceUnionWidthSs,
+                    LyricRun.pairMelisma(lyric, hostLyric))));
             var box = new LyricBoxLayout(boxXSs, widthSs, activeScript, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
@@ -343,34 +346,22 @@ public final class LyricLayoutBuilder {
      */
     private static double computeLyricBoxLeftXSs(BoxPlacement placement) {
         var column = placement.column();
+        var syllable = placement.syllable();
 
         if (column.isGraceNote()) {
-            var syllable = new GraceSyllable(
-                placement.widthSs(),
-                placement.firstGraphemeWidthSs(),
-                placement.graceUnionWidthSs(),
-                placement.pairMelisma());
-
             return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(syllable, column);
         }
 
         // Center the syllable on the notehead, which excludes the flag and augmentation dots
         // (getNoteheadCenterXSs) so neither shifts the lyric.
-        return column.getNoteheadCenterXSs() - placement.widthSs() / 2.0;
+        return column.getNoteheadCenterXSs() - syllable.syllableWidthSs() / 2.0;
     }
 
     /**
-     * @param graceUnionWidthSs the grace–host union as this line was spaced
-     *                          ({@link #graceUnionWidthSs}); 0 when {@code column} is not a grace
-     *                          note
+     * @param syllable its union is the grace–host union as this line was spaced
+     *                 ({@link #graceUnionWidthSs}); 0 when {@code column} is not a grace note
      */
-    private record BoxPlacement(
-        ElementColumn column,
-        double widthSs,
-        double firstGraphemeWidthSs,
-        double graceUnionWidthSs,
-        PairMelisma pairMelisma
-    ) {}
+    private record BoxPlacement(ElementColumn column, GraceSyllable syllable) {}
 
     /**
      * The width of the grace–host lyric union, measured from the two columns' final X positions

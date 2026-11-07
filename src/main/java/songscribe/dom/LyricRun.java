@@ -813,6 +813,28 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
+     * Whether a grace–host pair carries the melisma of its own that {@link #syncGraceHostMelisma}
+     * maintains: the grace starts one and the host stops it.
+     *
+     * @param graceLyric null if the grace has none for the script in question
+     * @param hostLyric  null if the host has none for the same script
+     */
+    static PairMelisma pairMelisma(@Nullable Lyric graceLyric, @Nullable Lyric hostLyric) {
+        var carried = graceLyric != null
+            && graceLyric.extend() == Lyric.Extend.START
+            && !Lyric.syllabicContinues(graceLyric.syllabic())
+            && hostLyric != null
+            && hostLyric.extend() == Lyric.Extend.STOP;
+
+        return carried ? PairMelisma.CARRIED : PairMelisma.NONE;
+    }
+
+    enum PairMelisma {
+        CARRIED,
+        NONE
+    }
+
+    /**
      * Normalizes every grace-host pair in this run to the automatic grace-host melisma.
      *
      * <p>When <em>both</em> elements carry a syllable, the grace's wins and the host's is

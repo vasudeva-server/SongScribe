@@ -731,7 +731,7 @@ public final class Line implements EditableRun {
      */
     @Override
     public boolean isSongStartAt(int index) {
-        return SongStart.isSlot(this, index);
+        return SongStart.isSongStartSlot(this, index);
     }
 
     /**

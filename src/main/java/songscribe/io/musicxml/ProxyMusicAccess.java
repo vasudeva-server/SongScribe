@@ -58,7 +58,7 @@ import org.jspecify.annotations.Nullable;
  */
 final class ProxyMusicAccess {
 
-    private static final int DEFAULT_LYRIC_VERSE = 1;
+    private static final int DEFAULT_LYRIC_NUMBER = 1;
 
     private ProxyMusicAccess() {}
 
@@ -257,17 +257,17 @@ final class ProxyMusicAccess {
     }
 
     /** Lenient, matching {@code StaffElementIO}. */
-    static int lyricVerse(Lyric lyric) {
+    static int lyricNumber(Lyric lyric) {
         var number = lyric.getNumber();
 
         if (number == null) {
-            return DEFAULT_LYRIC_VERSE;
+            return DEFAULT_LYRIC_NUMBER;
         }
 
         try {
             return Integer.parseInt(number.trim());
         } catch (NumberFormatException e) {
-            return DEFAULT_LYRIC_VERSE;
+            return DEFAULT_LYRIC_NUMBER;
         }
     }
 }

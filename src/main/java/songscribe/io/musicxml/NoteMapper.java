@@ -467,7 +467,7 @@ final class NoteMapper {
         var droppedLyric = false;
 
         for (var pmLyric : pmNote.getLyric()) {
-            var script = LyricNumbers.toScript(ProxyMusicAccess.lyricVerse(pmLyric));
+            var script = LyricNumbers.toScript(ProxyMusicAccess.lyricNumber(pmLyric));
 
             if (script == null) {
                 droppedLyric = true;

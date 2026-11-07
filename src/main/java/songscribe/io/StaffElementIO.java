@@ -433,7 +433,7 @@ public final class StaffElementIO {
                     if (script == null) {
                         droppedLyric = true;
                     } else if (!Lyric.isCarrier(lyricExtend) && lyricText.isBlank()) {
-                        LOG.warn("Dropping blank lyric syllable for verse {}", lyricNumber);
+                        LOG.warn("Dropping blank lyric syllable for lyric number {}", lyricNumber);
                     } else {
                         element.putLyric(
                             new Lyric(script, lyricText, lyricExtend, syllabic, compound)

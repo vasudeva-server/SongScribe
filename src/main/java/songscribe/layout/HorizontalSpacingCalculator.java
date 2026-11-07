@@ -35,6 +35,8 @@ import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.LyricRun;
+import songscribe.dom.LyricRun.PairMelisma;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
@@ -604,30 +606,6 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Whether a grace–host pair carries the melisma of its own that
-     * {@code LyricRun.syncGraceHostMelisma} maintains: the grace starts one and the host stops it.
-     *
-     * @param graceLyric null if the grace has none for the script being laid out
-     * @param hostLyric  null if the host has none for the same script
-     */
-    public static PairMelisma pairCarriesGraceHostMelisma(
-        @Nullable Lyric graceLyric, @Nullable Lyric hostLyric) {
-
-        var carried = graceLyric != null
-            && graceLyric.extend() == Lyric.Extend.START
-            && !Lyric.syllabicContinues(graceLyric.syllabic())
-            && hostLyric != null
-            && hostLyric.extend() == Lyric.Extend.STOP;
-
-        return carried ? PairMelisma.CARRIED : PairMelisma.NONE;
-    }
-
-    public enum PairMelisma {
-        CARRIED,
-        NONE
-    }
-
-    /**
      * @param firstGraphemeWidthSs measured in the font the syllable is drawn in
      */
     public record GraceSyllable(
@@ -774,7 +752,7 @@ public final class HorizontalSpacingCalculator {
 
     /** Read off the columns, so the melisma belongs to the script the syllable widths were measured for. */
     private static PairMelisma graceHostPairMelisma(ElementColumn grace, ElementColumn host) {
-        return pairCarriesGraceHostMelisma(grace.getLyric(), host.getLyric());
+        return LyricRun.pairMelisma(grace.getLyric(), host.getLyric());
     }
 
     private static double glissandoReservationFloorSs(ElementColumn prev, ElementColumn curr) {

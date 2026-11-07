@@ -43,7 +43,7 @@ public final class SongStart {
     private SongStart() {
     }
 
-    static boolean isSlot(Line line, int index) {
+    static boolean isSongStartSlot(Line line, int index) {
         if (index != 0) {
             return false;
         }
