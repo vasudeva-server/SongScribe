@@ -310,10 +310,10 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
         }
 
         /**
-         * For a paste that lands at the start of the song, where no bar line may stand
+         * For a paste that lands at the start of the song, where no barline may stand
          * ({@link SongStart}).
          *
-         * @return {@code null} when the fragment does not start with a bar line, and nothing is
+         * @return {@code null} when the fragment does not start with a barline, and nothing is
          *     dropped
          */
         public @Nullable LeadingBarDrop withoutLeadingBars() {
@@ -334,7 +334,7 @@ public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
     /**
      * What {@link Reduction#withoutLeadingBars} leaves of a fragment, and what it dropped.
      *
-     * @param dropped the bar lines left out, with the key the drop moves; its ranges index the
+     * @param dropped the barlines left out, with the key the drop moves; its ranges index the
      *     fragment before the drop
      */
     public record LeadingBarDrop(Reduction reduction, StaffElementRun.LeadingBars dropped) {

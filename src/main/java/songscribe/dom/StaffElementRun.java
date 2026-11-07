@@ -242,10 +242,10 @@ public interface StaffElementRun {
      * pair that only means anything whole: a <b>grace note</b>, which belongs to the host that
      * follows it, and either half of a <b>key change and the barline it sits behind</b>.
      *
-     * <p>A <b>bar line</b> — an {@code incoming} whose {@link ElementType#isBar()} is true — is
+     * <p>A <b>barline</b> — an {@code incoming} whose {@link ElementType#isBar()} is true — is
      * also refused where it would stand first in the song ({@link SongStart}): at the song-start
      * slot, or on the host of a paired grace note at that slot. A replacement by anything but a
-     * pitched note takes the paired grace note in front of it along, so the bar line would then
+     * pitched note takes the paired grace note in front of it along, so the barline would then
      * stand where the grace note stood.
      *
      * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
@@ -308,8 +308,8 @@ public interface StaffElementRun {
      * rule {@link #canInsertElementAt} states for a single element, the song-start rule for the
      * run's first element, and the breath-mark placement rule for the run's two ends.
      *
-     * <p><b>No bar line stands first in the song</b> ({@link SongStart}), so a run whose first
-     * element is a bar line — its {@link ElementType#isBar()} is true — is refused at the
+     * <p><b>No barline stands first in the song</b> ({@link SongStart}), so a run whose first
+     * element is a barline — its {@link ElementType#isBar()} is true — is refused at the
      * song-start slot, {@link #isSongStartAt}.
      *
      * <p><b>A breath mark stands only immediately after a duration element</b> — a pitched note
@@ -327,7 +327,7 @@ public interface StaffElementRun {
      *
      * <p>Two routes ask the parts rather than this. A paste asks each breath-mark half
      * separately, because each half has a dialog of its own to raise, and asks
-     * {@link #isSongStartAt} itself, because it drops the bar lines that start its fragment
+     * {@link #isSongStartAt} itself, because it drops the barlines that start its fragment
      * there rather than refusing. {@link #canInsertKeyChangeAt} asks only {@link #canTrailRunAt}
      * of the breath-mark halves: its run never begins with a breath mark, and the slot rules it
      * adds are its own — index 0 among them, so its barline never lands in the song-start slot.
@@ -557,14 +557,14 @@ public interface StaffElementRun {
     }
 
     /**
-     * Returns the bar lines that stand first in this run, the ones {@link SongStart} says a song
+     * Returns the barlines that stand first in this run, the ones {@link SongStart} says a song
      * may not start with, each widened to the pair it belongs to, so a key change behind one goes
      * with it.
      *
      * <p>A line's terminal is never among them, because the walk stops at
      * {@link #effectiveElementCount}.
      *
-     * @return {@code null} when this run does not start with a bar line
+     * @return {@code null} when this run does not start with a barline
      */
     default @Nullable LeadingBars leadingBars() {
         var ranges = new ArrayList<EffectiveRange>();
@@ -652,7 +652,7 @@ public interface StaffElementRun {
     /**
      * What {@link #leadingBars} found at the start of a run.
      *
-     * <p>Removing the ranges takes the key changes behind the bar lines with them. The key of the
+     * <p>Removing the ranges takes the key changes behind the barlines with them. The key of the
      * last of those key changes is the key the rest of the run sounds in, so it moves onto the
      * line the run starts.
      *

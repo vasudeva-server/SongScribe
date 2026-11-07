@@ -36,8 +36,8 @@ import songscribe.dom.Song;
 public enum LintRule {
 
     /**
-     * No bar line or repeat stands first in the song; the song's terminal is exempt. Blocks
-     * playback so that it never meets a leading repeat; a leading plain bar line blocks it too,
+     * No barline or repeat stands first in the song; the song's terminal is exempt. Blocks
+     * playback so that it never meets a leading repeat; a leading plain barline blocks it too,
      * because one rule covers every bar type.
      */
     LEADING_BAR(new LeadingBarCheck(), EnumSet.of(Flag.BLOCKS_OUTPUT, Flag.BLOCKS_PLAYBACK)),

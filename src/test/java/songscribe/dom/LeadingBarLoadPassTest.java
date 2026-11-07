@@ -36,7 +36,7 @@ import static songscribe.dom.SongFactory.loadSong;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 
 /**
- * {@link LeadingBarLoadPass#run}, as {@link SongLoad#run} runs it: a bar line that stands first in a
+ * {@link LeadingBarLoadPass#run}, as {@link SongLoad#run} runs it: a barline that stands first in a
  * freshly parsed song is removed and reported on the line it stood on, with the key change behind
  * it; the song's terminal is never removed.
  */
@@ -48,7 +48,7 @@ class LeadingBarLoadPassTest extends UnitTest {
     private static final LineRange ON_FIRST_LINE = new LineRange(FIRST_LINE, FIRST_LINE);
     private static final LineRange ON_SECOND_LINE = new LineRange(SECOND_LINE, SECOND_LINE);
 
-    /** The two notes and the final bar line a case's last line keeps. */
+    /** The two notes and the final barline a case's last line keeps. */
     private static final List<ElementType> TWO_NOTES_AND_FINAL_BAR =
         List.of(ElementType.CROTCHET, ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
 
@@ -98,17 +98,17 @@ class LeadingBarLoadPassTest extends UnitTest {
 
     static Stream<LoadCase> loadCases() {
         return Stream.of(
-            new LoadCase("a song that starts with two bar lines loses both, one entry for the line",
+            new LoadCase("a song that starts with two barlines loses both, one entry for the line",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "| | 3 3 F"),
                 FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.NO_ACCIDENTALS, Key.NO_ACCIDENTALS,
                 List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR),
 
-            new LoadCase("two bar lines with a key change behind the second: the key change's key moves onto the line",
+            new LoadCase("two barlines with a key change behind the second: the key change's key moves onto the line",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "| | K:TWO_SHARPS 3 3 F"),
                 FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.TWO_SHARPS, Key.TWO_SHARPS,
                 List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY),
 
-            new LoadCase("a first line of only bar lines and a bar line starting the second: one entry per line",
+            new LoadCase("a first line of only barlines and a barline starting the second: one entry per line",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "| |", "| 3 3 F"),
                 SECOND_LINE, TWO_NOTES_AND_FINAL_BAR, null, Key.NO_ACCIDENTALS,
                 List.of(ON_FIRST_LINE, ON_SECOND_LINE), Strings.REPORT_REASON_LEADING_BAR),
@@ -121,12 +121,12 @@ class LeadingBarLoadPassTest extends UnitTest {
                 FIRST_LINE, List.of(ElementType.FINAL_DOUBLE_BARLINE), Key.NO_ACCIDENTALS, Key.NO_ACCIDENTALS,
                 List.of(), Strings.REPORT_REASON_LEADING_BAR),
 
-            new LoadCase("an empty first line and a bar line starting the second: the entry is on the second",
+            new LoadCase("an empty first line and a barline starting the second: the entry is on the second",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "", "| 3 3 F"),
                 SECOND_LINE, TWO_NOTES_AND_FINAL_BAR, null, Key.NO_ACCIDENTALS,
                 List.of(ON_SECOND_LINE), Strings.REPORT_REASON_LEADING_BAR),
 
-            new LoadCase("a bar line with a key change behind it takes the key change along and moves its key onto the line",
+            new LoadCase("a barline with a key change behind it takes the key change along and moves its key onto the line",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "| K:TWO_SHARPS 3 3 F"),
                 FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.TWO_SHARPS, Key.TWO_SHARPS,
                 List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY)

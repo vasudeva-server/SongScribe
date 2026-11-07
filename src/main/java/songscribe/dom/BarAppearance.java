@@ -33,7 +33,7 @@ import songscribe.engraving.EngravingConstants;
  * sequence.
  *
  * <p>Repeat dots take part in neither volta anchor: they belong to the repeated section rather
- * than to the bar line the bracket marks.
+ * than to the barline the bracket marks.
  *
  * <p>Every bar is declared as a literal in this package — the constants of {@link ElementType}
  * and {@link #SINGLE_BARLINE} — through {@link #of}, and no other code builds one.

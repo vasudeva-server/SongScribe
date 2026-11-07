@@ -493,7 +493,7 @@ public final class PreviewElementManager {
         var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
 
         // Some elements may never be replaced by clicking through them with another element —
-        // a grace note, a key change, the barline a key change sits behind — and a bar line may
+        // a grace note, a key change, the barline a key change sits behind — and a barline may
         // not replace the first element of the song. Hide the ghost preview over them;
         // handleClick separately ignores the click.
         var replacementBlocked = elementAtX != null && previewElement != null

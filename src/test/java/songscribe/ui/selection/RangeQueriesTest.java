@@ -88,7 +88,7 @@ class RangeQueriesTest extends UnitTest {
         return Stream.of(
             new TrillSelectionCase("notes only",
                 () -> List.of(quaver(), quaver(), quaver()), new ElementRange(0, 2), null),
-            new TrillSelectionCase("a rest before the first note and a bar line after the last",
+            new TrillSelectionCase("a rest before the first note and a barline after the last",
                 () -> List.of(crotchetRest(), quaver(), quaver(), singleBarline()), new ElementRange(1, 2), null),
             new TrillSelectionCase("a breath mark before a single note",
                 () -> List.of(breathMark(), quaver()), new ElementRange(1, 1), null),

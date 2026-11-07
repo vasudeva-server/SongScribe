@@ -32,8 +32,8 @@ import songscribe.UnitTest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Which bar line {@link LeadingBarCheck} flags: the one that stands first in the song, whichever
- * of the six bar types it is, and not the song's terminal or a bar line after a note. A bar line
+ * Which barline {@link LeadingBarCheck} flags: the one that stands first in the song, whichever
+ * of the six bar types it is, and not the song's terminal or a barline after a note. A barline
  * the check must flag ends in {@code !} in the notation.
  */
 class LeadingBarCheckTest extends UnitTest {
@@ -76,10 +76,10 @@ class LeadingBarCheckTest extends UnitTest {
             new LeadingBarCase("a song that holds only its terminal gives no finding",
                 List.of("|||"),
                 List.of()),
-            new LeadingBarCase("a bar line after the first note gives no finding",
+            new LeadingBarCase("a barline after the first note gives no finding",
                 List.of("A | A"),
                 List.of()),
-            new LeadingBarCase("an empty first line leaves the bar line that starts the second line flagged",
+            new LeadingBarCase("an empty first line leaves the barline that starts the second line flagged",
                 List.of("", "|! A"),
                 List.of(LEADING_BAR))
         );

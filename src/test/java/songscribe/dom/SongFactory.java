@@ -342,7 +342,7 @@ public final class SongFactory {
      *       next; a {@code ~} after the song's last note ties it with nothing following</li>
      *   <li>{@code |}, {@code |:}, {@code :|} — a plain barline, a left repeat, a right repeat</li>
      *   <li>{@code R} — a crotchet rest; {@code R2} — a minim rest; {@code B} — a breath mark;
-     *       {@code Q} — a quaver; {@code F} — a final double bar line</li>
+     *       {@code Q} — a quaver; {@code F} — a final double barline</li>
      *   <li>{@code K:<name>} — a key change establishing {@link Key#valueOf(String) Key.valueOf(name)}</li>
      * </ul>
      *

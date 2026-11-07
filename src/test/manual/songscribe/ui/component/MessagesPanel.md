@@ -97,8 +97,8 @@ step is done, because the selection clears when the pointer leaves the list.
 
 ## Start of the song
 
-29. A bar line cannot be placed at the start of the song, and neither can a repeat.
-30. Pasting a fragment that starts with a bar line at the start of the song pastes the rest
-    of the fragment and lists a change row for the dropped bar line.
-31. Deleting the notes before a bar line, so that the bar line is first in the song, flags
-    the bar line, and Play is disabled while repeats are on.
+29. A barline cannot be placed at the start of the song, and neither can a repeat.
+30. Pasting a fragment that starts with a barline at the start of the song pastes the rest
+    of the fragment and lists a change row for the dropped barline.
+31. Deleting the notes before a barline, so that the barline is first in the song, flags
+    the barline, and Play is disabled while repeats are on.

@@ -125,7 +125,7 @@ final class PreviewElementInserter {
         }
 
         // A grace note, a key change and the barline a key change sits behind may never be
-        // replaced, and a bar line may not take the first place in the song — ignore the click.
+        // replaced, and a barline may not take the first place in the song — ignore the click.
         if (overElementX && !line.canReplaceElementAt(insertionIndex, previewElement.getType())) {
             return;
         }

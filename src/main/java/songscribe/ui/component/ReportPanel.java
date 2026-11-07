@@ -161,7 +161,7 @@ public final class ReportPanel extends JPanel {
 
         var hideButton = new JButton(HIDE_ICON);
         hideButton.setFont(MusescoreIconFont.font());
-        hideButton.setToolTipText(Strings.get(Strings.REPORT_HIDE));
+        hideButton.setToolTipText(Strings.get(Strings.ACTION_WINDOW_MESSAGES_HIDE_TOOLTIP));
         hideButton.addActionListener(_ -> mainFrame.hideMessagesPanel());
 
         hideButton.setFocusable(false);

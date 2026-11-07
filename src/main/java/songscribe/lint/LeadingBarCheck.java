@@ -27,19 +27,19 @@ import songscribe.dom.Song;
 import songscribe.dom.SongStart;
 
 /**
- * The check of {@link LintRule#LEADING_BAR}: no bar line stands first in the song, as
+ * The check of {@link LintRule#LEADING_BAR}: no barline stands first in the song, as
  * {@link SongStart#leadingBar} defines it.
  */
 final class LeadingBarCheck implements LintCheck {
 
     /**
-     * Finds the bar line that stands first in {@code song}, if one does.
+     * Finds the barline that stands first in {@code song}, if one does.
      *
      * @param song the song to examine; read only
-     * @return no violation when no bar line stands first in the song; otherwise one violation
+     * @return no violation when no barline stands first in the song; otherwise one violation
      *     with the heading {@link LintHeading#LEADING_BAR}, the description
      *     {@link Strings#REPORT_REASON_LEADING_BAR}, and a {@link LintMark.Flagged} mark on that
-     *     bar line
+     *     barline
      */
     @Override
     public List<Violation> check(Song song) {

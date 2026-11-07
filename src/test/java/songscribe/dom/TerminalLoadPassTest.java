@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.loadCompactSong;
 
 /**
- * {@link TerminalLoadPass#run}, as {@link SongLoad#run} runs it: a final double bar line stands
+ * {@link TerminalLoadPass#run}, as {@link SongLoad#run} runs it: a final double barline stands
  * only as the song's last element, each one that does not is removed and reported on its line, and
  * the song's last element is a valid terminal afterwards.
  */
@@ -47,8 +47,8 @@ class TerminalLoadPassTest extends UnitTest {
      *
      * @param description the case, as the test's display name
      * @param notations   one compact notation per line, in song order; {@code F} is a final double
-     *                    bar line
-     * @param removedOn   the index of the line of each final double bar line the pass removes, in
+     *                    barline
+     * @param removedOn   the index of the line of each final double barline the pass removes, in
      *                    document order
      */
     private record TerminalCase(String description, String[] notations, List<Integer> removedOn) {}
@@ -80,15 +80,15 @@ class TerminalLoadPassTest extends UnitTest {
 
     static Stream<TerminalCase> terminalCases() {
         return Stream.of(
-            new TerminalCase("a final bar line ending a line that is not last",
+            new TerminalCase("a final barline ending a line that is not last",
                 new String[] {"3 3 F", "3 3"}, List.of(0)),
-            new TerminalCase("a final bar line in the middle of the last line",
+            new TerminalCase("a final barline in the middle of the last line",
                 new String[] {"3 F 3"}, List.of(0)),
             new TerminalCase("one on each of two lines, reported in document order",
                 new String[] {"3 F", "3 F", "3"}, List.of(0, 1)),
             new TerminalCase("two on one line, one entry each",
                 new String[] {"3 F 3 F 3"}, List.of(0, 0)),
-            new TerminalCase("a final bar line that is the last element stays and nothing is reported",
+            new TerminalCase("a final barline that is the last element stays and nothing is reported",
                 new String[] {"3 3", "3 F"}, List.of()));
     }
 
@@ -108,7 +108,7 @@ class TerminalLoadPassTest extends UnitTest {
             STARTING_KEY, ENDING_ON_CLOSING_BAR);
         var line = loaded.song().getLine(0);
 
-        assertThat(line.elementCount()).as("the bar line is replaced, not followed by a terminal")
+        assertThat(line.elementCount()).as("the barline is replaced, not followed by a terminal")
             .isEqualTo(CLOSING_BAR_INDEX + 1);
         assertThat(line.getElement(CLOSING_BAR_INDEX).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
         assertThat(line.spanRegistry().findSpans(Ending.class)).singleElement()
@@ -116,13 +116,13 @@ class TerminalLoadPassTest extends UnitTest {
         assertThat(loaded.report().isEmpty()).isTrue();
     }
 
-    /** Two notes, a bar line, two notes, a right repeat, two notes and a closing bar line. */
+    /** Two notes, a barline, two notes, a right repeat, two notes and a closing barline. */
     private static final String ENDING_ON_CLOSING_BAR = "3 3 | 3 3 :| 3 3 |";
 
-    /** The first bar line of {@link #ENDING_ON_CLOSING_BAR}. */
+    /** The first barline of {@link #ENDING_ON_CLOSING_BAR}. */
     private static final int ENDING_ANCHOR_INDEX = 2;
 
-    /** The closing bar line of {@link #ENDING_ON_CLOSING_BAR}, the song's last element. */
+    /** The closing barline of {@link #ENDING_ON_CLOSING_BAR}, the song's last element. */
     private static final int CLOSING_BAR_INDEX = 8;
 
 }

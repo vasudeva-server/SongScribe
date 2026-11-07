@@ -41,7 +41,7 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  */
 class BreathMarkLoadPassTest extends UnitTest {
 
-    /** The elements the pass leaves behind, the song's own final bar line included. */
+    /** The elements the pass leaves behind, the song's own final barline included. */
     private static final int REMAINING_ELEMENT_COUNT = 8;
     private static final int REMAINING_BREATH_MARK_AFTER_NOTE_INDEX = 3;
     private static final int REMAINING_FIRST_OF_CONSECUTIVE_PAIR_INDEX = 5;

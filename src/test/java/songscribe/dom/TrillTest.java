@@ -114,7 +114,7 @@ class TrillTest extends UnitTest {
         return Stream.of(
             new RangeCase("a single note", () -> List.of(quaver())),
             new RangeCase("notes only", () -> List.of(quaver(), crotchet(), quaver())),
-            new RangeCase("a bar line inside", () -> List.of(quaver(), singleBarline(), quaver())),
+            new RangeCase("a barline inside", () -> List.of(quaver(), singleBarline(), quaver())),
             new RangeCase("a key change inside", () -> List.of(quaver(), keyChange(Key.ONE_SHARP), quaver())),
             new RangeCase("a grace note inside", () -> List.of(quaver(), graceQuaver(), quaver()))
         );
@@ -128,7 +128,7 @@ class TrillTest extends UnitTest {
                 () -> List.of(crotchetRest(), quaver()), Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE),
             new RefusedRangeCase("starting on a grace note",
                 () -> List.of(graceQuaver(), quaver()), Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE),
-            new RefusedRangeCase("ending on a bar line",
+            new RefusedRangeCase("ending on a barline",
                 () -> List.of(quaver(), singleBarline()), Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE),
             new RefusedRangeCase("ending on a key change",
                 () -> List.of(quaver(), keyChange(Key.ONE_SHARP)), Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE),
@@ -222,7 +222,7 @@ class TrillTest extends UnitTest {
             new RemovalCase("replacing the end with a grace note",
                 line -> line.setElement(END_INDEX, graceQuaver()),
                 Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE),
-            new RemovalCase("replacing the end with a bar line",
+            new RemovalCase("replacing the end with a barline",
                 line -> line.setElement(END_INDEX, singleBarline()),
                 Strings.REPORT_REASON_TRILL_ENDPOINT_UNUSABLE),
             new RemovalCase("replacing an interior note with a rest",
@@ -252,7 +252,7 @@ class TrillTest extends UnitTest {
                 line -> line.addElement(INTERIOR_INDEX, quaver())),
             new KeptCase("inserting a grace note inside it",
                 line -> line.addElement(INTERIOR_INDEX, graceQuaver())),
-            new KeptCase("inserting a bar line inside it",
+            new KeptCase("inserting a barline inside it",
                 line -> line.addElement(INTERIOR_INDEX, singleBarline())),
             new KeptCase("inserting a key change inside it",
                 line -> line.addElement(INTERIOR_INDEX, keyChange(Key.ONE_SHARP))),

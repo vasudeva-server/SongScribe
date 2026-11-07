@@ -27,11 +27,11 @@ package songscribe.dom;
 record PlacedLoad(Song song) {
 
     /**
-     * The terminal stage runs after the placements, so a span on a final bar line it removes, or
+     * The terminal stage runs after the placements, so a span on a final barline it removes, or
      * on a last element it replaces, is judged by the span sweep and reported. The grace-host
      * melisma repair precedes the syllabic backfill, which reads the syllabic chain in element
      * order. The breath-mark stage precedes the leading-bar stage, because a breath mark that
-     * stands first is removed and can leave a bar line first. The final accidental stamp is last,
+     * stands first is removed and can leave a barline first. The final accidental stamp is last,
      * because every removal changes what the chain walk reads.
      */
     void repair() {

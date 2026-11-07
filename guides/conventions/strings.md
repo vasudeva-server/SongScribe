@@ -23,6 +23,7 @@ Rules for `src/main/resources/songscribe/strings.properties`, the source of ever
 - Name the strings of an input prompt `input.*` with the title `input.title.<topic>`.
 - Name every string of a `BaseDialog` or `StandardDialog` window `dialog.<name>.*`, with the title `dialog.<name>.title`.
 - Name the change report's headings, reasons and locations, and the Messages panel's title and empty-list text, `report.*`.
+- Name a lint rule's heading `lint.<topic>`, and each reason it gives `lint.reason.<topic>`.
 
 ### Values
 

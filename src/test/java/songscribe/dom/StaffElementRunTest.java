@@ -247,14 +247,14 @@ class StaffElementRunTest extends UnitTest {
 
     static Stream<InsertRunCase> insertRunCases() {
         return Stream.of(
-            new InsertRunCase("a run starting with a bar line is refused at index 0 of the first line",
+            new InsertRunCase("a run starting with a barline is refused at index 0 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), false),
-            new InsertRunCase("a run starting with a bar line is refused at index 0 of the second line "
+            new InsertRunCase("a run starting with a barline is refused at index 0 of the second line "
                 + "when the first is empty",
                 lineOfSong(SECOND_LINE, NO_NOTES, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), false),
-            new InsertRunCase("a run starting with a bar line is accepted at index 1 of the first line",
+            new InsertRunCase("a run starting with a barline is accepted at index 1 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 1, List.of(singleBarline(), crotchet()), true),
-            new InsertRunCase("a run starting with a bar line is accepted at index 0 of a line "
+            new InsertRunCase("a run starting with a barline is accepted at index 0 of a line "
                 + "that follows a line with elements",
                 lineOfSong(SECOND_LINE, TWO_NOTES, TWO_NOTES), 0, List.of(singleBarline(), crotchet()), true),
             new InsertRunCase("a run starting with a note is accepted at index 0 of the first line",
@@ -464,7 +464,7 @@ class StaffElementRunTest extends UnitTest {
         String description, LineSource lineSource, int index, ElementType incoming, boolean expected
     ) {
 
-        /** A case on {@link #pairingLine}, replaced by an element that is not a bar line. */
+        /** A case on {@link #pairingLine}, replaced by an element that is not a barline. */
         ReplaceCase(String description, int index, boolean expected) {
             this(description, PAIRING_LINE, index, ElementType.CROTCHET, expected);
         }
@@ -479,13 +479,13 @@ class StaffElementRunTest extends UnitTest {
 
     static Stream<ReplaceCase> replaceCases() {
         return Stream.of(
-            new ReplaceCase("an incoming bar line is refused at index 0 of the first line",
+            new ReplaceCase("an incoming barline is refused at index 0 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, false),
-            new ReplaceCase("an incoming bar line is refused at index 0 of the second line when the first is empty",
+            new ReplaceCase("an incoming barline is refused at index 0 of the second line when the first is empty",
                 lineOfSong(SECOND_LINE, NO_NOTES, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, false),
-            new ReplaceCase("an incoming bar line is accepted at index 1 of the first line",
+            new ReplaceCase("an incoming barline is accepted at index 1 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 1, ElementType.SINGLE_BARLINE, true),
-            new ReplaceCase("an incoming bar line is accepted at index 0 of a line that follows a line with elements",
+            new ReplaceCase("an incoming barline is accepted at index 0 of a line that follows a line with elements",
                 lineOfSong(SECOND_LINE, TWO_NOTES, TWO_NOTES), 0, ElementType.SINGLE_BARLINE, true),
             new ReplaceCase("an incoming note is accepted at index 0 of the first line",
                 lineOfSong(FIRST_LINE, TWO_NOTES), 0, ElementType.CROTCHET, true),

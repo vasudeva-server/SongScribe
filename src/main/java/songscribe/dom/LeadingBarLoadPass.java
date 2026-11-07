@@ -23,9 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Removes every bar line that stands first in a freshly parsed song.
+ * Removes every barline that stands first in a freshly parsed song.
  *
- * <p>The rule is the one {@link SongStart} states. A key change behind a removed bar line goes
+ * <p>The rule is the one {@link SongStart} states. A key change behind a removed barline goes
  * with it, and the song still sounds as the file wrote it; nothing else is moved or repaired into
  * a place the file did not say.
  */
@@ -37,29 +37,29 @@ final class LeadingBarLoadPass {
     }
 
     /**
-     * Removes each bar line that stands first in {@code song}, until its first element is not a
-     * bar line or is its terminal, and records what it removed.
+     * Removes each barline that stands first in {@code song}, until its first element is not a
+     * barline or is its terminal, and records what it removed.
      *
      * @param song the song to settle, immediately after parsing and before it is installed
      * @invariant afterwards {@link SongStart#leadingBar} answers {@code null} for {@code song}
      * @invariant the song's terminal is never removed
      * @invariant every element left on the song's lines sounds in the key it sounded in before
      *     the pass
-     * @effects a key change that sits behind a removed bar line is removed with it, and its key
-     *     becomes the line's own key; where several bar lines stand first, the line's own key is
+     * @effects a key change that sits behind a removed barline is removed with it, and its key
+     *     becomes the line's own key; where several barlines stand first, the line's own key is
      *     that of the last key change removed. No other line's key moves and no key change is
      *     stranded
      * @effects a span with an endpoint on a removed element, such as an ending that starts on the
-     *     bar line, is removed with it
+     *     barline, is removed with it
      * @effects records to the load's report one {@link SongStart#removedEntry} per line it
-     *     removed bar lines from, naming that line and whether the removal moved a key, in line
+     *     removed barlines from, naming that line and whether the removal moved a key, in line
      *     order, each before the entries of the spans its removal takes
      */
     static void run(Song song) {
         var removedCount = 0;
 
         // A line left empty passes the start of the song to the next non-empty line, whose own
-        // leading bar lines then stand first.
+        // leading barlines then stand first.
         for (var lineIndex = song.firstNonEmptyLineIndex(); lineIndex != null;
              lineIndex = song.firstNonEmptyLineIndex()) {
 

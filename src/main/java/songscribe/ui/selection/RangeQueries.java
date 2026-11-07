@@ -514,7 +514,7 @@ public final class RangeQueries {
 
     /**
      * Returns the trill the toggle adds over {@code selection}, or the reason there is none. The
-     * selection is trimmed to its first and last pitched notes, so a rest or a bar line the user
+     * selection is trimmed to its first and last pitched notes, so a rest or a barline the user
      * selected past either end does not refuse the trill.
      *
      * @return {@link Trill#spanning}'s answer for the range from the first pitched note of

@@ -40,7 +40,7 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
 /**
- * The hover preview element — the ghost note, rest, bar line or breath mark that shows what a
+ * The hover preview element — the ghost note, rest, barline or breath mark that shows what a
  * click would place, drawn in {@link ScoreView#getPreviewElementColor()}.
  *
  * <h2>Record once, replay many</h2>

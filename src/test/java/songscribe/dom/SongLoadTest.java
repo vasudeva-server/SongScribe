@@ -236,7 +236,7 @@ class SongLoadTest extends UnitTest {
                         new LineRange(FIRST_LINE, FIRST_LINE)));
                 }),
 
-            new OrderCase("a song that starts with a breath mark and a bar line loses both",
+            new OrderCase("a song that starts with a breath mark and a barline loses both",
                 () -> loadCompactSong(DOCUMENT_KEY, "B | " + PITCH + " " + PITCH),
                 loaded -> {
                     assertThat(loaded.song().getLine(FIRST_LINE).getElements().stream().map(StaffElement::getType))
@@ -245,14 +245,14 @@ class SongLoadTest extends UnitTest {
                         .containsExactly(ChangeHeading.BREATH_MARKS_REMOVED, ChangeHeading.LEADING_BARS_REMOVED);
                 }),
 
-            new OrderCase("the final accidental stamp sees a removed final double bar line",
+            new OrderCase("the final accidental stamp sees a removed final double barline",
                 () -> loadCompactSong(DOCUMENT_KEY, PITCH + "f F " + PITCH),
                 loaded -> {
                     var adopting = loaded.song().getLine(FIRST_LINE).noteAt(1).chainedAccidental();
 
                     assertThat(adopting.sounding()).isEqualTo(Accidental.FLAT);
                     assertThat(adopting.type())
-                        .as("nothing stands between the two notes once the bar line is gone")
+                        .as("nothing stands between the two notes once the barline is gone")
                         .isEqualTo(ChainedAccidental.ChainType.IMPLICIT);
                 }),
 
@@ -354,7 +354,7 @@ class SongLoadTest extends UnitTest {
         assertThat(loaded.report().isEmpty()).isTrue();
     }
 
-    /** A leading bar line, two notes, a right repeat and two notes. */
+    /** A leading barline, two notes, a right repeat and two notes. */
     private static final String ENDING_ON_LEADING_BAR = "| 3 3 :| 3 3";
 
     /** The last note of {@link #ENDING_ON_LEADING_BAR}. */
@@ -366,13 +366,13 @@ class SongLoadTest extends UnitTest {
     /** The last note of {@link #TUPLET_AROUND_BREATH_MARKS}. */
     private static final int TUPLET_END_INDEX = 4;
 
-    /** Two notes, a bar line, two notes, a right repeat, two notes and a final double bar line. */
+    /** Two notes, a barline, two notes, a right repeat, two notes and a final double barline. */
     private static final String ENDING_ON_FINAL_BAR = "3 3 | 3 3 :| 3 3 F";
 
-    /** The bar line of {@link #ENDING_ON_FINAL_BAR}. */
+    /** The barline of {@link #ENDING_ON_FINAL_BAR}. */
     private static final int FINAL_ENDING_ANCHOR_INDEX = 2;
 
-    /** The final double bar line of {@link #ENDING_ON_FINAL_BAR}. */
+    /** The final double barline of {@link #ENDING_ON_FINAL_BAR}. */
     private static final int FINAL_ENDING_END_INDEX = 8;
 
     /**
@@ -396,7 +396,7 @@ class SongLoadTest extends UnitTest {
 
     static Stream<RemovedSpanCase> removedSpanCases() {
         return Stream.of(
-            new RemovedSpanCase("an ending on a removed leading bar line",
+            new RemovedSpanCase("an ending on a removed leading barline",
                 () -> loadCompactSong(
                     song -> {
                         var line = song.getLine(FIRST_LINE);
@@ -424,7 +424,7 @@ class SongLoadTest extends UnitTest {
                     DOCUMENT_KEY, TUPLET_AROUND_BREATH_MARKS),
                 List.of(ChangeHeading.BREATH_MARKS_REMOVED, ChangeHeading.TUPLETS_REMOVED)),
 
-            new RemovedSpanCase("an ending on a removed final double bar line",
+            new RemovedSpanCase("an ending on a removed final double barline",
                 () -> loadCompactSong(
                     song -> {
                         var line = song.getLine(FIRST_LINE);

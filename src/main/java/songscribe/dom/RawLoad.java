@@ -31,7 +31,7 @@ record RawLoad(Song song, PendingMarks marks) {
     /**
      * Precedes every load stage, because the stranding check of
      * {@link KeyInheritance#settleAfterParsing} judges the song as the file wrote it. Example:
-     * line 0 is in G, and the file starts with a bar line and a key change to G. If
+     * line 0 is in G, and the file starts with a barline and a key change to G. If
      * {@link LeadingBarLoadPass} ran first, it would remove that pair, and the file would be
      * accepted.
      */

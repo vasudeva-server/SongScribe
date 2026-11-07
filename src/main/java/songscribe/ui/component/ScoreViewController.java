@@ -1066,9 +1066,9 @@ public final class ScoreViewController {
      * undo step. A refusal mutates nothing, leaves the caller's bracket empty and posts no
      * notification; callers decide recovery.
      *
-     * <p>A breath mark stands only immediately after a duration element, and no bar line stands
+     * <p>A breath mark stands only immediately after a duration element, and no barline stands
      * first in the song ({@link SongStart}); the paste enforces both on the fragment's ends
-     * before the fit gate runs. At the song-start slot, leading bar lines are dropped, and the
+     * before the fit gate runs. At the song-start slot, leading barlines are dropped, and the
      * key of the last key change dropped with them becomes {@code line}'s own key, inside the
      * caller's bracket.
      *
@@ -1082,7 +1082,7 @@ public final class ScoreViewController {
      * bracket empty and records no undo step.
      *
      * @return {@code INSERTED} also when the fragment reduced to nothing (every key change it
-     *     carried restates the running key, or it held only bar lines dropped at the start of
+     *     carried restates the running key, or it held only barlines dropped at the start of
      *     the song): the gesture is spent and the caller should complete it. Only
      *     {@code INSERTED} means the line was mutated
      */
@@ -1115,13 +1115,13 @@ public final class ScoreViewController {
         // span reconciliation all see the run that actually lands.
         var reduction = fragment.instantiate().withoutRedundantKeyChanges(keyAtInsertion);
 
-        // No bar line stands first in the song, so at the song-start slot the bar lines that
+        // No barline stands first in the song, so at the song-start slot the barlines that
         // start the fragment are dropped — each with the key change it may carry, which cannot
         // outlive it — and the paste goes ahead with the rest, as one more thing the song changed
         // on its own. Dropped here rather than after the insertion, for the same reason the
         // redundant key changes are.
         //
-        // A key change dropped with its bar line set the key the rest of the fragment sounds in,
+        // A key change dropped with its barline set the key the rest of the fragment sounds in,
         // so that key becomes the line's own key when the paste lands.
         StaffElementRun.@Nullable LeadingBars droppedBars = null;
 
@@ -1139,7 +1139,7 @@ public final class ScoreViewController {
         var instantiated = reduction.fragment();
 
         // A fragment of nothing but a key change restating the key already running here, and the
-        // barline behind it, or of nothing but bar lines dropped at the start of the song, leaves
+        // barline behind it, or of nothing but barlines dropped at the start of the song, leaves
         // nothing to place. What is left of the paste is the deletion a paste-replace owes, and
         // the key a dropped key change moves; a pure insertion moving no key has nothing left to
         // do at all. Either way the gesture is spent, not declined.
@@ -1221,7 +1221,7 @@ public final class ScoreViewController {
      * the bracket empty. The key is set before the fragment lands, so the stranded key changes
      * are measured against the key the line now starts in.
      *
-     * @param droppedBars the bar lines dropped from the start of the fragment; {@code null} when
+     * @param droppedBars the barlines dropped from the start of the fragment; {@code null} when
      *     the paste dropped none
      */
     private static void landFragment(

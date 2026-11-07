@@ -23,7 +23,7 @@ package songscribe.dom;
 import songscribe.Strings;
 
 /**
- * Gives a loaded song the terminal an edited song keeps: a final double bar line stands only as
+ * Gives a loaded song the terminal an edited song keeps: a final double barline stands only as
  * the song's last element, and the last element is a valid terminal.
  */
 final class TerminalLoadPass {
