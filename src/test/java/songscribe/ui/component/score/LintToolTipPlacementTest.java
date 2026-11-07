@@ -68,15 +68,33 @@ class LintToolTipPlacementTest extends UnitTest {
     /** The left side of an item that is partly off the usable screen's left edge. */
     private static final int OFF_LEFT_EDGE_ITEM_X = USABLE_SCREEN.x - ITEM_WIDTH / 2;
 
+    /** The height of what the system keeps at the top of the screen, such as the menu bar. */
+    private static final int MENU_BAR_HEIGHT = 25;
+
+    private static final Rectangle OFFSET_SCREEN = new Rectangle(100, MENU_BAR_HEIGHT, 1000, 800);
+
+    /** A usable screen to the left of the main screen, so its x is negative. */
+    private static final Rectangle LEFT_MONITOR_SCREEN = new Rectangle(-1200, 0, 1000, 800);
+
+    /** Shorter than the item and the tooltip stacked and a little more, so a tooltip above the item can leave its top. */
+    private static final Rectangle SHORT_SCREEN = new Rectangle(100, MENU_BAR_HEIGHT, 1000, 90);
+
+    /** The top of an item on {@link #SHORT_SCREEN}, below the screen's top by less than a tooltip's height. */
+    private static final int SHORT_SCREEN_ITEM_OFFSET_Y = 30;
+
+    /** A tooltip taller than {@link #OFFSET_SCREEN}. */
+    private static final Dimension TALL_TOOLTIP_SIZE = new Dimension(TOOLTIP_SIZE.width, OFFSET_SCREEN.height * 2);
+
     /**
-     * One item and tooltip on the usable screen, and where the tooltip goes.
+     * One item and tooltip on a usable screen, and where the tooltip goes.
      *
      * @param description      the case, which doubles as the parameterized display name
+     * @param usableScreen     the usable screen
      * @param item             the item the mark is drawn on
      * @param toolTipSize      the tooltip's size
      * @param expectedLocation the tooltip's top-left corner
      */
-    private record PlacementCase(String description, Rectangle item, Dimension toolTipSize, Point expectedLocation) {
+    private record PlacementCase(String description, Rectangle usableScreen, Rectangle item, Dimension toolTipSize, Point expectedLocation) {
 
         @Override
         public String toString() {
@@ -92,34 +110,80 @@ class LintToolTipPlacementTest extends UnitTest {
         return Stream.of(
             new PlacementCase(
                 "below the item when it fits, its left side on the item's left edge",
+                USABLE_SCREEN,
                 itemAt(INNER_ITEM_X, INNER_ITEM_Y),
                 TOOLTIP_SIZE,
                 new Point(INNER_ITEM_X, INNER_ITEM_Y + ITEM_HEIGHT)),
             new PlacementCase(
                 "below the item when it fits exactly",
+                USABLE_SCREEN,
                 itemAt(INNER_ITEM_X, FITS_EXACTLY_ITEM_Y),
                 TOOLTIP_SIZE,
                 new Point(INNER_ITEM_X, FITS_EXACTLY_ITEM_Y + ITEM_HEIGHT)),
             new PlacementCase(
                 "above the item when it does not fit below, its left side on the item's left edge",
+                USABLE_SCREEN,
                 itemAt(INNER_ITEM_X, FITS_EXACTLY_ITEM_Y + 1),
                 TOOLTIP_SIZE,
                 new Point(INNER_ITEM_X, FITS_EXACTLY_ITEM_Y + 1 - TOOLTIP_SIZE.height)),
             new PlacementCase(
                 "pushed left off the right edge of the screen",
+                USABLE_SCREEN,
                 itemAt(RIGHT_EDGE_ITEM_X, INNER_ITEM_Y),
                 TOOLTIP_SIZE,
                 new Point(USABLE_SCREEN_RIGHT_X - TOOLTIP_SIZE.width, INNER_ITEM_Y + ITEM_HEIGHT)),
             new PlacementCase(
                 "pushed right off the left edge of the screen",
+                USABLE_SCREEN,
                 itemAt(OFF_LEFT_EDGE_ITEM_X, INNER_ITEM_Y),
                 TOOLTIP_SIZE,
                 new Point(USABLE_SCREEN.x, INNER_ITEM_Y + ITEM_HEIGHT)),
             new PlacementCase(
                 "wider than the screen, it starts at the screen's left edge",
+                USABLE_SCREEN,
                 itemAt(INNER_ITEM_X, INNER_ITEM_Y),
                 WIDE_TOOLTIP_SIZE,
-                new Point(USABLE_SCREEN.x, INNER_ITEM_Y + ITEM_HEIGHT))
+                new Point(USABLE_SCREEN.x, INNER_ITEM_Y + ITEM_HEIGHT)),
+            new PlacementCase(
+                "on a screen whose origin is not (0, 0), pushed right off the left edge",
+                OFFSET_SCREEN,
+                itemAt(OFFSET_SCREEN.x - ITEM_WIDTH / 2, OFFSET_SCREEN.y + INNER_ITEM_Y),
+                TOOLTIP_SIZE,
+                new Point(OFFSET_SCREEN.x, OFFSET_SCREEN.y + INNER_ITEM_Y + ITEM_HEIGHT)),
+            new PlacementCase(
+                "on a screen whose origin is not (0, 0), pushed left off the right edge",
+                OFFSET_SCREEN,
+                itemAt(OFFSET_SCREEN.x + OFFSET_SCREEN.width - ITEM_WIDTH, OFFSET_SCREEN.y + INNER_ITEM_Y),
+                TOOLTIP_SIZE,
+                new Point(
+                    OFFSET_SCREEN.x + OFFSET_SCREEN.width - TOOLTIP_SIZE.width,
+                    OFFSET_SCREEN.y + INNER_ITEM_Y + ITEM_HEIGHT)),
+            new PlacementCase(
+                "on a screen at a negative x, pushed right off the left edge",
+                LEFT_MONITOR_SCREEN,
+                itemAt(LEFT_MONITOR_SCREEN.x - ITEM_WIDTH / 2, INNER_ITEM_Y),
+                TOOLTIP_SIZE,
+                new Point(LEFT_MONITOR_SCREEN.x, INNER_ITEM_Y + ITEM_HEIGHT)),
+            new PlacementCase(
+                "on a screen at a negative x, pushed left off the right edge",
+                LEFT_MONITOR_SCREEN,
+                itemAt(LEFT_MONITOR_SCREEN.x + LEFT_MONITOR_SCREEN.width - ITEM_WIDTH, INNER_ITEM_Y),
+                TOOLTIP_SIZE,
+                new Point(
+                    LEFT_MONITOR_SCREEN.x + LEFT_MONITOR_SCREEN.width - TOOLTIP_SIZE.width,
+                    INNER_ITEM_Y + ITEM_HEIGHT)),
+            new PlacementCase(
+                "above the item would leave the screen's top, so it is pushed down to the top",
+                SHORT_SCREEN,
+                itemAt(INNER_ITEM_X, SHORT_SCREEN.y + SHORT_SCREEN_ITEM_OFFSET_Y),
+                TOOLTIP_SIZE,
+                new Point(INNER_ITEM_X, SHORT_SCREEN.y)),
+            new PlacementCase(
+                "taller than the screen, it starts at the screen's top edge",
+                OFFSET_SCREEN,
+                itemAt(INNER_ITEM_X, OFFSET_SCREEN.y + INNER_ITEM_Y),
+                TALL_TOOLTIP_SIZE,
+                new Point(INNER_ITEM_X, OFFSET_SCREEN.y))
         );
     }
 
@@ -127,7 +191,7 @@ class LintToolTipPlacementTest extends UnitTest {
     @MethodSource("placementCases")
     void testTheToolTipIsPlacedByTheRule(PlacementCase testCase) {
         var location = LintToolTipPlacement.arrange(
-            new LintToolTipPlacement.Request(testCase.item(), testCase.toolTipSize(), USABLE_SCREEN));
+            new LintToolTipPlacement.Request(testCase.item(), testCase.toolTipSize(), testCase.usableScreen()));
 
         assertThat(location).isEqualTo(testCase.expectedLocation());
     }
