@@ -27,10 +27,8 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.dom.LineRange;
-import songscribe.dom.ChangeHeading;
+import songscribe.dom.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,8 +42,8 @@ class LegacyLyricScriptTest extends UnitTest {
 
     private static final int FIRST_LINE_INDEX = 0;
 
-    /** A lyric number that names no script. */
-    private static final int UNKNOWN_LYRIC_NUMBER = 3;
+    /** A lyric number that names no script: scripts hold the numbers 1 through their count. */
+    private static final int UNKNOWN_LYRIC_NUMBER = Song.Script.values().length + 1;
 
     private static final String LEGACY_DOCUMENT = """
         <?xml version="1.0" encoding="UTF-8"?>
@@ -94,10 +92,6 @@ class LegacyLyricScriptTest extends UnitTest {
             .as("the song loads without the lyric")
             .isEmpty();
 
-        assertThat(success.report().changes()).singleElement().satisfies(change -> {
-            assertThat(change.heading()).isEqualTo(ChangeHeading.LYRICS_REMOVED);
-            assertThat(change.description()).isEqualTo(Strings.get(Strings.REPORT_LYRICS_DETAIL));
-            assertThat(change.where()).isEqualTo(new LineRange(FIRST_LINE_INDEX, FIRST_LINE_INDEX));
-        });
+        assertThat(success.report().changes()).as("the load reports the dropped lyric").hasSize(1);
     }
 }

@@ -35,6 +35,7 @@ import songscribe.dom.Song;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.io.XmlFixtures.closeTag;
 import static songscribe.io.XmlFixtures.element;
+import static songscribe.io.XmlFixtures.emptyTag;
 import static songscribe.io.XmlFixtures.openTag;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.middleCEighth;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parseResult;
@@ -56,8 +57,10 @@ class LyricScriptRoundTripTest extends UnitTest {
 
     private static final int FIRST_LINE_INDEX = 0;
 
-    /** A lyric number that names no script. */
-    private static final int UNKNOWN_LYRIC_NUMBER = 3;
+    private static final int SECOND_LINE_INDEX = 1;
+
+    /** A lyric number that names no script: scripts hold the numbers 1 through their count. */
+    private static final int UNKNOWN_LYRIC_NUMBER = Song.Script.values().length + 1;
 
     /** One lyric number and the script it names. */
     private record NumberedScript(int number, Song.Script script) {
@@ -112,12 +115,34 @@ class LyricScriptRoundTripTest extends UnitTest {
         });
     }
 
-    private static String scoreWithLyricNumbered(int number) {
-        var lyric = openTag(MusicXmlRoundTripSupport.LYRIC, MusicXmlRoundTripSupport.ATTR_NUMBER, Integer.toString(number))
+    @Test
+    void testEachLineThatLostLyricsGetsOneEntryInLineOrder() throws Exception {
+        var unknownLyric = lyricNumbered(UNKNOWN_LYRIC_NUMBER);
+        var newSystem = emptyTag(
+            MusicXmlRoundTripSupport.PRINT,
+            MusicXmlRoundTripSupport.ATTR_NEW_SYSTEM,
+            MusicXmlRoundTripSupport.YES);
+
+        var result = parseResult(scoreWithMeasureBody(
+            middleCEighth(unknownLyric) + middleCEighth(unknownLyric)
+                + newSystem
+                + middleCEighth(unknownLyric)));
+
+        assertThat(result.report().changes())
+            .extracting(change -> change.where())
+            .containsExactly(
+                new LineRange(FIRST_LINE_INDEX, FIRST_LINE_INDEX),
+                new LineRange(SECOND_LINE_INDEX, SECOND_LINE_INDEX));
+    }
+
+    private static String lyricNumbered(int number) {
+        return openTag(MusicXmlRoundTripSupport.LYRIC, MusicXmlRoundTripSupport.ATTR_NUMBER, Integer.toString(number))
             + element(MusicXmlRoundTripSupport.SYLLABIC, "single")
             + element(MusicXmlRoundTripSupport.LYRIC_TEXT, SYLLABLE)
             + closeTag(MusicXmlRoundTripSupport.LYRIC);
+    }
 
-        return scoreWithMeasureBody(middleCEighth(lyric));
+    private static String scoreWithLyricNumbered(int number) {
+        return scoreWithMeasureBody(middleCEighth(lyricNumbered(number)));
     }
 }
