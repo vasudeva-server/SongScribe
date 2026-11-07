@@ -71,8 +71,7 @@ public class SongDidChangeNotification extends LintingNotification {
     }
 
     /**
-     * @return the edit's report: empty for an undo; for a redo, the report of the edit the redo
-     *         applies again
+     * @return the edit's report: empty for an undo and for a redo
      */
     public ChangeReport getReport() {
         return report;
