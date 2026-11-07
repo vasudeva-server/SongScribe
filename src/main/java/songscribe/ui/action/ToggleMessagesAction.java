@@ -30,7 +30,7 @@ import songscribe.ui.component.ReportStatus;
 import songscribe.util.UIUtils;
 
 /**
- * Shows or hides the Messages panel without moving keyboard focus. {@link #setPanelShown} must be
+ * Shows or hides the Messages panel. {@link #setPanelShown} must be
  * called each time the panel is shown or hidden, and {@link #setStatus} each time the panel's
  * status changes; this keeps the selected state, the tooltip and the icon current.
  */
@@ -42,7 +42,8 @@ public final class ToggleMessagesAction extends SelectableUIAction {
         return new ToggleMessagesAction(mainFrame);
     }
 
-    // No DISABLE_WHEN_EDITING_TEXT: it does not move focus, so an in-place text edit goes on.
+    // No DISABLE_WHEN_EDITING_TEXT: during an in-place text edit the editor, not the panel, holds
+    // focus, so neither showing nor hiding the panel moves it and the edit goes on.
     private ToggleMessagesAction(MainFrame mainFrame) {
         super(
             mainFrame,
