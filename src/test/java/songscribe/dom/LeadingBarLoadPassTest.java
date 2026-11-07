@@ -31,6 +31,7 @@ import songscribe.Strings;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.addCompactElements;
 import static songscribe.dom.SongFactory.loadCompactSong;
 import static songscribe.dom.SongFactory.loadSong;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
@@ -129,7 +130,40 @@ class LeadingBarLoadPassTest extends UnitTest {
             new LoadCase("a barline with a key change behind it takes the key change along and moves its key onto the line",
                 () -> loadCompactSong(Key.NO_ACCIDENTALS, "| K:TWO_SHARPS 3 3 F"),
                 FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.TWO_SHARPS, Key.TWO_SHARPS,
-                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY)
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY),
+
+            new LoadCase("several barlines each with a key change: the line ends in the last key",
+                () -> loadCompactSong(Key.NO_ACCIDENTALS, "| K:TWO_SHARPS | K:FOUR_SHARPS 3 3 F"),
+                FIRST_LINE, TWO_NOTES_AND_FINAL_BAR, Key.FOUR_SHARPS, Key.FOUR_SHARPS,
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY),
+
+            new LoadCase("barlines followed by the terminal leave the terminal alone",
+                () -> loadCompactSong(Key.NO_ACCIDENTALS, "| | F"),
+                FIRST_LINE, List.of(ElementType.FINAL_DOUBLE_BARLINE), Key.NO_ACCIDENTALS, Key.NO_ACCIDENTALS,
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR),
+
+            new LoadCase("a barline with a key change followed by the terminal leaves the terminal in the moved key",
+                () -> loadCompactSong(Key.NO_ACCIDENTALS, "| K:TWO_SHARPS F"),
+                FIRST_LINE, List.of(ElementType.FINAL_DOUBLE_BARLINE), Key.TWO_SHARPS, Key.TWO_SHARPS,
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY),
+
+            new LoadCase("a later line with its own key keeps it when the first line's key moves",
+                () -> loadSong(
+                    first -> {
+                        first.setKey(Key.NO_ACCIDENTALS);
+                        addCompactElements(first, "| K:TWO_SHARPS 3 3");
+                    },
+                    second -> {
+                        second.setKey(Key.FOUR_SHARPS);
+                        addCompactElements(second, "3 3 F");
+                    }),
+                SECOND_LINE, TWO_NOTES_AND_FINAL_BAR, Key.FOUR_SHARPS, Key.FOUR_SHARPS,
+                List.of(ON_FIRST_LINE), Strings.REPORT_REASON_LEADING_BAR_KEY),
+
+            new LoadCase("a song built with no element loads holding only its terminal and reports nothing",
+                () -> loadSong(line -> line.setKey(Key.NO_ACCIDENTALS)),
+                FIRST_LINE, List.of(ElementType.FINAL_DOUBLE_BARLINE), Key.NO_ACCIDENTALS, Key.NO_ACCIDENTALS,
+                List.of(), Strings.REPORT_REASON_LEADING_BAR)
         );
     }
 }
