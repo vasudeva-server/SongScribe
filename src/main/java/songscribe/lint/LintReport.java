@@ -44,11 +44,15 @@ public final class LintReport {
 
     private final Map<StaffElement, List<LintMark>> marksByElement = new IdentityHashMap<>();
 
+    private final boolean hasMissingLyricMark;
+
     /**
      * @param findings in the order {@link #findings()} states
      */
     LintReport(List<LintFinding> findings) {
         this.findings = List.copyOf(findings);
+
+        var missingLyricFound = false;
 
         for (var finding : this.findings) {
             var mark = finding.mark();
@@ -57,9 +61,14 @@ public final class LintReport {
             if (!marks.contains(mark)) {
                 marks.add(mark);
             }
+
+            if (mark instanceof LintMark.MissingLyric) {
+                missingLyricFound = true;
+            }
         }
 
         marksByElement.replaceAll((_, marks) -> List.copyOf(marks));
+        hasMissingLyricMark = missingLyricFound;
     }
 
     /**
@@ -86,6 +95,14 @@ public final class LintReport {
         }
 
         return false;
+    }
+
+    /**
+     * Answers in constant time, so a reader that runs on every pointer move can skip a walk of the
+     * line's elements when no "?" is drawn.
+     */
+    public boolean hasMissingLyricMark() {
+        return hasMissingLyricMark;
     }
 
     public List<LintMark> marksOn(StaffElement element) {

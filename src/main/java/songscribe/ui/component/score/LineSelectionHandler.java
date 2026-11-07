@@ -152,8 +152,13 @@ class LineSelectionHandler {
      */
     @Nullable MissingLyricHit hitTestMissingLyricViewPoint(Point viewPoint) {
         var line = lc.getLine();
-        var layoutResult = lc.requireLayoutResult();
         var report = line.getSong().getLinter().getReport();
+
+        if (!report.hasMissingLyricMark()) {
+            return null;
+        }
+
+        var layoutResult = lc.requireLayoutResult();
         var pointSs = new Point2D.Double(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
         for (var element : line.getElements()) {
