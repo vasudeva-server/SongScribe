@@ -723,8 +723,6 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        // Blank text + NONE is setLyricForScript's "remove the entry" case, which keeps the
-        // removal inside the API that enforces the carrier/text-bearing invariants.
         modifyElement(index, ElementField.LYRIC, () -> element.removeLyricForScript(script));
     }
 
