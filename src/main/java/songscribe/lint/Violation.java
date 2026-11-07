@@ -23,7 +23,7 @@ package songscribe.lint;
 
 /**
  * One thing a {@link LintCheck} found wrong with the song, before it is tied to its rule. The
- * description is display text, shown as given.
+ * description is display text.
  */
 public record Violation(LintHeading heading, String description, LintMark mark) {
 }
