@@ -543,6 +543,9 @@ class EndingTest extends UnitTest {
     /** The anchor's index in a {@link #frontedFixture} with two elements in front of it. */
     private static final int TWICE_FRONTED_ANCHOR_INDEX = 2;
 
+    /** The anchor's index in a {@link #frontedFixture} with three elements in front of it. */
+    private static final int THRICE_FRONTED_ANCHOR_INDEX = 3;
+
     /**
      * The line {@code <inFront...> <anchor> X :| Y ||}, with the ending from the anchor through
      * the end.
@@ -625,8 +628,8 @@ class EndingTest extends UnitTest {
                 Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("deleting the only note between a REPEAT_LEFT and a note anchor removes the ending",
-                () -> frontedFixture(crotchet(), repeatLeft(), crotchet()),
-                line -> line.removeRange(ElementRange.single(TWICE_FRONTED_ANCHOR_INDEX - 1)),
+                () -> frontedFixture(crotchet(), crotchet(), repeatLeft(), crotchet()),
+                line -> line.removeRange(ElementRange.single(THRICE_FRONTED_ANCHOR_INDEX - 1)),
                 Strings.REPORT_REASON_ENDING_NOT_VALID),
 
             new RemoveCase("replacing a SINGLE_BARLINE anchor after a REPEAT_LEFT_RIGHT with a note removes the ending",
