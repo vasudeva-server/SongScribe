@@ -301,10 +301,18 @@ public final class ReportPanel extends JPanel {
     private record LintRow(String heading, String location, String description, LintMark mark) implements Row { }
 
     /**
-     * Each text gets a new document: once a document holds text needing complex layout (such as a
-     * character outside the Basic Multilingual Plane), it lays out all later text that way too.
+     * A text keeps the document of the text before it, unless that document ever held text needing
+     * complex layout (such as a character outside the Basic Multilingual Plane): such a document
+     * lays out all later text that way too, so the text gets a new document.
      */
     private static final class WrappingText extends JTextPane {
+
+        /**
+         * The document property that {@link javax.swing.text.AbstractDocument} sets to
+         * {@code Boolean.TRUE} on the first insert that needs complex layout, and never resets. Its
+         * constant {@code AbstractDocument.I18NProperty} is package-private.
+         */
+        private static final String COMPLEX_LAYOUT_PROPERTY = "i18n";
 
         private final float lineSpacing;
 
@@ -314,6 +322,7 @@ public final class ReportPanel extends JPanel {
             setOpaque(false);
             setBorder(BorderFactory.createEmptyBorder());
             setAlignmentX(LEFT_ALIGNMENT);
+            setStyledDocument(newDocument());
         }
 
         /**
@@ -321,7 +330,12 @@ public final class ReportPanel extends JPanel {
          */
         @Override
         public void setText(@Nullable String text) {
-            setStyledDocument(newDocument());
+            // A missing property makes a new document, so a JDK that renames the key still lays
+            // out each text on its own.
+            if (!Boolean.FALSE.equals(getDocument().getProperty(COMPLEX_LAYOUT_PROPERTY))) {
+                setStyledDocument(newDocument());
+            }
+
             super.setText(text == null ? null : text.replace('\n', ' '));
         }
 
