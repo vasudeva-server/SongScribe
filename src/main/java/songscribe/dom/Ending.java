@@ -105,6 +105,17 @@ public final class Ending extends Span<StaffElement> {
      *     {@code line} is not one of its song's lines
      */
     public static Spanning<Ending> spanning(Line line, ElementRange range) {
+        return spanning(line, range, RepeatSections.of(line.getSong()));
+    }
+
+    /**
+     * {@link #spanning(Line, ElementRange)}, with the section rule judged against
+     * {@code sections}. A caller that creates many endings in one song passes them all one model.
+     *
+     * @param sections the repeat sections of {@code line}'s song, built after the last change to
+     *     the song's elements
+     */
+    public static Spanning<Ending> spanning(Line line, ElementRange range, RepeatSections sections) {
         var elements = line.getElements();
         var illFormed = illFormedReason(elements, range);
 
@@ -118,7 +129,7 @@ public final class Ending extends Span<StaffElement> {
 
         var splitIndex = requireSplitIndex(elements, range);
 
-        if (!closesOpenSection(RepeatSections.of(line.getSong()), line, splitIndex)) {
+        if (!closesOpenSection(sections, line, splitIndex)) {
             return refused(Strings.REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
         }
 

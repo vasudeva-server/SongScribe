@@ -30,6 +30,7 @@ import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.RecordedChange;
+import songscribe.dom.RepeatSections;
 import songscribe.dom.Span;
 import songscribe.dom.Spanning;
 import songscribe.dom.StaffElement;
@@ -230,6 +231,7 @@ public record PasteSpanReconciliation(
     public Settlement settle(Line line) {
         var spansToAdd = new ArrayList<Span<?>>(fragmentSpansKept.size());
         var reports = new ArrayList<RecordedChange>();
+        var sections = RepeatSections.of(line.getSong());
 
         for (var dropped : fragmentSpansDropped) {
             reports.add(dropped.span().reportedAs(dropped.reasonKey()));
@@ -241,7 +243,8 @@ public record PasteSpanReconciliation(
                     Tuplet.Site.at(line, tuplet.range()), tuplet.getGrade(), tuplet.getRatio(),
                     TupletValidator.Strictness.STRICT), spansToAdd, reports);
                 case Beam beam -> settleWith(beam, Beam.spanning(line, beam.range()), spansToAdd, reports);
-                case Ending ending -> settleWith(ending, Ending.spanning(line, ending.range()), spansToAdd, reports);
+                case Ending ending -> settleWith(
+                    ending, Ending.spanning(line, ending.range(), sections), spansToAdd, reports);
                 case Hairpin hairpin -> settleWith(
                     hairpin, Hairpin.spanning(line, hairpin.getKind(), hairpin.range()), spansToAdd, reports);
                 case Trill trill -> settleWith(trill, Trill.spanning(line, trill.range()), spansToAdd, reports);

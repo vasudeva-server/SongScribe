@@ -36,6 +36,17 @@ public record PendingEnding(
 
     @Override
     public Spanning<Ending> spanning(Line line, ElementRange range) {
-        return Ending.spanning(line, range).adjusting(ending -> ending.setUserOffset(offset));
+        return spanning(line, range, RepeatSections.of(line.getSong()));
+    }
+
+    /**
+     * {@link #spanning(Line, ElementRange)}, with the section rule judged against
+     * {@code sections}.
+     *
+     * @param sections the repeat sections of {@code line}'s song, built after the last change to
+     *     the song's elements
+     */
+    public Spanning<Ending> spanning(Line line, ElementRange range, RepeatSections sections) {
+        return Ending.spanning(line, range, sections).adjusting(ending -> ending.setUserOffset(offset));
     }
 }

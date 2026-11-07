@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,12 +71,24 @@ final class SpanLoadPass {
      *     dropped, as {@link Spanning.Refused#reportedAt} states it on the span's line
      */
     static void run(Song song, List<? extends PendingSpan<?>> pendingSpans) {
+        var sections = RepeatSections.of(song);
+
         for (var pending : pendingSpans) {
-            place(song, pending);
+            if (pending instanceof PendingEnding ending) {
+                place(song, ending, (line, range) -> ending.spanning(line, range, sections));
+            } else {
+                placeAsStated(song, pending);
+            }
         }
     }
 
-    private static <S extends Span<?>> void place(Song song, PendingSpan<S> pending) {
+    private static <S extends Span<?>> void placeAsStated(Song song, PendingSpan<S> pending) {
+        place(song, pending, pending::spanning);
+    }
+
+    private static <S extends Span<?>> void place(
+        Song song, PendingSpan<S> pending, BiFunction<Line, ElementRange, Spanning<S>> judge
+    ) {
         var anchor = pending.anchor();
         var line = anchor.getParentLine();
         var lineIndex = line == null ? null : song.indexOfLine(line);
@@ -86,7 +99,7 @@ final class SpanLoadPass {
 
         var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(pending.end()));
 
-        switch (pending.spanning(line, range)) {
+        switch (judge.apply(line, range)) {
             case Spanning.Spanned(var span, _) -> span.addTo();
 
             case Spanning.Refused<S> refused -> {
