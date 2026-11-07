@@ -437,16 +437,6 @@ public final class Song implements Disposable {
         return activeScript;
     }
 
-    public Set<Script> scripts() {
-        var scripts = EnumSet.noneOf(Script.class);
-
-        for (var line : lines) {
-            scripts.addAll(line.scripts());
-        }
-
-        return Collections.unmodifiableSet(scripts);
-    }
-
     /**
      * Which script is shown is a property of the session, not of the document: selecting one does
      * not mark the song modified, and it adds no undo step.

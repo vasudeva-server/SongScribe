@@ -104,7 +104,7 @@ class SaveBlockedByLintTest extends E2ETest {
 
         buildNotes(Actions.QUARTER_NOTE_ACTION, MIDDLE_STAFF_LINE);
 
-        assertThat(GuiActionRunner.execute(() -> song().getLinter().hasFlag(LintRule.Flag.BLOCKS_OUTPUT)))
+        assertThat(GuiActionRunner.execute(() -> song().getLinter().getReport().hasFlag(LintRule.Flag.BLOCKS_OUTPUT)))
             .as("the note the click inserted has no lyric")
             .isTrue();
 

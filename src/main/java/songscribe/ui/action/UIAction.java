@@ -664,7 +664,7 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     private boolean hasPlaybackBlockingFinding() {
-        return getSong().getLinter().hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
+        return getSong().getLinter().getReport().hasFlag(LintRule.Flag.BLOCKS_PLAYBACK);
     }
 
     protected boolean enableFromMidiState() {

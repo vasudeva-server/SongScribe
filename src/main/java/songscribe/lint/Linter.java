@@ -62,8 +62,4 @@ public final class Linter {
     public LintReport getReport() {
         return report;
     }
-
-    public boolean hasFlag(LintRule.Flag flag) {
-        return report.hasFlag(flag);
-    }
 }

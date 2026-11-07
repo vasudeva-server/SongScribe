@@ -74,7 +74,7 @@ public enum Output {
      * refused.
      */
     public boolean allowed(Component parent, Song song) {
-        if (!song.getLinter().hasFlag(LintRule.Flag.BLOCKS_OUTPUT)) {
+        if (!song.getLinter().getReport().hasFlag(LintRule.Flag.BLOCKS_OUTPUT)) {
             return true;
         }
 
