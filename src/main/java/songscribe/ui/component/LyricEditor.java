@@ -995,7 +995,7 @@ public final class LyricEditor extends MyJTextField {
      * The commit and the dismiss adjustment produce one
      * {@link songscribe.message.notification.SongDidChangeNotification}.
      */
-    public void advance(SyllableEnd syllableEnd, Lyric.Extend extend) {
+    private void advance(SyllableEnd syllableEnd, Lyric.Extend extend) {
         advanceWithIndex(syllableEnd, extend, findNextEligibleIndex());
     }
 

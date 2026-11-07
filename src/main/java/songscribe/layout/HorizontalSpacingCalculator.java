@@ -550,7 +550,7 @@ public final class HorizontalSpacingCalculator {
      *   <li>syllable plus melisma wider than the union → center the two together on the union.
      * </ul>
      */
-    public static double graceLyricLeftOffsetSs(GraceSyllable syllable, ElementColumn grace) {
+    static double graceLyricLeftOffsetSs(GraceSyllable syllable, ElementColumn grace) {
         var syllableWidthSs = syllable.syllableWidthSs();
         var unionWidthSs = syllable.unionWidthSs();
         var noteheadWidthSs = grace.getNoteheadWidthSs();
@@ -608,7 +608,7 @@ public final class HorizontalSpacingCalculator {
     /**
      * @param firstGraphemeWidthSs measured in the font the syllable is drawn in
      */
-    public record GraceSyllable(
+    record GraceSyllable(
         double syllableWidthSs,
         double firstGraphemeWidthSs,
         double unionWidthSs,
