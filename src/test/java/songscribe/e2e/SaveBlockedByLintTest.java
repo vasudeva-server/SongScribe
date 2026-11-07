@@ -49,8 +49,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * The path from an edit to the save confirmation: a real click inserts a note with no lyric, the
  * linter reports it, and the File menu's Save item then asks before it writes. "No"
- * writes nothing and leaves the window's current file as it was; "Yes" writes the file. Which
- * songs lint blocks is unit-tested with the checks.
+ * writes nothing and leaves the window's current file as it was; "Yes" writes the file. The
+ * checks are unit-tested; which rule blocks what is a declaration in {@link LintRule}.
  */
 class SaveBlockedByLintTest extends E2ETest {
 
