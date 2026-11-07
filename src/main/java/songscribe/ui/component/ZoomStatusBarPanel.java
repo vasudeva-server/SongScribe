@@ -22,8 +22,6 @@ package songscribe.ui.component;
 
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.Action;
@@ -114,13 +112,12 @@ public final class ZoomStatusBarPanel extends JPanel {
         levelItems.forEach((levelPercent, item) -> item.setSelected(levelPercent == currentPercent));
     }
 
-    private static final class ZoomButton extends JButton implements PropertyChangeListener {
+    private static final class ZoomButton extends JButton {
 
         ZoomButton(UIAction action) {
             super(action);
             UIUtils.initToolbarButton(this, BUTTON_DIMENSION);
             putClientProperty(FlatClientProperties.BUTTON_TYPE, FlatClientProperties.BUTTON_TYPE_TOOLBAR_BUTTON);
-            action.addPropertyChangeListener(this);
         }
 
         @Override
@@ -133,8 +130,12 @@ public final class ZoomStatusBarPanel extends JPanel {
         }
 
         @Override
-        public void propertyChange(PropertyChangeEvent event) {
-            UIUtils.handleActionPropertyChange(this, (UIAction) getAction(), event);
+        protected void actionPropertyChanged(Action action, String propertyName) {
+            super.actionPropertyChanged(action, propertyName);
+
+            if (action instanceof UIAction uiAction) {
+                UIUtils.handleActionPropertyChange(this, uiAction, propertyName);
+            }
         }
     }
 }

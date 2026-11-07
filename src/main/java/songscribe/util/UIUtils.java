@@ -44,7 +44,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
-import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -238,12 +237,10 @@ public final class UIUtils {
         button.setName(action.getActionCommand());
     }
 
-    public static void handleActionPropertyChange(AbstractButton button, UIAction action, PropertyChangeEvent event) {
-        var prop = event.getPropertyName();
-
-        if (prop.equals(UIAction.FONT_ICON_KEY) || prop.equals(UIAction.FONT_KEY)) {
+    public static void handleActionPropertyChange(AbstractButton button, UIAction action, String propertyName) {
+        if (propertyName.equals(UIAction.FONT_ICON_KEY) || propertyName.equals(UIAction.FONT_KEY)) {
             configureButtonFromAction(button, action);
-        } else if (prop.equals(Action.SHORT_DESCRIPTION)) {
+        } else if (propertyName.equals(Action.SHORT_DESCRIPTION)) {
             setToolTipText(button, action);
         }
     }

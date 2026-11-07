@@ -20,8 +20,6 @@
 
 package songscribe.ui.component;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import javax.swing.Action;
 import javax.swing.JButton;
 
@@ -29,12 +27,11 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.toolbar.Toolbar;
 import songscribe.util.UIUtils;
 
-public class ToolbarButton extends JButton implements PropertyChangeListener {
+public class ToolbarButton extends JButton {
 
     public ToolbarButton(UIAction action) {
         super(action);
         UIUtils.initToolbarButton(this, Toolbar.BUTTON_DIMENSION);
-        action.addPropertyChangeListener(this);
     }
 
     @Override
@@ -47,7 +44,11 @@ public class ToolbarButton extends JButton implements PropertyChangeListener {
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        UIUtils.handleActionPropertyChange(this, (UIAction) getAction(), evt);
+    protected void actionPropertyChanged(Action action, String propertyName) {
+        super.actionPropertyChanged(action, propertyName);
+
+        if (action instanceof UIAction uiAction) {
+            UIUtils.handleActionPropertyChange(this, uiAction, propertyName);
+        }
     }
 }

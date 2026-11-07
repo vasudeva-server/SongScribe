@@ -20,8 +20,6 @@
 
 package songscribe.ui.component;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import javax.swing.Action;
 import javax.swing.JToggleButton;
 
@@ -31,15 +29,11 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.toolbar.Toolbar;
 import songscribe.util.UIUtils;
 
-public class ToolbarToggleButton extends JToggleButton implements PropertyChangeListener {
+public class ToolbarToggleButton extends JToggleButton {
 
     public ToolbarToggleButton(@Nullable UIAction action) {
         super(action);
         UIUtils.initToolbarButton(this, Toolbar.BUTTON_DIMENSION);
-
-        if (action != null) {
-            action.addPropertyChangeListener(this);
-        }
     }
 
     @Override
@@ -52,7 +46,11 @@ public class ToolbarToggleButton extends JToggleButton implements PropertyChange
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        UIUtils.handleActionPropertyChange(this, (UIAction) getAction(), evt);
+    protected void actionPropertyChanged(Action action, String propertyName) {
+        super.actionPropertyChanged(action, propertyName);
+
+        if (action instanceof UIAction uiAction) {
+            UIUtils.handleActionPropertyChange(this, uiAction, propertyName);
+        }
     }
 }
