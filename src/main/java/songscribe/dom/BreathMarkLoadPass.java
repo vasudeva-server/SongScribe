@@ -49,9 +49,9 @@ final class BreathMarkLoadPass {
      * @invariant afterwards every breath mark in {@code song} stands immediately after a
      *     pitched note or a rest
      * @effects a tuplet that holds a removed mark is removed with it
-     * @effects records to the load's report, in document order, each breath mark removed, with an
-     *     entry that names the line the breath mark was on, before the entries of the spans its
-     *     removal takes
+     * @effects records to the load's report one entry per line it removed breath marks from,
+     *     naming that line, in line order, each before the entries of the spans the line's
+     *     removals take
      */
     static void run(Song song) {
         var removedCount = removeUnhostedBreathMarks(song);
@@ -66,14 +66,19 @@ final class BreathMarkLoadPass {
 
         for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
             var line = song.getLine(lineIndex);
+            var lineReported = false;
             var i = 0;
 
             while (i < line.elementCount()) {
                 if (line.getElement(i).getType().isBreathMark() && !line.isDurationAt(i - 1)) {
-                    song.report(new RecordedChange(
-                        ChangeHeading.BREATH_MARKS_REMOVED,
-                        Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
-                        ChangeLines.on(line)));
+                    if (!lineReported) {
+                        song.report(new RecordedChange(
+                            ChangeHeading.BREATH_MARKS_REMOVED,
+                            Strings.get(Strings.REPORT_REASON_BREATH_MARK_HOST),
+                            ChangeLines.on(line)));
+                        lineReported = true;
+                    }
+
                     line.removeElement(i);
                     removedCount++;
                 } else {
