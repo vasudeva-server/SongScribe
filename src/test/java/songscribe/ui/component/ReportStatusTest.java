@@ -45,8 +45,6 @@ class ReportStatusTest extends UnitTest {
     private static final ChangeReport ONE_CHANGE = new ChangeReport(
         List.of(new ReportedChange(ChangeHeading.BEAMS_REMOVED, "", null)));
 
-    private static final LintReport ONE_FINDING = lintedReport(line -> line.addElement(StaffElementFactory.singleBarline()));
-
     private record StatusCase(String description, LintReport lint, ChangeReport changes, ReportStatus expected) {
 
         @Override
@@ -62,15 +60,19 @@ class ReportStatusTest extends UnitTest {
     }
 
     static Stream<StatusCase> statusCases() {
+        // Built here, not in a static field: a Song subscribes to the class's message bus,
+        // which UnitTest installs in @BeforeAll, after the class initializer has run.
+        var oneFinding = lintedReport(line -> line.addElement(StaffElementFactory.crotchet()));
+
         return Stream.of(
             new StatusCase("no finding and no change is empty",
                 LintReport.EMPTY, ChangeReport.EMPTY, ReportStatus.EMPTY),
             new StatusCase("a change with no finding is changes",
                 LintReport.EMPTY, ONE_CHANGE, ReportStatus.CHANGES),
             new StatusCase("a finding with no change is findings",
-                ONE_FINDING, ChangeReport.EMPTY, ReportStatus.FINDINGS),
+                oneFinding, ChangeReport.EMPTY, ReportStatus.FINDINGS),
             new StatusCase("a finding with a change is findings",
-                ONE_FINDING, ONE_CHANGE, ReportStatus.FINDINGS)
+                oneFinding, ONE_CHANGE, ReportStatus.FINDINGS)
         );
     }
 
