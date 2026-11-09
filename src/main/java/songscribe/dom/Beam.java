@@ -104,7 +104,7 @@ public final class Beam extends Span<NoteElement> {
      *           from its first non-grace element to its last is neither beamable nor a grace
      *           note;</li>
      *       <li>{@link Strings#REPORT_REASON_BEAM_TIED_NOTES} when the widened range holds
-     *           both notes of a tie ({@link Tie#bothNotesIn}).</li>
+     *           both notes of a tie ({@link Tie#bothNotesIn(ElementRange)}).</li>
      *     </ul>
      *     The reasons are judged in that order.
      */
@@ -141,8 +141,8 @@ public final class Beam extends Span<NoteElement> {
     private static boolean holdsTiedPair(Line line, ElementRange range) {
         for (var index = range.begin(); index <= range.end(); index++) {
             if (line.getElement(index) instanceof NoteElement note
-                && note.isTiedToNext()
-                && Tie.bothNotesIn(line, index, range)) {
+                && note.tie() instanceof Tie tie
+                && tie.bothNotesIn(range)) {
                 return true;
             }
         }

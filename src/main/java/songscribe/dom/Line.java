@@ -515,9 +515,9 @@ public final class Line implements EditableRun {
     /**
      * Nothing here judges the tie: {@link Tie#judge} does, for an edit and for a load.
      *
-     * @param anchor a note of this line that can carry a tie ({@link Tie#canAnchor}); while the
-     *     song is replaying,
-     *     the note the replayed record names, whichever line holds it at that point of the replay
+     * @param anchor a note of this line that can carry a tie ({@link NoteElement#canCarryTie});
+     *     while the song is replaying, the note the replayed record names, whichever line holds
+     *     it at that point of the replay
      */
     public void addTie(NoteElement anchor) {
         if (anchor.isTiedToNext()) {
@@ -551,7 +551,7 @@ public final class Line implements EditableRun {
             return;
         }
 
-        var endIndex = Tie.firstNonSeparatorIndexFrom(elements, range.begin());
+        var endIndex = firstNonSeparatorIndexFrom(range.begin());
 
         if (endIndex == null || endIndex > range.end() || !(elements.get(endIndex) instanceof NoteElement end)) {
             return;
@@ -563,6 +563,24 @@ public final class Line implements EditableRun {
             var anchor = incoming.anchor();
             anchor.requireParentLine().removeTie(anchor);
         }
+    }
+
+    /**
+     * @param from at or above 0
+     * @return {@code null} when no element from {@code from} on is other than a legal tie
+     *     separator ({@link ElementType#isLegalTieSeparator})
+     */
+    public @Nullable Integer firstNonSeparatorIndexFrom(int from) {
+        return StaffElementRun.firstIndexFrom(elements, from, type -> !type.isLegalTieSeparator());
+    }
+
+    /**
+     * @param before a position in {@code 0..elementCount()}; the element there is not examined
+     * @return {@code null} when every element before {@code before} is a legal tie separator
+     *     ({@link ElementType#isLegalTieSeparator})
+     */
+    public @Nullable Integer lastNonSeparatorIndexBefore(int before) {
+        return StaffElementRun.lastIndexBefore(elements, before, type -> !type.isLegalTieSeparator());
     }
 
     /**
@@ -610,7 +628,7 @@ public final class Line implements EditableRun {
     }
 
     private @Nullable Tie enteringTie() {
-        var firstIndex = Tie.firstNonSeparatorIndexFrom(elements, 0);
+        var firstIndex = firstNonSeparatorIndexFrom(0);
 
         if (firstIndex == null || !(elements.get(firstIndex) instanceof NoteElement first)) {
             return null;

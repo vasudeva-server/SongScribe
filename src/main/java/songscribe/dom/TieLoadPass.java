@@ -40,21 +40,16 @@ final class TieLoadPass {
     /**
      * @param song the song being loaded, whose lines hold every anchor
      * @param ties the ties the reader found in {@code song}
-     * @effects adds a tie from each pending tie's anchor that {@link Tie#canAnchor} accepts and
-     *     that {@link Tie#judge} finds to hold; no other pending tie is on the song afterwards
+     * @effects adds a tie from each pending tie's anchor that {@link NoteElement#canCarryTie}
+     *     accepts and that {@link Tie#judge} finds to hold; no other pending tie is on the song
+     *     afterwards
      * @effects records to the load's report, in the order of {@code ties}, one entry for each
      *     pending tie dropped: the {@link Tie.Judgment.Broken#entry() entry} for
      *     {@link Tie.Judgment.Reason#DAMAGED_ANCHOR} on the anchor's line when
-     *     {@link Tie#canAnchor} refuses its anchor, otherwise the
+     *     {@link NoteElement#canCarryTie} refuses its anchor, otherwise the
      *     {@link Tie.Judgment.Broken#entry() entry} {@link Tie#judge} gives
      */
     static void run(Song song, List<PendingTie> ties) {
-        for (var pending : ties) {
-            if (tieableAnchor(pending) instanceof NoteElement note) {
-                note.requireParentLine().addTie(note);
-            }
-        }
-
         for (var pending : ties) {
             var line = pending.anchor().requireParentLine();
 
@@ -62,7 +57,8 @@ final class TieLoadPass {
                 song.report(new Tie.Judgment.Broken(Tie.Judgment.Reason.DAMAGED_ANCHOR, ChangeLines.on(line)).entry());
             } else if (Tie.judge(note) instanceof Tie.Judgment.Broken broken) {
                 song.report(broken.entry());
-                line.removeTie(note);
+            } else {
+                line.addTie(note);
             }
         }
     }
@@ -71,6 +67,6 @@ final class TieLoadPass {
      * @return {@code null} when the anchor cannot carry a tie
      */
     private static @Nullable NoteElement tieableAnchor(PendingTie pending) {
-        return pending.anchor() instanceof NoteElement note && Tie.canAnchor(note) ? note : null;
+        return pending.anchor() instanceof NoteElement note && note.canCarryTie() ? note : null;
     }
 }

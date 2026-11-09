@@ -77,18 +77,16 @@ final class TieRule implements ModificationRule {
     }
 
     private static void judge(Line line, ChangeReport.Builder report) {
-        var elements = line.getElements();
-
         // Removing a tie or a beam changes no element, so the walk over the live list is safe.
-        for (var i = 0; i < elements.size(); i++) {
-            if (!(elements.get(i) instanceof NoteElement anchor) || !anchor.isTiedToNext()) {
+        for (var element : line.getElements()) {
+            if (!(element instanceof NoteElement anchor) || !anchor.isTiedToNext()) {
                 continue;
             }
 
             switch (Tie.judge(anchor)) {
-                case Tie.Judgment.Holds() -> {
+                case Tie.Judgment.Holds(var tie) -> {
                     // The tie wins over a beam: tied notes are never beamed together.
-                    var beam = Tie.beamHoldingBoth(line, i);
+                    var beam = tie.beamHoldingBoth();
 
                     if (beam != null) {
                         beam.removeReported(Strings.REPORT_REASON_BEAM_TIED_NOTES);

@@ -48,13 +48,14 @@ import songscribe.message.mutation.TieRemoval;
 
 /**
  * A note and the note a tie from it ends on, whether or not the note is tied: the end is the
- * first element after the anchor that is not a {@link #isLegalSeparator legal separator}, which
+ * first element after the anchor that is not a
+ * {@link ElementType#isLegalTieSeparator legal separator}, which
  * may sit at the start of the next line. {@link NoteElement#tie()} and
  * {@link NoteElement#incomingTie()} give the ties a note stores; {@link #startingOn} and
  * {@link #endingOn} give the tie a note could start or end.
  *
- * <p>Both notes pass the <b>pitched-note check</b>, {@link #canAnchor}, and no tie exists for a
- * pair that fails it.
+ * <p>Both notes pass the <b>pitched-note check</b>, {@link NoteElement#canCarryTie}, and no tie
+ * exists for a pair that fails it.
  *
  * <p>No beam holds both notes of a tie; the tie wins over the beam on every route.
  *
@@ -76,10 +77,10 @@ public final class Tie {
      * share a pitch ({@link #holds()}).
      *
      * @return {@code null} when {@code anchor} or {@code end} cannot carry a tie
-     *     ({@link #canAnchor})
+     *     ({@link NoteElement#canCarryTie})
      */
     private static @Nullable Tie between(NoteElement anchor, StaffElement end) {
-        return canAnchor(anchor) && end instanceof NoteElement endNote && canAnchor(endNote)
+        return anchor.canCarryTie() && end instanceof NoteElement endNote && endNote.canCarryTie()
             ? new Tie(anchor, endNote)
             : null;
     }
@@ -97,7 +98,7 @@ public final class Tie {
             return null;
         }
 
-        var reached = endAfter(line, line.getElementIndex(anchor));
+        var reached = endAfter(line, anchor);
 
         return reached == null ? null : between(anchor, reached);
     }
@@ -117,7 +118,7 @@ public final class Tie {
             return null;
         }
 
-        if (!(anchorBefore(line, line.getElementIndex(end)) instanceof NoteElement anchor)) {
+        if (!(anchorBefore(line, end) instanceof NoteElement anchor)) {
             return null;
         }
 
@@ -127,31 +128,26 @@ public final class Tie {
         return tie != null && tie.end() == end ? tie : null;
     }
 
-    public static boolean canAnchor(StaffElement element) {
-        return element instanceof NoteElement && element.getType().isPitchedNote();
+    /**
+     * The anchor need not be tied yet.
+     *
+     * @param range a range of the anchor's line that contains the anchor
+     */
+    boolean bothNotesIn(ElementRange range) {
+        var line = anchor.requireParentLine();
+
+        //noinspection ObjectEquality
+        return end.getParentLine() == line && range.contains(line.getElementIndex(end));
     }
 
     /**
      * The anchor need not be tied yet.
-     *
-     * @param line  a line of its song
-     * @param range contains {@code anchorIndex}
      */
-    static boolean bothNotesIn(Line line, int anchorIndex, ElementRange range) {
-        var reached = endAfter(line, anchorIndex);
+    public @Nullable Beam beamHoldingBoth() {
+        var line = anchor.requireParentLine();
+        var beam = line.spanRegistry().findBeamAt(line.getElementIndex(anchor));
 
-        //noinspection ObjectEquality
-        return reached != null && reached.getParentLine() == line && range.contains(line.getElementIndex(reached));
-    }
-
-    /**
-     * @param line        a line of its song
-     * @param anchorIndex the anchor need not be tied yet
-     */
-    public static @Nullable Beam beamHoldingBoth(Line line, int anchorIndex) {
-        var beam = line.spanRegistry().findBeamAt(anchorIndex);
-
-        return beam != null && bothNotesIn(line, anchorIndex, beam.range()) ? beam : null;
+        return beam != null && bothNotesIn(beam.range()) ? beam : null;
     }
 
     public NoteElement anchor() {
@@ -160,21 +156,6 @@ public final class Tie {
 
     public NoteElement end() {
         return end;
-    }
-
-    /**
-     * Non-duration elements take no time, except a final double barline (nothing may sound across
-     * it) and every key change (it can alter the pitch class, and the rule excludes all of them
-     * so that whether a tie survives does not depend on where its notes sit).
-     *
-     * <p>{@code RangeQueries.canToggleTie} and the walk behind {@link NoteElement#tie()} both read
-     * this, and must not disagree: otherwise a tie would end somewhere other than where it was
-     * drawn. They share the type rule only, not a count.
-     */
-    public static boolean isLegalSeparator(ElementType type) {
-        return type.isNonDuration()
-            && type != ElementType.FINAL_DOUBLE_BARLINE
-            && !type.isKeyChange();
     }
 
     /**
@@ -193,7 +174,7 @@ public final class Tie {
      */
     public sealed interface Judgment {
 
-        record Holds() implements Judgment { }
+        record Holds(Tie tie) implements Judgment { }
 
         /**
          * @param where the anchor's line, and the line of the element the tie's walk reaches when
@@ -242,7 +223,7 @@ public final class Tie {
      */
     public static Judgment judge(NoteElement anchor) {
         var line = anchor.requireParentLine();
-        var reached = endAfter(line, line.getElementIndex(anchor));
+        var reached = endAfter(line, anchor);
 
         return reached == null
             ? new Judgment.Broken(Judgment.Reason.NO_FOLLOWING_NOTE, ChangeLines.on(line))
@@ -253,7 +234,7 @@ public final class Tie {
         var tie = between(anchor, end);
 
         if (tie != null && tie.holds()) {
-            return new Judgment.Holds();
+            return new Judgment.Holds(tie);
         }
 
         var reason = tie == null ? Judgment.Reason.NO_FOLLOWING_NOTE : Judgment.Reason.NOT_HELD;
@@ -261,12 +242,14 @@ public final class Tie {
         return new Judgment.Broken(reason, new ChangeLines(anchor.requireParentLine(), end.requireParentLine()));
     }
 
-    static @Nullable StaffElement endAfter(Line line, int anchorIndex) {
-        var elements = line.getElements();
-        var index = firstNonSeparatorIndexFrom(elements, anchorIndex + 1);
+    /**
+     * @param line the line that holds {@code anchor}
+     */
+    private static @Nullable StaffElement endAfter(Line line, NoteElement anchor) {
+        var index = line.firstNonSeparatorIndexFrom(line.getElementIndex(anchor) + 1);
 
         if (index != null) {
-            return elements.get(index);
+            return line.getElement(index);
         }
 
         var following = line.nextLine();
@@ -275,18 +258,19 @@ public final class Tie {
             return null;
         }
 
-        var followingElements = following.getElements();
-        var followingIndex = firstNonSeparatorIndexFrom(followingElements, 0);
+        var followingIndex = following.firstNonSeparatorIndexFrom(0);
 
-        return followingIndex == null ? null : followingElements.get(followingIndex);
+        return followingIndex == null ? null : following.getElement(followingIndex);
     }
 
-    static @Nullable StaffElement anchorBefore(Line line, int endIndex) {
-        var elements = line.getElements();
-        var anchorIndex = lastNonSeparatorIndexBefore(elements, endIndex);
+    /**
+     * @param line the line that holds {@code end}
+     */
+    private static @Nullable StaffElement anchorBefore(Line line, NoteElement end) {
+        var anchorIndex = line.lastNonSeparatorIndexBefore(line.getElementIndex(end));
 
         if (anchorIndex != null) {
-            return elements.get(anchorIndex);
+            return line.getElement(anchorIndex);
         }
 
         var preceding = line.previousLine();
@@ -295,26 +279,9 @@ public final class Tie {
             return null;
         }
 
-        var precedingElements = preceding.getElements();
-        var precedingIndex = lastNonSeparatorIndexBefore(precedingElements, precedingElements.size());
+        var precedingIndex = preceding.lastNonSeparatorIndexBefore(preceding.elementCount());
 
-        return precedingIndex == null ? null : precedingElements.get(precedingIndex);
-    }
-
-    /**
-     * @param from at or above 0
-     * @return {@code null} when no non-separator element remains from {@code from} on
-     */
-    public static @Nullable Integer firstNonSeparatorIndexFrom(List<? extends StaffElement> elements, int from) {
-        return StaffElementRun.firstIndexFrom(elements, from, type -> !isLegalSeparator(type));
-    }
-
-    /**
-     * @param before a position in {@code 0..elements.size()}; the element there is not examined
-     * @return {@code null} when every element before {@code before} is a legal separator
-     */
-    public static @Nullable Integer lastNonSeparatorIndexBefore(List<? extends StaffElement> elements, int before) {
-        return StaffElementRun.lastIndexBefore(elements, before, type -> !isLegalSeparator(type));
+        return precedingIndex == null ? null : preceding.getElement(precedingIndex);
     }
 
     /**
@@ -336,8 +303,8 @@ public final class Tie {
      * is the origin of a {@link SpanAddition} or {@link SpanRemoval} of that beam. It reaches:
      * <ul>
      *   <li>L's next line, when there is one and {@code last} is at or after L's last element
-     *       that is not a legal separator ({@link #isLegalSeparator}), or L has no such
-     *       element;</li>
+     *       that is not a legal separator ({@link ElementType#isLegalTieSeparator}), or L has no
+     *       such element;</li>
      *   <li>L's previous line, when there is one and {@code first} is at or before L's first
      *       such element, or L has none.</li>
      * </ul>
@@ -357,9 +324,8 @@ public final class Tie {
         }
 
         var line = origin.line();
-        var elements = line.getElements();
-        var firstNonSeparator = firstNonSeparatorIndexFrom(elements, 0);
-        var lastNonSeparator = lastNonSeparatorIndexBefore(elements, elements.size());
+        var firstNonSeparator = line.firstNonSeparatorIndexFrom(0);
+        var lastNonSeparator = line.lastNonSeparatorIndexBefore(line.elementCount());
         var reach = new ArrayList<Line>();
 
         if (!line.isLast() && (lastNonSeparator == null || origin.last() >= lastNonSeparator)) {

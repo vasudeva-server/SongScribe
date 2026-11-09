@@ -38,7 +38,7 @@ import songscribe.smufl.StemmedNotehead;
  *
  * <p>A note stores whether it is tied to the next note, and nothing more: the note the tie ends
  * on is derived each time ({@link #tie()}, {@link #incomingTie()}). Only a note that passes
- * {@link Tie#canAnchor} is ever tied. Apart from {@link #copyStateFrom} and conversion, only
+ * {@link #canCarryTie} is ever tied. Apart from {@link #copyStateFrom} and conversion, only
  * {@link Line#addTie} and {@link Line#removeTie} write whether a note in a line is tied.
  */
 public final class NoteElement extends StaffElement implements Dottable {
@@ -166,27 +166,31 @@ public final class NoteElement extends StaffElement implements Dottable {
 
     /**
      * @invariant {@code true} only on a note that passes the pitched-note check
-     *     ({@link Tie#canAnchor})
+     *     ({@link #canCarryTie})
      */
     public boolean isTiedToNext() {
         return tiedToNext;
+    }
+
+    public boolean canCarryTie() {
+        return getType().isPitchedNote();
     }
 
     /**
      * Returns the tie that starts on this note.
      *
      * <p>The end is derived, never stored: it is the first element after this note that is not a
-     * legal separator ({@link Tie#isLegalSeparator} — an element with no duration, other than a
-     * final double barline or a key change). When this note's line runs out of elements first,
-     * the walk continues at the start of the next line of the song, so <b>the end may be in the
-     * next line</b>. It crosses that one line break and no more.
+     * legal separator ({@link ElementType#isLegalTieSeparator} — an element with no duration,
+     * other than a final double barline or a key change). When this note's line runs out of
+     * elements first, the walk continues at the start of the next line of the song, so <b>the
+     * end may be in the next line</b>. It crosses that one line break and no more.
      *
      * <p>Each call makes a new {@link Tie}; ties made from the same two notes are equal.
      *
      * @return the tie from this note to its end, or {@code null} when this note stores no tie
      *     ({@link #isTiedToNext()} is {@code false}), is in no line, or the walk reaches no note
      *     to end on — its first non-separator fails the pitched-note check
-     *     ({@link Tie#canAnchor}), or the song, or the next line, runs out first
+     *     ({@link #canCarryTie}), or the song, or the next line, runs out first
      * @invariant a non-null result's {@link Tie#anchor()} is this note, and
      *     {@code result.end().incomingTie()} equals the result
      */
@@ -197,9 +201,9 @@ public final class NoteElement extends StaffElement implements Dottable {
     /**
      * Returns the tie that ends on this note.
      *
-     * <p>Walks back from this note over legal separators ({@link Tie#isLegalSeparator}), into
-     * the end of the previous line of the song when this note's line has nothing else before
-     * it. The first element that is not a legal separator is the only note whose tie can end
+     * <p>Walks back from this note over legal separators
+     * ({@link ElementType#isLegalTieSeparator}), into the end of the previous line of the song
+     * when this note's line has nothing else before it. The first element that is not a legal separator is the only note whose tie can end
      * here, so the walk crosses one line break and no more, as {@link #tie()}'s does.
      *
      * @return that note's {@link #tie()} when it ends on this note, or {@code null} when no tie
@@ -409,7 +413,7 @@ public final class NoteElement extends StaffElement implements Dottable {
 
     /**
      * Copies the whole of what a note holds beyond the base class. The tie is taken only when
-     * this note passes {@link Tie#canAnchor}, so {@link #isTiedToNext()}'s invariant holds.
+     * this note passes {@link #canCarryTie}, so {@link #isTiedToNext()}'s invariant holds.
      */
     @Override
     protected void copySubtypeStateFrom(StaffElement source) {
@@ -418,13 +422,13 @@ public final class NoteElement extends StaffElement implements Dottable {
         accidentalState = sourceNote.accidentalState;
         stem = sourceNote.stem;
         slide = sourceNote.slide;
-        tiedToNext = sourceNote.tiedToNext && Tie.canAnchor(this);
+        tiedToNext = sourceNote.tiedToNext && canCarryTie();
         dots = sourceNote.dots;
         copyArticulationsFrom(sourceNote);
     }
 
     /**
-     * The tie is kept only when this note passes {@link Tie#canAnchor}, so a note converted to a
+     * The tie is kept only when this note passes {@link #canCarryTie}, so a note converted to a
      * grace note is not tied.
      */
     @Override

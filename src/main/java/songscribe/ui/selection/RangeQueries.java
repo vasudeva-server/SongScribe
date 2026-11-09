@@ -71,9 +71,8 @@ public final class RangeQueries {
             return null;
         }
 
-        var elements = line.getElements();
-        var entryIndex = Tie.firstNonSeparatorIndexFrom(elements, 0);
-        var exitIndex = Tie.lastNonSeparatorIndexBefore(elements, line.elementCount());
+        var entryIndex = line.firstNonSeparatorIndexFrom(0);
+        var exitIndex = line.lastNonSeparatorIndexBefore(line.elementCount());
         Tie candidate = null;
 
         if (entryIndex != null && index == entryIndex && !line.isFirst()) {
@@ -153,19 +152,19 @@ public final class RangeQueries {
         }
 
         if (selectionSize == TIE_SELECTION_SIZE_WITH_SEPARATOR
-            && !Tie.isLegalSeparator(line.getElement(begin + 1).getType())) {
+            && !line.getElement(begin + 1).getType().isLegalTieSeparator()) {
             return false;
         }
 
         // The checks above make the element at end the anchor's walk end, so the judgment of the
         // anchor's tie is the judgment of the selected pair. Keep them before it.
-        if (!canBeTied(anchorNote)) {
+        if (!(Tie.judge(anchorNote) instanceof Tie.Judgment.Holds(var tie))) {
             return false;
         }
 
         // Tied notes are never beamed together, so a tie is not added over two notes one beam
         // holds. A removal is never blocked by a beam.
-        return !shouldConnectTieSelection(line, bounds) || Tie.beamHoldingBoth(line, begin) == null;
+        return !shouldConnectTieSelection(line, bounds) || tie.beamHoldingBoth() == null;
     }
 
     /**
