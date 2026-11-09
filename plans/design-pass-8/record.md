@@ -10,7 +10,7 @@ Run by `/design-pass 8` — register row `8`, *Ties*.
 | 2 Class design | ✅ | ✅ | — | 1b, 2 now, 3a, 4 confirmed, 5, 6b (keep the kind check), 7 and 8 confirmed |
 | 3 Unrepresentable states | ✅ | ✅ | — | items 1–6 as proposed (3: the throw is dead); 7 option b, `DAMAGED_ANCHOR` noted as the load's only |
 | 4 Extraction | ✅ | ✅ | — | items 1 (as `ElementType.isLegalTieSeparator`, present form), 2a (on `Line`), 3, 4 (beam kept over a broken tie), 5, 6 |
-| 5 Contracts | ⏳ | ⏳ | — | |
+| 5 Contracts | ✅ | ✅ | — | review rejected branch-level contracts; items re-scoped to caller facts and written. Confirmed: a grace note breaks a tie, E♯ to F does not hold. The beam rule stays, in no guide: `Beam.spanning` and `TieRule.apply` each state their half, and `span-invalidation.md`'s rules close the routes. `Line.addTie` done now. Arc-side rules confirmed as today's code (the corpus for step 6) |
 | 6 Test triage | ⏳ | ⏳ | — | |
 | 7 Test-only surface | ⏳ | ⏳ | — | |
 | 8a Suite gate | ⏳ | n/a | — | |
@@ -78,6 +78,14 @@ Each item is listed under the step whose axis it is:
 - **Step 6.** `Tie.arcSign` / `tieArcDirection` is an algorithm with no test in the target.
 - **Step 6.** `Beam.spanning` no longer refuses a beam over a tied note whose walk reaches a rest
   or a grace note (step 4, item 4); that defect fix needs its test.
+- **Step 6.** Four cases of `TieRuleTest` assert what `TieRule` does not do: "deleting the end
+  note unties the anchor and reports nothing" and the three silent cases of `crossLineCases`
+  (the deletion's untie), and "converting the anchor to a grace note leaves nothing tied"
+  (`StaffElement.convertedFrom`). `testOneUndoRestoresTheEditAndTheTieItRemoved` asserts a
+  promise of every `ModificationRule`.
+- **Row for `ui/selection`, step 3.** `RangeQueries.canToggleTie` (`ui/selection/RangeQueries.java:153–155`)
+  refuses a three-element selection whose middle element is not a legal tie separator. The
+  `Tie.judge` end comparison at `:160` already refuses that selection, so the check is redundant.
 - **Step 12 (docs).** `guides/subsystems/tie-placement.md` lists only `Tie` and `BezierBow`;
   `TieLoadPass` and `TieRule` are listed in `span-invalidation.md` and `undo.md` only.
 - **Row 16.** Whether the MusicXML reader can give two pending ties on one anchor, which is the

@@ -47,17 +47,10 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 
 /**
- * A note and the note a tie from it ends on, whether or not the note is tied: the end is the
- * first element after the anchor that is not a
- * {@link ElementType#isLegalTieSeparator legal separator}, which
- * may sit at the start of the next line. {@link NoteElement#tie()} and
- * {@link NoteElement#incomingTie()} give the ties a note stores; {@link #startingOn} and
- * {@link #endingOn} give the tie a note could start or end.
+ * A note and the note a tie from it ends on, whether or not the note is tied.
  *
  * <p>Both notes pass the <b>pitched-note check</b>, {@link NoteElement#canCarryTie}, and no tie
  * exists for a pair that fails it.
- *
- * <p>No beam holds both notes of a tie; the tie wins over the beam on every route.
  *
  * <p>A value, not a document element: nothing stores or registers a tie, and two ties made from
  * the same two notes are equal.
@@ -86,10 +79,13 @@ public final class Tie {
     }
 
     /**
-     * Returns the tie from {@code anchor}, whether or not {@code anchor} is tied.
+     * The end of the result may be in the line after the line of {@code anchor}, and is in no
+     * line after that.
      *
-     * @return {@code null} when {@code anchor} is in no line, or the walk from it reaches no note
-     *     a tie can end on
+     * @return {@code null} when {@code anchor} is in no line, or no note that a tie can end on
+     *     follows it
+     * @invariant a non-null result's {@link #anchor()} is {@code anchor}, and
+     *     {@code endingOn(result.end())} equals the result
      */
     public static @Nullable Tie startingOn(NoteElement anchor) {
         var line = anchor.getParentLine();
@@ -104,7 +100,8 @@ public final class Tie {
     }
 
     /**
-     * Returns the tie that ends on {@code end}, whether or not its anchor is tied.
+     * The anchor of the result may be in the line before the line of {@code end}, and is in no
+     * line before that.
      *
      * @return {@code null} when {@code end} is in no line, or no note before it starts a tie
      *     that ends on it
@@ -129,8 +126,6 @@ public final class Tie {
     }
 
     /**
-     * The anchor need not be tied yet.
-     *
      * @param range a range of the anchor's line that contains the anchor
      */
     boolean bothNotesIn(ElementRange range) {
@@ -140,9 +135,6 @@ public final class Tie {
         return end.getParentLine() == line && range.contains(line.getElementIndex(end));
     }
 
-    /**
-     * The anchor need not be tied yet.
-     */
     public @Nullable Beam beamHoldingBoth() {
         var line = anchor.requireParentLine();
         var beam = line.spanRegistry().findBeamAt(line.getElementIndex(anchor));
@@ -158,19 +150,16 @@ public final class Tie {
         return end;
     }
 
-    /**
-     * Holds only when the two notes sit at the same staff position and sound the same
-     * alteration; the written duration plays no part. Ask it only after every restamp of the
-     * edit has landed, so both notes have a sounding alteration to compare.
-     */
     boolean holds() {
         return anchor.getStaffPosition().equals(end.getStaffPosition())
             && anchor.accidentalState().sounding() == end.accidentalState().sounding();
     }
 
     /**
-     * Whether a tie stays: the one judgment of a tie that an edit leaves, of a tie a file holds,
-     * and of a tie the user asks for.
+     * Whether a tie stays.
+     *
+     * <p>An edit, a load and the user's request for a tie get this one judgment. A request
+     * judged by any other rule can offer a tie that the edit's own judgment then removes.
      */
     public sealed interface Judgment {
 
@@ -196,10 +185,7 @@ public final class Tie {
             /** The two notes no longer sit at one staff position sounding one alteration. */
             NOT_HELD(Strings.REPORT_REASON_TIE_NOT_HELD),
 
-            /**
-             * A file ties an element that cannot carry a tie. Only {@link TieLoadPass} gives this
-             * reason; {@link Tie#judge} never does.
-             */
+            /** A file ties an element that cannot carry a tie. */
             DAMAGED_ANCHOR(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT);
 
             private final String key;
@@ -211,15 +197,13 @@ public final class Tie {
     }
 
     /**
-     * Must be asked only after every restamp has landed, so that both notes have a sounding
-     * alteration to compare ({@link #holds()}).
+     * Must be asked only after every restamp of the edit has landed: until then, a note's
+     * sounding alteration can be stale, and the judgment compares it.
      *
      * @param anchor in a line of its song; it need not be tied
-     * @return {@link Judgment.Holds} when the element the tie's walk reaches from {@code anchor}
-     *     is a note a tie can end on and the tie {@link #holds() holds}; otherwise
-     *     {@link Judgment.Broken} with {@link Judgment.Reason#NO_FOLLOWING_NOTE} when no tie can
-     *     end on what the walk reaches, or {@link Judgment.Reason#NOT_HELD} when the tie does not
-     *     hold
+     * @return {@link Judgment.Holds} with the tie from {@code anchor}, or {@link Judgment.Broken}
+     *     with {@link Judgment.Reason#NO_FOLLOWING_NOTE} or {@link Judgment.Reason#NOT_HELD};
+     *     never {@link Judgment.Reason#DAMAGED_ANCHOR}
      */
     public static Judgment judge(NoteElement anchor) {
         var line = anchor.requireParentLine();
@@ -285,36 +269,14 @@ public final class Tie {
     }
 
     /**
-     * Returns the lines, other than the one {@code mutation} names, whose drawn ties it can
-     * change.
+     * Returns every line, other than the one {@code mutation} names, whose drawn ties
+     * {@code mutation} can change. A line draws the half of a tie that crosses into it from the
+     * line before it, so an edit in one line can change what the line beside it draws.
      *
-     * <p>A line draws the half of a tie that crosses into it from the line before it, so an edit
-     * near one edge of a line can change what the line beside it draws while the mutation's own
-     * record names only its own line. Deleting a tied last note, inserting a same-pitch note
-     * after an anchor, and flipping the stem of a note a crossing tie ends on are each felt this
-     * way.
+     * <p>Asked only after {@code mutation} has landed: each position it names is read in its line
+     * as that line is then.
      *
-     * <p>A mutation names an origin in its line L: a run of positions from {@code first} to
-     * {@code last}. An insertion's, a replacement's or a modification's index, or a deletion's
-     * first index, is the origin when no beam of L contains it; when one does, the origin is
-     * that beam's whole range, because a beamed note's stem follows its beam, so a change to
-     * one member can turn the stem of the member at L's edge. A {@link TieAddition}'s or
-     * {@link TieRemoval}'s anchor index is the origin of a tie record, and a {@link Beam}'s range
-     * is the origin of a {@link SpanAddition} or {@link SpanRemoval} of that beam. It reaches:
-     * <ul>
-     *   <li>L's next line, when there is one and {@code last} is at or after L's last element
-     *       that is not a legal separator ({@link ElementType#isLegalTieSeparator}), or L has no
-     *       such element;</li>
-     *   <li>L's previous line, when there is one and {@code first} is at or before L's first
-     *       such element, or L has none.</li>
-     * </ul>
-     *
-     * @param mutation the mutation to ask about
-     * @return the lines, in no promised order, or empty when {@code mutation} names no origin —
-     *     any other kind of mutation, a span record of a span that is not a beam, a beam record
-     *     whose endpoints are no longer both in the line it names, or a tie record whose anchor
-     *     is no longer in that line — or names one too far from either edge to reach a
-     *     neighboring line
+     * @return the lines, in no promised order
      */
     public static List<Line> reach(Mutation mutation) {
         var origin = reachOrigin(mutation);
@@ -395,7 +357,6 @@ public final class Tie {
     }
 
     public boolean isAbove() {
-        // isAbove and arcSign share one convention: arcSign < 0 == arc bulges up == tie above.
         return arcSign() < 0;
     }
 
@@ -403,13 +364,12 @@ public final class Tie {
      * The arc's sign in Y-down screen space: {@code +1} bulges downward (tie below the notes),
      * {@code -1} upward (tie above).
      *
-     * <p>The single source of truth for tie direction: the renderer, the skyline seeder and the
-     * MusicXML export ({@link #isAbove()}) must agree on the side.
-     *
-     * <p>The single inversion from musical "above" to the arc sign lives in the
-     * {@code .opposite()} call below and nowhere else; do not re-derive {@code ±1} per branch.
+     * <p>Every reader of a tie's side takes it from here or from {@link #isAbove()}. A side
+     * computed a second time can put the drawn tie and the exported tie on different sides.
      */
     public int arcSign() {
+        // The one inversion from musical "above" to the arc sign. Do not derive ±1 in each
+        // branch of tieArcDirection instead.
         return tieArcDirection().opposite().sign();
     }
 

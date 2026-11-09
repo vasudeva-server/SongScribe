@@ -277,10 +277,6 @@ public enum ElementType {
      * Non-duration elements take no time, except a final double barline (nothing may sound across
      * it) and every key change (it can alter the pitch class, and the rule excludes all of them
      * so that whether a tie survives does not depend on where its notes sit).
-     *
-     * <p>{@code RangeQueries.canToggleTie} and the walk behind {@link NoteElement#tie()} both read
-     * this, and must not disagree: otherwise a tie would end somewhere other than where it was
-     * drawn. They share the type rule only, not a count.
      */
     public boolean isLegalTieSeparator() {
         return isNonDuration() && this != FINAL_DOUBLE_BARLINE && !isKeyChange();

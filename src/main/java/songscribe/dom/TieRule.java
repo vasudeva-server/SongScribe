@@ -35,14 +35,21 @@ import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.Mutation;
 
 /**
- * The tie rule: a tie stays only while the element its walk reaches is a note it can end on and
- * the tie {@link Tie#holds() holds} ({@link Tie#judge}). A tie that stays also removes any
- * beam that holds both of its notes, since the tie wins. It judges every tied note of the lines
- * an edit touched and of the line before each, since a tie from that line can end in the touched
- * one. A tie loaded from a file is judged by the same {@link Tie#judge}, in the tie load stage.
+ * The modification rule that judges the ties an edit leaves.
  */
 final class TieRule implements ModificationRule {
 
+    /**
+     * A line that {@code batch} touched is the line of each line-scoped mutation and each line
+     * insertion, and, for a line deletion, the line that takes the deleted line's place.
+     *
+     * @effects afterwards, every tie with a note in a line that {@code batch} touched is one that
+     *     {@link Tie#judge} finds to hold; each other such tie is removed
+     * @effects records to {@code report} the {@link Tie.Judgment.Broken#entry() entry} of each
+     *     tie removed, with its reason and its lines
+     * @effects afterwards, no beam holds both notes of a tie that stays; each beam removed for
+     *     that is reported with {@link Strings#REPORT_REASON_BEAM_TIED_NOTES}
+     */
     @Override
     public void apply(Song song, List<Mutation> batch, ChangeReport.Builder report) {
         var judged = new LinkedHashSet<Line>();
@@ -85,7 +92,6 @@ final class TieRule implements ModificationRule {
 
             switch (Tie.judge(anchor)) {
                 case Tie.Judgment.Holds(var tie) -> {
-                    // The tie wins over a beam: tied notes are never beamed together.
                     var beam = tie.beamHoldingBoth();
 
                     if (beam != null) {

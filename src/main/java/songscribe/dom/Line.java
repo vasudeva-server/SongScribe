@@ -513,7 +513,7 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Nothing here judges the tie: {@link Tie#judge} does, for an edit and for a load.
+     * The tie need not hold: this does not judge it.
      *
      * @param anchor a note of this line that can carry a tie ({@link NoteElement#canCarryTie});
      *     while the song is replaying, the note the replayed record names, whichever line holds
@@ -566,9 +566,9 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * @param from at or above 0
-     * @return {@code null} when no element from {@code from} on is other than a legal tie
-     *     separator ({@link ElementType#isLegalTieSeparator})
+     * @param from a position in {@code 0..elementCount()}
+     * @return {@code null} when every element from {@code from} on is a legal tie separator
+     *     ({@link ElementType#isLegalTieSeparator})
      */
     public @Nullable Integer firstNonSeparatorIndexFrom(int from) {
         return StaffElementRun.firstIndexFrom(elements, from, type -> !type.isLegalTieSeparator());
@@ -591,9 +591,6 @@ public final class Line implements EditableRun {
      * the half entering from its left edge of a tie whose anchor is in the previous line, which
      * ends on this line's first note. So an intra-line tie is listed once, from its anchor, and
      * a tie across a line break is listed once in each of its two lines.
-     * <p>
-     * The one statement of that ownership rule. Layout calls it once per line and lays out each
-     * entry; everything downstream reads the laid-out ties rather than asking again.
      *
      * @return the ties, in the order of the notes they were found on: the half entering from the
      *     left edge first, when there is one

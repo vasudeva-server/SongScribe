@@ -177,20 +177,8 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * Returns the tie that starts on this note.
-     *
-     * <p>The end is derived, never stored: it is the first element after this note that is not a
-     * legal separator ({@link ElementType#isLegalTieSeparator} — an element with no duration,
-     * other than a final double barline or a key change). When this note's line runs out of
-     * elements first, the walk continues at the start of the next line of the song, so <b>the
-     * end may be in the next line</b>. It crosses that one line break and no more.
-     *
-     * <p>Each call makes a new {@link Tie}; ties made from the same two notes are equal.
-     *
-     * @return the tie from this note to its end, or {@code null} when this note stores no tie
-     *     ({@link #isTiedToNext()} is {@code false}), is in no line, or the walk reaches no note
-     *     to end on — its first non-separator fails the pitched-note check
-     *     ({@link #canCarryTie}), or the song, or the next line, runs out first
+     * @return {@link Tie#startingOn} this note, or {@code null} when this note stores no tie
+     *     ({@link #isTiedToNext()} is {@code false})
      * @invariant a non-null result's {@link Tie#anchor()} is this note, and
      *     {@code result.end().incomingTie()} equals the result
      */
@@ -199,16 +187,7 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * Returns the tie that ends on this note.
-     *
-     * <p>Walks back from this note over legal separators
-     * ({@link ElementType#isLegalTieSeparator}), into the end of the previous line of the song
-     * when this note's line has nothing else before it. The first element that is not a legal separator is the only note whose tie can end
-     * here, so the walk crosses one line break and no more, as {@link #tie()}'s does.
-     *
-     * @return that note's {@link #tie()} when it ends on this note, or {@code null} when no tie
-     *     ends here: this note is in no line, the walk reaches no note, or the note it reaches
-     *     is not tied
+     * @return {@link Tie#endingOn} this note when its anchor is tied, otherwise {@code null}
      * @invariant a non-null result's {@link Tie#end()} is this note, and
      *     {@code result.anchor().tie()} equals the result
      */

@@ -28,9 +28,6 @@ import songscribe.Strings;
 
 /**
  * Turns the ties a reader found into the song's ties, or drops them.
- *
- * <p>A loaded tie stays by the same judgment as a tie an edit leaves ({@link Tie#judge}), and
- * nothing is repaired into something the file did not say.
  */
 final class TieLoadPass {
 
@@ -40,14 +37,14 @@ final class TieLoadPass {
     /**
      * @param song the song being loaded, whose lines hold every anchor
      * @param ties the ties the reader found in {@code song}
-     * @effects adds a tie from each pending tie's anchor that {@link NoteElement#canCarryTie}
-     *     accepts and that {@link Tie#judge} finds to hold; no other pending tie is on the song
-     *     afterwards
+     * @effects adds each pending tie whose anchor can carry a tie and that {@link Tie#judge}
+     *     finds to hold; no other pending tie is on the song afterwards
+     * @effects changes no element of {@code song} to make a pending tie hold
      * @effects records to the load's report, in the order of {@code ties}, one entry for each
      *     pending tie dropped: the {@link Tie.Judgment.Broken#entry() entry} for
-     *     {@link Tie.Judgment.Reason#DAMAGED_ANCHOR} on the anchor's line when
-     *     {@link NoteElement#canCarryTie} refuses its anchor, otherwise the
-     *     {@link Tie.Judgment.Broken#entry() entry} {@link Tie#judge} gives
+     *     {@link Tie.Judgment.Reason#DAMAGED_ANCHOR} on the anchor's line when the anchor cannot
+     *     carry a tie, otherwise the {@link Tie.Judgment.Broken#entry() entry} {@link Tie#judge}
+     *     gives
      */
     static void run(Song song, List<PendingTie> ties) {
         for (var pending : ties) {
