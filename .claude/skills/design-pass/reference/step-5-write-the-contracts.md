@@ -6,7 +6,15 @@ everything downstream then tests against it.
 
 **A Javadoc states only what the code cannot say.** `guides/conventions/contracts.md`
 lists the five clause types. A method with none of them has no Javadoc. A full
-contract exists only on a method that a test derives from.
+contract exists only on a method whose callers rely on a promise of one of the
+three kinds in *The testing floor*.
+
+**Read each method's production callers before its tests**, with
+`jet_brains_find_referencing_symbols`. A clause comes from what a caller relies
+on, never from what a test asserts or what the body does. A test case that no
+caller needs goes to the record's *Findings raised* for step 6, and is never a
+reason to add a clause. If you can name the test case a clause serves but not the
+caller that relies on it, the clause is not part of the contract.
 
 `plans/design-pass-<pass>/findings-5.md` is **a summary of the work, not a draft
 of it.** No Javadoc text goes in it; the Javadoc is written after the gate,
@@ -14,12 +22,12 @@ against what the gate settled.
 
 **Three counts open it**, in methods:
 
-- **write** — a clause of the five types, or a full contract that a test
-  derives from, is missing;
+- **write** — a clause of the five types, or a full contract that a caller
+  relies on, is missing;
 - **update** — a clause or a full contract exists, but it is wrong or not in the
   form `contracts.md` states;
 - **remove** — a Javadoc holds a clause that is none of the five types, or a
-  full contract that no test derives from.
+  full contract that no caller relies on.
 
 Then **one row per class**: its three counts, and a line on what the class
 promises that makes them come out that way. A class whose count is `0 / 0 / 0` is

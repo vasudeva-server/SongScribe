@@ -89,16 +89,20 @@ BLOCKS_OUTPUT,
 
 ## Full contracts
 
-**A method gets a full contract when it makes a promise that the design cannot
-enforce and that is one of the three kinds that *The testing floor* in
-`~/.claude/guides/design.md` allows.** Its tests derive from that contract. A test derives from a method when
-it calls the method itself, or names the method as what it asserts — a sweep test
-that drives `Hairpin.outcomeFor` through edits derives from it. A test that only
-reaches the method on the way to something else does not. The full contract states every
-clause that a test case comes from, so that the test can be written again
-without the body. The five clause types do not limit it; the caller test does.
-Every clause states an outcome that a caller can observe through the public
-API, never the route to it.
+**A method gets a full contract when its callers rely on a promise that the
+design cannot enforce and that is one of the three kinds that *The testing floor*
+in `~/.claude/guides/design.md` allows.** Read the production callers first. Each
+clause states an outcome that a caller relies on, observable through the public
+API, never the route to it. The full contract states every clause that a caller
+relies on, so that a test can be written from it without the body. The five
+clause types do not limit it; the caller test does.
+
+**The tests derive from the contract, never the contract from the tests.** A test
+derives from a method when it calls the method itself, or names the method as
+what it asserts — a sweep test that drives `Hairpin.outcomeFor` through edits
+derives from it. A test that only reaches the method on the way to something
+else does not. If you can name the test case that a clause serves but not the
+caller that relies on it, the clause is not part of the contract.
 
 A full contract uses the standard tags and two custom tags: `@invariant` for a
 property of every result, and `@effects` for a change to state outside the
@@ -155,10 +159,11 @@ If you cannot state a postcondition through the public API, you found either a
 missing query method or a promise that is not yours to make. Both are findings.
 Neither is solved by widening a field.
 
-### When the test knows more than the contract, the contract is wrong
+### When a test knows more than the contract
 
-A promise that only a test states is a promise that no test author can derive
-again. Move it into the full contract.
+Ask whether a caller relies on what the test asserts. If one does, the contract
+is missing that clause: add it. If none does, the test pins the implementation:
+it maps to no contract case, and triage deletes it.
 
 ## Every boundary gets its consequence
 

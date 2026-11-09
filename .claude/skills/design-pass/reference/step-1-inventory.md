@@ -15,8 +15,10 @@ Produce:
 - **every `@Nullable`**, with which of the three answers in `design.md` applies;
 - **every guard**, with the callers that can actually produce the value it
   rejects;
-- **every method a test derives from**, which is what decides whether it has a
-  full contract;
+- **every method whose production callers rely on a promise the design cannot
+  enforce**, with those callers, which is what decides whether it has a full
+  contract;
+- every method a test derives from, for step 6 to triage against its contract;
 - which files in `guides/` cover the subsystem this target sits in, since a
   Javadoc does not restate a cross-type rule or a concept they hold;
 - every test class, with its case count and what it appears to cover.

@@ -1,7 +1,7 @@
 # Classifying a Contract, and the Confirmation Checkpoint
 
 The contracts step writes every clause that `guides/conventions/contracts.md` allows
-and the target needs, and every full contract a test derives from. Most can be
+and the target needs, and every full contract a caller relies on. Most can be
 written straight through; some may not be decided alone. This file is how to tell them
 apart and what to do with the second kind.
 
