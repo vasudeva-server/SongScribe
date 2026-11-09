@@ -350,9 +350,15 @@ the reason for it is still in hand.
   write to a live element is recorded, and the form those two sites take for a change
   that is deliberately not recorded. A fix for accidental intent alone is a special case
   of this rule, not a fix.
-- **→ Pass 12.** `ModificationSessionTest` (`dom`) holds the three tests of the gate that
+- **→ Pass 12.** `ModificationSessionTest` (`dom`) holds the four tests of the gate that
   `ModificationSession.endModification` puts on every rule, through the tie rule. Row 12
   owns `ModificationSession` and may rewrite them.
+- **→ Pass 12.** One of those four, `testOneUndoRestoresTheEditAndWhatARuleRemovedForIt`, is
+  a promise of every rule: what a rule changes joins the edit's batch. Three tests pin the same
+  promise again for one rule each: `EndingSectionRuleTest.testUndoRestoresTheEndingAndRedoRemovesItAgain`,
+  `SongStartRuleTest.testDeletingTheFirstNoteBeforeABarlineRemovesTheBarlineMovesItsKeyAndUndoRestoresBoth`
+  and `HairpinTest.testAnEditThatBringsAStructuralBarInsideAHairpinRemovesItReportedAndUndoRestoresIt`.
+  Triage the undo half of each as a duplicate.
 - **→ Pass 6b.** `LoadPassesTest.testABareNoteAfterABarlineSoundsWhatIsInForce…` and
   `testAParenthesizedAccidentalReadsAsAPlainOne` test the accidental stamp on
   `accidental-load.musicxml`. Their subject is not a span.

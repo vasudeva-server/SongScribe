@@ -11,8 +11,8 @@ Run by `/design-pass 8` — register row `8`, *Ties*.
 | 3 Unrepresentable states | ✅ | ✅ | — | items 1–6 as proposed (3: the throw is dead); 7 option b, `DAMAGED_ANCHOR` noted as the load's only |
 | 4 Extraction | ✅ | ✅ | — | items 1 (as `ElementType.isLegalTieSeparator`, present form), 2a (on `Line`), 3, 4 (beam kept over a broken tie), 5, 6 |
 | 5 Contracts | ✅ | ✅ | — | review rejected branch-level contracts; items re-scoped to caller facts and written. Confirmed: a grace note breaks a tie, E♯ to F does not hold. The beam rule stays, in no guide: `Beam.spanning` and `TieRule.apply` each state their half, and `span-invalidation.md`'s rules close the routes. `Line.addTie` done now. Arc-side rules confirmed as today's code (the corpus for step 6) |
-| 6 Test triage | ⏳ | ⏳ | — | |
-| 7 Test-only surface | ⏳ | ⏳ | — | |
+| 6 Test triage | ✅ | ✅ | — | the user left every item to me. 1a (`TieWalkTest` → `TieTest`; `ownedTies` → `LineTest`), 2 split, 3 `reach` over every mutation kind, 4 in `LineDeletionTest` with the `removeLine` rows, 5a (`NoteElementTest`), 6 moved to `ModificationSessionTest`, 7 asserted on every load row, 8 dropped (no route reaches the state), 9 raised for step 11 |
+| 7 Test-only surface | ✅ | ✅ | — | no test-only surface found; closed with no change |
 | 8a Suite gate | ⏳ | n/a | — | |
 | 8b Visual gate | ⏳ | n/a | — | |
 | 9 Coverage | ⏳ | n/a | — | |
@@ -72,17 +72,13 @@ Each item is listed under the step whose axis it is:
   the MusicXML export"), and the algorithm has no full contract.
 - **Step 5.** The Javadoc that moved at step 4 onto `ElementType.isLegalTieSeparator` still
   names its readers (`RangeQueries.canToggleTie`, the walk behind `NoteElement.tie()`).
-- **Step 6.** The toggle's tie rule now goes through `Tie.judge(NoteElement)`; the
-  enharmonic defect (E♯ to F was offered, then removed as not held) needs its test, and so do
-  `Tie.startingOn` and `Tie.endingOn`.
-- **Step 6.** `Tie.arcSign` / `tieArcDirection` is an algorithm with no test in the target.
-- **Step 6.** `Beam.spanning` no longer refuses a beam over a tied note whose walk reaches a rest
-  or a grace note (step 4, item 4); that defect fix needs its test.
-- **Step 6.** Four cases of `TieRuleTest` assert what `TieRule` does not do: "deleting the end
-  note unties the anchor and reports nothing" and the three silent cases of `crossLineCases`
-  (the deletion's untie), and "converting the anchor to a grace note leaves nothing tied"
-  (`StaffElement.convertedFrom`). `testOneUndoRestoresTheEditAndTheTieItRemoved` asserts a
-  promise of every `ModificationRule`.
+- **Step 6.** Every item raised for step 6 was resolved at step 6 (see its row).
+- **Step 11.** I found no input for which the `LineDeletion` arm of `TieRule.touchedLine`
+  (`dom/TieRule.java:81`) changes anything. A stored tie from the last note of the line before
+  a deleted line ends on the deleted line's first non-separator, and `Song.removeLine` unties it
+  through `Line.untieEndingIn` before the rule runs. If that holds, the arm, the "for a line
+  deletion" clause of `TieRule.apply`'s contract and the sentence about the tie rule in
+  `Song.removeLine`'s Javadoc (`dom/Song.java:694–696`) all go. Not confirmed by a run.
 - **Row for `ui/selection`, step 3.** `RangeQueries.canToggleTie` (`ui/selection/RangeQueries.java:153–155`)
   refuses a three-element selection whose middle element is not a legal tie separator. The
   `Tie.judge` end comparison at `:160` already refuses that selection, so the check is redundant.

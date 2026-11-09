@@ -36,8 +36,9 @@ import static songscribe.dom.LineEdits.move;
 import static songscribe.dom.SongFactory.compactSong;
 
 /**
- * The gate {@link ModificationSession} puts on every modification rule: no rule runs while a
- * batch is replayed, and none judges an edit that throws, whose batch is still delivered.
+ * The gate {@link ModificationSession} puts on every modification rule: what a rule changes joins
+ * the edit's batch, so one undo restores both; no rule runs while a batch is replayed; and none
+ * judges an edit that throws, whose batch is still delivered.
  *
  * <p>The tie rule is the probe: moving one note of a tied pair to another pitch is an edit it
  * removes the tie for.
@@ -56,6 +57,28 @@ class ModificationSessionTest extends UnitTest {
 
     /** A line with a tie from its first note to its second, and a note after them. */
     private static final String TIED_PAIR = TIED + " ~ " + TIED + " " + OTHER;
+
+    @Test
+    void testOneUndoRestoresTheEditAndWhatARuleRemovedForIt() {
+        var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
+        var line = song.getLine(FIRST_LINE);
+        var anchor = (NoteElement) line.getElement(ANCHOR);
+        var end = (NoteElement) line.getElement(END);
+        var recorder = new BatchRecorder();
+
+        try {
+            song.withModification(() -> move(line, END, OTHER));
+
+            assertThat(anchor.isTiedToNext()).as("the fixture reaches the case only if the edit removes the tie").isFalse();
+
+            MutationReplayer.undoBatch(song, NO_FONT_CHANGES, recorder.batches().getFirst());
+
+            assertThat(end.getStaffPosition().value()).isEqualTo(TIED);
+            assertThat(anchor.isTiedTo(end)).isTrue();
+        } finally {
+            recorder.dispose();
+        }
+    }
 
     @Test
     void testNoRuleRunsWhileABatchIsReplayed() {

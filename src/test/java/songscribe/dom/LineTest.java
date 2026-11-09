@@ -37,6 +37,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
@@ -58,6 +59,8 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  *
  * <p>An element is on a line exactly while the line holds it, and so is everything hanging on it.
  * {@link Line#setKey} holds no key where the line would inherit the one it is given.
+ *
+ * <p>{@link Line#ownedTies} lists a tie once in each line that draws it.
  */
 class LineTest extends UnitTest {
 
@@ -65,6 +68,8 @@ class LineTest extends UnitTest {
     private static final int RUN_INDEX = 1;
 
     private static final String SYLLABLE = "la";
+
+    private static final int TIED = 3;
 
     /**
      * One edit that changes which element follows the line's first note.
@@ -495,6 +500,20 @@ class LineTest extends UnitTest {
 
         assertThatCode(() -> song.withModification(() -> line.addElement(line.elementCount(), finalDoubleBarline())))
             .doesNotThrowAnyException();
+    }
+
+    @Test
+    void testATieIsOwnedOnceByEachLineThatDrawsItAndTheEnteringHalfComesFirst() {
+        var song = compactSong(Key.NO_ACCIDENTALS, TIED + " ~ " + TIED + " " + TIED + " ~", TIED + " ~ " + TIED);
+        var firstLine = song.getLine(0);
+        var secondLine = song.getLine(1);
+
+        var inFirstLine = firstLine.noteAt(0).tie();
+        var acrossTheBreak = firstLine.noteAt(firstLine.elementCount() - 1).tie();
+        var inSecondLine = secondLine.noteAt(0).tie();
+
+        assertThat(firstLine.ownedTies()).extracting(Line.TiePlacement::tie).containsExactly(inFirstLine, acrossTheBreak);
+        assertThat(secondLine.ownedTies()).extracting(Line.TiePlacement::tie).containsExactly(acrossTheBreak, inSecondLine);
     }
 
     /** A song of two lines, the last carrying the song's terminal. */

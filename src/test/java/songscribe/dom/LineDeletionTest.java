@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -29,8 +30,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.BatchReplay.ReportRecorder;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
@@ -44,6 +47,10 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * <p>The deletion an edit performs, as against the {@link Line#removeRange} primitive beneath it.
  * The lyric cases state its contract: a syllable goes with its note, a word closes up around the
  * gap, a melisma follows its syllable, and an element holding no lyric is no neighbor to either.
+ *
+ * <p>A deletion that takes the note a tie ends on, by {@link Line#removeRange} or
+ * {@link Song#removeLine}, unties the tie's anchor and reports nothing, so the anchor is never
+ * tied to whatever its walk reaches once the note is gone.
  */
 class LineDeletionTest extends UnitTest {
 
@@ -301,5 +308,54 @@ class LineDeletionTest extends UnitTest {
                 + "wrong elements, so both pairs gone and every note standing is the ordering's "
                 + "whole claim")
             .containsExactlyElementsOf(at(elements, List.of(0, MIDDLE_NOTE_INDEX, LAST_NOTE_INDEX)));
+    }
+
+    private static final int TIED = 3;
+    private static final int OTHER = 4;
+
+    /**
+     * A song with one tie, and a deletion that takes the note the tie ends on.
+     *
+     * @param description the deletion, as the test's display name
+     * @param lines       the song's lines in compact notation
+     * @param anchor      where the tie's anchor stands
+     * @param deletion    makes the deletion, inside a modification bracket
+     */
+    private record DeletedEndCase(String description, String[] lines, Cursor anchor, Consumer<Song> deletion) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("deletedEndCases")
+    void testDeletingTheNoteATieEndsOnUntiesTheAnchorAndReportsNothing(DeletedEndCase testCase) {
+        var song = compactSong(Key.NO_ACCIDENTALS, testCase.lines());
+        var anchor = (NoteElement) song.getLine(testCase.anchor().lineIndex()).getElement(testCase.anchor().index());
+
+        assertThat(anchor.tie()).as("the fixture reaches the case only if the anchor is tied").isNotNull();
+
+        ReportRecorder.whileRecording(reports -> {
+            song.withModification(() -> testCase.deletion().accept(song));
+
+            assertThat(anchor.isTiedToNext()).isFalse();
+            assertThat(reports.reports().stream().flatMap(List::stream))
+                .noneMatch(change -> change.heading().equals(ChangeHeading.TIES_REMOVED));
+        });
+    }
+
+    static Stream<DeletedEndCase> deletedEndCases() {
+        var firstNote = new Cursor(0, 0);
+
+        return Stream.of(
+            new DeletedEndCase("removing the end within its line",
+                new String[] {TIED + " ~ " + TIED + " " + OTHER}, firstNote,
+                song -> song.getLine(0).removeRange(StaffElementRun.ElementRange.single(1))),
+            new DeletedEndCase("removing the end that starts the next line",
+                new String[] {TIED + " ~", TIED + " " + OTHER, "" + TIED}, firstNote,
+                song -> song.getLine(1).removeRange(StaffElementRun.ElementRange.single(0))),
+            new DeletedEndCase("removing the line the end is in, which brings up a note at another pitch",
+                new String[] {TIED + " ~", "" + TIED, OTHER + " " + TIED}, firstNote,
+                song -> song.removeLine(1)),
+            new DeletedEndCase("removing the line the end is in, which brings up a note at the anchor's pitch",
+                new String[] {TIED + " ~", "" + TIED, TIED + " " + OTHER}, firstNote,
+                song -> song.removeLine(1))
+        );
     }
 }

@@ -30,17 +30,18 @@ import songscribe.Strings;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.SongFactory.loadCompactSong;
 
 /**
  * {@link TieLoadPass#run}, as {@link SongLoad#run} runs it: a pending tie on an element no tie can
- * anchor on is reported as damaged, a tie {@link Tie#judge} finds broken is removed and reported
- * with its reason on its lines, and a tie that holds stays.
+ * anchor on is reported as damaged, a tie {@link Tie#judge} finds broken is dropped and reported
+ * with the entry the judgment gives, a tie that holds stays, and no note changes to make a tie
+ * hold.
  */
 class TieLoadPassTest extends UnitTest {
 
     private static final int FIRST_LINE = 0;
-    private static final int SECOND_LINE = 1;
 
     private static final Key STARTING_KEY = Key.NO_ACCIDENTALS;
 
@@ -90,6 +91,19 @@ class TieLoadPassTest extends UnitTest {
             .toList();
 
         assertThat(tiedAnchors).containsExactlyElementsOf(testCase.kept());
+        assertThat(pitchesOf(song))
+            .as("the pass changes no note to make a pending tie hold")
+            .isEqualTo(pitchesOf(compactSong(STARTING_KEY, testCase.notations())));
+    }
+
+    /** Each note of {@code song}, as its staff position and the alteration it sounds, in song order. */
+    private static List<String> pitchesOf(Song song) {
+        return song.getLines().stream()
+            .flatMap(line -> line.getElements().stream())
+            .filter(NoteElement.class::isInstance)
+            .map(NoteElement.class::cast)
+            .map(note -> note.getStaffPosition() + " " + note.accidentalState().sounding())
+            .toList();
     }
 
     static Stream<TieCase> tieCases() {
@@ -110,19 +124,6 @@ class TieLoadPassTest extends UnitTest {
                 new String[] {TIED + " " + OTHER}, List.of(firstNote),
                 List.of(removed(Strings.REPORT_REASON_TIE_NOT_HELD, FIRST_LINE, FIRST_LINE)),
                 List.of()),
-
-            new TieCase("a tie with no note to end on is removed as having no following note",
-                new String[] {TIED + " R"}, List.of(firstNote),
-                List.of(removed(Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE, FIRST_LINE, FIRST_LINE)),
-                List.of()),
-
-            new TieCase("a tie across a line break to another pitch is removed, naming both lines",
-                new String[] {TIED, OTHER}, List.of(firstNote),
-                List.of(removed(Strings.REPORT_REASON_TIE_NOT_HELD, FIRST_LINE, SECOND_LINE)),
-                List.of()),
-
-            new TieCase("a tie across a line break to a note at its pitch holds",
-                new String[] {TIED, TIED}, List.of(firstNote), List.of(), List.of(firstNote)),
 
             new TieCase("damaged and broken ties are reported in the order the reader found them",
                 new String[] {TIED + " " + OTHER + " R"}, List.of(firstNote, thirdElement),
