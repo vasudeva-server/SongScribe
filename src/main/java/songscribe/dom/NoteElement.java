@@ -191,15 +191,7 @@ public final class NoteElement extends StaffElement implements Dottable {
      *     {@code result.end().incomingTie()} equals the result
      */
     public @Nullable Tie tie() {
-        var line = getParentLine();
-
-        if (!tiedToNext || line == null) {
-            return null;
-        }
-
-        var reached = Tie.endAfter(line, line.getElementIndex(this));
-
-        return reached == null ? null : Tie.between(this, reached.element());
+        return tiedToNext ? Tie.startingOn(this) : null;
     }
 
     /**
@@ -217,22 +209,9 @@ public final class NoteElement extends StaffElement implements Dottable {
      *     {@code result.anchor().tie()} equals the result
      */
     public @Nullable Tie incomingTie() {
-        var line = getParentLine();
+        var tie = Tie.endingOn(this);
 
-        if (line == null) {
-            return null;
-        }
-
-        var candidate = Tie.anchorBefore(line, line.getElementIndex(this));
-
-        if (!(candidate instanceof NoteElement anchor)) {
-            return null;
-        }
-
-        var tie = anchor.tie();
-
-        //noinspection ObjectEquality
-        return tie != null && tie.end() == this ? tie : null;
+        return tie != null && tie.anchor().isTiedToNext() ? tie : null;
     }
 
     public boolean isTiedTo(NoteElement next) {

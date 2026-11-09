@@ -25,14 +25,18 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.message.mutation.FontChange;
+import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
+import songscribe.message.mutation.LyricsChange;
+import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.Mutation;
 
 /**
- * The tie rule: a tie stays only while the element its walk reaches is a note it can end on
- * ({@link Tie#between}) and the tie {@link Tie#holds() holds}. A tie that stays also removes any
+ * The tie rule: a tie stays only while the element its walk reaches is a note it can end on and
+ * the tie {@link Tie#holds() holds} ({@link Tie#judge}). A tie that stays also removes any
  * beam that holds both of its notes, since the tie wins. It judges every tied note of the lines
  * an edit touched and of the line before each, since a tie from that line can end in the touched
  * one. A tie loaded from a file is judged by the same {@link Tie#judge}, in the tie load stage.
@@ -64,19 +68,12 @@ final class TieRule implements ModificationRule {
     }
 
     private static @Nullable Line touchedLine(Song song, Mutation mutation) {
-        if (mutation instanceof LineScopedMutation scoped) {
-            return scoped.getLine();
-        }
-
-        if (mutation instanceof LineInsertion insertion) {
-            return insertion.line();
-        }
-
-        if (mutation instanceof LineDeletion deletion && deletion.lineIndex() < song.lineCount()) {
-            return song.getLine(deletion.lineIndex());
-        }
-
-        return null;
+        return switch (mutation) {
+            case LineScopedMutation scoped -> scoped.getLine();
+            case LineInsertion insertion -> insertion.line();
+            case LineDeletion deletion -> deletion.lineIndex() < song.lineCount() ? song.getLine(deletion.lineIndex()) : null;
+            case MetadataChange _, FontChange _, LayoutChange _, LyricsChange _ -> null;
+        };
     }
 
     private static void judge(Line line, ChangeReport.Builder report) {
@@ -88,7 +85,7 @@ final class TieRule implements ModificationRule {
                 continue;
             }
 
-            switch (Tie.judge(line, i)) {
+            switch (Tie.judge(anchor)) {
                 case Tie.Judgment.Holds() -> {
                     // The tie wins over a beam: tied notes are never beamed together.
                     var beam = Tie.beamHoldingBoth(line, i);

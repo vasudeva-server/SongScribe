@@ -43,8 +43,8 @@ final class TieLoadPass {
      * @effects adds a tie from each pending tie's anchor that {@link Tie#canAnchor} accepts and
      *     that {@link Tie#judge} finds to hold; no other pending tie is on the song afterwards
      * @effects records to the load's report, in the order of {@code ties}, one entry for each
-     *     pending tie dropped: under {@link ChangeHeading#TIES_REMOVED} with
-     *     {@link Strings#REPORT_REASON_DAMAGED_WRONG_ELEMENT} on the anchor's line when
+     *     pending tie dropped: the {@link Tie.Judgment.Broken#entry() entry} for
+     *     {@link Tie.Judgment.Reason#DAMAGED_ANCHOR} on the anchor's line when
      *     {@link Tie#canAnchor} refuses its anchor, otherwise the
      *     {@link Tie.Judgment.Broken#entry() entry} {@link Tie#judge} gives
      */
@@ -59,11 +59,8 @@ final class TieLoadPass {
             var line = pending.anchor().requireParentLine();
 
             if (!(tieableAnchor(pending) instanceof NoteElement note)) {
-                song.report(new RecordedChange(
-                    ChangeHeading.TIES_REMOVED,
-                    Strings.get(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT),
-                    ChangeLines.on(line)));
-            } else if (Tie.judge(line, line.getElementIndex(note)) instanceof Tie.Judgment.Broken broken) {
+                song.report(new Tie.Judgment.Broken(Tie.Judgment.Reason.DAMAGED_ANCHOR, ChangeLines.on(line)).entry());
+            } else if (Tie.judge(note) instanceof Tie.Judgment.Broken broken) {
                 song.report(broken.entry());
                 line.removeTie(note);
             }

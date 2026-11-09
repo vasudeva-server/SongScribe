@@ -63,51 +63,30 @@ public final class RangeQueries {
 
     private RangeQueries() {}
 
-    /** A tie candidate spanning a line boundary; {@code anchor} precedes {@code end} in document order. */
-    public record BoundaryTie(NoteElement anchor, NoteElement end) {}
-
     /**
      * @return {@code null} when no tie across the line boundary is possible at {@code index}
      */
-    public static @Nullable BoundaryTie boundaryTieAt(Line line, int index) {
-        var song = line.getSong();
-
+    public static @Nullable Tie boundaryTieAt(Line line, int index) {
         if (!(line.getElement(index) instanceof NoteElement note)) {
             return null;
         }
 
-        BoundaryTie candidate = null;
-
-        var entryIndex = Tie.firstNonSeparatorIndexFrom(line.getElements(), 0);
-        var exitIndex = Tie.lastNonSeparatorIndexBefore(line.getElements(), line.elementCount());
+        var elements = line.getElements();
+        var entryIndex = Tie.firstNonSeparatorIndexFrom(elements, 0);
+        var exitIndex = Tie.lastNonSeparatorIndexBefore(elements, line.elementCount());
+        Tie candidate = null;
 
         if (entryIndex != null && index == entryIndex && !line.isFirst()) {
-            var previousLine = song.getLine(line.index() - 1);
-            var previousElements = previousLine.getElements();
-            var anchorIndex = Tie.lastNonSeparatorIndexBefore(previousElements, previousElements.size());
-
-            if (anchorIndex != null && previousLine.getElement(anchorIndex) instanceof NoteElement anchor) {
-                candidate = new BoundaryTie(anchor, note);
-            }
+            candidate = Tie.endingOn(note);
         } else if (exitIndex != null && index == exitIndex && !line.isLast()) {
-            var nextLine = song.getLine(line.index() + 1);
-            var endIndex = Tie.firstNonSeparatorIndexFrom(nextLine.getElements(), 0);
-
-            if (endIndex != null && nextLine.getElement(endIndex) instanceof NoteElement end) {
-                candidate = new BoundaryTie(note, end);
-            }
+            candidate = Tie.startingOn(note);
         }
 
-        if (candidate == null) {
-            return null;
-        }
-
-        return canBeTied(candidate.anchor(), candidate.end()) ? candidate : null;
+        return candidate != null && canBeTied(candidate.anchor()) ? candidate : null;
     }
 
-    /** The one statement of the tie rule, shared by {@link #canToggleTie} and {@link #boundaryTieAt}. */
-    private static boolean canBeTied(NoteElement anchor, NoteElement end) {
-        return Tie.between(anchor, end) != null && anchor.getPitch() == end.getPitch();
+    private static boolean canBeTied(NoteElement anchor) {
+        return Tie.judge(anchor) instanceof Tie.Judgment.Holds;
     }
 
     public sealed interface BeamToggle {
@@ -169,14 +148,18 @@ public final class RangeQueries {
         var begin = bounds.begin();
         var end = bounds.end();
 
-        if (!(line.getElement(begin) instanceof NoteElement anchorNote)
-            || !(line.getElement(end) instanceof NoteElement endNote)
-            || !canBeTied(anchorNote, endNote)) {
+        if (!(line.getElement(begin) instanceof NoteElement anchorNote)) {
             return false;
         }
 
         if (selectionSize == TIE_SELECTION_SIZE_WITH_SEPARATOR
             && !Tie.isLegalSeparator(line.getElement(begin + 1).getType())) {
+            return false;
+        }
+
+        // The checks above make the element at end the anchor's walk end, so the judgment of the
+        // anchor's tie is the judgment of the selected pair. Keep them before it.
+        if (!canBeTied(anchorNote)) {
             return false;
         }
 

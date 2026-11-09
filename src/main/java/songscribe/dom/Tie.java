@@ -32,6 +32,14 @@ import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementReplacement;
+import songscribe.message.mutation.FontChange;
+import songscribe.message.mutation.LayoutChange;
+import songscribe.message.mutation.LineDeletion;
+import songscribe.message.mutation.LineInsertion;
+import songscribe.message.mutation.LineKeyChange;
+import songscribe.message.mutation.LineLayoutChange;
+import songscribe.message.mutation.LyricsChange;
+import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
@@ -39,13 +47,14 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 
 /**
- * A tie from a note to the next note, as {@link NoteElement#tie()} and
- * {@link NoteElement#incomingTie()} derive it: the anchor stores that it is tied, and the end is
- * the first element after it that is not a {@link #isLegalSeparator legal separator}, which may
- * sit at the start of the next line.
+ * A note and the note a tie from it ends on, whether or not the note is tied: the end is the
+ * first element after the anchor that is not a {@link #isLegalSeparator legal separator}, which
+ * may sit at the start of the next line. {@link NoteElement#tie()} and
+ * {@link NoteElement#incomingTie()} give the ties a note stores; {@link #startingOn} and
+ * {@link #endingOn} give the tie a note could start or end.
  *
- * <p>Both notes pass the <b>pitched-note check</b>, {@link #canAnchor}, and {@link #between} makes
- * no tie for a pair that fails it.
+ * <p>Both notes pass the <b>pitched-note check</b>, {@link #canAnchor}, and no tie exists for a
+ * pair that fails it.
  *
  * <p>No beam holds both notes of a tie; the tie wins over the beam on every route.
  *
@@ -66,14 +75,56 @@ public final class Tie {
      * Does not check that a tie from {@code anchor} would end on {@code end}, or that the two
      * share a pitch ({@link #holds()}).
      *
-     * @param end {@code null} when the tie's walk reaches no element
-     * @return {@code null} when {@code anchor} cannot carry a tie, or {@code end} is
-     *     {@code null} or cannot carry one ({@link #canAnchor})
+     * @return {@code null} when {@code anchor} or {@code end} cannot carry a tie
+     *     ({@link #canAnchor})
      */
-    public static @Nullable Tie between(NoteElement anchor, @Nullable StaffElement end) {
+    private static @Nullable Tie between(NoteElement anchor, StaffElement end) {
         return canAnchor(anchor) && end instanceof NoteElement endNote && canAnchor(endNote)
             ? new Tie(anchor, endNote)
             : null;
+    }
+
+    /**
+     * Returns the tie from {@code anchor}, whether or not {@code anchor} is tied.
+     *
+     * @return {@code null} when {@code anchor} is in no line, or the walk from it reaches no note
+     *     a tie can end on
+     */
+    public static @Nullable Tie startingOn(NoteElement anchor) {
+        var line = anchor.getParentLine();
+
+        if (line == null) {
+            return null;
+        }
+
+        var reached = endAfter(line, line.getElementIndex(anchor));
+
+        return reached == null ? null : between(anchor, reached);
+    }
+
+    /**
+     * Returns the tie that ends on {@code end}, whether or not its anchor is tied.
+     *
+     * @return {@code null} when {@code end} is in no line, or no note before it starts a tie
+     *     that ends on it
+     * @invariant a non-null result's {@link #end()} is {@code end}, and
+     *     {@code startingOn(result.anchor())} equals the result
+     */
+    public static @Nullable Tie endingOn(NoteElement end) {
+        var line = end.getParentLine();
+
+        if (line == null) {
+            return null;
+        }
+
+        if (!(anchorBefore(line, line.getElementIndex(end)) instanceof NoteElement anchor)) {
+            return null;
+        }
+
+        var tie = startingOn(anchor);
+
+        //noinspection ObjectEquality
+        return tie != null && tie.end() == end ? tie : null;
     }
 
     public static boolean canAnchor(StaffElement element) {
@@ -83,17 +134,14 @@ public final class Tie {
     /**
      * The anchor need not be tied yet.
      *
-     * @param line a line of its song
+     * @param line  a line of its song
+     * @param range contains {@code anchorIndex}
      */
     static boolean bothNotesIn(Line line, int anchorIndex, ElementRange range) {
-        if (!range.contains(anchorIndex)) {
-            return false;
-        }
-
         var reached = endAfter(line, anchorIndex);
 
         //noinspection ObjectEquality
-        return reached != null && reached.line() == line && range.contains(reached.index());
+        return reached != null && reached.getParentLine() == line && range.contains(line.getElementIndex(reached));
     }
 
     /**
@@ -139,67 +187,86 @@ public final class Tie {
             && anchor.accidentalState().sounding() == end.accidentalState().sounding();
     }
 
-    record Reached(Line line, int index) {
-
-        StaffElement element() {
-            return line.getElement(index);
-        }
-    }
-
     /**
-     * Whether a tie stays: the one judgment of a tie that an edit leaves and of a tie a file
-     * holds.
+     * Whether a tie stays: the one judgment of a tie that an edit leaves, of a tie a file holds,
+     * and of a tie the user asks for.
      */
-    sealed interface Judgment {
+    public sealed interface Judgment {
 
         record Holds() implements Judgment { }
 
         /**
-         * @param reasonKey a {@code Strings} key whose value is plain text
-         * @param where     the anchor's line, and the line of the element the tie's walk reaches
-         *                  when it reaches one
+         * @param where the anchor's line, and the line of the element the tie's walk reaches when
+         *              it reaches one
          */
-        record Broken(String reasonKey, ChangeLines where) implements Judgment {
+        record Broken(Reason reason, ChangeLines where) implements Judgment {
 
             RecordedChange entry() {
-                return new RecordedChange(ChangeHeading.TIES_REMOVED, Strings.get(reasonKey), where);
+                return new RecordedChange(ChangeHeading.TIES_REMOVED, Strings.get(reason.key), where);
+            }
+        }
+
+        /** Why a tie does not stay. */
+        enum Reason {
+
+            /** No note a tie can end on follows the anchor. */
+            NO_FOLLOWING_NOTE(Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE),
+
+            /** The two notes no longer sit at one staff position sounding one alteration. */
+            NOT_HELD(Strings.REPORT_REASON_TIE_NOT_HELD),
+
+            /**
+             * A file ties an element that cannot carry a tie. Only {@link TieLoadPass} gives this
+             * reason; {@link Tie#judge} never does.
+             */
+            DAMAGED_ANCHOR(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT);
+
+            private final String key;
+
+            Reason(String key) {
+                this.key = key;
             }
         }
     }
 
     /**
-     * Must be asked only after every restamp has landed, so that every note has a sounding
+     * Must be asked only after every restamp has landed, so that both notes have a sounding
      * alteration to compare ({@link #holds()}).
      *
-     * @param line        a line of its song
-     * @param anchorIndex the index in {@code line} of a note tied to the next
-     * @return {@link Judgment.Holds} when the element the tie's walk reaches ({@link #endAfter})
-     *     is a note a tie can end on ({@link #between}) and the tie {@link #holds() holds};
-     *     otherwise {@link Judgment.Broken} with {@link Strings#REPORT_REASON_TIE_NO_FOLLOWING_NOTE}
-     *     when no tie can end on what the walk reaches, or {@link Strings#REPORT_REASON_TIE_NOT_HELD}
-     *     when the tie does not hold
+     * @param anchor in a line of its song; it need not be tied
+     * @return {@link Judgment.Holds} when the element the tie's walk reaches from {@code anchor}
+     *     is a note a tie can end on and the tie {@link #holds() holds}; otherwise
+     *     {@link Judgment.Broken} with {@link Judgment.Reason#NO_FOLLOWING_NOTE} when no tie can
+     *     end on what the walk reaches, or {@link Judgment.Reason#NOT_HELD} when the tie does not
+     *     hold
      */
-    static Judgment judge(Line line, int anchorIndex) {
-        var reached = endAfter(line, anchorIndex);
-        var tie = reached == null ? null : between(line.noteAt(anchorIndex), reached.element());
+    public static Judgment judge(NoteElement anchor) {
+        var line = anchor.requireParentLine();
+        var reached = endAfter(line, line.getElementIndex(anchor));
+
+        return reached == null
+            ? new Judgment.Broken(Judgment.Reason.NO_FOLLOWING_NOTE, ChangeLines.on(line))
+            : judge(anchor, reached);
+    }
+
+    private static Judgment judge(NoteElement anchor, StaffElement end) {
+        var tie = between(anchor, end);
 
         if (tie != null && tie.holds()) {
             return new Judgment.Holds();
         }
 
-        var reasonKey = tie == null
-            ? Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE
-            : Strings.REPORT_REASON_TIE_NOT_HELD;
-        var where = reached == null ? ChangeLines.on(line) : new ChangeLines(line, reached.line());
+        var reason = tie == null ? Judgment.Reason.NO_FOLLOWING_NOTE : Judgment.Reason.NOT_HELD;
 
-        return new Judgment.Broken(reasonKey, where);
+        return new Judgment.Broken(reason, new ChangeLines(anchor.requireParentLine(), end.requireParentLine()));
     }
 
-    static @Nullable Reached endAfter(Line line, int anchorIndex) {
-        var index = firstNonSeparatorIndexFrom(line.getElements(), anchorIndex + 1);
+    static @Nullable StaffElement endAfter(Line line, int anchorIndex) {
+        var elements = line.getElements();
+        var index = firstNonSeparatorIndexFrom(elements, anchorIndex + 1);
 
         if (index != null) {
-            return new Reached(line, index);
+            return elements.get(index);
         }
 
         var following = line.nextLine();
@@ -208,9 +275,10 @@ public final class Tie {
             return null;
         }
 
-        var followingIndex = firstNonSeparatorIndexFrom(following.getElements(), 0);
+        var followingElements = following.getElements();
+        var followingIndex = firstNonSeparatorIndexFrom(followingElements, 0);
 
-        return followingIndex == null ? null : new Reached(following, followingIndex);
+        return followingIndex == null ? null : followingElements.get(followingIndex);
     }
 
     static @Nullable StaffElement anchorBefore(Line line, int endIndex) {
@@ -315,7 +383,8 @@ public final class Tie {
             case TieRemoval(var line, var anchor) -> tieAnchorOrigin(line, anchor);
             case SpanAddition(var line, var span) -> beamOrigin(line, span);
             case SpanRemoval(var line, var span) -> beamOrigin(line, span);
-            default -> null;
+            case LineInsertion _, LineDeletion _, LineKeyChange _, LineLayoutChange _, MetadataChange _,
+                 FontChange _, LayoutChange _, LyricsChange _ -> null;
         };
     }
 
