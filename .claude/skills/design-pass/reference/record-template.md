@@ -33,6 +33,13 @@ resume that finds one 📖 reads the marked-up document rather than the tree.
 picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
 the step is small enough to hold in one sitting.
 
+*Notes* holds, while a step is in progress, where the step stands, so that a
+resume can pick it up. Once the step is complete, it holds only what a later step
+or a resume acts on, such as a decision a later step depends on or a count a
+later gate compares against. Delete everything else from the cell when the step
+completes, because the decisions are in the tree. A finding for a later step goes
+in *Findings raised*, not here.
+
 ## Findings claimed
 
 Carry-forward items taken from the register at step 0, and what each turned out

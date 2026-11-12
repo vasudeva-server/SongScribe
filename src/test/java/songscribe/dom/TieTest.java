@@ -199,6 +199,21 @@ class TieTest extends UnitTest {
         assertThat(Tie.endingOn(noteAfter)).as("the end answers the same tie from its side").isEqualTo(tie);
     }
 
+    @Test
+    void testATiedNoteDeletedFromItsLineStartsNoTie() {
+        var song = compactSong(Key.NO_ACCIDENTALS, PITCH + " " + PITCH + " " + PITCH);
+        var line = song.getLine(FIRST_LINE);
+        var anchor = noteAt(song, new Cursor(FIRST_LINE, FIRST_ELEMENT));
+
+        song.withModification(() -> line.addTie(anchor));
+        song.withModification(() -> line.removeRange(new ElementRange(FIRST_ELEMENT, FIRST_ELEMENT)));
+
+        assertThat(anchor.isTiedToNext())
+            .as("the fixture reaches the case only if the deleted note keeps its tie")
+            .isTrue();
+        assertThat(Tie.startingOn(anchor)).isNull();
+    }
+
     /** What {@link Tie#judge} must answer for one song's first note. */
     private sealed interface Expected permits Held, BrokenAs {}
 
@@ -343,6 +358,9 @@ class TieTest extends UnitTest {
             new ReachCase("the first line has no previous line to reach",
                 new String[] {PITCH + " " + PITCH + " " + PITCH, "" + PITCH},
                 song -> insertion(song, FIRST_LINE, FIRST_ELEMENT), List.of()),
+            new ReachCase("the last line has no next line to reach",
+                new String[] {"" + PITCH, PITCH + " " + PITCH + " " + PITCH},
+                song -> insertion(song, SECOND_LINE, THIRD_ELEMENT), List.of()),
             new ReachCase("a tie removal whose anchor has left its line reaches no line",
                 SEPARATED_MIDDLE, song -> new TieRemoval(song.getLine(SECOND_LINE), crotchet()), List.of()),
             new ReachCase("a line insertion names no position",
@@ -397,6 +415,17 @@ class TieTest extends UnitTest {
                     return new SpanRemoval(line, beamOver(line, lastTwoQuavers()));
                 },
                 List.of(SECOND_LINE)),
+            new ReachCase("a beam removal whose notes the same batch deleted reaches no line",
+                BEAMABLE_LINE_THEN_NOTE,
+                song -> {
+                    var line = song.getLine(FIRST_LINE);
+                    var beam = beamOver(line, lastTwoQuavers());
+
+                    song.withModification(() -> line.removeRange(lastTwoQuavers()));
+
+                    return new SpanRemoval(line, beam);
+                },
+                List.of()),
             new ReachCase("a span other than a beam reaches no line",
                 BEAMABLE_LINE_THEN_NOTE,
                 song -> {

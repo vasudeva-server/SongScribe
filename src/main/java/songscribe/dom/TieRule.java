@@ -56,11 +56,12 @@ final class TieRule implements ModificationRule {
 
         for (var mutation : batch) {
             var touched = touchedLine(song, mutation);
-            var touchedIndex = touched == null ? null : song.indexOfLine(touched);
 
-            if (touched == null || touchedIndex == null) {
+            if (touched == null) {
                 continue;
             }
+
+            var touchedIndex = touched.index();
 
             if (touchedIndex > 0) {
                 judged.add(song.getLine(touchedIndex - 1));

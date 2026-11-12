@@ -103,26 +103,15 @@ public final class Tie {
      * The anchor of the result may be in the line before the line of {@code end}, and is in no
      * line before that.
      *
-     * @return {@code null} when {@code end} is in no line, or no note before it starts a tie
-     *     that ends on it
+     * @param end in a line
+     * @return {@code null} when no note before {@code end} starts a tie that ends on it
      * @invariant a non-null result's {@link #end()} is {@code end}, and
      *     {@code startingOn(result.anchor())} equals the result
      */
     public static @Nullable Tie endingOn(NoteElement end) {
-        var line = end.getParentLine();
-
-        if (line == null) {
-            return null;
-        }
-
-        if (!(anchorBefore(line, end) instanceof NoteElement anchor)) {
-            return null;
-        }
-
-        var tie = startingOn(anchor);
-
-        //noinspection ObjectEquality
-        return tie != null && tie.end() == end ? tie : null;
+        // The walk back to the anchor passes the separators that the walk forward from it
+        // passes, so a tie from that anchor ends on end.
+        return anchorBefore(end.requireParentLine(), end) instanceof NoteElement anchor ? startingOn(anchor) : null;
     }
 
     /**

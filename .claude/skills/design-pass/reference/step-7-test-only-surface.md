@@ -1,5 +1,9 @@
 ## Step 7: Fix test-only surface
 
+**Read `guides/conventions/contracts.md` in full before you start**, because a fix
+here can write a contract: for a renamed internal API, or for a setter's restore
+obligation.
+
 Each finding is one of four kinds, and the kind decides the fix:
 
 - **Genuinely test-only** — delete it, or restructure the code so that production

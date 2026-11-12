@@ -177,8 +177,8 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * @return {@link Tie#startingOn} this note, or {@code null} when this note stores no tie
-     *     ({@link #isTiedToNext()} is {@code false})
+     * @return the tie from this note, or {@code null} when this note stores no tie or is in no
+     *     line
      * @invariant a non-null result's {@link Tie#anchor()} is this note, and
      *     {@code result.end().incomingTie()} equals the result
      */
@@ -187,7 +187,9 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * @return {@link Tie#endingOn} this note when its anchor is tied, otherwise {@code null}
+     * Asked only of a note in a line.
+     *
+     * @return the tie that ends on this note, or {@code null} when no tied note's tie ends on it
      * @invariant a non-null result's {@link Tie#end()} is this note, and
      *     {@code result.anchor().tie()} equals the result
      */

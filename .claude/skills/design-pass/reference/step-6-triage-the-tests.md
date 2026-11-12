@@ -1,5 +1,8 @@
 ## Step 6: Triage the tests
 
+**Read `guides/conventions/contracts.md` in full before you start**, because each
+test is judged against the contract case it derives from.
+
 **Inline.** Each existing test resolves against the floor in `design.md`, not
 against a clause count:
 

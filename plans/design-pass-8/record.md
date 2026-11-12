@@ -7,16 +7,16 @@ Run by `/design-pass 8` — register row `8`, *Ties*.
 | Step | Status | Gate | Plan | Notes |
 |---|---|---|---|---|
 | 1 Inventory | ✅ | with 2 | — | |
-| 2 Class design | ✅ | ✅ | — | 1b, 2 now, 3a, 4 confirmed, 5, 6b (keep the kind check), 7 and 8 confirmed |
-| 3 Unrepresentable states | ✅ | ✅ | — | items 1–6 as proposed (3: the throw is dead); 7 option b, `DAMAGED_ANCHOR` noted as the load's only |
-| 4 Extraction | ✅ | ✅ | — | items 1 (as `ElementType.isLegalTieSeparator`, present form), 2a (on `Line`), 3, 4 (beam kept over a broken tie), 5, 6 |
-| 5 Contracts | ✅ | ✅ | — | review rejected branch-level contracts; items re-scoped to caller facts and written. Confirmed: a grace note breaks a tie, E♯ to F does not hold. The beam rule stays, in no guide: `Beam.spanning` and `TieRule.apply` each state their half, and `span-invalidation.md`'s rules close the routes. `Line.addTie` done now. Arc-side rules confirmed as today's code (the corpus for step 6) |
-| 6 Test triage | ✅ | ✅ | — | the user left every item to me. 1a (`TieWalkTest` → `TieTest`; `ownedTies` → `LineTest`), 2 split, 3 `reach` over every mutation kind, 4 in `LineDeletionTest` with the `removeLine` rows, 5a (`NoteElementTest`), 6 moved to `ModificationSessionTest`, 7 asserted on every load row, 8 dropped (no route reaches the state), 9 raised for step 11 |
-| 7 Test-only surface | ✅ | ✅ | — | no test-only surface found; closed with no change |
-| 8a Suite gate | ⏳ | n/a | — | |
-| 8b Visual gate | ⏳ | n/a | — | |
-| 9 Coverage | ⏳ | n/a | — | |
-| 10 Mutation | ⏳ | n/a | — | opportunistic |
+| 2 Class design | ✅ | ✅ | — | |
+| 3 Unrepresentable states | ✅ | ✅ | — | |
+| 4 Extraction | ✅ | ✅ | — | |
+| 5 Contracts | ✅ | ✅ | — | the beam rule goes in no guide: `Beam.spanning` and `TieRule.apply` each state their half |
+| 6 Test triage | ✅ | ✅ | — | |
+| 7 Test-only surface | ✅ | ✅ | — | |
+| 8a Suite gate | ✅ | n/a | — | |
+| 8b Visual gate | ✅ | n/a | — | |
+| 9 Coverage | ✅ | n/a | — | full unit suite: 1894 passed |
+| 10 Mutation | ✅ | n/a | — | skipped |
 | 11 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
 | 12 Close out | ⏳ | ⏳ | — | |
 
@@ -27,6 +27,13 @@ resume that finds one 📖 reads the marked-up document rather than the tree.
 *Plan* links the step's execution plan once it has one, and is where a resume
 picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
 the step is small enough to hold in one sitting.
+
+*Notes* holds, while a step is in progress, where the step stands, so that a
+resume can pick it up. Once the step is complete, it holds only what a later step
+or a resume acts on, such as a decision a later step depends on or a count a
+later gate compares against. Delete everything else from the cell when the step
+completes, because the decisions are in the tree. A finding for a later step goes
+in *Findings raised*, not here.
 
 ## Target
 

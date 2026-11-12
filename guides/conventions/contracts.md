@@ -31,9 +31,11 @@ meaning or the outcome in as few words as it can.
 
 A Javadoc holds only these clauses. A method with none of them has no Javadoc.
 
-1. **A precondition that the code does not check.** Interior code relies on it
-   and does not guard it (see *A stated precondition is the caller's
-   obligation*). Write it in `@param` or in prose: *"`ticks` is not negative"*.
+1. **A precondition that the caller must meet**, whether or not the code checks
+   it. Write it in `@param`, or in prose when it is about the receiver:
+   *"`ticks` is not negative"*, *"this note is in a line"*. Interior code does
+   not recover from a broken precondition (see *A stated precondition is the
+   caller's obligation*).
 2. **What a null return or a null parameter means.** See *`@Nullable`* below.
 3. **Why a constraint exists, and what breaks somewhere else if it changes.**
    *"Stays public because the undo replayer and the MusicXML header reader drive
@@ -61,7 +63,7 @@ A Javadoc holds only these clauses. A method with none of them has no Javadoc.
 
 A type's Javadoc also states the purpose of the type.
 
-A clause of type 3 or 5 can be the first sentence. No other first sentence is
+A clause of type 1, 3 or 5 can be the first sentence. No other first sentence is
 written: a sentence that says what the method does restates the body.
 
 Outside a full contract, `@throws`, `@effects` and `@invariant` are never
@@ -186,8 +188,8 @@ at the UI. Those convert an untrusted value into a domain value that satisfies
 the precondition. Every layer below them relies on the precondition and checks
 nothing again.
 
-Interior code therefore never defends against a state that a precondition
-forbids:
+Interior code therefore never recovers from a state that a precondition
+forbids — no early return, no default, no skipped step:
 
 - The check reads as evidence that the state can occur, so the next reader
   cannot tell which belief is current — the precondition's, or the guard's.
@@ -195,9 +197,11 @@ forbids:
   into a wrong answer with nothing that marks it wrong.
 - The precondition now lives in two places.
 
-**The tell** is a check whose condition a precondition already forbids, in a
-method that no untrusted value reaches. Delete it, and make sure the Javadoc
-states the precondition.
+**The tell** is a check that recovers from a condition a precondition already
+forbids, in a method that no untrusted value reaches. Delete it, and make sure
+the Javadoc states the precondition. A check that throws on that condition, as
+[Null Handling](null-handling.md) requires, is not a guard: it stays, and the
+Javadoc still states the precondition.
 
 This does not license removing a check at a boundary. It also does not license
 removing a check whose condition a caller can legitimately produce. That
