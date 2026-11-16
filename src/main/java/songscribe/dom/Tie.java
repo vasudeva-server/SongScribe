@@ -191,8 +191,6 @@ public final class Tie {
      *
      * @param anchor in a line of its song; it need not be tied
      * @return {@link Judgment.Holds} with the tie from {@code anchor}, or {@link Judgment.Broken}
-     *     with {@link Judgment.Reason#NO_FOLLOWING_NOTE} or {@link Judgment.Reason#NOT_HELD};
-     *     never {@link Judgment.Reason#DAMAGED_ANCHOR}
      */
     public static Judgment judge(NoteElement anchor) {
         var line = anchor.requireParentLine();
