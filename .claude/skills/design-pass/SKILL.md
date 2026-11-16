@@ -1,10 +1,12 @@
 ---
 name: design-pass
-description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, state in Javadoc only what the code cannot, keep only the tests the design cannot enforce
+description: Run the design pass over one system by register row
 model: opus
 effort: medium
 disable-model-invocation: true
 ---
+
+**When to use:** Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, state in Javadoc only what the code cannot, keep only the tests the design cannot enforce
 
 ## Design Pass
 
