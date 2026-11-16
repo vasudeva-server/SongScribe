@@ -44,6 +44,7 @@ import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.util.SealedTypes.leavesOf;
 
 /**
  * What a span kind promises about the same-kind spans already on its line when it is added. A
@@ -468,22 +469,6 @@ class LineSpansTest extends UnitTest {
         line.deleteRange(line.effectiveRange(ElementRange.single(index)));
     }
 
-    /** The classes a sealed hierarchy bottoms out in, reached through every sealed level. */
-    private static List<Class<?>> leavesOf(Class<?> sealedRoot) {
-        var permitted = sealedRoot.getPermittedSubclasses();
-
-        if (permitted == null) {
-            return List.of(sealedRoot);
-        }
-
-        var leaves = new ArrayList<Class<?>>();
-
-        for (var subclass : permitted) {
-            leaves.addAll(leavesOf(subclass));
-        }
-
-        return leaves;
-    }
 
     /**
      * A line of a real song, of quavers with a right repeat at each of

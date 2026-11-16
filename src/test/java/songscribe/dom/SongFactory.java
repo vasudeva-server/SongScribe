@@ -178,6 +178,13 @@ public final class SongFactory {
     }
 
     /**
+     * @param cursor the position of a note in {@code song}
+     */
+    public static NoteElement noteAt(Song song, Cursor cursor) {
+        return (NoteElement) song.getLine(cursor.lineIndex()).getElement(cursor.index());
+    }
+
+    /**
      * A song of one line per list of {@code lines}, each holding exactly those elements.
      *
      * @param lines the elements of each line, in song order

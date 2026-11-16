@@ -54,7 +54,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.dom.Tie;
+import songscribe.dom.TieReach;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.AccidentalFitGate;
@@ -482,7 +482,7 @@ public final class ScoreViewController {
         } else if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
-            var tieReach = linesReached(message, Tie::reach);
+            var tieReach = linesReached(message, TieReach::reach);
             var keyMoveReach = keyMoveReach(message);
 
             for (var linePanel : staffPanel.getLinePanels()) {

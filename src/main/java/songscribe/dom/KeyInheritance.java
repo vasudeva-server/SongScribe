@@ -202,27 +202,15 @@ public final class KeyInheritance {
     }
 
     /**
-     * Returns the lines whose drawn key content {@code mutation}'s key move can have changed: the
-     * line the move is felt from, the line before it when the move changes the key that line's
-     * cautionary key signature warns of, and every following line that runs in the key it
-     * inherits, through the end of the inheritance chain. Empty when the mutation moves no key.
+     * Returns the lines whose key signature or cautionary key signature {@code mutation}'s key
+     * move can change: the line the move is felt from, the line before it when the move changes
+     * the key that line's cautionary key signature warns of, and every following line that runs
+     * in the key it inherits, through the end of the inheritance chain. A line of that chain whose
+     * key did not move is in the result too.
      *
-     * <p>The set is the whole chain rather than exactly the lines whose running key moved, because
-     * it follows the same stopping rule propagation runs on. A line in it whose key did not move
-     * draws what it drew before, so re-solving it costs work and never draws anything wrong.
+     * <p>Asked only after {@code mutation} has landed: the lines are those of the song as it then
+     * stands.
      *
-     * <p>A view holding per-line geometry needs this. A line's header signature and the spacing
-     * around it are solved from the key that line runs in, and the room kept clear at its end is
-     * solved from the cautionary it leads into — so a key move leaves stale geometry on lines no
-     * mutation names, and the line ahead of the move is one of them.
-     *
-     * <p>Asked after the mutation has been applied, so the answer describes the document as it now
-     * stands, which is what a stale view has to be brought up to.
-     *
-     * <p>A line insertion or deletion answers here too, but no view need ask: it changes which
-     * lines exist, which costs a rebuild of every line rather than an invalidation of some.
-     *
-     * @param mutation the mutation to ask about
      * @return the lines, in song order, or empty when {@code mutation} moves no key
      */
     public List<Line> keyMoveReach(Mutation mutation) {
