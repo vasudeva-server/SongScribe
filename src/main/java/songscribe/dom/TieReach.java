@@ -67,8 +67,8 @@ public final class TieReach {
         }
 
         var line = origin.line();
-        var firstNonSeparator = line.firstNonSeparatorIndexFrom(0);
-        var lastNonSeparator = line.lastNonSeparatorIndexBefore(line.elementCount());
+        var firstNonSeparator = line.firstNonTieSeparatorIndexFrom(0);
+        var lastNonSeparator = line.lastNonTieSeparatorIndexBefore(line.elementCount());
         var reach = new ArrayList<Line>();
 
         if (!line.isLast() && (lastNonSeparator == null || origin.last() >= lastNonSeparator)) {

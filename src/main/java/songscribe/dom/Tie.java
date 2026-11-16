@@ -105,6 +105,11 @@ public final class Tie {
         return end.getParentLine() == line && range.contains(line.getElementIndex(end));
     }
 
+    /**
+     * The anchor of this tie is in a line.
+     *
+     * @return {@code null} when no beam holds both notes
+     */
     public @Nullable Beam beamHoldingBoth() {
         var line = anchor.requireParentLine();
         var beam = line.spanRegistry().findBeamAt(line.getElementIndex(anchor));
@@ -198,7 +203,7 @@ public final class Tie {
      * @param line the line that holds {@code anchor}
      */
     private static @Nullable StaffElement endAfter(Line line, NoteElement anchor) {
-        var index = line.firstNonSeparatorIndexFrom(line.getElementIndex(anchor) + 1);
+        var index = line.firstNonTieSeparatorIndexFrom(line.getElementIndex(anchor) + 1);
 
         if (index != null) {
             return line.getElement(index);
@@ -210,7 +215,7 @@ public final class Tie {
             return null;
         }
 
-        var followingIndex = following.firstNonSeparatorIndexFrom(0);
+        var followingIndex = following.firstNonTieSeparatorIndexFrom(0);
 
         return followingIndex == null ? null : following.getElement(followingIndex);
     }
@@ -219,7 +224,7 @@ public final class Tie {
      * @param line the line that holds {@code end}
      */
     private static @Nullable StaffElement anchorBefore(Line line, NoteElement end) {
-        var anchorIndex = line.lastNonSeparatorIndexBefore(line.getElementIndex(end));
+        var anchorIndex = line.lastNonTieSeparatorIndexBefore(line.getElementIndex(end));
 
         if (anchorIndex != null) {
             return line.getElement(anchorIndex);
@@ -231,7 +236,7 @@ public final class Tie {
             return null;
         }
 
-        var precedingIndex = preceding.lastNonSeparatorIndexBefore(preceding.elementCount());
+        var precedingIndex = preceding.lastNonTieSeparatorIndexBefore(preceding.elementCount());
 
         return precedingIndex == null ? null : preceding.getElement(precedingIndex);
     }

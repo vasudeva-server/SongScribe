@@ -692,8 +692,8 @@ public final class Song implements Disposable {
      * replaying, which legitimately pass through a transient zero-line state.
      *
      * <p>The removed line keeps its elements, and they keep pointing at it, so undo can put it
-     * back unchanged. A tie ending on the removed line's first note is untied first
-     * ({@link Line#untieEndingIn}), recorded and not reported; the tie rule ({@link TieRule})
+     * back unchanged. A tie ending on the removed line's first note is untied, and the
+     * change report has no entry for that untie; the tie rule ({@link TieRule})
      * judges a tied last note of the line before whose walk found no note in the removed line.
      */
     public void removeLine(int index) {

@@ -78,8 +78,8 @@ public final class RangeQueries {
             return null;
         }
 
-        var entryIndex = line.firstNonSeparatorIndexFrom(0);
-        var exitIndex = line.lastNonSeparatorIndexBefore(line.elementCount());
+        var entryIndex = line.firstNonTieSeparatorIndexFrom(0);
+        var exitIndex = line.lastNonTieSeparatorIndexBefore(line.elementCount());
 
         // On a one-note line the note is both entry and exit, so a refused incoming tie still
         // leaves the outgoing one to try.

@@ -480,9 +480,9 @@ public final class Line implements EditableRun {
      * and repairs nothing around them. An edit deletes through {@code deleteRange}, which runs
      * the repairs.
      * <p>
-     * The deletion and its companion tie and span changes post through {@link #applyChange},
-     * under {@link Song#applyChange}'s bracket rule. A tie that ends on an element of
-     * {@code range} is untied first ({@link #untieEndingIn}).
+     * The caller has a modification bracket open ({@link Song#withModification}). A tie that
+     * ends on an element of {@code range} is untied, and the change report has no entry for that
+     * untie.
      *
      * @param range the elements to remove
      * @throws IllegalStateException if the range covers the song's auto-maintained terminal —
@@ -555,7 +555,7 @@ public final class Line implements EditableRun {
             return;
         }
 
-        var endIndex = firstNonSeparatorIndexFrom(range.begin());
+        var endIndex = firstNonTieSeparatorIndexFrom(range.begin());
 
         if (endIndex == null || endIndex > range.end() || !(elements.get(endIndex) instanceof NoteElement end)) {
             return;
@@ -574,7 +574,7 @@ public final class Line implements EditableRun {
      * @return {@code null} when every element from {@code from} on is a legal tie separator
      *     ({@link ElementType#isLegalTieSeparator})
      */
-    public @Nullable Integer firstNonSeparatorIndexFrom(int from) {
+    public @Nullable Integer firstNonTieSeparatorIndexFrom(int from) {
         return StaffElementRun.firstIndexFrom(elements, from, type -> !type.isLegalTieSeparator());
     }
 
@@ -583,7 +583,7 @@ public final class Line implements EditableRun {
      * @return {@code null} when every element before {@code before} is a legal tie separator
      *     ({@link ElementType#isLegalTieSeparator})
      */
-    public @Nullable Integer lastNonSeparatorIndexBefore(int before) {
+    public @Nullable Integer lastNonTieSeparatorIndexBefore(int before) {
         return StaffElementRun.lastIndexBefore(elements, before, type -> !type.isLegalTieSeparator());
     }
 
@@ -629,7 +629,7 @@ public final class Line implements EditableRun {
     }
 
     private @Nullable Tie enteringTie() {
-        var firstIndex = firstNonSeparatorIndexFrom(0);
+        var firstIndex = firstNonTieSeparatorIndexFrom(0);
 
         if (firstIndex == null || !(elements.get(firstIndex) instanceof NoteElement first)) {
             return null;

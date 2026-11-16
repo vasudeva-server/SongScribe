@@ -61,6 +61,9 @@ public abstract sealed class StaffElement extends LineElement implements LineCon
      * still apply under that type — what a type-change action leaves standing when the notator
      * turns a crotchet into a quaver, a note into a rest, or a barline into a repeat.
      *
+     * <p>A tied note converted to a type that can carry a tie keeps its tie. A tied note
+     * converted to a type that cannot, such as a grace note, is not tied.
+     *
      * <p>Uses a whitelist: an attribute added to an element in the future defaults to missing
      * (visible, safe) rather than stale (invisible, potentially corrupt).
      *

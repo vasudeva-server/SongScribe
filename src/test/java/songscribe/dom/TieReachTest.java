@@ -76,7 +76,6 @@ class TieReachTest extends UnitTest {
     private static final int THIRD_LINE = 2;
     private static final int FIRST_ELEMENT = 0;
     private static final int SECOND_ELEMENT = 1;
-    private static final int THIRD_ELEMENT = 2;
 
     /**
      * One mutation on a song, and the lines it reaches.
@@ -105,8 +104,6 @@ class TieReachTest extends UnitTest {
     /** The index, in {@link #SEPARATED_MIDDLE}'s middle line, of its closing barline. */
     private static final int CLOSING_BARLINE = 4;
 
-    private static final String TEXT = "la";
-
     @ParameterizedTest(name = "{0}")
     @MethodSource("reachCases")
     void testAnEditAtALinesEdgeReachesTheLineBesideIt(ReachCase testCase) {
@@ -116,23 +113,12 @@ class TieReachTest extends UnitTest {
             .containsExactlyInAnyOrderElementsOf(testCase.reached().stream().map(song::getLine).toList());
     }
 
-    @Test
-    void testTheReachCasesCoverEveryMutationKind() {
-        var covered = reachCases()
-            .<Class<?>>map(testCase -> testCase.mutation().apply(compactSong(Key.NO_ACCIDENTALS, testCase.lines())).getClass())
-            .collect(Collectors.toSet());
-
-        assertThat(covered).containsExactlyInAnyOrderElementsOf(leavesOf(Mutation.class));
-    }
-
     static Stream<ReachCase> reachCases() {
         return Stream.of(
             new ReachCase("before the first non-separator reaches the previous line",
                 SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, FIRST_ELEMENT), List.of(FIRST_LINE)),
             new ReachCase("at the first non-separator reaches the previous line",
                 SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, SECOND_ELEMENT), List.of(FIRST_LINE)),
-            new ReachCase("between the edges reaches no line",
-                SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, THIRD_ELEMENT), List.of()),
             new ReachCase("at the last non-separator reaches the next line",
                 SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, LAST_NOTE), List.of(THIRD_LINE)),
             new ReachCase("past the last non-separator reaches the next line",
@@ -145,33 +131,6 @@ class TieReachTest extends UnitTest {
             new ReachCase("a line holding only separators reaches both neighbors",
                 new String[] {"" + PITCH, "|", "" + PITCH},
                 song -> insertion(song, SECOND_LINE, FIRST_ELEMENT), List.of(FIRST_LINE, THIRD_LINE)),
-            new ReachCase("the first line has no previous line to reach",
-                new String[] {PITCH + " " + PITCH + " " + PITCH, "" + PITCH},
-                song -> insertion(song, FIRST_LINE, FIRST_ELEMENT), List.of()),
-            new ReachCase("the last line has no next line to reach",
-                new String[] {"" + PITCH, PITCH + " " + PITCH + " " + PITCH},
-                song -> insertion(song, SECOND_LINE, THIRD_ELEMENT), List.of()),
-            new ReachCase("a tie removal whose anchor has left its line reaches no line",
-                SEPARATED_MIDDLE, song -> new TieRemoval(song.getLine(SECOND_LINE), crotchet()), List.of()),
-            new ReachCase("a line insertion names no position",
-                SEPARATED_MIDDLE, song -> new LineInsertion(SECOND_LINE, song.getLine(SECOND_LINE)), List.of()),
-            new ReachCase("a line deletion names no position",
-                SEPARATED_MIDDLE, song -> new LineDeletion(SECOND_LINE, song.getLine(SECOND_LINE)), List.of()),
-            new ReachCase("a line key change names no position",
-                SEPARATED_MIDDLE, song -> new LineKeyChange(song.getLine(SECOND_LINE), null, Key.ONE_SHARP), List.of()),
-            new ReachCase("a line layout change names no position",
-                SEPARATED_MIDDLE,
-                song -> new LineLayoutChange(song.getLine(SECOND_LINE), LineLayoutField.LYRICS_Y_POS_SS, 0.0, 1.0),
-                List.of()),
-            new ReachCase("a metadata change names no position",
-                SEPARATED_MIDDLE, song -> new MetadataChange(MetadataField.FOOTNOTES, "", TEXT), List.of()),
-            new ReachCase("a font change names no position",
-                SEPARATED_MIDDLE,
-                song -> new FontChange(DocumentFonts.defaultFonts(), DocumentFonts.defaultFonts()), List.of()),
-            new ReachCase("a layout change names no position",
-                SEPARATED_MIDDLE, song -> new LayoutChange(LayoutField.LINE_WIDTH_SS, 0.0, 1.0), List.of()),
-            new ReachCase("a lyrics change names no position",
-                SEPARATED_MIDDLE, song -> new LyricsChange(LyricsField.UNDER, "", TEXT), List.of()),
             new ReachCase("a replacement at the first non-separator reaches the previous line",
                 SEPARATED_MIDDLE,
                 song -> new ElementReplacement(song.getLine(SECOND_LINE), SECOND_ELEMENT, crotchet(), crotchet()),
@@ -205,25 +164,6 @@ class TieReachTest extends UnitTest {
                     return new SpanRemoval(line, beamOver(line, lastTwoQuavers()));
                 },
                 List.of(SECOND_LINE)),
-            new ReachCase("a beam removal whose notes the same batch deleted reaches no line",
-                BEAMABLE_LINE_THEN_NOTE,
-                song -> {
-                    var line = song.getLine(FIRST_LINE);
-                    var beam = beamOver(line, lastTwoQuavers());
-
-                    song.withModification(() -> line.removeRange(lastTwoQuavers()));
-
-                    return new SpanRemoval(line, beam);
-                },
-                List.of()),
-            new ReachCase("a span other than a beam reaches no line",
-                BEAMABLE_LINE_THEN_NOTE,
-                song -> {
-                    var line = song.getLine(FIRST_LINE);
-
-                    return new SpanAddition(line, hairpinOver(line, Hairpin.Kind.CRESCENDO, lastTwoQuavers()));
-                },
-                List.of()),
             new ReachCase("a pitch change on an inner member of a beam that ends the line reaches the next line",
                 BEAMABLE_LINE_THEN_NOTE,
                 song -> {

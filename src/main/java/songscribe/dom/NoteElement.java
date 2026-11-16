@@ -177,8 +177,8 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * @return the tie from this note, or {@code null} when this note stores no tie or is in no
-     *     line
+     * @return the tie from this note, or {@code null} when this note stores no tie, is in no
+     *     line, or is followed by no note that a tie from it can end on
      * @invariant a non-null result's {@link Tie#anchor()} is this note, and
      *     {@code result.end().incomingTie()} equals the result
      */
@@ -408,10 +408,6 @@ public final class NoteElement extends StaffElement implements Dottable {
         copyArticulationsFrom(sourceNote);
     }
 
-    /**
-     * The tie is kept only when this note passes {@link #canCarryTie}, so a note converted to a
-     * grace note is not tied.
-     */
     @Override
     protected void applySubtypeConversionFrom(StaffElement source) {
         if (source instanceof NoteElement sourceNote) {
