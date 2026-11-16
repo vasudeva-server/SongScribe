@@ -64,7 +64,14 @@ public final class RangeQueries {
     private RangeQueries() {}
 
     /**
-     * @return {@code null} when no tie across the line boundary is possible at {@code index}
+     * The tie across an edge of {@code line} that the note at {@code index} can take part in. The
+     * tie in from the previous line comes first: it is the answer when {@code index} is the line's
+     * first element that is not a legal tie separator, and that tie holds. Otherwise the answer is
+     * the tie out to the next line, when {@code index} is the line's last such element and that
+     * tie holds. A tie holds when {@link Tie#judge} gives {@link Tie.Judgment.Holds} for its
+     * anchor.
+     *
+     * @return {@code null} when the element at {@code index} is not a note, or neither tie holds
      */
     public static @Nullable Tie boundaryTieAt(Line line, int index) {
         if (!(line.getElement(index) instanceof NoteElement note)) {
@@ -73,19 +80,27 @@ public final class RangeQueries {
 
         var entryIndex = line.firstNonSeparatorIndexFrom(0);
         var exitIndex = line.lastNonSeparatorIndexBefore(line.elementCount());
-        Tie candidate = null;
 
+        // On a one-note line the note is both entry and exit, so a refused incoming tie still
+        // leaves the outgoing one to try.
         if (entryIndex != null && index == entryIndex && !line.isFirst()) {
-            candidate = Tie.endingOn(note);
-        } else if (exitIndex != null && index == exitIndex && !line.isLast()) {
-            candidate = Tie.startingOn(note);
+            var incoming = holdingTie(Tie.endingOn(note));
+
+            if (incoming != null) {
+                return incoming;
+            }
         }
 
-        return candidate != null && canBeTied(candidate.anchor()) ? candidate : null;
+        if (exitIndex != null && index == exitIndex && !line.isLast()) {
+            return holdingTie(Tie.startingOn(note));
+        }
+
+        return null;
     }
 
-    private static boolean canBeTied(NoteElement anchor) {
-        return Tie.judge(anchor) instanceof Tie.Judgment.Holds;
+    /** @return {@code null} when {@code candidate} is null or its tie does not hold */
+    private static @Nullable Tie holdingTie(@Nullable Tie candidate) {
+        return candidate != null && Tie.judge(candidate.anchor()) instanceof Tie.Judgment.Holds ? candidate : null;
     }
 
     public sealed interface BeamToggle {
@@ -124,16 +139,16 @@ public final class RangeQueries {
     }
 
     /**
-     * A tie joins two notes of the same pitch, adjacent or separated by a single non-duration
-     * element such as a barline or repeat. A single selected element is accepted only as a
-     * cross-line tie: at a line edge, with a same-pitch note at the adjacent line's edge.
+     * Whether the tie toggle can add or remove a tie for {@code range}. A selection of two or
+     * three elements is accepted when its first element is the anchor of a tie that holds
+     * ({@link Tie#judge} gives {@link Tie.Judgment.Holds}), that tie ends on its last element, and
+     * no beam holds both notes of that tie. A single selected element is accepted when
+     * {@link #boundaryTieAt} gives a tie for it. Every other selection is refused.
      */
     public static boolean canToggleTie(ElementSelection range) {
         var bounds = range.range();
         var selectionSize = bounds.size();
 
-        // A single boundary element ties to the adjacent line's matching edge note, not to
-        // anything else in range.line() — none of the same-line checks below apply.
         if (selectionSize == TIE_SELECTION_SIZE_BOUNDARY) {
             return boundaryTieAt(range.line(), bounds.begin()) != null;
         }
@@ -151,20 +166,12 @@ public final class RangeQueries {
             return false;
         }
 
-        if (selectionSize == TIE_SELECTION_SIZE_WITH_SEPARATOR
-            && !line.getElement(begin + 1).getType().isLegalTieSeparator()) {
+        //noinspection ObjectEquality
+        if (!(Tie.judge(anchorNote) instanceof Tie.Judgment.Holds(var tie)) || tie.end() != line.getElement(end)) {
             return false;
         }
 
-        // The checks above make the element at end the anchor's walk end, so the judgment of the
-        // anchor's tie is the judgment of the selected pair. Keep them before it.
-        if (!(Tie.judge(anchorNote) instanceof Tie.Judgment.Holds(var tie))) {
-            return false;
-        }
-
-        // Tied notes are never beamed together, so a tie is not added over two notes one beam
-        // holds. A removal is never blocked by a beam.
-        return !shouldConnectTieSelection(line, bounds) || tie.beamHoldingBoth() == null;
+        return tie.beamHoldingBoth() == null;
     }
 
     /**
@@ -536,11 +543,5 @@ public final class RangeQueries {
     public static boolean canModifyStemDirection(ElementSelection range) {
         return selectedElements(range).stream()
             .anyMatch(element -> element.getType().isNoteWithStem());
-    }
-
-    private static boolean shouldConnectTieSelection(Line line, ElementRange range) {
-        return !(line.getElement(range.begin()) instanceof NoteElement first
-            && line.getElement(range.end()) instanceof NoteElement second
-            && first.isTiedTo(second));
     }
 }
