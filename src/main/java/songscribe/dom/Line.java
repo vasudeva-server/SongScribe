@@ -520,6 +520,10 @@ public final class Line implements EditableRun {
      *     it at that point of the replay
      */
     public void addTie(NoteElement anchor) {
+        if (!anchor.canCarryTie()) {
+            throw new IllegalArgumentException("only a note that can carry a tie can anchor one: " + anchor);
+        }
+
         if (anchor.isTiedToNext()) {
             return;
         }
