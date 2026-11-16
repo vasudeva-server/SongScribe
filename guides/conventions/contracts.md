@@ -56,10 +56,12 @@ A Javadoc holds only these clauses. A method with none of them has no Javadoc.
    What holds the object, and what the object holds, is structure, and the
    Javadoc does not state it. An invariant that spans the classes of a package
    goes in `package-info.java`.
-5. **A promise that the code does not show**, for example a decision about
-   music: *"creating a tuplet keeps the playback duration of the passage."* The
-   body can satisfy the promise without stating it, and a later change can
-   break it without a sign.
+5. **A promise that a caller relies on and that the code does not show**, for
+   example a decision about music: *"creating a tuplet keeps the playback
+   duration of the passage."* The body can satisfy the promise without stating
+   it, and a later change can break it without a sign. A decision about music
+   that only the user relies on is not a clause: see *A corpus test derives
+   from its corpus*.
 
 A type's Javadoc also states the purpose of the type.
 
@@ -165,7 +167,20 @@ Neither is solved by widening a field.
 
 Ask whether a caller relies on what the test asserts. If one does, the contract
 is missing that clause: add it. If none does, the test pins the implementation:
-it maps to no contract case, and triage deletes it.
+it maps to no contract case, and triage deletes it. A corpus test is the one
+exception (below).
+
+### A corpus test derives from its corpus
+
+Some behavior is relied on by the user and by no caller: an engraving rule,
+such as the side a tie is drawn on. A caller takes the result and uses it, but
+never acts on the rule that produced it. The rule is not a clause, and the
+member's Javadoc does not state it.
+
+A test of such behavior checks a known-correct corpus, the third kind under
+*The testing floor* in `~/.claude/guides/design.md`. It derives from the
+corpus, not from a contract clause. The test's Javadoc states the corpus, so
+that a reader can check each row against it without the body.
 
 ## Every boundary gets its consequence
 

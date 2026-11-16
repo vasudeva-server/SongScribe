@@ -60,11 +60,12 @@ public final class Tie {
     }
 
     /**
-     * The end of the result may be in the line after the line of {@code anchor}, and is in no
-     * line after that.
+     * The end of the result is the next element after {@code anchor}, skipping any legal tie
+     * separator ({@link ElementType#isLegalTieSeparator}). It may be in the line after the line of
+     * {@code anchor}, and is in no line after that.
      *
-     * @return {@code null} when {@code anchor} is in no line, or no note that a tie can end on
-     *     follows it
+     * @return {@code null} when {@code anchor} is in no line, when that element is not a note
+     *     that can carry a tie, or when no such element exists
      * @invariant a non-null result's {@link #anchor()} is {@code anchor}, and
      *     {@code endingOn(result.end())} equals the result
      */
