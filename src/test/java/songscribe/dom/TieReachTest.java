@@ -32,6 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFonts;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
@@ -70,6 +71,7 @@ import static songscribe.util.SealedTypes.leavesOf;
 class TieReachTest extends UnitTest {
 
     private static final int PITCH = 3;
+    private static final int OTHER_PITCH = 4;
 
     private static final int FIRST_LINE = 0;
     private static final int SECOND_LINE = 1;
@@ -78,11 +80,11 @@ class TieReachTest extends UnitTest {
     private static final int SECOND_ELEMENT = 1;
 
     /**
-     * One mutation on a song, and the lines it reaches.
+     * One edit on a song, and the lines it reaches.
      *
-     * @param description the mutation, as the test's display name
+     * @param description the edit, as the test's display name
      * @param lines       the song's lines in compact notation
-     * @param mutation    builds the mutation against the song
+     * @param mutation    lands the edit on the song, and returns the mutation that records it
      * @param reached     the indices of the lines {@link TieReach#reach} names, in any order
      */
     private record ReachCase(String description, String[] lines, Function<Song, Mutation> mutation, List<Integer> reached) {}
@@ -91,7 +93,8 @@ class TieReachTest extends UnitTest {
     private static final String[] SEPARATED_MIDDLE =
         {"" + PITCH, "| " + PITCH + " " + PITCH + " " + PITCH + " |", "" + PITCH};
 
-    /** The index, in {@link #SEPARATED_MIDDLE}'s middle line, of its last non-separator. */
+    /** The indices, in {@link #SEPARATED_MIDDLE}'s middle line, of its last two non-separators. */
+    private static final int PENULTIMATE_NOTE = 2;
     private static final int LAST_NOTE = 3;
 
     /** Four quavers that a beam can cover, then a line holding a note. */
@@ -106,7 +109,7 @@ class TieReachTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("reachCases")
-    void testAnEditAtALinesEdgeReachesTheLineBesideIt(ReachCase testCase) {
+    void testALandedEditReachesTheLineBesideItOnlyAtALinesEdge(ReachCase testCase) {
         var song = compactSong(Key.NO_ACCIDENTALS, testCase.lines());
 
         assertThat(TieReach.reach(testCase.mutation().apply(song)))
@@ -119,49 +122,78 @@ class TieReachTest extends UnitTest {
                 SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, FIRST_ELEMENT), List.of(FIRST_LINE)),
             new ReachCase("at the first non-separator reaches the previous line",
                 SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, SECOND_ELEMENT), List.of(FIRST_LINE)),
-            new ReachCase("at the last non-separator reaches the next line",
-                SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, LAST_NOTE), List.of(THIRD_LINE)),
-            new ReachCase("past the last non-separator reaches the next line",
+            new ReachCase("an insertion before the last non-separator reaches no line",
+                SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, LAST_NOTE), List.of()),
+            new ReachCase("an insertion after the last non-separator reaches the next line",
                 SEPARATED_MIDDLE, song -> insertion(song, SECOND_LINE, CLOSING_BARLINE), List.of(THIRD_LINE)),
-            new ReachCase("a deletion is asked at its first index",
+            new ReachCase("a deletion of the line's opening reaches the previous line",
                 SEPARATED_MIDDLE,
-                song -> new ElementDeletion(song.getLine(SECOND_LINE),
-                    new ElementRange(FIRST_ELEMENT, SECOND_ELEMENT), List.of()),
+                song -> deletion(song, SECOND_LINE, new ElementRange(FIRST_ELEMENT, SECOND_ELEMENT)),
                 List.of(FIRST_LINE)),
+            new ReachCase("a deletion of the line's last notes reaches the next line",
+                SEPARATED_MIDDLE,
+                song -> deletion(song, SECOND_LINE, new ElementRange(PENULTIMATE_NOTE, LAST_NOTE)),
+                List.of(THIRD_LINE)),
             new ReachCase("a line holding only separators reaches both neighbors",
                 new String[] {"" + PITCH, "|", "" + PITCH},
                 song -> insertion(song, SECOND_LINE, FIRST_ELEMENT), List.of(FIRST_LINE, THIRD_LINE)),
             new ReachCase("a replacement at the first non-separator reaches the previous line",
                 SEPARATED_MIDDLE,
-                song -> new ElementReplacement(song.getLine(SECOND_LINE), SECOND_ELEMENT, crotchet(), crotchet()),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    var replaced = line.getElement(SECOND_ELEMENT);
+                    var replacement = crotchet();
+
+                    song.withModification(() -> line.setElement(SECOND_ELEMENT, replacement));
+
+                    return new ElementReplacement(line, SECOND_ELEMENT, replaced, replacement);
+                },
                 List.of(FIRST_LINE)),
-            new ReachCase("a modification at the last non-separator reaches the next line",
-                SEPARATED_MIDDLE,
-                song -> new ElementModification(song.getLine(SECOND_LINE), LAST_NOTE,
-                    EnumSet.of(ElementField.PITCH), crotchet(), crotchet()),
-                List.of(THIRD_LINE)),
+            new ReachCase("a pitch change at the last non-separator reaches the next line",
+                SEPARATED_MIDDLE, song -> pitchChange(song, new Cursor(SECOND_LINE, LAST_NOTE)), List.of(THIRD_LINE)),
             new ReachCase("a tie addition on the last non-separator reaches the next line",
                 SEPARATED_MIDDLE,
-                song -> new TieAddition(song.getLine(SECOND_LINE), noteAt(song, new Cursor(SECOND_LINE, LAST_NOTE))),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    var anchor = noteAt(song, new Cursor(SECOND_LINE, LAST_NOTE));
+
+                    song.withModification(() -> line.addTie(anchor));
+
+                    return new TieAddition(line, anchor);
+                },
                 List.of(THIRD_LINE)),
             new ReachCase("a tie removal on the first non-separator reaches the previous line",
                 SEPARATED_MIDDLE,
-                song -> new TieRemoval(song.getLine(SECOND_LINE), noteAt(song, new Cursor(SECOND_LINE, SECOND_ELEMENT))),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    var anchor = noteAt(song, new Cursor(SECOND_LINE, SECOND_ELEMENT));
+
+                    song.withModification(() -> line.addTie(anchor));
+                    song.withModification(() -> line.removeTie(anchor));
+
+                    return new TieRemoval(line, anchor);
+                },
                 List.of(FIRST_LINE)),
-            new ReachCase("a beam toggled over the last notes of a line reaches the next line",
+            new ReachCase("a beam added over the last notes of a line reaches the next line",
                 BEAMABLE_LINE_THEN_NOTE,
                 song -> {
                     var line = song.getLine(FIRST_LINE);
+                    var beam = beamOver(line, lastTwoQuavers());
 
-                    return new SpanAddition(line, beamOver(line, lastTwoQuavers()));
+                    song.withModification(beam::addTo);
+
+                    return new SpanAddition(line, beam);
                 },
                 List.of(SECOND_LINE)),
             new ReachCase("a beam removed from the last notes of a line reaches the next line",
                 BEAMABLE_LINE_THEN_NOTE,
                 song -> {
                     var line = song.getLine(FIRST_LINE);
+                    var beam = addWithoutTracking(song, () -> beamOver(line, lastTwoQuavers()));
 
-                    return new SpanRemoval(line, beamOver(line, lastTwoQuavers()));
+                    song.withModification(beam::removeFrom);
+
+                    return new SpanRemoval(line, beam);
                 },
                 List.of(SECOND_LINE)),
             new ReachCase("a pitch change on an inner member of a beam that ends the line reaches the next line",
@@ -171,8 +203,7 @@ class TieReachTest extends UnitTest {
 
                     addWithoutTracking(song, () -> beamOver(line, new ElementRange(FIRST_ELEMENT, LAST_QUAVER)));
 
-                    return new ElementModification(line, SECOND_ELEMENT,
-                        EnumSet.of(ElementField.PITCH), quaver(), quaver());
+                    return pitchChange(song, new Cursor(FIRST_LINE, SECOND_ELEMENT));
                 },
                 List.of(SECOND_LINE))
         );
@@ -183,6 +214,30 @@ class TieReachTest extends UnitTest {
     }
 
     private static Mutation insertion(Song song, int lineIndex, int index) {
-        return new ElementInsertion(song.getLine(lineIndex), index, crotchet());
+        var line = song.getLine(lineIndex);
+        var inserted = crotchet();
+
+        song.withModification(() -> line.addElement(index, inserted));
+
+        return new ElementInsertion(line, index, inserted);
+    }
+
+    private static Mutation deletion(Song song, int lineIndex, ElementRange range) {
+        var line = song.getLine(lineIndex);
+        var deleted = List.copyOf(line.getElements().subList(range.begin(), range.end() + 1));
+
+        song.withModification(() -> line.removeRange(range));
+
+        return new ElementDeletion(line, range, deleted);
+    }
+
+    private static Mutation pitchChange(Song song, Cursor cursor) {
+        var line = song.getLine(cursor.lineIndex());
+        var note = noteAt(song, cursor);
+        var before = StaffElement.convertedFrom(note.getType(), note);
+
+        song.withModification(() -> note.setStaffPosition(new StaffPosition(OTHER_PITCH)));
+
+        return new ElementModification(line, cursor.index(), EnumSet.of(ElementField.PITCH), before, note);
     }
 }

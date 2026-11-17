@@ -137,6 +137,18 @@ class TieLoadPassTest extends UnitTest {
                     removed(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT, FIRST_LINE, FIRST_LINE)),
                 List.of()),
 
+            new TieCase("a damaged tie found before a broken one is reported first",
+                new String[] {"R " + TIED + " " + OTHER}, List.of(firstNote, secondNote),
+                List.of(
+                    removed(Strings.REPORT_REASON_DAMAGED_WRONG_ELEMENT, FIRST_LINE, FIRST_LINE),
+                    removed(Strings.REPORT_REASON_TIE_NOT_HELD, FIRST_LINE, FIRST_LINE)),
+                List.of()),
+
+            new TieCase("a tie on the song's last note is removed as having no following note",
+                new String[] {TIED}, List.of(firstNote),
+                List.of(removed(Strings.REPORT_REASON_TIE_NO_FOLLOWING_NOTE, FIRST_LINE, FIRST_LINE)),
+                List.of()),
+
             new TieCase("a tie that holds stays beside one that is removed",
                 new String[] {TIED + " " + TIED + " " + OTHER}, List.of(firstNote, secondNote),
                 List.of(removed(Strings.REPORT_REASON_TIE_NOT_HELD, FIRST_LINE, FIRST_LINE)),

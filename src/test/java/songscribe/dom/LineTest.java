@@ -37,6 +37,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
@@ -60,7 +61,8 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * <p>An element is on a line exactly while the line holds it, and so is everything hanging on it.
  * {@link Line#setKey} holds no key where the line would inherit the one it is given.
  *
- * <p>{@link Line#ownedTies} lists a tie once in each line that draws it.
+ * <p>{@link Line#ownedTies} lists a tie once in each line that draws it, with the elements it is
+ * drawn over there and the edge it runs off.
  */
 class LineTest extends UnitTest {
 
@@ -508,12 +510,22 @@ class LineTest extends UnitTest {
         var firstLine = song.getLine(0);
         var secondLine = song.getLine(1);
 
+        var lastOfFirstLine = firstLine.elementCount() - 1;
+
         var inFirstLine = firstLine.noteAt(0).tie();
-        var acrossTheBreak = firstLine.noteAt(firstLine.elementCount() - 1).tie();
+        var acrossTheBreak = firstLine.noteAt(lastOfFirstLine).tie();
         var inSecondLine = secondLine.noteAt(0).tie();
 
-        assertThat(firstLine.ownedTies()).extracting(Line.TiePlacement::tie).containsExactly(inFirstLine, acrossTheBreak);
-        assertThat(secondLine.ownedTies()).extracting(Line.TiePlacement::tie).containsExactly(acrossTheBreak, inSecondLine);
+        assertThat(firstLine.ownedTies())
+            .extracting(Line.TiePlacement::tie, Line.TiePlacement::range, Line.TiePlacement::openEdge)
+            .containsExactly(
+                tuple(inFirstLine, new ElementRange(0, 1), null),
+                tuple(acrossTheBreak, ElementRange.single(lastOfFirstLine), Line.Edge.END));
+        assertThat(secondLine.ownedTies())
+            .extracting(Line.TiePlacement::tie, Line.TiePlacement::range, Line.TiePlacement::openEdge)
+            .containsExactly(
+                tuple(acrossTheBreak, ElementRange.single(0), Line.Edge.START),
+                tuple(inSecondLine, new ElementRange(0, 1), null));
     }
 
     /** A song of two lines, the last carrying the song's terminal. */

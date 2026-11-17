@@ -40,7 +40,7 @@ class NoteElementTest extends UnitTest {
     private static final int TIED = 3;
 
     static Stream<ElementType> noteTypes() {
-        return Stream.of(ElementType.values()).filter(type -> type.newInstance() instanceof NoteElement);
+        return Stream.of(ElementType.values()).filter(ElementType::isNote);
     }
 
     @ParameterizedTest(name = "{0}")

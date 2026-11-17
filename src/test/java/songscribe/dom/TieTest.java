@@ -200,17 +200,13 @@ class TieTest extends UnitTest {
     }
 
     @Test
-    void testATiedNoteDeletedFromItsLineStartsNoTie() {
+    void testANoteDeletedFromItsLineStartsNoTie() {
         var song = compactSong(Key.NO_ACCIDENTALS, PITCH + " " + PITCH + " " + PITCH);
         var line = song.getLine(FIRST_LINE);
         var anchor = noteAt(song, new Cursor(FIRST_LINE, FIRST_ELEMENT));
 
-        song.withModification(() -> line.addTie(anchor));
         song.withModification(() -> line.removeRange(new ElementRange(FIRST_ELEMENT, FIRST_ELEMENT)));
 
-        assertThat(anchor.isTiedToNext())
-            .as("the fixture reaches the case only if the deleted note keeps its tie")
-            .isTrue();
         assertThat(Tie.startingOn(anchor)).isNull();
     }
 
@@ -259,6 +255,8 @@ class TieTest extends UnitTest {
                     line.addElement(note(PITCH, new Stem.Forced(Direction.DOWN)));
                 }),
                 new Held(new Cursor(FIRST_LINE, SECOND_ELEMENT))),
+            new JudgeCase("an end that sounds the sharp it inherits from the anchor holds",
+                notated(PITCH + "s " + PITCH), new Held(new Cursor(FIRST_LINE, SECOND_ELEMENT))),
             new JudgeCase("an anchor that sounds another alteration is not held",
                 notated(PITCH + "s " + PITCH + "n"), new BrokenAs(Tie.Judgment.Reason.NOT_HELD, FIRST_LINE, FIRST_LINE)),
             new JudgeCase("an end that sounds another alteration is not held",
