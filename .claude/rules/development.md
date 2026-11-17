@@ -23,6 +23,8 @@ looking is not.
 
 Before reading, creating, or modifying tests, read the relevant guide (not auto-loaded): [testing-common.md](../../guides/conventions/testing-common.md), [testing-unit.md](../../guides/conventions/testing-unit.md), [testing-e2e.md](../../guides/conventions/testing-e2e.md), [testing-manual.md](../../guides/conventions/testing-manual.md).
 
+A corpus test is the one exception to "a test with no full contract to derive it from is the finding" in `~/.claude/guides/design.md`. It derives from its corpus: see *A corpus test derives from its corpus* in [Contracts](../../guides/conventions/contracts.md).
+
 ## Spelling
 
 The file header uses "Sri Chinmoy Centre" with British spelling, but *you* should always use "center" in the American spelling.
